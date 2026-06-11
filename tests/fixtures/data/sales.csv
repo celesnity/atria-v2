@@ -1,0 +1,6 @@
+month,revenue,units,in_stock
+Jan,1000.5,10,true
+Feb,1500,20,true
+Mar,2000.25,15,false
+Apr,1750,18,true
+May,2200,22,false

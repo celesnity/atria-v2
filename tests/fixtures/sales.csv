@@ -1,0 +1,11 @@
+order_date,region,product,revenue
+2025-01-04,NA,widget,120.50
+2025-01-04,EU,widget,80.00
+2025-01-05,APAC,gadget,200.00
+2025-01-07,NA,gadget,150.75
+2025-01-08,EU,widget,90.25
+2025-02-01,NA,widget,210.00
+2025-02-05,APAC,widget,95.00
+2025-02-12,EU,gadget,130.00
+2025-03-01,NA,gadget,180.00
+2025-03-15,APAC,widget,105.00

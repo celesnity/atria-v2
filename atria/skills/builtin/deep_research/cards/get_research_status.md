@@ -1,0 +1,1 @@
+Check the status of a background deep research job. Returns the job status (queued/running/done/error), progress percentage, number of sections completed, and any error message. Use the job_id returned by deep_research.

@@ -1,0 +1,278 @@
+"""Configuration commands for REPL."""
+
+import asyncio
+from typing import TYPE_CHECKING, Optional
+
+from rich.console import Console
+
+from atria.config import get_model_registry
+from atria.repl.commands.base import CommandHandler, CommandResult
+
+if TYPE_CHECKING:
+    from atria.core.runtime import ConfigManager
+
+
+class ConfigCommands(CommandHandler):
+    """Handler for configuration-related commands: /models."""
+
+    def __init__(
+        self,
+        console: Console,
+        config_manager: "ConfigManager",
+        chat_app=None,
+    ):
+        """Initialize config commands handler.
+
+        Args:
+            console: Rich console for output
+            config_manager: Config manager instance
+            chat_app: Chat application instance (for interactive modal)
+        """
+        super().__init__(console)
+        self.config_manager = config_manager
+        self.chat_app = chat_app
+
+    def handle(self, args: str) -> CommandResult:
+        """Handle config command (not used, individual methods called directly)."""
+        raise NotImplementedError("Use specific methods: show_model_selector()")
+
+    async def show_model_selector_async(self) -> CommandResult:
+        """Show interactive model selector modal with three categories (async version).
+
+        Workflow:
+        1. Show category selector (Normal, Thinking, VLM, Finish)
+        2. If user selects "Finish", show summary and exit
+        3. If user selects a category, show filtered model selector
+        4. If user selects "back" in model selector, return to category selector
+        5. If user selects a model, configure it and return to category selector
+        6. Loop continues until user selects "Finish"
+
+        Returns:
+            CommandResult indicating success or failure
+        """
+        if not self.chat_app:
+            self.print_error("Interactive model selector not available in this mode")
+            return CommandResult(success=False, message="Chat app not available")
+
+        # Import here to avoid circular imports
+
+        # Loop to allow configuring multiple models
+        while True:
+            # Show category selector (Normal / Thinking / VLM / Finish)
+            selected_category = await self._show_category_selector()
+
+            if not selected_category:
+                # User cancelled - silently return without printing message
+                return CommandResult(success=False, message="Selection cancelled")
+
+            # Check if user selected "Finish"
+            if selected_category == "finish":
+                # Show final summary and exit
+                if self.chat_app:
+                    self._show_model_config_summary()
+                return CommandResult(success=True, message="Model configuration complete")
+
+            # Show the modal with filtered models for selected category
+            selected, item = await self.chat_app.model_selector_modal_manager.show_model_selector(
+                selection_mode=selected_category
+            )
+
+            if not selected or not item:
+                # User cancelled - silently return without printing message
+                return CommandResult(success=False, message="Selection cancelled")
+
+            # Check if user selected "back" button
+            if item.get("type") == "back":
+                # Go back to category selection (loop continues)
+                continue
+
+            # Extract selection info
+            provider_id = item["provider_id"]
+            model_id = item["model_id"]
+            mode = item.get("mode", "normal")
+
+            # Switch to the selected model for the appropriate slot
+            result = self._switch_to_model(provider_id, model_id, mode)
+
+            # If successful, continue loop to let user configure more models
+            # Don't exit here - return to category selector
+            if not result.success:
+                # If switch failed, exit with error
+                return result
+
+            # Success - loop continues, user can configure more models
+
+    async def _show_category_selector(self) -> Optional[str]:
+        """Show category selector to choose which model slot to configure.
+
+        Returns:
+            Selected category ("normal", "thinking", "vlm") or None if cancelled
+        """
+        from atria.ui_textual.components.category_selector_message import (
+            create_category_selector_message,
+            get_category_items,
+        )
+
+        # Check if normal model is configured
+        config = self.config_manager.get_config()
+        normal_configured = bool(config.model)
+
+        # Reset state
+        self.chat_app.model_selector_modal_manager.reset_state()
+        self.chat_app.model_selector_modal_manager._selector_mode = True
+        self.chat_app.model_selector_modal_manager._is_category_selector = (
+            True  # Mark as category selector
+        )
+        self.chat_app.model_selector_modal_manager._normal_configured = normal_configured
+
+        # Get category items (with disabled status based on normal_configured)
+        category_items = get_category_items(normal_configured)
+        self.chat_app.model_selector_modal_manager._selector_items = category_items
+        self.chat_app.model_selector_modal_manager._selector_selected_index = 0
+
+        # Unlock input
+        self.chat_app._input_locked = False
+        self.chat_app.input_buffer.text = ""
+        self.chat_app.input_buffer.cursor_position = 0
+
+        # Show category selector
+        selector_msg = create_category_selector_message(0, normal_configured)
+        self.chat_app.conversation.add_assistant_message(selector_msg)
+        self.chat_app._update_conversation_buffer()
+        self.chat_app.model_selector_modal_manager._position_conversation_for_selector()
+        self.chat_app.app.invalidate()
+
+        # Wait for selection
+        try:
+            result = await self.chat_app.model_selector_modal_manager._wait_for_user_selection()
+        finally:
+            self.chat_app.model_selector_modal_manager._selector_mode = False
+            self.chat_app._input_locked = False
+
+        # Remove selector message
+        if self.chat_app.conversation.messages:
+            self.chat_app.conversation.messages.pop()
+            self.chat_app._update_conversation_buffer()
+
+        if result["selected"] and result["item"]:
+            return result["item"]["category"]
+
+        return None
+
+    def show_model_selector(self) -> CommandResult:
+        """Show interactive model selector modal (sync wrapper).
+
+        Returns:
+            CommandResult indicating success or failure
+        """
+        # Run the async version
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self.show_model_selector_async())
+
+    def _switch_to_model(
+        self, provider_id: str, model_id: str, mode: str = "normal"
+    ) -> CommandResult:
+        """Switch to a specific model for a specific slot."""
+        registry = get_model_registry()
+        config = self.config_manager.get_config()
+
+        result = registry.find_model_by_id(model_id)
+        if not result:
+            self.print_error(f"Model '{model_id}' not found")
+            return CommandResult(success=False, message="Model not found")
+
+        _, _, model_info = result
+
+        mode_names = {
+            "normal": "Normal",
+            "thinking": "Thinking",
+            "vlm": "Vision/Multi-modal",
+            "critique": "Critique",
+            "compact": "Compact",
+        }
+
+        if mode == "normal":
+            config.model = model_info.id
+            config.max_context_tokens = int(model_info.context_length * 0.8)
+            if "reasoning" in model_info.capabilities and not config.model_thinking:
+                config.model_thinking = model_info.id
+            if "vision" in model_info.capabilities and not config.model_vlm:
+                config.model_vlm = model_info.id
+            if not config.model_compact:
+                config.model_compact = model_info.id
+        elif mode == "thinking":
+            config.model_thinking = model_info.id
+        elif mode == "vlm":
+            config.model_vlm = model_info.id
+        elif mode == "critique":
+            config.model_critique = model_info.id
+        elif mode == "compact":
+            config.model_compact = model_info.id
+
+        # Save configuration — protect against session-model overlay leaking
+        try:
+            session_model_mgr = getattr(self, "_session_model_manager", None)
+            overlay_was_active = session_model_mgr and session_model_mgr.is_active
+            saved_overlay = None
+
+            if overlay_was_active:
+                saved_overlay = session_model_mgr.get_overlay()
+                session_model_mgr.restore()
+
+            self.config_manager.save_config(config, global_config=True)
+
+            if overlay_was_active and saved_overlay:
+                session_model_mgr.apply(saved_overlay)
+
+            # Refresh the UI (footer will show new model)
+            if self.chat_app:
+                refresher = getattr(self.chat_app, "refresh", None)
+                if callable(refresher):
+                    refresher()
+
+            mode_name = mode_names.get(mode, mode)
+            msg = f"Switched {mode_name} model to {model_info.name}"
+            if overlay_was_active:
+                msg += " (global). Session model still active — use /session-models clear to use global."
+
+            return CommandResult(
+                success=True, message=msg, data={"model": model_info, "mode": mode}
+            )
+
+        except Exception as e:
+            self.print_error(f"Failed to save configuration: {e}")
+            return CommandResult(success=False, message=str(e))
+
+    def _show_model_config_summary(self) -> None:
+        """Show a concise summary of currently configured models in the conversation."""
+        config = self.config_manager.get_config()
+
+        # Build summary lines in tool result style
+        lines = ["⏺ Models configured"]
+
+        if config.model:
+            lines.append(f"  ⎿  Normal: {config.model.split('/')[-1]}")
+        if config.model_thinking:
+            lines.append(f"  ⎿  Thinking: {config.model_thinking.split('/')[-1]}")
+        else:
+            lines.append("  ⎿  Thinking: Not set (falls back to Normal)")
+        if config.model_vlm:
+            lines.append(f"  ⎿  Vision: {config.model_vlm.split('/')[-1]}")
+        else:
+            lines.append("  ⎿  Vision: Not set (vision tasks unavailable)")
+        if config.model_critique:
+            lines.append(f"  ⎿  Critique: {config.model_critique.split('/')[-1]}")
+        else:
+            lines.append("  ⎿  Critique: Not set (falls back to Thinking)")
+        if config.model_compact:
+            lines.append(f"  ⎿  Compact: {config.model_compact.split('/')[-1]}")
+        else:
+            lines.append("  ⎿  Compact: Not set (falls back to Normal)")
+
+        # Create the message in tool result format
+        full_message = "\n".join(lines)
+
+        # Add to conversation as assistant message
+        self.chat_app.conversation.add_assistant_message(full_message)
+        self.chat_app._update_conversation_buffer()
+        self.chat_app.app.invalidate()
