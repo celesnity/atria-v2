@@ -22,6 +22,10 @@ This document outlines Atria's development priorities. Features are grouped by m
 - **Session Persistence**: Save, resume, and manage conversation sessions
 - **Concurrent Sessions**: Multiple independent agent sessions running in parallel
 - **Channel Adapter Framework**: Unified messaging abstraction with `InboundMessage`/`OutboundMessage` models and a message router, ready for multi-channel integrations
+- **Modules System**: Self-contained domain skills under `modules/<name>/` (manifest, SKILL.md, scripts, blocks, dashboard) auto-discovered by the agent — reference impl: `warehouse` (CSV-backed inventory)
+- **File Upload + Artifacts**: User uploads (≤50MB, any type) scoped to conversation or project; agent tools `list_artifact_images` / `read_artifact_image` for discovery + base64 retrieval (PNG/JPG/GIF/WebP/SVG); hard + soft delete, 58 E2E/integration tests
+- **Sandboxed Module UI**: `SandboxedBlock` HTML snippets pushed into chat + full `dashboard.html` iframes (`sandbox="allow-scripts allow-forms"`) with `postMessage` callbacks
+- **Docker Compose Stack**: Prod + dev compose files bundling `atria` + Postgres 16 + Adminer, schema auto-loaded from `schema.sql`
 
 ---
 
