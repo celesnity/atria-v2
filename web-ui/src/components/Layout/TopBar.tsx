@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect } from "react";
 import { apiClient } from "../../api/client";
 import { useChatStore } from "../../stores/chat";
+import { TenantSwitcher } from "../TenantSwitcher";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -129,6 +130,9 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
           >
             <Command className="w-3 h-3" strokeWidth={1.5} />
           </button>
+
+          {/* Tenant switcher */}
+          <TenantSwitcher />
 
           {/* Connection pill */}
           <span
