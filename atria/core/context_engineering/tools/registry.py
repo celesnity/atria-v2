@@ -36,6 +36,9 @@ from atria.core.context_engineering.tools.handlers.schedule_handlers import Sche
 from atria.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from atria.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
 from atria.core.context_engineering.tools.implementations.send_data_tool import SendDataHandler
+from atria.core.context_engineering.tools.implementations.send_editable_table_tool import (
+    SendEditableTableHandler,
+)
 from atria.core.context_engineering.tools.implementations.chart_tool import RenderChartHandler
 from atria.core.context_engineering.tools.implementations.md_to_pdf_tool import (
     MarkdownToPdfHandler,
@@ -230,6 +233,7 @@ class ToolRegistry:
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
         self._send_data_handler = SendDataHandler()
+        self._send_editable_table_handler = SendEditableTableHandler()
         self._render_chart_handler = RenderChartHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
         self._memory_handler = MemoryToolHandler()
@@ -297,6 +301,8 @@ class ToolRegistry:
             "send_image": self._send_image_handler.send,
             # Data push tool (web UI)
             "send_data": self._send_data_handler.send,
+            # Editable dataset push tool (web UI)
+            "send_editable_table": self._send_editable_table_handler.send,
             "render_chart": self._render_chart_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
             # Memory tools
@@ -753,6 +759,7 @@ class ToolRegistry:
                 "get_session_history",
                 "send_image",
                 "send_data",
+                "send_editable_table",
                 "list_artifact_images",
                 "read_artifact_image",
             }:

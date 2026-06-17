@@ -67,7 +67,7 @@ function expandToolCalls(
     // Reconstruct the chart bubble from persisted send_data tool calls so
     // it survives session reload (the live WS data_message event isn't
     // replayed from DB).
-    if (tc.name === 'send_data' && !tc.error && depth === 0) {
+    if ((tc.name === 'send_data' || tc.name === 'send_editable_table') && !tc.error && depth === 0) {
       const payload = extractDataPayload(tc.result);
       if (payload) {
         messages.push({
@@ -79,6 +79,8 @@ function expandToolCalls(
           data_rows: payload.rows as Record<string, any>[] | undefined,
           data_suggestions: payload.suggestions as ChartSuggestion[] | undefined,
           data_warning: payload.warning as string | undefined,
+          data_editable: payload.editable as boolean | undefined,
+          data_source: payload.source as { module: string; file: string } | undefined,
           timestamp,
         });
       }
@@ -97,6 +99,8 @@ function extractDataPayload(result: unknown): {
   rows?: unknown;
   suggestions?: unknown;
   warning?: unknown;
+  editable?: unknown;
+  source?: unknown;
 } | null {
   if (!result) return null;
   let parsed: any = result;
@@ -256,6 +260,11 @@ interface ChatState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   setSelectedPersona: (personaName: string | null) => void;
   setDraft: (sessionId: string, text: string) => void;
+  updateDataMessageRows: (
+    dataMessageId: string,
+    columns: DataColumn[],
+    rows: Record<string, any>[],
+  ) => void;
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
 }
@@ -289,6 +298,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setDraft: (sessionId: string, text: string) => {
     if (!sessionId) return;
     set(state => ({ ...patchSession(state, sessionId, { draft: text }) }));
+  },
+  // After an editable table saves, fold the saved rows back into the stored
+  // data_message so the snapshot stays in sync — switching away to a module and
+  // back no longer reverts to the pre-edit values.
+  updateDataMessageRows: (dataMessageId, columns, rows) => {
+    const sessionId = get().currentSessionId;
+    if (!sessionId || !dataMessageId) return;
+    set(state => ({
+      ...patchSession(state, sessionId, prev => ({
+        messages: prev.messages.map(m =>
+          m.data_message_id === dataMessageId
+            ? { ...m, data_columns: columns, data_rows: rows }
+            : m,
+        ),
+      })),
+    }));
   },
   openSettingsModal: () => set({ settingsModalOpen: true }),
   closeSettingsModal: () => set({ settingsModalOpen: false }),
@@ -790,6 +815,8 @@ wsClient.on('data_message', (message) => {
           data_rows: message.data.rows,
           data_suggestions: message.data.suggestions,
           data_warning: message.data.warning,
+          data_editable: message.data.editable,
+          data_source: message.data.source,
           timestamp: new Date().toISOString(),
         },
       ],

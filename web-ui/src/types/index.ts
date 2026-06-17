@@ -159,6 +159,10 @@ export interface Message {
   data_suggestions?: ChartSuggestion[];
   data_warning?: string;
   data_sql?: string;
+  // editable-table fields (send_editable_table): when set, the data bubble
+  // renders an editable grid that saves back to the module's CSV.
+  data_editable?: boolean;
+  data_source?: { module: string; file: string };
   // lazy-load fallback: fetch rows via /api/analyze/table-data
   data_db_path?: string;
   data_table_name?: string;
@@ -180,6 +184,8 @@ export type DataColumnType = 'number' | 'string' | 'date' | 'bool';
 export interface DataColumn {
   name: string;
   type: DataColumnType;
+  /** When false, this column is read-only in the editable grid (default true). */
+  editable?: boolean;
 }
 
 // Session types
