@@ -133,7 +133,11 @@ async def read_file(
     return StreamingResponse(
         _iter(),
         media_type=mime,
-        headers={"Cache-Control": "no-cache", "Content-Length": str(size)},
+        headers={
+            "Cache-Control": "no-cache",
+            "Content-Length": str(size),
+            "Content-Disposition": f'inline; filename="{target.name}"',
+        },
     )
 
 
