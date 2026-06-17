@@ -9,6 +9,7 @@ presence of ``SKILL.md`` is enforced.
 from __future__ import annotations
 
 import csv
+import io
 import json
 import logging
 import os
@@ -32,6 +33,11 @@ _BADGE_COLORS = {"info", "warning", "danger", "success", "neutral"}
 # Caps so a giant folder can't blow up the registry or prompt.
 _MAX_FILES = 200
 _MAX_DEPTH = 4
+
+# Caps for the editable-dataset read/write path (see read_dataset/write_dataset).
+_MAX_DATA_ROWS = 50_000
+_MAX_DATA_COLS = 200
+_MAX_DATA_BYTES = 50 * 1024 * 1024  # 50 MB, matching the upload limit
 
 Template = Literal["blank", "skill", "skill_script", "skill_dashboard", "data"]
 
@@ -779,6 +785,138 @@ def regenerate_data_skill(root: Path, name: str, summary: str = "") -> None:
         raise ModuleNotFound(name)
     datasets = _scan_datasets(d / "data")
     _atomic_write(d / SKILL_FILE, _data_skill_md(name, summary, datasets or None))
+
+
+def _data_rel(rel_file: str) -> str:
+    """Sanitize a caller-supplied dataset path and root it at ``data/``.
+
+    ``rel_file`` is relative to the module's ``data/`` dir (e.g. ``worldcups.csv``
+    or ``sub/dir/x.csv``). Rejects traversal and non-``.csv`` targets.
+    """
+    clean = _sanitize_data_relpath(rel_file)
+    if clean is None:
+        raise ValueError(f"invalid dataset path: {rel_file!r}")
+    # Tolerate an already-"data/"-prefixed path (e.g. a round-tripped source.file
+    # whose value is the read_dataset return) so we never double it into
+    # data/data/... — read and write must resolve to the same file.
+    while clean.startswith("data/"):
+        clean = clean[len("data/"):]
+    if not clean or not clean.lower().endswith(".csv"):
+        raise ValueError("dataset must be a .csv file under data/")
+    return f"data/{clean}"
+
+
+def _decode_csv_bytes(raw: bytes) -> str:
+    """Decode CSV bytes as utf-8 (BOM-aware), falling back to latin-1."""
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
+def read_dataset(root: Path, name: str, rel_file: str) -> dict:
+    """Read a module CSV dataset into ``{file, columns, rows}``.
+
+    ``columns`` is ``[{"name", "type": "string"}]`` and ``rows`` is a list of
+    dicts keyed by column name — the same shape the chat data bubble consumes.
+    Rows past :data:`_MAX_DATA_ROWS` are dropped and reported via ``warning``.
+    """
+    full_rel = _data_rel(rel_file)
+    raw = read_file(root, name, full_rel)  # raises FileNotFoundError if missing
+    reader = csv.reader(io.StringIO(_decode_csv_bytes(raw)))
+    all_rows = list(reader)
+    if not all_rows:
+        return {"file": full_rel, "columns": [], "rows": []}
+
+    header = [str(c).strip() or f"column_{i + 1}" for i, c in enumerate(all_rows[0])]
+    if len(header) > _MAX_DATA_COLS:
+        header = header[:_MAX_DATA_COLS]
+
+    warning = None
+    body = all_rows[1:]
+    if len(body) > _MAX_DATA_ROWS:
+        warning = f"Showing first {_MAX_DATA_ROWS} of {len(body)} rows"
+        body = body[:_MAX_DATA_ROWS]
+
+    rows: List[dict] = []
+    for raw_row in body:
+        obj: dict = {}
+        for i, col in enumerate(header):
+            obj[col] = raw_row[i] if i < len(raw_row) else ""
+        rows.append(obj)
+
+    columns = [{"name": h, "type": "string"} for h in header]
+    out = {"file": full_rel, "columns": columns, "rows": rows}
+    if warning:
+        out["warning"] = warning
+    return out
+
+
+def _coerce_header(columns: Any) -> List[str]:
+    """Extract a clean, de-duplicated header from columns (list of str or dicts)."""
+    header: List[str] = []
+    seen: dict[str, int] = {}
+    for c in columns or []:
+        if isinstance(c, str):
+            name = c.strip()
+        elif isinstance(c, dict):
+            name = str(c.get("name", "")).strip()
+        else:
+            name = str(c).strip()
+        if not name:
+            name = "column"
+        if name in seen:
+            seen[name] += 1
+            name = f"{name}_{seen[name]}"
+        else:
+            seen[name] = 1
+        header.append(name)
+    return header
+
+
+def write_dataset(
+    root: Path, name: str, rel_file: str, columns: Any, rows: Any
+) -> dict:
+    """Write edited rows back to a module CSV dataset (atomic, with one .bak).
+
+    ``columns`` may be a list of names or ``{"name": ...}`` dicts; ``rows`` is a
+    list of dicts keyed by column name. The previous file (if any) is copied to
+    ``<file>.bak`` before the atomic replace. Raises ``ValueError`` on bad input.
+    """
+    full_rel = _data_rel(rel_file)
+    if not isinstance(rows, list):
+        raise ValueError("rows must be a list")
+    if len(rows) > _MAX_DATA_ROWS:
+        raise ValueError(f"too many rows (max {_MAX_DATA_ROWS})")
+
+    header = _coerce_header(columns)
+    if not header and rows and isinstance(rows[0], dict):
+        header = _coerce_header(list(rows[0].keys()))
+    if not header:
+        raise ValueError("no columns to write")
+    if len(header) > _MAX_DATA_COLS:
+        raise ValueError(f"too many columns (max {_MAX_DATA_COLS})")
+
+    buf = io.StringIO(newline="")
+    writer = csv.writer(buf)
+    writer.writerow(header)
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("each row must be an object")
+        writer.writerow(["" if row.get(col) is None else str(row.get(col)) for col in header])
+    data = buf.getvalue().encode("utf-8")
+    if len(data) > _MAX_DATA_BYTES:
+        raise ValueError(f"dataset exceeds {_MAX_DATA_BYTES} bytes")
+
+    target = _resolve_in_module(root, name, full_rel)  # validates containment
+    # Best-effort single backup of the prior version before overwriting.
+    if target.is_file():
+        try:
+            shutil.copy2(target, target.with_name(target.name + ".bak"))
+        except OSError:
+            pass
+    _atomic_write_bytes(target, data)
+    return {"written": full_rel, "rows": len(rows), "columns": header}
 
 
 def delete_file(root: Path, name: str, rel_path: str) -> None:

@@ -184,6 +184,45 @@ async def data_upload_endpoint(
     return {"written": written, "converted": converted, "skipped": skipped}
 
 
+@router.get("/{name}/data/read")
+def data_read_endpoint(
+    name: str,
+    file: str = Query(..., min_length=1),
+    reg: ModuleRegistry = Depends(get_modules_registry),
+):
+    """Read a module CSV dataset as ``{file, columns, rows}`` (for the editable grid)."""
+    with _store_errors(name):
+        return store.read_dataset(reg.root, name, file)
+
+
+class DatasetWrite(BaseModel):
+    file: str = Field(..., min_length=1)
+    columns: list = Field(default_factory=list)
+    rows: list = Field(default_factory=list)
+
+
+@router.put("/{name}/data/write")
+def data_write_endpoint(
+    name: str,
+    body: DatasetWrite,
+    reg: ModuleRegistry = Depends(get_modules_registry),
+):
+    """Write edited rows back to a module CSV dataset, then refresh the module.
+
+    Validation/containment failures surface as 4xx JSON (never a 500) via
+    ``_store_errors``; the CSV is replaced atomically with a single ``.bak``.
+    """
+    with _store_errors(name):
+        result = store.write_dataset(reg.root, name, body.file, body.columns, body.rows)
+        # Only refresh the auto-generated SKILL.md for generic data-template
+        # modules (which own scripts/data.py). Custom modules (e.g. warehouse,
+        # with their own scripts) keep their hand-authored SKILL.md untouched.
+        if (reg.root / name / "scripts" / "data.py").is_file():
+            store.regenerate_data_skill(reg.root, name)
+    reg.reload_one(name)
+    return {"ok": True, **result}
+
+
 @router.delete("/{name}", status_code=204)
 def delete_endpoint(name: str, reg: ModuleRegistry = Depends(get_modules_registry)):
     with _store_errors(name):
