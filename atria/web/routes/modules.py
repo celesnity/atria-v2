@@ -176,10 +176,15 @@ def fs_read(
         for i in range(0, len(data), _STREAM_CHUNK):
             yield data[i : i + _STREAM_CHUNK]
 
+    filename = path.rsplit("/", 1)[-1] or "file"
     return StreamingResponse(
         _iter(),
         media_type=mime,
-        headers={"Cache-Control": "no-cache", "Content-Length": str(len(data))},
+        headers={
+            "Cache-Control": "no-cache",
+            "Content-Length": str(len(data)),
+            "Content-Disposition": f'inline; filename="{filename}"',
+        },
     )
 
 

@@ -439,13 +439,18 @@ class APIClient {
   async writeFsBinary(
     scope: FsScope,
     path: string,
-    bytes: Uint8Array,
+    bytes: Uint8Array | ArrayBuffer,
   ): Promise<void> {
     const qs = new URLSearchParams({ path });
-    // Wrap in a Blob — modern lib types reject raw Uint8Array as BodyInit.
-    const body = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], {
-      type: 'application/octet-stream',
-    });
+    // Normalize to ArrayBuffer regardless of input shape.
+    const buffer: ArrayBuffer =
+      bytes instanceof ArrayBuffer
+        ? bytes
+        : (bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength,
+          ) as ArrayBuffer);
+    const body = new Blob([buffer], { type: 'application/octet-stream' });
     const response = await fetch(
       `${fsBase(scope)}/write-binary?${qs.toString()}`,
       {

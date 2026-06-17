@@ -57,6 +57,7 @@ export function ExcelViewer({ scope, path }: Props) {
       ignoreNextChangeRef.current = false;
       setSaveStatus('error');
       setSaveError(err instanceof Error ? err.message : String(err));
+      console.error('[ExcelViewer] save failed', err);
     }
   };
 
