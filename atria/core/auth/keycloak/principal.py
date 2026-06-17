@@ -63,3 +63,67 @@ def build_principal(claims: dict, requested_tenant: str) -> CurrentPrincipal:
         raw_groups=tuple(groups),
         raw_roles=tuple(roles),
     )
+
+
+# --- FastAPI integration ---------------------------------------------------
+
+from fastapi import HTTPException, Request, status, Depends  # noqa: E402
+from typing import Callable  # noqa: E402
+
+from atria.core.auth.keycloak.config import KeycloakConfig  # noqa: E402
+from atria.core.auth.keycloak.jwt import InvalidTokenError, TokenValidator  # noqa: E402
+
+
+def _extract_bearer(request: Request) -> str:
+    auth = request.headers.get("Authorization", "")
+    if not auth.lower().startswith("bearer "):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing bearer token")
+    return auth.split(" ", 1)[1].strip()
+
+
+def get_current_principal_factory(
+    cfg: KeycloakConfig, validator: TokenValidator
+) -> Callable[[Request], CurrentPrincipal]:
+    def dep(request: Request) -> CurrentPrincipal:
+        token = _extract_bearer(request)
+        tenant = request.headers.get("X-Atria-Tenant", "").strip()
+        if not tenant:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "X-Atria-Tenant header required")
+        try:
+            claims = validator.validate(token)
+        except InvalidTokenError as exc:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid token: {exc}") from exc
+        try:
+            principal = build_principal(claims, tenant)
+        except PrincipalResolutionError as exc:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
+        request.state.principal = principal
+        return principal
+    return dep
+
+
+def require_role(role: str) -> Callable[[Request], None]:
+    """Require either a literal role like 'platform:admin' or 'tenant_admin'.
+
+    'tenant_admin' is interpreted as: the principal must be admin in their active tenant
+    OR a platform admin.
+    """
+
+    def dep(request: Request) -> None:
+        p: CurrentPrincipal | None = getattr(request.state, "principal", None)
+        if p is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Principal not resolved")
+        if role == "platform:admin":
+            if not p.is_platform_admin:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, "platform admin only")
+            return
+        if role == "tenant_admin":
+            if p.is_platform_admin or p.tenant_role == "admin":
+                return
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "tenant admin only")
+        # Literal realm role
+        if role in p.raw_roles:
+            return
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"role '{role}' required")
+
+    return dep
