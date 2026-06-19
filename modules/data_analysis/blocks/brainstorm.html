@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Brainstorming brief</title>
+  <link rel="stylesheet" href="../__base.css" />
+  <style>
+    :root {
+      --ink: #0a0a0a;
+      --muted-ink: #525252;
+      --canvas: #ffffff;
+      --surface-soft: #f7f6f3;
+      --hairline-soft: #ececec;
+      --accent: #F58A6B;
+      --mint: #A7E3B8;
+      --cream: #F5C26B;
+    }
+    html, body { background: var(--canvas); }
+    body {
+      margin: 0; padding: 18px;
+      color: var(--ink);
+      font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .card {
+      border: 1px solid var(--hairline-soft);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    h2 { margin: 0; font-size: 16px; font-weight: 600; }
+    .meta {
+      font-size: 11px; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; color: var(--muted-ink);
+    }
+    section h3 {
+      margin: 0 0 8px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      color: var(--muted-ink); font-weight: 500;
+    }
+    ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    li {
+      padding: 8px 10px;
+      border: 1px solid var(--hairline-soft);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--surface-soft);
+      cursor: pointer;
+    }
+    li:hover { background: #ece9e2; }
+    .badge {
+      display: inline-block; font-size: 10px;
+      padding: 2px 7px; border-radius: 999px;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      margin-right: 8px; background: var(--cream); color: var(--ink);
+    }
+    .badge.mint { background: var(--mint); }
+    .badge.coral { background: var(--accent); color: #fff; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      font-size: 12px; padding: 6px 12px; border-radius: 999px;
+      border: 1px solid var(--hairline-soft); background: var(--canvas); cursor: pointer;
+    }
+    .btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+    code { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 11px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <div>
+      <h2 id="title">Brainstorming brief</h2>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-suggest">Re-suggest charts</button>
+      <button class="btn primary" id="btn-loop">Start /brainstorming loop</button>
+    </div>
+  </header>
+
+  <section><h3>Insights</h3><ul id="insights"></ul></section>
+  <section><h3>Questions to explore</h3><ul id="questions"></ul></section>
+  <section><h3>Hypotheses</h3><ul id="hypotheses"></ul></section>
+  <section><h3>Chart ideas (click to draw)</h3><ul id="ideas"></ul></section>
+</div>
+
+<script>
+  const props = window.__BLOCK_PROPS__ || {};
+  const brief = props.brief || {};
+  const titleEl = document.getElementById('title');
+  const metaEl = document.getElementById('meta');
+  titleEl.textContent = 'Brainstorming · ' + (brief.path ? brief.path.split('/').pop() : '');
+  metaEl.textContent = `${brief.shape?.rows ?? 0} rows × ${brief.shape?.columns ?? 0} cols  ·  ${brief.path || ''}`;
+
+  function inject(message) {
+    if (window.parent && window.parent.postMessage) {
+      window.parent.postMessage({ kind: 'inject-message', payload: { role: 'user', content: message } }, '*');
+    }
+  }
+  function fill(id, items, render) {
+    const ul = document.getElementById(id);
+    ul.innerHTML = '';
+    (items || []).forEach((it) => {
+      const li = document.createElement('li');
+      li.innerHTML = render(it);
+      li.onclick = () => inject(li.dataset.cmd || li.innerText);
+      if (it.cmd) li.dataset.cmd = it.cmd;
+      ul.appendChild(li);
+    });
+  }
+  fill('insights', brief.insights, (i) => {
+    const sev = i.severity ? `<span class="badge ${i.severity === 'high' ? 'coral' : ''}">${i.severity}</span>` : `<span class="badge mint">${i.kind}</span>`;
+    return `${sev}${i.text}`;
+  });
+  fill('questions', (brief.questions || []).map((q) => ({ text: q, cmd: `Investigate: ${q}` })), (q) => q.text);
+  fill('hypotheses', (brief.hypotheses || []).map((h) => ({ text: h, cmd: `Test hypothesis: ${h}` })), (h) => h.text);
+  fill('ideas', (brief.chart_ideas || []).map((idea) => {
+    const args = idea.args || {};
+    const argStr = Object.entries(args).filter(([_, v]) => v).map(([k, v]) => `--${k} '${v}'`).join(' ');
+    const cmd = `python <modules>/data_analysis/scripts/push_chart.py --path '${brief.path}' --kind ${idea.kind} ${argStr} --title '${idea.title}'`;
+    return { ...idea, cmd };
+  }), (i) => `<span class="badge">${i.kind}</span><strong>${i.title}</strong><div style="font-size:11px;color:var(--muted-ink);margin-top:3px">${i.rationale || ''}</div>`);
+
+  document.getElementById('btn-suggest').onclick = () => {
+    inject(`Re-run chart suggestion on '${brief.path}'.`);
+  };
+  document.getElementById('btn-loop').onclick = () => {
+    inject(`Begin /brainstorming loop on '${brief.path}': iterate through the chart ideas, derive an insight per chart, and pin the strongest 3 to the dashboard.`);
+  };
+</script>
+</body>
+</html>

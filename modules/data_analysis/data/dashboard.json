@@ -1,0 +1,357 @@
+{
+  "tiles": [
+    {
+      "id": "b5752f98-96d9-4217-a6fc-ffd46bc8c069",
+      "title": "Revenue by region",
+      "kind": "bar",
+      "source": "/Users/anlnm/Desktop/Project/opendev-py/modules/data_analysis/data/sample_sales.csv",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "title": "Sum of revenue by region",
+        "data": {
+          "values": [
+            {
+              "region": "East",
+              "revenue": 2798.73
+            },
+            {
+              "region": "North",
+              "revenue": 2468.88
+            },
+            {
+              "region": "West",
+              "revenue": 1788.31
+            },
+            {
+              "region": "South",
+              "revenue": 1034.4199999999998
+            }
+          ]
+        },
+        "width": "container",
+        "height": 280,
+        "config": {
+          "view": {
+            "stroke": "transparent"
+          },
+          "axis": {
+            "labelFontSize": 11,
+            "titleFontSize": 12,
+            "domainColor": "#0a0a0a"
+          },
+          "title": {
+            "fontSize": 14,
+            "fontWeight": 600,
+            "anchor": "start"
+          }
+        },
+        "mark": {
+          "type": "bar",
+          "color": "#F5C26B"
+        },
+        "encoding": {
+          "x": {
+            "field": "region",
+            "type": "nominal",
+            "sort": "-y"
+          },
+          "y": {
+            "field": "revenue",
+            "type": "quantitative",
+            "aggregate": null
+          }
+        }
+      },
+      "vega_lib": "https://cdn.jsdelivr.net/npm/vega-lite@5",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "created_at": "2026-06-18T15:02:52Z"
+    },
+    {
+      "id": "b62b47c9-57ff-4d87-ade2-d86e64034920",
+      "title": "Revenue trend",
+      "kind": "line",
+      "source": "/Users/anlnm/Desktop/Project/opendev-py/modules/data_analysis/data/sample_sales.csv",
+      "spec": {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "title": "revenue over date",
+        "data": {
+          "values": [
+            {
+              "date": "2026-01-05",
+              "region": "North",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "12",
+              "revenue": 239.88,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-01-06",
+              "region": "North",
+              "product": "Gadget",
+              "channel": "Retail",
+              "units": "5",
+              "revenue": 124.95,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-01-07",
+              "region": "South",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "8",
+              "revenue": 159.92,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-01-09",
+              "region": "South",
+              "product": "Sprocket",
+              "channel": "Retail",
+              "units": "3",
+              "revenue": 74.85,
+              "discount": "0.10"
+            },
+            {
+              "date": "2026-01-12",
+              "region": "East",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "18",
+              "revenue": 359.82,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-01-14",
+              "region": "East",
+              "product": "Gadget",
+              "channel": "Retail",
+              "units": "7",
+              "revenue": 174.93,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-01-16",
+              "region": "West",
+              "product": "Sprocket",
+              "channel": "Online",
+              "units": "22",
+              "revenue": 548.9,
+              "discount": "0.15"
+            },
+            {
+              "date": "2026-01-20",
+              "region": "West",
+              "product": "Widget",
+              "channel": "Retail",
+              "units": "11",
+              "revenue": 219.89,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-01-23",
+              "region": "North",
+              "product": "Sprocket",
+              "channel": "Online",
+              "units": "9",
+              "revenue": 224.91,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-01-27",
+              "region": "South",
+              "product": "Gadget",
+              "channel": "Retail",
+              "units": "14",
+              "revenue": 349.86,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-02-02",
+              "region": "East",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "25",
+              "revenue": 499.75,
+              "discount": "0.10"
+            },
+            {
+              "date": "2026-02-05",
+              "region": "West",
+              "product": "Gadget",
+              "channel": "Retail",
+              "units": "4",
+              "revenue": 99.96,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-02-08",
+              "region": "North",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "30",
+              "revenue": 599.7,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-02-11",
+              "region": "South",
+              "product": "Sprocket",
+              "channel": "Retail",
+              "units": "6",
+              "revenue": 149.94,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-02-14",
+              "region": "East",
+              "product": "Gadget",
+              "channel": "Online",
+              "units": "17",
+              "revenue": 424.83,
+              "discount": "0.10"
+            },
+            {
+              "date": "2026-02-19",
+              "region": "West",
+              "product": "Widget",
+              "channel": "Retail",
+              "units": "21",
+              "revenue": 419.79,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-02-22",
+              "region": "North",
+              "product": "Sprocket",
+              "channel": "Online",
+              "units": "13",
+              "revenue": 324.87,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-02-26",
+              "region": "South",
+              "product": "Widget",
+              "channel": "Retail",
+              "units": "9",
+              "revenue": 179.91,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-03-02",
+              "region": "East",
+              "product": "Sprocket",
+              "channel": "Online",
+              "units": "28",
+              "revenue": 699.72,
+              "discount": "0.15"
+            },
+            {
+              "date": "2026-03-05",
+              "region": "West",
+              "product": "Widget",
+              "channel": "Retail",
+              "units": "15",
+              "revenue": 299.85,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-03-09",
+              "region": "North",
+              "product": "Gadget",
+              "channel": "Online",
+              "units": "19",
+              "revenue": 474.81,
+              "discount": "0.10"
+            },
+            {
+              "date": "2026-03-13",
+              "region": "South",
+              "product": "Widget",
+              "channel": "Retail",
+              "units": "6",
+              "revenue": 119.94,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-03-17",
+              "region": "East",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "32",
+              "revenue": 639.68,
+              "discount": "0.05"
+            },
+            {
+              "date": "2026-03-21",
+              "region": "West",
+              "product": "Sprocket",
+              "channel": "Retail",
+              "units": "8",
+              "revenue": 199.92,
+              "discount": "0.0"
+            },
+            {
+              "date": "2026-03-25",
+              "region": "North",
+              "product": "Widget",
+              "channel": "Online",
+              "units": "24",
+              "revenue": 479.76,
+              "discount": "0.10"
+            }
+          ]
+        },
+        "width": "container",
+        "height": 280,
+        "config": {
+          "view": {
+            "stroke": "transparent"
+          },
+          "axis": {
+            "labelFontSize": 11,
+            "titleFontSize": 12,
+            "domainColor": "#0a0a0a"
+          },
+          "title": {
+            "fontSize": 14,
+            "fontWeight": 600,
+            "anchor": "start"
+          }
+        },
+        "mark": {
+          "type": "line",
+          "color": "#0a0a0a",
+          "point": {
+            "color": "#F58A6B"
+          }
+        },
+        "encoding": {
+          "x": {
+            "field": "date",
+            "type": "temporal"
+          },
+          "y": {
+            "field": "revenue",
+            "type": "quantitative"
+          }
+        }
+      },
+      "vega_lib": "https://cdn.jsdelivr.net/npm/vega-lite@5",
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "created_at": "2026-06-18T15:02:52Z"
+    }
+  ],
+  "updated_at": "2026-06-18T15:02:52Z"
+}

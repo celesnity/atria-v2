@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="Data Analysis">
+  <defs>
+    <linearGradient id="da-body" x1="0" y1="4" x2="0" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"  stop-color="#F8FAFC"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Card -->
+  <rect x="3" y="5" width="26" height="22" rx="2.5"
+        fill="url(#da-body)" stroke="#0F172A" stroke-width="1.4"/>
+
+  <!-- Baseline -->
+  <line x1="6" y1="22" x2="26" y2="22" stroke="#0F172A" stroke-width="1"/>
+
+  <!-- Bars -->
+  <rect x="7"  y="15" width="3" height="7" fill="#A7E3B8" stroke="#0F172A" stroke-width="0.8"/>
+  <rect x="11.5" y="11" width="3" height="11" fill="#F5C26B" stroke="#0F172A" stroke-width="0.8"/>
+  <rect x="16" y="17" width="3" height="5"  fill="#A7E3B8" stroke="#0F172A" stroke-width="0.8"/>
+  <rect x="20.5" y="13" width="3" height="9" fill="#F58A6B" stroke="#0F172A" stroke-width="0.8"/>
+
+  <!-- Trend line -->
+  <polyline points="7,13 12.5,9 17.5,14 22,8 25,10"
+            fill="none" stroke="#0F172A" stroke-width="1.2"
+            stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="22" cy="8" r="1.4" fill="#F58A6B" stroke="#0F172A" stroke-width="0.8"/>
+</svg>

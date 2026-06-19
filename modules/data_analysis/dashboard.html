@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Data Analysis · Workspace</title>
+  <link rel="stylesheet" href="__base.css" />
+  <link rel="preconnect" href="https://rsms.me" crossorigin />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    :root {
+      --ink: 0 0% 0%;
+      --canvas: 0 0% 100%;
+      --surface-soft: 40 22% 96%;
+      --hairline: 0 0% 12%;
+      --hairline-soft: 0 0% 88%;
+      --muted-ink: 0 0% 38%;
+      --block-mint: 150 50% 86%;
+      --block-coral: 8 80% 78%;
+      --block-cream: 38 60% 92%;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+      color: hsl(var(--ink)); background: hsl(var(--canvas));
+      margin: 0; padding: 0;
+    }
+    body { padding: 22px 22px 36px; }
+    .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+    .mono { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; }
+    h1, h2 { font-weight: 540; letter-spacing: -0.01em; margin: 0; }
+    .eyebrow {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 11px; color: hsl(var(--muted-ink));
+    }
+    header.top {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding-bottom: 14px; border-bottom: 1px solid hsl(var(--hairline));
+      gap: 16px; flex-wrap: wrap;
+    }
+    header.top h1 { font-size: 24px; }
+    header.top select, header.top button {
+      font-size: 12px; padding: 6px 12px;
+      border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 999px; background: hsl(var(--canvas));
+      color: hsl(var(--ink));
+    }
+    header.top .actions { display: flex; gap: 6px; align-items: center; }
+
+    .panel {
+      border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 14px;
+      background: hsl(var(--canvas));
+      overflow: hidden;
+    }
+    .panel > header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+      background: hsl(var(--surface-soft));
+    }
+    .panel > header h2 { font-size: 13px; }
+    .panel > header .count {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 11px; color: hsl(var(--muted-ink));
+    }
+    .panel .body { padding: 4px 0; }
+    .row {
+      display: grid; align-items: center;
+      gap: 12px; padding: 10px 16px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+      font-size: 13px;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row:hover { background: hsl(var(--surface-soft) / 0.6); }
+    .id { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 11px; color: hsl(var(--muted-ink)); }
+    .badge {
+      display: inline-block; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10px; padding: 2px 7px; border-radius: 999px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      background: hsl(var(--block-mint));
+    }
+    .badge.coral { background: hsl(var(--block-coral)); }
+    .badge.cream { background: hsl(var(--block-cream)); }
+    .pill {
+      display: inline-block; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
+      border: 1px solid hsl(var(--hairline-soft)); margin-right: 4px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .row.dataset { grid-template-columns: minmax(0, 2fr) minmax(80px, 110px) minmax(60px, auto) 1fr; }
+    .row.artifact { grid-template-columns: minmax(0, 2fr) minmax(60px, 80px) 1fr; }
+    .row.chart    { grid-template-columns: minmax(80px, auto) minmax(0, 2fr) 1fr; }
+    .row.trace    { grid-template-columns: minmax(0, 3fr) minmax(80px, auto); }
+
+    .canvas {
+      display: grid; grid-template-columns: repeat(12, 1fr);
+      gap: 14px; grid-auto-rows: 80px;
+    }
+    .tile {
+      border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 14px;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .tile header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+      background: hsl(var(--surface-soft));
+    }
+    .tile header h3 {
+      margin: 0; font-size: 12.5px; font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .tile .body { flex: 1; padding: 8px; min-height: 0; }
+    .empty {
+      padding: 32px 16px; text-align: center;
+      color: hsl(var(--muted-ink));
+      font-size: 12px;
+    }
+    .empty code { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; }
+
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sql-snippet {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 11px; color: hsl(var(--muted-ink));
+      background: hsl(var(--surface-soft));
+      padding: 2px 6px; border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Agentic Data Analytics · MVP</div>
+      <h1 id="title">Workspace</h1>
+    </div>
+    <div class="actions">
+      <select id="project-pick"></select>
+      <button id="btn-new">+ New project</button>
+    </div>
+  </header>
+
+  <section class="grid-2">
+    <article class="panel" id="datasets-panel">
+      <header>
+        <h2>Datasets</h2>
+        <span class="count" id="datasets-count">0</span>
+      </header>
+      <div class="body" id="datasets-body"></div>
+    </article>
+
+    <article class="panel" id="artifacts-panel">
+      <header>
+        <h2>Artifacts <span class="eyebrow" style="margin-left:6px">memory</span></h2>
+        <span class="count" id="artifacts-count">0</span>
+      </header>
+      <div class="body" id="artifacts-body"></div>
+    </article>
+  </section>
+
+  <article class="panel">
+    <header>
+      <h2>Charts canvas</h2>
+      <span class="count" id="charts-count">0</span>
+    </header>
+    <div class="body" style="padding: 14px 16px;">
+      <div class="canvas" id="canvas"></div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <header>
+      <h2>Execution traces</h2>
+      <span class="count" id="traces-count">0</span>
+    </header>
+    <div class="body" id="traces-body"></div>
+  </article>
+</div>
+
+<script>
+  let INDEX = null;
+  let currentSlug = null;
+
+  async function load() {
+    try {
+      const r = await fetch('data/projects/index.json?t=' + Date.now(), { cache: 'no-store' });
+      INDEX = r.ok ? await r.json() : { projects: [] };
+    } catch (e) {
+      INDEX = { projects: [] };
+    }
+    const pick = document.getElementById('project-pick');
+    pick.innerHTML = '';
+    if (!INDEX.projects.length) {
+      const opt = document.createElement('option');
+      opt.textContent = '(no projects yet)';
+      pick.appendChild(opt);
+      pick.disabled = true;
+      renderEmpty();
+      return;
+    }
+    pick.disabled = false;
+    INDEX.projects.forEach((p) => {
+      const o = document.createElement('option');
+      o.value = p.slug; o.textContent = p.name + ' · ' + p.slug;
+      pick.appendChild(o);
+    });
+    currentSlug = currentSlug || INDEX.projects[0].slug;
+    pick.value = currentSlug;
+    render(INDEX.projects.find((p) => p.slug === currentSlug));
+  }
+
+  function inject(msg) {
+    if (window.parent && window.parent.postMessage) {
+      window.parent.postMessage({ kind: 'inject-message', payload: { role: 'user', content: msg } }, '*');
+    }
+  }
+
+  function renderEmpty() {
+    document.getElementById('title').textContent = 'No project';
+    ['datasets', 'artifacts', 'charts', 'traces'].forEach((k) => {
+      document.getElementById(k + '-body').innerHTML = `
+        <div class="empty">
+          Create a project to start: <code>project.py create --name "…"</code>
+        </div>`;
+      document.getElementById(k + '-count').textContent = '0';
+    });
+    document.getElementById('canvas').innerHTML = '';
+  }
+
+  function render(p) {
+    if (!p) return renderEmpty();
+    document.getElementById('title').textContent = p.name;
+
+    const db = document.getElementById('datasets-body');
+    db.innerHTML = '';
+    document.getElementById('datasets-count').textContent = p.counts.datasets;
+    if (!p.datasets.length) {
+      db.innerHTML = `<div class="empty">No datasets — <code>dataset.py ingest --slug ${p.slug} --path ...</code></div>`;
+    }
+    p.datasets.forEach((d) => {
+      const row = document.createElement('div');
+      row.className = 'row dataset';
+      row.innerHTML = `
+        <div><div class="truncate"><strong>${d.name}</strong></div>
+             <div class="id">${d.id.slice(0, 10)}  ·  ${d.source_filename || ''}</div></div>
+        <div class="badge">${(d.rows || 0).toLocaleString()} rows</div>
+        <div class="pill">${(d.columns || []).length} cols</div>
+        <div style="text-align:right">
+          <button class="badge" data-id="${d.id}" data-act="schema">schema</button>
+          <button class="badge cream" data-id="${d.id}" data-act="rel">discover joins</button>
+        </div>`;
+      db.appendChild(row);
+    });
+    db.querySelectorAll('button[data-act="schema"]').forEach((b) => {
+      b.onclick = () => inject(`Show schema for dataset ${b.dataset.id.slice(0, 10)} in project ${p.slug}.`);
+    });
+    db.querySelectorAll('button[data-act="rel"]').forEach(() => {});
+    db.querySelectorAll('button[data-act="rel"]').forEach((b) => {
+      b.onclick = () => inject(`Run cross-dataset relationship discovery in project ${p.slug}.`);
+    });
+
+    const ab = document.getElementById('artifacts-body');
+    ab.innerHTML = '';
+    document.getElementById('artifacts-count').textContent = p.counts.artifacts;
+    if (!p.artifacts.length) {
+      ab.innerHTML = `<div class="empty">No artifacts — created by Data Agent via <code>sql.py save</code></div>`;
+    }
+    p.artifacts.forEach((a) => {
+      const row = document.createElement('div');
+      row.className = 'row artifact';
+      row.innerHTML = `
+        <div><div class="truncate"><strong>${a.title || '(untitled)'}</strong></div>
+             <div class="id truncate">${a.question || ''}</div></div>
+        <div class="badge">${a.row_count || 0} rows</div>
+        <div class="sql-snippet truncate" title="${(a.sql || '').replace(/"/g, '&quot;')}">${(a.sql || '').slice(0, 100)}</div>`;
+      row.style.cursor = 'pointer';
+      row.onclick = () => inject(`Generate chart recommendations for artifact ${a.id.slice(0, 10)} in project ${p.slug}.`);
+      ab.appendChild(row);
+    });
+
+    const canvas = document.getElementById('canvas');
+    canvas.innerHTML = '';
+    document.getElementById('charts-count').textContent = p.counts.charts;
+    if (!p.charts.length) {
+      canvas.innerHTML = `<div class="empty" style="grid-column: 1 / -1">No charts pinned — Viz Agent: <code>viz_agent.py generate ... --save</code></div>`;
+    }
+    let y = 0;
+    p.charts.forEach((c, i) => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.style.gridColumn = `${(i % 2) * 6 + 1} / span 6`;
+      tile.style.gridRow = `${y + 1} / span 4`;
+      if (i % 2 === 1) y += 4;
+      tile.innerHTML = `
+        <header><h3>${c.title}</h3><span class="badge">${c.kind}</span></header>
+        <div class="body"><div id="ch-${c.id}"></div></div>`;
+      canvas.appendChild(tile);
+      if (c.spec) {
+        vegaEmbed('#ch-' + c.id, c.spec, { actions: false }).catch((e) => {
+          tile.querySelector('.body').innerHTML = `<div class="empty">${e}</div>`;
+        });
+      }
+    });
+
+    const tb = document.getElementById('traces-body');
+    tb.innerHTML = '';
+    document.getElementById('traces-count').textContent = p.counts.traces;
+    if (!p.traces.length) {
+      tb.innerHTML = `<div class="empty">No traces yet — Planner Agent records one per query turn</div>`;
+    }
+    p.traces.slice().reverse().forEach((t) => {
+      const row = document.createElement('div');
+      row.className = 'row trace';
+      row.innerHTML = `
+        <div><div class="truncate"><strong>${t.query}</strong></div>
+             <div class="id truncate">${(t.tools_used || []).map((x) => `<span class="pill">${x}</span>`).join('')} · ${t.result_summary || ''}</div></div>
+        <div class="id" style="text-align:right">${t.created_at}</div>`;
+      tb.appendChild(row);
+    });
+  }
+
+  document.getElementById('project-pick').addEventListener('change', (e) => {
+    currentSlug = e.target.value;
+    render(INDEX.projects.find((p) => p.slug === currentSlug));
+  });
+  document.getElementById('btn-new').onclick = () => {
+    const name = prompt('Project name?');
+    if (name) inject(`Create a new data-analysis project named "${name}".`);
+  };
+
+  load();
+  setInterval(load, 5000);
+</script>
+</body>
+</html>

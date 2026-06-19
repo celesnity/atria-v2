@@ -1,0 +1,10 @@
+{
+  "display_name": "Data Analysis",
+  "tooltip": "CSV/Excel · charts · dashboard canvas · insights",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Data Analysis · Canvas",
+    "default_height": 820,
+    "badge_color": "mint"
+  }
+}

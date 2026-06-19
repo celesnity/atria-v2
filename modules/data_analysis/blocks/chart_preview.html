@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Chart preview</title>
+  <link rel="stylesheet" href="../__base.css" />
+  <link rel="preconnect" href="https://rsms.me" crossorigin />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink:           #0a0a0a;
+      --muted-ink:     #6b6b6b;
+      --canvas:        #ffffff;
+      --surface-soft:  #f7f6f3;
+      --surface-deep:  #f0eee8;
+      --hairline-soft: #ececec;
+      --accent-mint:   #A7E3B8;
+      --accent-cream:  #F5C26B;
+      --accent-coral:  #F58A6B;
+      --danger:        #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    html, body { background: var(--canvas); margin: 0; }
+    body {
+      padding: 14px;
+      color: var(--ink);
+      font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+      font-weight: 400;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+      border: 1px solid var(--hairline-soft);
+      border-radius: 14px;
+      background: var(--canvas);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Meta strip (replaces redundant h2) ────────────────────────── */
+    .meta-strip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface-soft);
+      border-bottom: 1px solid var(--hairline-soft);
+      font-size: 11.5px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--accent-mint); color: var(--ink); font-weight: 500;
+    }
+    .badge.cream { background: var(--accent-cream); }
+    .badge.coral { background: var(--accent-coral); color: #fff; }
+    .meta-strip .path {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      color: var(--muted-ink); font-size: 11px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0; direction: rtl; text-align: left;
+    }
+
+    /* ── Chart canvas — explicit height so Vega renders ──────────── */
+    .chart-shell {
+      padding: 14px 12px 6px;
+      min-height: 360px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #chart {
+      width: 100%;
+      min-height: 320px;
+    }
+    #chart .vega-embed { width: 100% !important; }
+    #chart canvas, #chart svg { display: block; margin: 0 auto; }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted-ink);
+      font-size: 13px;
+      padding: 40px 12px;
+    }
+    .empty-state .hint {
+      margin-top: 6px;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 11.5px;
+    }
+
+    /* ── Action bar ───────────────────────────────────────────────── */
+    .actions {
+      display: flex; gap: 8px; align-items: center;
+      padding: 10px 14px;
+      border-top: 1px solid var(--hairline-soft);
+      background: var(--canvas);
+      flex-wrap: wrap;
+    }
+    input.save-name {
+      flex: 1; min-width: 180px;
+      font-size: 12.5px;
+      padding: 7px 11px;
+      border: 1px solid var(--hairline-soft);
+      border-radius: 8px;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+    }
+    input.save-name:focus {
+      outline: none;
+      border-color: var(--ink);
+      box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.06);
+    }
+    .btn {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--hairline-soft);
+      background: var(--canvas);
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+      display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--surface-soft); }
+    .btn.primary {
+      background: var(--ink); color: #fff; border-color: var(--ink);
+    }
+    .btn.primary:hover { background: #1f1f1f; }
+    .btn svg { opacity: 0.85; }
+
+    .err {
+      color: var(--danger);
+      font-size: 11.5px;
+      padding: 0 14px 10px;
+      min-height: 16px;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="meta-strip">
+    <span class="badge" id="kind-badge">chart</span>
+    <span class="path" id="meta-path" dir="rtl">—</span>
+    <span class="badge cream" id="rows-badge" hidden></span>
+  </div>
+
+  <div class="chart-shell">
+    <div id="chart"></div>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <div class="actions">
+    <input class="save-name" id="save-name" placeholder="filename, e.g. revenue_by_region.json" />
+    <button class="btn" id="btn-save" title="Save spec to data/charts/">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save spec
+    </button>
+    <button class="btn primary" id="btn-pin" title="Save + pin to dashboard canvas">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.5-3.5V5a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v8.5L5 17z"/></svg>
+      Pin to dashboard
+    </button>
+  </div>
+</div>
+
+<script>
+  const props = window.__BLOCK_PROPS__ || {};
+  const chart = props.chart || {};
+  const spec  = chart.spec || (chart.$schema ? chart : null);
+  const kind  = chart.kind || (spec && spec.mark && (typeof spec.mark === 'string' ? spec.mark : spec.mark.type)) || 'chart';
+  const path  = chart.path || chart.source || '';
+  const rowCount = (() => {
+    try {
+      const v = spec && spec.data && spec.data.values;
+      return Array.isArray(v) ? v.length : null;
+    } catch (e) { return null; }
+  })();
+
+  const errEl = document.getElementById('err');
+  const chartEl = document.getElementById('chart');
+
+  document.getElementById('kind-badge').textContent = String(kind).toLowerCase();
+  document.getElementById('meta-path').textContent = path || '—';
+  if (rowCount !== null) {
+    const r = document.getElementById('rows-badge');
+    r.textContent = rowCount.toLocaleString() + ' rows';
+    r.hidden = false;
+  }
+
+  function renderEmpty(message) {
+    chartEl.innerHTML = `
+      <div class="empty-state">
+        <div>${message}</div>
+        <div class="hint">push the block again with a valid <code>--kind</code> + columns</div>
+      </div>`;
+  }
+
+  if (!spec) {
+    renderEmpty('No chart spec provided.');
+  } else {
+    const safe = JSON.parse(JSON.stringify(spec));
+    // Force the embed to fill the container width and honour a sane default height.
+    safe.width = 'container';
+    if (!safe.height || safe.height === 'container') safe.height = 300;
+    if (safe.config) delete safe.config.view;
+    vegaEmbed('#chart', safe, {
+      actions: false,
+      renderer: 'svg',
+      tooltip: { theme: 'light' },
+    }).catch((e) => { errEl.textContent = String(e); renderEmpty('Vega-Lite failed to render.'); });
+  }
+
+  function inject(message) {
+    const payload = { role: 'user', content: message };
+    if (window.parent && window.parent.postMessage) {
+      window.parent.postMessage({ kind: 'inject-message', payload }, '*');
+    }
+  }
+
+  function defaultName() {
+    const kindPart = String(kind).toLowerCase();
+    const file = (path || 'chart').split('/').pop().replace(/\.[a-z]+$/i, '');
+    return `${file}_${kindPart}.json`;
+  }
+  const nameInput = document.getElementById('save-name');
+  nameInput.placeholder = defaultName();
+
+  document.getElementById('btn-save').onclick = () => {
+    if (!chart.path || !chart.kind) {
+      errEl.textContent = 'cannot rebuild — push from chart.py with --kind + --path so the SAVE command is reproducible.';
+      return;
+    }
+    const name = (nameInput.value || defaultName()).trim();
+    const enc = spec.encoding || {};
+    const x = enc.x && enc.x.field ? enc.x.field : '';
+    const y = enc.y && enc.y.field ? enc.y.field : '';
+    const colorField = enc.color && enc.color.field;
+    const colorArg = colorField && colorField !== '*' ? ` --color ${colorField}` : '';
+    const cmd = `python <modules>/data_analysis/scripts/chart.py spec --path '${chart.path}' --kind ${chart.kind} --x '${x}' --y '${y}'${colorArg} --save ${name}`;
+    inject(`Save this chart spec: ${cmd}`);
+  };
+
+  document.getElementById('btn-pin').onclick = () => {
+    const name = (nameInput.value || defaultName()).trim();
+    const title = (chart.title || spec?.title || 'Chart').replace(/'/g, "\\'");
+    inject(`Save and pin this chart to the dashboard canvas. Save name: ${name}. Title: ${title}.`);
+  };
+</script>
+</body>
+</html>

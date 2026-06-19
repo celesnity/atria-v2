@@ -1,0 +1,63 @@
+{
+  "path": "/Users/anlnm/Desktop/Project/opendev-py/modules/data_analysis/data/sample_sales.csv",
+  "kind": "bar",
+  "title": "Sum of revenue by region",
+  "spec": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "title": "Sum of revenue by region",
+    "data": {
+      "values": [
+        {
+          "region": "East",
+          "revenue": 2798.73
+        },
+        {
+          "region": "North",
+          "revenue": 2468.88
+        },
+        {
+          "region": "West",
+          "revenue": 1788.31
+        },
+        {
+          "region": "South",
+          "revenue": 1034.4199999999998
+        }
+      ]
+    },
+    "width": "container",
+    "height": 280,
+    "config": {
+      "view": {
+        "stroke": "transparent"
+      },
+      "axis": {
+        "labelFontSize": 11,
+        "titleFontSize": 12,
+        "domainColor": "#0a0a0a"
+      },
+      "title": {
+        "fontSize": 14,
+        "fontWeight": 600,
+        "anchor": "start"
+      }
+    },
+    "mark": {
+      "type": "bar",
+      "color": "#F5C26B"
+    },
+    "encoding": {
+      "x": {
+        "field": "region",
+        "type": "nominal",
+        "sort": "-y"
+      },
+      "y": {
+        "field": "revenue",
+        "type": "quantitative",
+        "aggregate": null
+      }
+    }
+  },
+  "vega_lib": "https://cdn.jsdelivr.net/npm/vega-lite@5"
+}

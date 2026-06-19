@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+"""Self-bootstrapping launcher for the data_analysis module.
+
+First run: creates `<module>/.venv/`, installs requirements.txt into it,
+then re-execs into that venv. Subsequent runs are no-ops on the bootstrap
+path and re-exec straight away.
+
+Usage:
+    <modules>/data_analysis/da scripts/dataset.py ingest --slug q1 --path …
+    <modules>/data_analysis/da scripts/sql.py run --slug q1 --sql "…"
+    <modules>/data_analysis/da -m pip install <extra>   # forward to venv pip
+
+Honours $DA_PYTHON to pick the base interpreter for `venv` creation.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+import venv
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+VENV_DIR = ROOT / ".venv"
+REQ_FILE = ROOT / "requirements.txt"
+STAMP = VENV_DIR / ".req.sha256"
+
+
+def _venv_python() -> Path:
+    if os.name == "nt":
+        return VENV_DIR / "Scripts" / "python.exe"
+    return VENV_DIR / "bin" / "python"
+
+
+def _req_hash() -> str:
+    return hashlib.sha256(REQ_FILE.read_bytes()).hexdigest() if REQ_FILE.exists() else ""
+
+
+def _ensure_venv() -> Path:
+    py = _venv_python()
+    need_install = False
+
+    if not py.exists():
+        base = os.environ.get("DA_PYTHON", sys.executable)
+        print(f"[da] bootstrapping venv at {VENV_DIR}  (base: {base})", file=sys.stderr)
+        if Path(base).resolve() != Path(sys.executable).resolve():
+            subprocess.check_call([base, "-m", "venv", str(VENV_DIR)])
+        else:
+            venv.EnvBuilder(with_pip=True, clear=False, upgrade_deps=False).create(VENV_DIR)
+        need_install = True
+
+    current = _req_hash()
+    previous = STAMP.read_text().strip() if STAMP.exists() else ""
+    if current and current != previous:
+        need_install = True
+
+    if need_install and REQ_FILE.exists():
+        print(f"[da] installing requirements → {REQ_FILE.name}", file=sys.stderr)
+        subprocess.check_call([str(py), "-m", "pip", "install", "--quiet", "--upgrade", "pip"])
+        subprocess.check_call([str(py), "-m", "pip", "install", "--quiet", "-r", str(REQ_FILE)])
+        STAMP.write_text(current)
+
+    return py
+
+
+def _self_destruct(argv: list[str]) -> int:
+    if VENV_DIR.exists():
+        shutil.rmtree(VENV_DIR)
+        print(f"[da] removed {VENV_DIR}")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) >= 2 and argv[1] == "--reset":
+        return _self_destruct(argv)
+
+    py = _ensure_venv()
+
+    if Path(sys.executable).resolve() == py.resolve():
+        return _dispatch(argv[1:])
+
+    os.execv(str(py), [str(py), str(Path(__file__).resolve()), *argv[1:]])
+    return 0
+
+
+def _dispatch(args: list[str]) -> int:
+    if not args:
+        print(__doc__)
+        return 0
+
+    if args[0] in ("-m", "-c"):
+        return subprocess.call([sys.executable, *args])
+
+    script = args[0]
+    script_path = Path(script)
+    if not script_path.is_absolute():
+        script_path = (ROOT / script).resolve()
+    if not script_path.exists():
+        print(f"[da] script not found: {script_path}", file=sys.stderr)
+        return 1
+    return subprocess.call([sys.executable, str(script_path), *args[1:]])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
