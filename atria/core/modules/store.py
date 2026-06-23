@@ -15,7 +15,7 @@ import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,14 @@ class ModuleNotFound(FileNotFoundError):
 
 
 @dataclass
+class ActivityLabel:
+    """Friendly running/done wording for a module action (Simple Mode UI)."""
+
+    running: str
+    done: str
+
+
+@dataclass
 class ModuleDashboardManifest:
     title: Optional[str] = None
     default_height: Optional[int] = None
@@ -66,6 +74,8 @@ class ModuleManifest:
     tooltip: Optional[str] = None
     icon: Optional[str] = None  # rel path inside the module dir
     dashboard: Optional[ModuleDashboardManifest] = None
+    activity_default: Optional[ActivityLabel] = None
+    activity_actions: Dict[str, ActivityLabel] = field(default_factory=dict)
 
 
 @dataclass
@@ -154,11 +164,14 @@ def _read_manifest(module_dir: Path) -> Optional[ModuleManifest]:
         logger.warning("manifest.json in %s is not an object", module_dir)
         return None
 
+    activity_default, activity_actions = _parse_activity(raw.get("activity"))
     return ModuleManifest(
         display_name=_nonempty_str(raw.get("display_name")),
         tooltip=_nonempty_str(raw.get("tooltip")),
         icon=_nonempty_str(raw.get("icon")),
         dashboard=_parse_dashboard(raw.get("dashboard")),
+        activity_default=activity_default,
+        activity_actions=activity_actions,
     )
 
 
@@ -176,6 +189,38 @@ def _parse_dashboard(raw: Any) -> Optional[ModuleDashboardManifest]:
         default_height=int(height) if isinstance(height, (int, float)) and height > 0 else None,
         badge_color=badge if isinstance(badge, str) and badge in _BADGE_COLORS else None,
     )
+
+
+def _parse_activity(
+    raw: Any,
+) -> tuple[Optional[ActivityLabel], Dict[str, ActivityLabel]]:
+    """Parse the optional ``activity`` manifest block leniently.
+
+    Shape: ``{"default": {running, done}, "actions": {name: {running, done}}}``.
+    Anything malformed degrades to ``(None, {})`` so old/invalid manifests keep
+    working.
+    """
+    if not isinstance(raw, dict):
+        return None, {}
+
+    def _label(d: Any) -> Optional[ActivityLabel]:
+        if not isinstance(d, dict):
+            return None
+        running = _nonempty_str(d.get("running"))
+        done = _nonempty_str(d.get("done"))
+        if running is None and done is None:
+            return None
+        return ActivityLabel(running=running or "Working…", done=done or "Done")
+
+    default = _label(raw.get("default"))
+    actions: Dict[str, ActivityLabel] = {}
+    raw_actions = raw.get("actions")
+    if isinstance(raw_actions, dict):
+        for key, value in raw_actions.items():
+            label = _label(value)
+            if label is not None:
+                actions[str(key)] = label
+    return default, actions
 
 
 def _starter_dashboard_html(name: str) -> str:
