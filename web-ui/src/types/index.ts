@@ -1,3 +1,8 @@
+export interface ActivityLabel {
+  running: string;
+  done: string;
+}
+
 // Tool call information
 export interface ToolCallInfo {
   id: string;
@@ -74,6 +79,7 @@ export interface Message {
   tool_args?: Record<string, any>;
   tool_result?: any;
   tool_args_display?: string | null;
+  activity?: ActivityLabel | null;
   tool_summary?: string | string[] | null;
   tool_success?: boolean;
   tool_error?: string | null;
@@ -239,6 +245,7 @@ export interface StatusInfo {
   git_branch?: string | null;
   session_cost?: number;
   context_usage_pct?: number;
+  simple_mode?: boolean;
 }
 
 // Ask-user question types
