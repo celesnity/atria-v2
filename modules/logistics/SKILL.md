@@ -14,6 +14,14 @@ giờ cấm, tải đăng kiểm) đều do script tính toán — đừng tự 
 - Khi cần chọn xe theo tải trọng và thể tích (CBM), hoặc cân nhắc nâng đời xe (upsell).
 - Khi cần xem/ghi/cập nhật booking.
 
+## TUYỆT ĐỐI KHÔNG BỊA DỮ LIỆU
+Chỉ báo số xe / tên tài xế / SĐT / CBM / kết quả cấm tải **đúng y như output JSON
+mà script in ra**. KHÔNG tự nghĩ ra biển số, tên tài xế, hãng xe, hay con số nào.
+Nếu chưa chạy script, hoặc script lỗi/không trả dữ liệu → nói rõ "chưa có dữ liệu,
+cần chạy lại script", **đừng đoán**. Mỗi thông tin về xe/tài xế phải truy được về
+một dòng cụ thể trong output của `fleet.py`/`recommend.py`. Nếu không chắc, chạy lại
+script thay vì phỏng đoán.
+
 ## Nguyên tắc chia việc (deterministic vs phán đoán)
 - **Script lo phần số (tin cậy tuyệt đối):** tra số xe → tài xế; CBM theo
   (loại tải, hãng); so tải yêu cầu với **tải đăng kiểm TTĐK**; tính cờ upsell
@@ -81,6 +89,17 @@ modules nêu ở đầu SKILL block). Mọi script in JSON ra stdout.
 - `add-truck --booking <id> --vehicle <số xe> --delivery-time HH:MM` → gán xe + tài xế (tự tra DKI/DKI2). Gọi nhiều lần để gán nhiều xe.
 - `list [--status <s>] [--json]`, `update --booking <id> [...]`, `set-status --booking <id> --status <s>`, `remove --booking <id>`, `reset`.
 
+### Báo cho chủ xe qua Zalo — `notify.py`
+Sau khi đã gán đủ xe và **xác nhận** booking (set-status → `confirmed`), báo cho
+**chủ xe (owner)** một tin nhắn Zalo tóm tắt đơn:
+- `python <modules>/logistics/scripts/notify.py send --booking <id>` → soạn + gửi
+  tin cho chủ qua Official Account. Có thể `--text "..."` để tự viết nội dung.
+- **An toàn:** nếu chưa cấu hình `ZALO_OWNER_USER_ID` / token (chưa setup Zalo) thì
+  lệnh tự chạy **dry-run** — chỉ in ra tin sẽ gửi (JSON, `mode:"dry-run"`), KHÔNG
+  gửi thật. Thêm `--dry-run` để ép xem trước. Khi đã setup xong thì gửi thật.
+- Chỉ gọi sau khi booking đã `confirmed`; đừng tự gửi khi mới tạo/đang sửa/huỷ đơn.
+- Cài đặt Zalo OA + lấy token/owner id: xem `docs/zalo-setup.md`.
+
 ## Dữ liệu tham khảo (đọc khi cần, đừng nhớ máy móc)
 - `data/customers.csv` — kênh đặt hàng, giờ đóng hàng, yêu cầu cập nhật tiến độ,
   xử lý hàng return từng khách. VD: FM & Việt Á (ITL) phải chụp PGH đã ký từng
@@ -107,4 +126,4 @@ modules nêu ở đầu SKILL block). Mọi script in JSON ra stdout.
 CSV), dùng tool `send_editable_table` với `module="logistics"`, `file="dki.csv"`
 (hoặc `dki2.csv`, `bookings.csv`).
 
-Files: scripts/fleet.py, scripts/recommend.py, scripts/bans.py, scripts/bookings.py, dashboard.html, icon.svg
+Files: scripts/fleet.py, scripts/recommend.py, scripts/bans.py, scripts/bookings.py, scripts/notify.py, dashboard.html, icon.svg

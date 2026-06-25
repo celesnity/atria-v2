@@ -33,6 +33,7 @@ from atria.web.routes import (
     modules_router,
     blocks_router,
     module_dashboard_router,
+    connect_router,
 )
 from atria.web.websocket import websocket_endpoint
 from atria.core.modules.watcher import start_global_watcher, stop_global_watcher
@@ -136,6 +137,18 @@ async def lifespan(app: FastAPI):
         set_bus(None)
         app.state.bus = None
 
+    # Start the "Connect" channel adapters (Telegram bots) for enabled connections.
+    # Telegram long-polling is single-consumer per token, so this must run in a
+    # single-worker, no-reload process (run-backend.ps1); duplicate pollers get 409.
+    try:
+        from atria.web.connect_runtime import get_connect_manager
+
+        await get_connect_manager().start_all()
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Connect: start_all failed")
+
     # Signal that the server is ready (event loop + ws_manager are set)
     ready_event = getattr(app.state, "_ready_event", None)
     if ready_event is not None:
@@ -145,6 +158,12 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
+        try:
+            from atria.web.connect_runtime import get_connect_manager
+
+            await get_connect_manager().stop_all()
+        except Exception:
+            pass
         active_bus = getattr(app.state, "bus", None)
         if active_bus is not None:
             try:
@@ -191,6 +210,7 @@ def create_app() -> FastAPI:
     app.include_router(modules_router)
     app.include_router(blocks_router)
     app.include_router(module_dashboard_router)
+    app.include_router(connect_router)
 
     # WebSocket endpoint
     app.add_websocket_route("/ws", websocket_endpoint)
