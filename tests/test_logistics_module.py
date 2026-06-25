@@ -187,3 +187,43 @@ def test_booking_add_unknown_vehicle_fails(module_dir: Path) -> None:
     code, _ = run(module_dir, "bookings.py", "add-truck",
                   "--booking", bid, "--vehicle", "99X-000.00")
     assert code == 1
+
+
+# ---------------------------------------------------------------- notify.py
+
+def test_notify_dry_run_composes_owner_message(module_dir: Path) -> None:
+    # Build a confirmed booking, then dry-run the owner Zalo notification.
+    code, created = run(module_dir, "bookings.py", "create",
+                        "--customer", "Electrolux", "--destination", "Bien Hoa", "--weight", "5")
+    assert code == 0
+    bid = created["created"]
+    code, _ = run(module_dir, "bookings.py", "add-truck",
+                  "--booking", bid, "--vehicle", "51C-123.45", "--delivery-time", "14:00")
+    assert code == 0
+
+    # Explicit --dry-run forces compose-only (no network) regardless of env creds.
+    code, data = run(module_dir, "notify.py", "send", "--booking", bid, "--dry-run")
+    assert code == 0
+    assert data["mode"] == "dry-run"
+    assert data["booking_id"] == bid
+    assert bid in data["message"]
+    assert "Electrolux" in data["message"]
+    assert "51C-123.45" in data["message"]
+    assert "Nguyễn Văn An" in data["message"]
+
+
+def test_notify_dry_run_when_no_owner_configured(module_dir: Path) -> None:
+    # With no --dry-run flag but ZALO_OWNER_USER_ID unset, send must still be a
+    # safe no-op dry-run (never an accidental live send).
+    code, created = run(module_dir, "bookings.py", "create",
+                        "--customer", "Pana", "--destination", "Tan Binh", "--weight", "2")
+    bid = created["created"]
+    code, data = run(module_dir, "notify.py", "send", "--booking", bid)
+    assert code == 0
+    assert data["mode"] == "dry-run"
+
+
+def test_notify_missing_booking(module_dir: Path) -> None:
+    code, data = run(module_dir, "notify.py", "send", "--booking", "BK-9999", "--dry-run")
+    assert code == 1
+    assert "not found" in data["error"]
