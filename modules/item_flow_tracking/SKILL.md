@@ -23,8 +23,9 @@ resources; every move is recorded in an append-only `lot_events` ledger.
 ## Data model
 
 SQLite DB at `<modules>/item_flow_tracking/data/flow.db`, created automatically
-on first use and seeded with the fixed resource pool. Four tables: `orders`
-(one per customer order), `lots` (parts; the tracking unit), `resources` (the
+on first use and seeded with the fixed resource pool. Five tables: `orders`
+(one per customer order), `order_items` (declared + counted quantity per item
+type), `lots` (physical parts/bins; location + step tracking), `resources` (the
 fixed pool — default 15 bins, 10 washers, 10 dryers, 1 fold, 1 count), and
 `lot_events` (audit ledger). The DB path can be overridden with `ATRIA_FLOW_DB`
 (used by tests); the live DB is gitignored.
@@ -32,8 +33,10 @@ fixed pool — default 15 bins, 10 washers, 10 dryers, 1 fold, 1 count), and
 Fixed steps, in order: `nhan_hang → giat → say → gap → kiem_dem → giao_hang →
 done`, plus a `redo` transition. Moving a part into a resource infers its step:
 washer→giặt, dryer→sấy, fold→gấp, count→kiểm đếm; a bin is just a holding spot
-and keeps the step. At kiểm đếm each part's count is summed into the order
-total; an order can only be delivered once all parts are counted.
+and keeps the step. Item quantities are tracked **per item type across the whole
+order**: `order new --item` declares them, `order count --type … --counted …`
+records the counted quantity, and `order deliver` requires every declared item
+type to have been counted.
 
 ## How to use
 
