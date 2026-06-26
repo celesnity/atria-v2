@@ -113,6 +113,14 @@ class BusConfig(BaseModel):
     redis_url: str = "redis://localhost:6379/0"
 
 
+class TasksConfig(BaseModel):
+    """Distributed task queue (TaskIQ) settings for background subagents."""
+
+    redis_url: str = "redis://localhost:6379/0"
+    result_ttl: int = 3600  # seconds a task result lives in Redis
+    orphan_after: int = 1800  # seconds before an unfinished task is deemed orphaned
+
+
 class WebConfig(BaseModel):
     """Web-UI specific settings."""
 
@@ -195,6 +203,9 @@ class AppConfig(BaseModel):
 
     # Web UI nested settings (iframe RPC, etc.)
     web: WebConfig = Field(default_factory=WebConfig)
+
+    # Distributed task queue settings
+    tasks: TasksConfig = Field(default_factory=TasksConfig)
 
     # Paths - using APP_DIR_NAME constant for consistency
     atria_dir: str = f"~/{APP_DIR_NAME}"
