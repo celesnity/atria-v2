@@ -74,6 +74,15 @@ class ModuleDashboardManifest:
 
 
 @dataclass
+class ModuleSubagentManifest:
+    """Opt-in config for routing a module's work to a dedicated subagent."""
+
+    enabled: bool = False
+    model: Optional[str] = None
+    tools: Optional[List[str]] = None
+
+
+@dataclass
 class ModuleManifest:
     """User-authored module presentation config (manifest.json).
 
@@ -87,6 +96,7 @@ class ModuleManifest:
     dashboard: Optional[ModuleDashboardManifest] = None
     activity_default: Optional[ActivityLabel] = None
     activity_actions: Dict[str, ActivityLabel] = field(default_factory=dict)
+    subagent: Optional[ModuleSubagentManifest] = None
 
 
 @dataclass
@@ -200,6 +210,7 @@ def _read_manifest(module_dir: Path) -> Optional[ModuleManifest]:
         dashboard=_parse_dashboard(raw.get("dashboard")),
         activity_default=activity_default,
         activity_actions=activity_actions,
+        subagent=_parse_subagent(raw.get("subagent")),
     )
 
 
@@ -216,6 +227,28 @@ def _parse_dashboard(raw: Any) -> Optional[ModuleDashboardManifest]:
         title=_nonempty_str(raw.get("title")),
         default_height=int(height) if isinstance(height, (int, float)) and height > 0 else None,
         badge_color=badge if isinstance(badge, str) and badge in _BADGE_COLORS else None,
+    )
+
+
+def _parse_subagent(raw: Any) -> Optional[ModuleSubagentManifest]:
+    """Lenient parser for the optional ``subagent`` manifest block.
+
+    Anything malformed degrades to ``None`` so old/invalid manifests keep working.
+    """
+    if not isinstance(raw, dict):
+        return None
+    enabled = raw.get("enabled")
+    if not isinstance(enabled, bool):
+        enabled = False
+    tools_raw = raw.get("tools")
+    tools: Optional[List[str]] = None
+    if isinstance(tools_raw, list):
+        cleaned = [t for t in tools_raw if isinstance(t, str) and t.strip()]
+        tools = cleaned or None
+    return ModuleSubagentManifest(
+        enabled=enabled,
+        model=_nonempty_str(raw.get("model")),
+        tools=tools,
     )
 
 
