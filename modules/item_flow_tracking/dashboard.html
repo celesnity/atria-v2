@@ -124,8 +124,12 @@
           d.className = "order";
           var hd = document.createElement("div");
           hd.className = "hd";
-          hd.innerHTML = "<strong>" + o.order_id + "</strong><span>" + o.customer_phone +
-            " · total " + (o.total_items == null ? "—" : o.total_items) + "</span>";
+          var hdStrong = document.createElement("strong");
+          hdStrong.textContent = o.order_id;
+          var hdSpan = document.createElement("span");
+          hdSpan.textContent = o.customer_phone + " · total " + (o.total_items == null ? "—" : o.total_items);
+          hd.appendChild(hdStrong);
+          hd.appendChild(hdSpan);
           var parts = document.createElement("div");
           parts.className = "parts";
           (o.lots || []).forEach(function (lot) {

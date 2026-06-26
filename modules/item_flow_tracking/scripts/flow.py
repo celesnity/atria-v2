@@ -355,6 +355,9 @@ def cmd_lot_deliver(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
     if not lot:
         _err(f"lot not found: {args.lot}")
         return 1
+    if lot["item_count"] is None:
+        _err(f"cannot deliver — part not counted yet: {args.lot}")
+        return 1
     ts = _db.now()
     _free_lot_resource(conn, lot)
     conn.execute(
