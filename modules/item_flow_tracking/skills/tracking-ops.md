@@ -1,6 +1,6 @@
 ---
 name: tracking-ops
-description: Move parts through steps and finish orders — lot move, lot count, lot redo, lot deliver, order deliver, order cancel.
+description: Move parts through steps and finish orders — lot move, order count (per type), report reconcile, lot redo, lot deliver, order deliver, order cancel.
 ---
 
 # item_flow_tracking · tracking-ops
@@ -9,6 +9,16 @@ Mutating operations on orders and parts. All are subcommands of
 `scripts/flow.py`; use absolute paths (`<modules>` = the modules root from the
 "Active Modules" prompt section). Every change is recorded in the `lot_events`
 ledger.
+
+## Create an order with item lines
+
+Declare item types and quantities at intake using one `--item TYPE:QTY` flag per
+item type. `order deliver` requires every declared item type to have a counted
+quantity recorded via `order count`:
+
+```
+python <modules>/item_flow_tracking/scripts/flow.py order new --phone 0901234567 --name "KS A" --bins 3 --item "khăn:100" --item "ga:50"
+```
 
 ## Move a part (step is inferred from the resource)
 
@@ -29,10 +39,26 @@ python <modules>/item_flow_tracking/scripts/flow.py lot move --lot DH-20260626-0
 `--from` errors if the resource holds no active lot, or (only possible after a
 `--force` double-occupancy) if it holds more than one — then use `--lot`.
 
-## Count a part (sums into the order total)
+## Count items per type for an order
+
+Record the physical counted quantity for one item type on an order. Call once
+per item type; `order deliver` requires all declared types to be counted:
 
 ```
-python <modules>/item_flow_tracking/scripts/flow.py lot count --lot DH-20260626-001-P1 --items 24
+python <modules>/item_flow_tracking/scripts/flow.py order count --order DH-20260627-001 --type khăn --counted 98
+python <modules>/item_flow_tracking/scripts/flow.py order count --order DH-20260627-001 --type ga   --counted 47
+```
+
+## Reconcile declared vs counted
+
+Generate a per-customer, per-type breakdown showing declared qty, counted qty,
+owed (declared − counted, when counted < declared), and extra (counted − declared,
+when counted > declared), with per-customer totals. Omit `--phone` to reconcile
+all customers:
+
+```
+python <modules>/item_flow_tracking/scripts/flow.py report reconcile --phone 0901234567
+python <modules>/item_flow_tracking/scripts/flow.py report reconcile
 ```
 
 ## Redo ("làm lại") — send a part back

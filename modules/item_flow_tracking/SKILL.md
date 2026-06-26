@@ -45,10 +45,12 @@ prompt section. All operations are subcommands of `scripts/flow.py`. Add
 The everyday commands are below — run them directly, no sub-skill needed. Let
 `<f>` = `python <modules>/item_flow_tracking/scripts/flow.py`.
 
-Create an order split into N bins/parts, and list orders:
+**Khi nhận đơn, luôn hỏi số lượng và loại hàng nếu khách chưa nói** — không tạo đơn rỗng, không tự điền số mặc định.
+
+Create an order split into N bins/parts, declaring item lines at intake, and list orders:
 
 ```
-<f> order new --phone 0901234567 --name "Khach A" --bins 3
+<f> order new --phone 0901234567 --name "Khach A" --bins 3 --item "khăn:100" --item "ga:50"
 <f> order list
 ```
 
@@ -62,10 +64,16 @@ it). You can target a part by its lot id **or** by the bin it currently sits in
 <f> lot move --lot DH-20260626-001-P1 --to dryer-2
 ```
 
-Record the counted quantity at kiểm đếm (sums into the order total):
+Record the counted quantity per item type for an order:
 
 ```
-<f> lot count --lot DH-20260626-001-P1 --items 24
+<f> order count --order DH-20260627-001 --type khăn --counted 98
+```
+
+Reconcile declared vs counted items (per customer, per type):
+
+```
+<f> report reconcile --phone 0901234567
 ```
 
 ## Sub-skills (load on demand)
@@ -73,8 +81,9 @@ Record the counted quantity at kiểm đếm (sums into the order total):
 The commands above cover the common flow. For the rest, load the matching
 sub-skill with `invoke_skill` — do not guess flags:
 
-- `invoke_skill("item_flow_tracking:tracking-ops")` — full `lot move`/`lot count`
-  reference plus `lot redo`, `lot deliver`, `order deliver`, `order cancel`.
+- `invoke_skill("item_flow_tracking:tracking-ops")` — full `lot move`, `order count`
+  (per-type counted qty), `--item TYPE:QTY` intake flags, `report reconcile`,
+  `lot redo`, `lot deliver`, `order deliver`, `order cancel`.
 - `invoke_skill("item_flow_tracking:analytics")` — `order show`,
   `customer history`, `resource list`, and the `dashboard` payload.
 - `invoke_skill("item_flow_tracking:data-management")` — `data export`,
