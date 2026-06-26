@@ -209,7 +209,7 @@ def cmd_order_show(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
         print(f"{order['order_id']}  {order['customer_phone']}  {order['status']}")
         for lot in order["lots"]:
             print(f"  {lot['label']}  {lot['step_label']:<12}  "
-                  f"@ {lot['current_resource'] or '-'}  count={lot['item_count']}")
+                  f"@ {lot['current_resource'] or '-'}")
         for it in order["items"]:
             cnt = "—" if it["counted_qty"] is None else it["counted_qty"]
             print(f"  {it['item_type']:<12} khai {it['declared_qty']:<5} đếm {cnt}")
