@@ -204,6 +204,74 @@ def cmd_lot_move(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
     return 0
 
 
+def _recompute_order_total(conn: sqlite3.Connection, order_id: str) -> int | None:
+    row = conn.execute(
+        "SELECT COUNT(item_count) AS counted, SUM(item_count) AS total "
+        "FROM lots WHERE order_id = ?",
+        (order_id,),
+    ).fetchone()
+    total = row["total"] if row["counted"] else None
+    conn.execute(
+        "UPDATE orders SET total_items = ?, updated_at = ? WHERE order_id = ?",
+        (total, _db.now(), order_id),
+    )
+    return total
+
+
+def cmd_lot_count(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
+    lot = _find_lot(conn, args.lot)
+    if not lot:
+        _err(f"lot not found: {args.lot}")
+        return 1
+    if args.items < 0:
+        _err("--items must be >= 0")
+        return 1
+    ts = _db.now()
+    conn.execute(
+        "UPDATE lots SET item_count = ?, updated_at = ? WHERE lot_id = ?",
+        (args.items, ts, args.lot),
+    )
+    _recompute_order_total(conn, lot["order_id"])
+    _db.log_event(conn, args.lot, lot["order_id"], "count",
+                  item_count=args.items, commit=False)
+    conn.commit()
+
+    if args.json:
+        _emit({
+            "lot": _db.lot_dict(_find_lot(conn, args.lot)),
+            "order": _db.order_dict(_find_order(conn, lot["order_id"])),
+        })
+    else:
+        order = _find_order(conn, lot["order_id"])
+        print(f"{args.lot} counted {args.items} — order total = {order['total_items']}")
+    return 0
+
+
+def cmd_lot_redo(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
+    lot = _find_lot(conn, args.lot)
+    if not lot:
+        _err(f"lot not found: {args.lot}")
+        return 1
+    target = args.to or "giat"
+    if target not in _db.STEPS:
+        _err(f"unknown step: {target}")
+        return 1
+    ts = _db.now()
+    conn.execute(
+        "UPDATE lots SET step = ?, is_redo = 1, updated_at = ? WHERE lot_id = ?",
+        (target, ts, args.lot),
+    )
+    _db.log_event(conn, args.lot, lot["order_id"], "redo",
+                  from_step=lot["step"], to_step=target, notes=args.notes, commit=False)
+    conn.commit()
+
+    if args.json:
+        _emit({"lot": _db.lot_dict(_find_lot(conn, args.lot))})
+    else:
+        print(f"{args.lot} sent back to {_db.STEP_LABELS.get(target, target)} (redo)")
+    return 0
+
+
 # ── parser + dispatch ───────────────────────────────────────────────────────
 
 
@@ -242,6 +310,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true", help="override a busy target")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_lot_move)
+
+    p = lot.add_parser("count", help="record counted item quantity for a lot")
+    p.add_argument("--lot", required=True)
+    p.add_argument("--items", type=int, required=True)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_lot_count)
+
+    p = lot.add_parser("redo", help="send a lot back to an earlier step (default giat)")
+    p.add_argument("--lot", required=True)
+    p.add_argument("--to", default=None, choices=_db.STEPS)
+    p.add_argument("--notes", default=None)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_lot_redo)
 
     return parser
 

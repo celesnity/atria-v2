@@ -124,3 +124,25 @@ def test_move_rejects_busy_target_without_force(env):
     assert "busy" in r.stderr
     ok = run(env, "lot", "move", "--lot", b["lot_id"], "--to", "washer-5", "--force", "--json")
     assert ok.returncode == 0
+
+
+# ── counting + redo ──────────────────────────────────────────────────────────
+
+
+def test_count_sums_to_order_total(env):
+    new = run_json(env, "order", "new", "--phone", "0906660000", "--bins", "2")
+    oid = new["order"]["order_id"]
+    p1, p2 = new["lots"][0]["lot_id"], new["lots"][1]["lot_id"]
+
+    first = run_json(env, "lot", "count", "--lot", p1, "--items", "10")
+    assert first["order"]["total_items"] == 10
+    second = run_json(env, "lot", "count", "--lot", p2, "--items", "15")
+    assert second["order"]["total_items"] == 25
+
+
+def test_redo_sets_flag_and_moves_step_back(env):
+    lot = _first_lot(env, phone="0906661111")
+    run_json(env, "lot", "move", "--lot", lot["lot_id"], "--to", "dryer-1")  # step say
+    redone = run_json(env, "lot", "redo", "--lot", lot["lot_id"], "--notes", "lem ban")
+    assert redone["lot"]["is_redo"] is True
+    assert redone["lot"]["step"] == "giat"  # default redo target
