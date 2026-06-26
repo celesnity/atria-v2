@@ -10,18 +10,12 @@
   "activity": {
     "default": { "running": "Đang xử lý đơn…", "done": "Xong" },
     "actions": {
-      "new":       { "running": "Đang tạo đơn…",        "done": "Đã tạo đơn" },
-      "list":      { "running": "Đang tải đơn…",        "done": "Đã tải đơn" },
-      "show":      { "running": "Đang mở đơn…",         "done": "Đã mở đơn" },
-      "move":      { "running": "Đang chuyển phần…",    "done": "Đã chuyển" },
-      "count":     { "running": "Đang kiểm đếm…",       "done": "Đã đếm" },
-      "redo":      { "running": "Đang đánh dấu làm lại…", "done": "Đã đánh dấu làm lại" },
-      "deliver":   { "running": "Đang giao hàng…",      "done": "Đã giao" },
-      "cancel":    { "running": "Đang hủy đơn…",        "done": "Đã hủy" },
-      "history":   { "running": "Đang tra lịch sử…",    "done": "Đã tra xong" },
-      "dashboard": { "running": "Đang dựng dashboard…", "done": "Sẵn sàng" },
-      "export":    { "running": "Đang xuất dữ liệu…",   "done": "Đã xuất" },
-      "reset":     { "running": "Đang reset dữ liệu…",  "done": "Đã reset" }
+      "order":     { "running": "Đang xử lý đơn hàng…",   "done": "Xong" },
+      "lot":       { "running": "Đang xử lý phần…",        "done": "Xong" },
+      "customer":  { "running": "Đang tra cứu khách…",     "done": "Xong" },
+      "resource":  { "running": "Đang cập nhật tài nguyên…", "done": "Xong" },
+      "data":      { "running": "Đang xử lý dữ liệu…",     "done": "Xong" },
+      "dashboard": { "running": "Đang dựng dashboard…",    "done": "Sẵn sàng" }
     }
   }
 }

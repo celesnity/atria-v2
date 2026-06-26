@@ -172,11 +172,22 @@ def test_order_deliver_requires_all_counted(env):
 def test_lot_deliver_completes_order_when_last(env):
     new = run_json(env, "order", "new", "--phone", "0907771111", "--bins", "2")
     oid = new["order"]["order_id"]
-    run_json(env, "lot", "deliver", "--lot", new["lots"][0]["lot_id"])
+    p1, p2 = new["lots"][0]["lot_id"], new["lots"][1]["lot_id"]
+    run_json(env, "lot", "count", "--lot", p1, "--items", "3")
+    run_json(env, "lot", "deliver", "--lot", p1)
     mid = run_json(env, "order", "show", "--order", oid)
     assert mid["order"]["status"] == "active"
-    last = run_json(env, "lot", "deliver", "--lot", new["lots"][1]["lot_id"])
+    run_json(env, "lot", "count", "--lot", p2, "--items", "4")
+    last = run_json(env, "lot", "deliver", "--lot", p2)
     assert last["order"]["status"] == "done"
+
+
+def test_lot_deliver_rejects_uncounted_lot(env):
+    new = run_json(env, "order", "new", "--phone", "0907773333", "--bins", "1")
+    lot_id = new["lots"][0]["lot_id"]
+    r = run(env, "lot", "deliver", "--lot", lot_id, "--json")
+    assert r.returncode != 0
+    assert "not counted" in r.stderr
 
 
 def test_cancel_frees_resources(env):
