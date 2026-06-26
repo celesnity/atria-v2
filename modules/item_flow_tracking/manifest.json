@@ -15,7 +15,8 @@
       "customer":  { "running": "Đang tra cứu khách…",     "done": "Xong" },
       "resource":  { "running": "Đang cập nhật tài nguyên…", "done": "Xong" },
       "data":      { "running": "Đang xử lý dữ liệu…",     "done": "Xong" },
-      "dashboard": { "running": "Đang dựng dashboard…",    "done": "Sẵn sàng" }
+      "dashboard": { "running": "Đang dựng dashboard…",    "done": "Sẵn sàng" },
+      "report":    { "running": "Đang đối chiếu…",          "done": "Đã đối chiếu" }
     }
   }
 }
