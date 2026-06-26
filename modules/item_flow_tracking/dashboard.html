@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Item Flow Tracking</title>
+  <link rel="stylesheet" href="__base.css" />
+  <style>
+    :root {
+      --ink: 0 0% 0%; --canvas: 0 0% 100%; --surface-soft: 40 22% 96%;
+      --hairline: 0 0% 12%; --hairline-soft: 0 0% 88%; --muted-ink: 0 0% 38%;
+      --free: 150 50% 86%; --busy: 8 80% 80%; --maint: 38 60% 86%;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { font-family: 'Inter', system-ui, sans-serif; color: hsl(var(--ink));
+      background: hsl(var(--canvas)); }
+    body { padding: 24px; }
+    .wrap { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+    h1 { font-size: 24px; margin: 0; } h2 { font-size: 14px; margin: 0 0 10px; }
+    .sub { color: hsl(var(--muted-ink)); font-size: 13px; margin-top: 4px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+      border-bottom: 1px solid hsl(var(--hairline)); padding-bottom: 14px; }
+    button { font: inherit; cursor: pointer; background: hsl(var(--ink)); color: hsl(var(--canvas));
+      border: 0; border-radius: 999px; padding: 8px 16px; font-size: 13px; }
+    button:hover { opacity: 0.88; }
+    .panel { border: 1px solid hsl(var(--hairline)); border-radius: 12px; padding: 16px; }
+    .res-group { margin-bottom: 14px; }
+    .res-group .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: hsl(var(--muted-ink)); margin-bottom: 6px; }
+    .res-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cell { min-width: 56px; padding: 8px 6px; border-radius: 8px; border: 1px solid hsl(var(--hairline-soft));
+      font-size: 11px; text-align: center; }
+    .cell.free { background: hsl(var(--free)); }
+    .cell.busy { background: hsl(var(--busy)); }
+    .cell.maintenance { background: hsl(var(--maint)); }
+    .cell .who { display: block; font-size: 9.5px; color: hsl(var(--muted-ink)); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .order { border-bottom: 1px solid hsl(var(--hairline-soft)); padding: 10px 0; }
+    .order:last-child { border-bottom: 0; }
+    .order .hd { display: flex; justify-content: space-between; font-size: 13px; }
+    .order .parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .pill { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: hsl(var(--surface-soft));
+      border: 1px solid hsl(var(--hairline-soft)); }
+    .board { display: flex; gap: 10px; overflow-x: auto; }
+    .col { flex: 1 0 130px; }
+    .col .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: hsl(var(--muted-ink)); margin-bottom: 6px; }
+    .card { font-size: 11px; padding: 6px 8px; border-radius: 8px; border: 1px solid hsl(var(--hairline-soft));
+      margin-bottom: 6px; background: hsl(var(--canvas)); }
+    .card.redo { border-color: hsl(var(--busy)); }
+    .empty { color: hsl(var(--muted-ink)); font-size: 12px; padding: 8px 0; }
+    .err { color: hsl(0 70% 45%); font-size: 12px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="root">
+    <div class="toolbar">
+      <div><h1>Item Flow Tracking</h1><div class="sub">Đơn giặt là · tài nguyên & tiến độ</div></div>
+      <button type="button" id="refresh">Làm mới</button>
+    </div>
+    <div class="err" id="err"></div>
+    <section class="panel"><h2>Tài nguyên</h2><div id="resources"></div></section>
+    <section class="panel"><h2>Đơn đang xử lý</h2><div id="orders"></div></section>
+    <section class="panel"><h2>Theo bước</h2><div class="board" id="board"></div></section>
+  </div>
+  <script src="__bridge.js"></script>
+  <script>
+    (function () {
+      var STEP_LABELS = { nhan_hang: "Nhận hàng", giat: "Giặt", say: "Sấy", gap: "Gấp",
+        kiem_dem: "Kiểm đếm", giao_hang: "Giao hàng", done: "Xong" };
+      var STEPS = ["nhan_hang", "giat", "say", "gap", "kiem_dem", "giao_hang", "done"];
+      var KIND_LABELS = { bin: "Bins", washer: "Máy giặt", dryer: "Máy sấy", fold: "Khu gấp", count: "Khu đếm" };
+      var el = {
+        resources: document.getElementById("resources"),
+        orders: document.getElementById("orders"),
+        board: document.getElementById("board"),
+        err: document.getElementById("err"),
+        refresh: document.getElementById("refresh"),
+      };
+      function setErr(m) { el.err.textContent = m || ""; }
+      function reportSize() {
+        AtriaDash.resize(Math.max(document.body.scrollHeight,
+          document.getElementById("root").offsetHeight + 48));
+      }
+      function renderResources(resources) {
+        el.resources.innerHTML = "";
+        var byKind = {};
+        resources.forEach(function (r) { (byKind[r.kind] = byKind[r.kind] || []).push(r); });
+        var busy = 0;
+        Object.keys(KIND_LABELS).forEach(function (kind) {
+          var list = byKind[kind] || [];
+          if (!list.length) return;
+          var group = document.createElement("div");
+          group.className = "res-group";
+          var lab = document.createElement("div");
+          lab.className = "label";
+          lab.textContent = KIND_LABELS[kind] + " (" + list.length + ")";
+          var grid = document.createElement("div");
+          grid.className = "res-grid";
+          list.forEach(function (r) {
+            if (r.status === "busy") busy++;
+            var c = document.createElement("div");
+            c.className = "cell " + r.status;
+            c.textContent = r.resource_id.split("-")[1] || r.resource_id;
+            c.title = r.label + " · " + r.status;
+            if (r.occupant) {
+              var who = document.createElement("span");
+              who.className = "who";
+              who.textContent = r.occupant.order_id.replace("DH-", "");
+              c.appendChild(who);
+            }
+            grid.appendChild(c);
+          });
+          group.appendChild(lab); group.appendChild(grid);
+          el.resources.appendChild(group);
+        });
+        AtriaDash.setBadge(busy > 0 ? { count: busy, severity: "info" } : null);
+      }
+      function renderOrders(orders) {
+        el.orders.innerHTML = "";
+        if (!orders.length) { el.orders.innerHTML = '<div class="empty">Chưa có đơn nào.</div>'; return; }
+        orders.forEach(function (o) {
+          var d = document.createElement("div");
+          d.className = "order";
+          var hd = document.createElement("div");
+          hd.className = "hd";
+          hd.innerHTML = "<strong>" + o.order_id + "</strong><span>" + o.customer_phone +
+            " · total " + (o.total_items == null ? "—" : o.total_items) + "</span>";
+          var parts = document.createElement("div");
+          parts.className = "parts";
+          (o.lots || []).forEach(function (lot) {
+            var p = document.createElement("span");
+            p.className = "pill";
+            p.textContent = lot.label + " · " + (STEP_LABELS[lot.step] || lot.step) +
+              (lot.is_redo ? " ⟲" : "") + " @" + (lot.current_resource || "-");
+            parts.appendChild(p);
+          });
+          d.appendChild(hd); d.appendChild(parts);
+          el.orders.appendChild(d);
+        });
+      }
+      function renderBoard(steps) {
+        el.board.innerHTML = "";
+        STEPS.forEach(function (s) {
+          var col = document.createElement("div");
+          col.className = "col";
+          var lab = document.createElement("div");
+          lab.className = "label";
+          var lots = (steps && steps[s]) || [];
+          lab.textContent = STEP_LABELS[s] + " (" + lots.length + ")";
+          col.appendChild(lab);
+          lots.forEach(function (lot) {
+            var c = document.createElement("div");
+            c.className = "card" + (lot.is_redo ? " redo" : "");
+            c.textContent = lot.order_id.replace("DH-", "") + " " + lot.label +
+              " @" + (lot.current_resource || "-");
+            col.appendChild(c);
+          });
+          el.board.appendChild(col);
+        });
+      }
+      function load() {
+        AtriaDash.json("flow.py", ["dashboard", "--json"])
+          .then(function (data) {
+            setErr("");
+            renderResources((data && data.resources) || []);
+            renderOrders((data && data.orders) || []);
+            renderBoard((data && data.steps) || {});
+            reportSize();
+          })
+          .catch(function (e) { setErr("Lỗi tải dashboard: " + (e && e.message ? e.message : e)); });
+      }
+      el.refresh.addEventListener("click", load);
+      AtriaDash.onChange(function () { load(); });
+      AtriaDash.onVisibility(function (v) { if (v) load(); });
+      if (typeof ResizeObserver !== "undefined") new ResizeObserver(reportSize).observe(document.body);
+      load();
+      AtriaDash.ready();
+    })();
+  </script>
+</body>
+</html>
