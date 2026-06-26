@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 DEFAULT_DB = DATA_DIR / "flow.db"
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Fixed processing pipeline, in order. ``done`` is the terminal state.
 STEPS = ["nhan_hang", "giat", "say", "gap", "kiem_dem", "giao_hang", "done"]
@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS orders (
     customer_name  TEXT,
     status         TEXT NOT NULL DEFAULT 'active',
     total_items    INTEGER,
+    declared_total INTEGER,
     note           TEXT,
     created_at     TEXT NOT NULL,
     updated_at     TEXT NOT NULL
@@ -112,6 +113,19 @@ CREATE TABLE IF NOT EXISTS lot_events (
 CREATE INDEX IF NOT EXISTS idx_events_order ON lot_events(order_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_lot   ON lot_events(lot_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_lots_order   ON lots(order_id);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id     TEXT NOT NULL,
+    item_type    TEXT NOT NULL COLLATE NOCASE,
+    declared_qty INTEGER NOT NULL,
+    counted_qty  INTEGER,
+    created_at   TEXT NOT NULL,
+    updated_at   TEXT NOT NULL,
+    UNIQUE (order_id, item_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 """
 
 
@@ -126,6 +140,13 @@ def db_path() -> Path:
     return Path(override) if override else DEFAULT_DB
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns missing from pre-v2 databases (idempotent)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(orders)").fetchall()}
+    if "declared_total" not in cols:
+        conn.execute("ALTER TABLE orders ADD COLUMN declared_total INTEGER")
+
+
 def connect() -> sqlite3.Connection:
     """Open (creating + bootstrapping if needed) the flow DB."""
     path = db_path()
@@ -137,6 +158,7 @@ def connect() -> sqlite3.Connection:
     conn.executescript(_SCHEMA)
     if int(conn.execute("PRAGMA user_version").fetchone()[0]) < SCHEMA_VERSION:
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    _migrate(conn)
     if fresh and conn.execute("SELECT COUNT(*) FROM resources").fetchone()[0] == 0:
         seed_resources(conn)
     conn.commit()
@@ -205,9 +227,38 @@ def order_dict(row: sqlite3.Row) -> dict:
         "customer_name": row["customer_name"] or "",
         "status": row["status"],
         "total_items": row["total_items"],
+        "declared_total": row["declared_total"],
         "note": row["note"] or "",
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
+    }
+
+
+def recompute_order_totals(conn: sqlite3.Connection, order_id: str) -> None:
+    """Recompute an order's declared_total and total_items from its item lines."""
+    row = conn.execute(
+        "SELECT SUM(declared_qty) AS dq, COUNT(counted_qty) AS cc, "
+        "SUM(counted_qty) AS cq FROM order_items WHERE order_id = ?",
+        (order_id,),
+    ).fetchone()
+    declared = row["dq"]
+    total = row["cq"] if row["cc"] else None
+    conn.execute(
+        "UPDATE orders SET declared_total = ?, total_items = ?, updated_at = ? "
+        "WHERE order_id = ?",
+        (declared, total, now(), order_id),
+    )
+
+
+def order_item_dict(row: sqlite3.Row) -> dict:
+    """Normalise an ``order_items`` row into JSON shape (with declared/counted diff)."""
+    declared = int(row["declared_qty"])
+    counted = row["counted_qty"]
+    return {
+        "item_type": row["item_type"],
+        "declared_qty": declared,
+        "counted_qty": (int(counted) if counted is not None else None),
+        "diff": (int(counted) - declared if counted is not None else None),
     }
 
 
