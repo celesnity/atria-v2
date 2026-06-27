@@ -54,7 +54,12 @@ class BackgroundMixin:
 
         Returns:
             Dict with keys: success, background, status, task_id, subagent_type.
+
+        Raises:
+            RuntimeError: If no task client has been configured via set_task_client.
         """
+        if getattr(self, "_task_client", None) is None:
+            raise RuntimeError("Background task client not configured.")
         payload = SubagentTaskPayload(
             session_id=session_id,
             owner_id=owner_id,
