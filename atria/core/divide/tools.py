@@ -126,7 +126,7 @@ def execute_divide_work(
         "status": "running",
         "output": (
             f"[DIVIDE STARTED] job_id={job_id}. "
-            "Use get_divide_result(job_id) to poll progress and collect results."
+            "Use get_solve_result(job_id) to poll progress and collect results."
         ),
     }
 

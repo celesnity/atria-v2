@@ -254,7 +254,6 @@ def create_app() -> FastAPI:
         # Registered AFTER API routes so they take priority in Starlette's route matching
         index_file = static_dir / "index.html"
         if index_file.exists():
-            spa_html = index_file.read_text()
 
             @app.get("/{full_path:path}")
             async def serve_spa(full_path: str):
@@ -264,7 +263,9 @@ def create_app() -> FastAPI:
                     from fastapi.responses import FileResponse
 
                     return FileResponse(str(file_path))
-                return HTMLResponse(spa_html)
+                # Read index.html on each request so a UI rebuild takes effect
+                # without restarting the server (the file is tiny).
+                return HTMLResponse(index_file.read_text())
 
     else:
         # Development: Return placeholder HTML

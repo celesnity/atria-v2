@@ -211,29 +211,30 @@ class WebUICallback(BaseUICallback):
             }
         )
 
-    def on_parallel_solver_event(self, stage: str, data: dict) -> None:
-        """Broadcast a ParallelOrchestrator lifecycle event (started/progress/done)."""
-        mapping = {
-            "started": WSMessageType.PARALLEL_SOLVER_STARTED,
-            "progress": WSMessageType.PARALLEL_SOLVER_PROGRESS,
-            "done": WSMessageType.PARALLEL_SOLVER_DONE,
-        }
-        msg_type = mapping.get(stage)
-        if msg_type is None:
-            return
-        self._broadcast({"type": msg_type, "data": {**data, "session_id": self.session_id}})
+    def on_solver_event(self, strategy: str, stage: str, data: dict) -> None:
+        """Broadcast a unified solver lifecycle event.
 
-    def on_divide_event(self, stage: str, data: dict) -> None:
-        """Broadcast a divide-work coordinator event (started/task_update/done)."""
+        Both strategies — ``divide`` (DAG decomposition) and ``parallel``
+        (worktree fan-out + judge) — funnel through one event stream. The
+        ``strategy`` field lets the frontend pick the right rendering. Divide's
+        ``task_update`` stage and parallel's ``progress`` stage both map to the
+        single ``SOLVER_PROGRESS`` message.
+        """
         mapping = {
-            "started": WSMessageType.DIVIDE_JOB_STARTED,
-            "task_update": WSMessageType.DIVIDE_TASK_UPDATE,
-            "done": WSMessageType.DIVIDE_JOB_DONE,
+            "started": WSMessageType.SOLVER_STARTED,
+            "progress": WSMessageType.SOLVER_PROGRESS,
+            "task_update": WSMessageType.SOLVER_PROGRESS,
+            "done": WSMessageType.SOLVER_DONE,
         }
         msg_type = mapping.get(stage)
         if msg_type is None:
             return
-        self._broadcast({"type": msg_type, "data": {**data, "session_id": self.session_id}})
+        self._broadcast(
+            {
+                "type": msg_type,
+                "data": {**data, "strategy": strategy, "session_id": self.session_id},
+            }
+        )
 
     # ------------------------------------------------------------------
     # Cost tracking
@@ -471,19 +472,6 @@ class WebUICallback(BaseUICallback):
                     "caption": caption,
                     "session_id": self.session_id,
                 },
-            }
-        )
-
-    # ------------------------------------------------------------------
-    # Data push (used by send_data tool)
-    # ------------------------------------------------------------------
-
-    def on_data(self, payload: dict) -> None:
-        """Broadcast a tabular data message to the chat UI."""
-        self._broadcast(
-            {
-                "type": WSMessageType.DATA_MESSAGE,
-                "data": {**payload, "session_id": self.session_id},
             }
         )
 

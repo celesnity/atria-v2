@@ -45,6 +45,8 @@ services:
       - atria_data:/root/.atria
       # Mount Python source for hot reload — no rebuild needed on code change
       - ./atria:/app/atria
+      # Mount modules so new/edited modules appear without rebuilding the image
+      - ./modules:/app/modules
     command: >
       /bin/sh -c "
         mkdir -p /root/.atria &&

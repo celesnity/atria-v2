@@ -2,11 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocat
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'motion/react';
 import { ChatPage } from './pages/ChatPage';
-import { CodeWikiPage } from './pages/CodeWikiPage';
-import { ParallelAgentsPage } from './pages/ParallelAgentsPage';
-import { DivideAgentsPage } from './pages/DivideAgentsPage';
-import './stores/divideJobs';
-import { RepositoryDetailPage } from './components/CodeWiki/RepositoryDetailPage';
+import { DispatchPage } from './pages/DispatchPage';
+import './stores/solverJobs';
 import { LoginPage } from './pages/LoginPage';
 import { TenantsPage } from './pages/admin/TenantsPage';
 import { TenantUsersPage } from './pages/admin/TenantUsersPage';
@@ -83,13 +80,15 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/chat" element={<AuthGuard><ChatPage /></AuthGuard>} />
-        <Route path="/codewiki" element={<AuthGuard><CodeWikiPage /></AuthGuard>} />
-        <Route path="/codewiki/:repoName" element={<AuthGuard><RepositoryDetailPage /></AuthGuard>} />
-        <Route path="/parallel" element={<AuthGuard><ParallelAgentsPage /></AuthGuard>} />
-        <Route path="/divide" element={<AuthGuard><DivideAgentsPage /></AuthGuard>} />
+        <Route path="/dispatch" element={<AuthGuard><DispatchPage /></AuthGuard>} />
+        {/* Old split routes now fold into the unified Dispatch view */}
+        <Route path="/divide" element={<Navigate to="/dispatch" replace />} />
+        <Route path="/parallel" element={<Navigate to="/dispatch" replace />} />
         <Route path="/admin/tenants" element={<AuthGuard><TenantsPage /></AuthGuard>} />
         <Route path="/admin/tenants/:slug/users" element={<AuthGuard><TenantUsersPage /></AuthGuard>} />
         <Route path="/" element={<Navigate to="/chat" replace />} />
+        {/* Any unknown / removed route (e.g. the old /codewiki) falls back to chat */}
+        <Route path="*" element={<Navigate to="/chat" replace />} />
       </Routes>
     </RouteFade>
   );

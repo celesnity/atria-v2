@@ -97,7 +97,7 @@ def execute_solve_parallel(
         "status": "running",
         "output": (
             f"[PARALLEL STARTED] job_id={job_id}. "
-            "Use get_parallel_result(job_id) to judge + apply the winner."
+            "Use get_solve_result(job_id) to judge + apply the winner."
         ),
     }
 

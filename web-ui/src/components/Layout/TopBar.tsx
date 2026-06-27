@@ -1,10 +1,10 @@
-import { Command, Network } from "lucide-react";
+import { Command } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
+import { ViewSwitcher } from "./ViewSwitcher";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -83,32 +83,24 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="h-12 flex-shrink-0 sticky top-0 z-40 flex items-center gap-3 px-4 bg-canvas/90 backdrop-blur-md border-b border-hairline-soft"
     >
-      {/* ── Left: Sidebar toggle + Brand ── */}
+      {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-3 flex-shrink-0">
         {/* Wordmark */}
         <div className="flex items-baseline gap-2">
           <span className="text-[13px] font-[540] tracking-[-0.1px] text-ink">
             Atria
           </span>
-          <span className="eyebrow-mono text-ink/40 hidden sm:inline">
+          <span className="eyebrow-mono text-ink/40 hidden lg:inline">
             AI Assistant
           </span>
         </div>
+
+        {/* Primary navigation: Chat ⇄ Dispatch */}
+        <ViewSwitcher />
       </div>
 
       {/* ── Spacer ── */}
       <div className="flex-1" />
-
-      {/* ── Observe: divide-work agents (always visible) ── */}
-      <Link
-        to="/divide"
-        className={`${pillBase} bg-surface-soft text-ink/70 border-hairline-soft hover:bg-canvas hover:text-ink flex-shrink-0`}
-        title="Quan sát agents — work-division monitor"
-        aria-label="Open the agents observation page"
-      >
-        <Network className="w-3 h-3" strokeWidth={1.5} />
-        <span className="hidden sm:inline">Agents</span>
-      </Link>
 
       {/* ── Center-Right: Status Pills (minimal) ── */}
       {status && (
