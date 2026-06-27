@@ -13,19 +13,24 @@ This module exists to demonstrate **agent dispatch**: a multi-region request
 decomposes into one `gen` subtask per region (which can all run in parallel) plus
 a final `merge` subtask that depends on them.
 
-## When to use — and when to DISPATCH
+## When to use
 
-- A request covering **2+ regions** (e.g. "báo cáo cho north, south, east, west
-  rồi tổng hợp") → **dispatch it**: call
-  `solve(strategy="divide", request="<the full request>", module="batch_reports")`.
-  The orchestrator splits it into independent `gen` subtasks + a dependent
-  `merge`, fans them out to background subagents, and you collect the result with
-  `get_solve_result(job_id)`. Watch it live on the **Dispatch** tab.
-- A request for **a single region** → just run the one command yourself; no need
-  to dispatch.
+ALWAYS DISPATCH. Any request to generate/run reports for this module (especially the word
+"dispatch", or 2+ regions like "north, south, east, west rồi tổng hợp") → you
+MUST dispatch as your first action:
 
-Prefer dispatch whenever the work is many independent items: it is faster (the
-regions run concurrently) and each subtask is isolated.
+```
+solve(strategy="divide", module="batch_reports", request="<the full request>")
+```
+
+Then collect with `get_solve_result(job_id)`. The orchestrator splits it into
+independent `gen` subtasks + a dependent `merge`, fans them out to background
+workers, and streams progress to the **Dispatch** tab.
+
+Do NOT run `report.py` yourself with `run_command`, and do NOT use
+`spawn_subagent`, for these requests — that is not dispatching. Only run a single
+command inline if the user explicitly asks for just ONE region, or if `solve`
+returns an "unavailable" error.
 
 ## Data model
 

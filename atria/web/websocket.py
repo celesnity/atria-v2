@@ -54,7 +54,8 @@ class WebSocketManager:
             import json
 
             json.dumps(message)
-            logger.debug(f"Broadcasting: {message.get('type')}")
+            if message.get("type") != WSMessageType.THINKING_DONE and message.get("type") != WSMessageType.THINKING_TOKEN:
+                logger.debug(f"Broadcasting: {message.get('type')}")
         except (TypeError, ValueError) as e:
             logger.error(f"❌ Message is not JSON-serializable: {e}")
             logger.error(f"Message type: {message.get('type')}")

@@ -2,6 +2,11 @@
   "display_name": "Batch Reports",
   "tooltip": "Per-region reports · fan-out + merge",
   "icon": "icon.svg",
+  "dashboard": {
+    "title": "Batch Reports · Doanh thu theo vùng",
+    "default_height": 720,
+    "badge_color": "info"
+  },
   "activity": {
     "default": { "running": "Đang xử lý báo cáo…", "done": "Xong" },
     "actions": {
@@ -13,7 +18,7 @@
     }
   },
   "subagent": {
-    "enabled": true,
+    "enabled": false,
     "model": null,
     "tools": null
   }

@@ -25,12 +25,22 @@ def make_broker(redis_url: str, result_ttl: int) -> AsyncBroker:
         redis_url=redis_url,
         result_ex_time=result_ttl,
     )
-    return ListQueueBroker(url=redis_url).with_result_backend(result_backend)
+    # socket_timeout=None on the broker connection: the worker's listen loop does
+    # a blocking BRPOP that waits indefinitely for tasks. redis-py defaults
+    # socket_timeout to 5s, which would fire mid-BRPOP and raise
+    # redis.TimeoutError — and taskiq-redis's listen() only catches
+    # ConnectionError, so that timeout crashes the worker. None lets BRPOP block.
+    # (socket_connect_timeout keeps its own 5s default, so connects still fail fast.)
+    return ListQueueBroker(url=redis_url, socket_timeout=None).with_result_backend(
+        result_backend
+    )
 
 
 # Process-global singleton imported by the worker/scheduler CLIs and the server
-# lifespan. The broker's queue and result backend are fixed to the default Redis
-# URL at import time and are NOT reconfigured from AppConfig.tasks.redis_url
-# (that URL currently only configures a separate orphan meta-store). All
-# processes must share the same default URL for the broker to function.
-broker: AsyncBroker = make_broker("redis://localhost:6379/0", result_ttl=3600)
+# lifespan. The broker URL is fixed at import time (before AppConfig loads), so
+# it reads the ``ATRIA_REDIS_URL`` env var — every process (server + worker +
+# scheduler) must share the same value for the broker to function. Defaults to
+# localhost for local/dev; in Docker set ATRIA_REDIS_URL=redis://redis:6379/0.
+broker: AsyncBroker = make_broker(
+    os.environ.get("ATRIA_REDIS_URL", "redis://localhost:6379/0"), result_ttl=3600
+)

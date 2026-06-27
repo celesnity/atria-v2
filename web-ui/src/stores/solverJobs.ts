@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { wsClient } from '../api/websocket';
+import { useToastStore } from './toast';
 import type {
   ParallelSolverProgressData,
   ParallelSolverDoneData,
@@ -63,11 +64,50 @@ interface SolverJobsState {
   clear(): void;
 }
 
+// ─── Persistence (P2) — survive full page reloads ────────────────────────────
+// In-app navigation already keeps the store (module singleton); only an F5 wiped
+// it. We persist to sessionStorage (per-tab, no cross-user leak — unlike a Redis
+// SCAN of all jobs) so the Dispatch history rehydrates on reload.
+const STORAGE_KEY = 'atria.solverJobs.v1';
+
+function loadPersisted(): Pick<SolverJobsState, 'jobs' | 'order'> {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object' && p.jobs && Array.isArray(p.order)) {
+        return { jobs: p.jobs as Record<string, SolverJob>, order: p.order as string[] };
+      }
+    }
+  } catch {
+    /* ignore corrupt/unavailable storage */
+  }
+  return { jobs: {}, order: [] };
+}
+
 export const useSolverJobsStore = create<SolverJobsState>((set) => ({
-  jobs: {},
-  order: [],
-  clear: () => set({ jobs: {}, order: [] }),
+  ...loadPersisted(),
+  clear: () => {
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    set({ jobs: {}, order: [] });
+  },
 }));
+
+// Mirror every change into sessionStorage so a reload restores the job list.
+useSolverJobsStore.subscribe((state) => {
+  try {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ jobs: state.jobs, order: state.order }),
+    );
+  } catch {
+    /* ignore quota / serialization errors */
+  }
+});
 
 /** Count of jobs still running — used for the nav activity badge. */
 export function runningSolverCount(state: SolverJobsState): number {
@@ -242,6 +282,24 @@ export function initSolverJobsStore() {
 
       return state;
     });
+
+    // Completion notification (P1) — surfaces even when the user is on Chat.
+    if (!useSolverJobsStore.getState().jobs[data.job_id]) return;
+    const short = data.job_id.slice(0, 8);
+    const toast = useToastStore.getState().addToast;
+    if (data.strategy === 'divide') {
+      const ok = (data as { status?: string }).status !== 'failed';
+      toast(
+        `Dispatch ${short} ${ok ? 'hoàn tất' : 'thất bại'}`,
+        ok ? 'success' : 'error',
+      );
+    } else if (data.strategy === 'parallel') {
+      const applied = Boolean((data as { applied?: boolean }).applied);
+      toast(
+        `Solve ${short} xong${applied ? ' · đã áp dụng diff' : ' · chưa áp dụng'}`,
+        applied ? 'success' : 'info',
+      );
+    }
   });
 }
 

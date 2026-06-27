@@ -99,6 +99,14 @@ function Badge({
   );
 }
 
+/** Compact "1m 12s" / "8s" duration between two epoch-ms timestamps. */
+function fmtDuration(fromMs: number, toMs: number): string {
+  const s = Math.max(0, Math.round((toMs - fromMs) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  return `${m}m ${s % 60}s`;
+}
+
 /** Small pill marking which strategy produced a job. */
 function StrategyTag({ strategy }: { strategy: SolverJob['strategy'] }) {
   return (
@@ -139,11 +147,17 @@ function TaskRow({ task }: { task: DivideTaskView }) {
 
 function DivideCard({ job }: { job: DivideJobView }) {
   const statusCfg = JOB_STATUS_CONFIG[job.status];
+  const total = job.tasks.length;
+  const done = job.tasks.filter(
+    (t) => t.status === 'done' || t.status === 'failed' || t.status === 'skipped',
+  ).length;
+  const pct = total ? Math.max((done / total) * 100, 3) : 3;
   return (
     <div
-      className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden transition-shadow duration-300 hover:shadow-hover"
+      className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden transition-shadow duration-300 hover:shadow-hover focus-visible:outline-none focus-visible:shadow-focus-ring"
       role="region"
-      aria-label={`Divide job ${job.jobId.slice(0, 8)}`}
+      tabIndex={0}
+      aria-label={`Divide job ${job.jobId.slice(0, 8)}, ${done} of ${total} tasks done`}
     >
       <div className="flex items-start gap-3 px-4 py-3 border-b border-border-300/10">
         <IconDivide />
@@ -153,6 +167,10 @@ function DivideCard({ job }: { job: DivideJobView }) {
             <StrategyTag strategy="divide" />
             <Badge cfg={statusCfg} pulse={job.status === 'running'} />
             <span className="text-[11px] font-mono text-text-500">{job.module}</span>
+            <span className="text-[11px] font-mono text-text-500">{done}/{total} tasks</span>
+            <span className="text-[11px] font-mono text-text-500" title="Elapsed">
+              {fmtDuration(job.startedAt, job.status === 'running' ? job.updatedAt : job.updatedAt)}
+            </span>
           </div>
           <p className="text-sm text-text-100 font-[330] truncate mt-0.5" title={job.request}>
             {job.request}
@@ -162,7 +180,13 @@ function DivideCard({ job }: { job: DivideJobView }) {
 
       {job.status === 'running' ? (
         <div className="h-0.5 bg-bg-200">
-          <div className="h-full bg-amber-400 animate-pulse w-1/3" />
+          <div
+            className="h-full bg-amber-400 transition-all duration-slow"
+            style={{ width: `${pct}%` }}
+            role="progressbar"
+            aria-valuenow={done}
+            aria-valuemax={total}
+          />
         </div>
       ) : (
         <div className={`h-0.5 ${statusCfg.dot}`} />

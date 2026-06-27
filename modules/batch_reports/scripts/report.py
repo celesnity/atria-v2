@@ -122,6 +122,28 @@ def cmd_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Emit the full dashboard payload (regions ranked + summary if merged)."""
+    reports = sorted(_load_reports(), key=lambda r: r.get("revenue", 0), reverse=True)
+    summary = None
+    sp = _DATA / "summary.json"
+    if sp.exists():
+        try:
+            summary = json.loads(sp.read_text())
+        except Exception:  # noqa: BLE001
+            summary = None
+    payload = {
+        "ok": True,
+        "count": len(reports),
+        "regions": reports,
+        "summary": summary,
+        "total_units": sum(r.get("units", 0) for r in reports),
+        "total_revenue": round(sum(r.get("revenue", 0) for r in reports), 2),
+    }
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
 def cmd_reset(args: argparse.Namespace) -> int:
     n = 0
     if _REPORTS.exists():
@@ -166,6 +188,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show", parents=[common], help="print one region's report")
     s.add_argument("--region", required=True)
     s.set_defaults(func=cmd_show)
+
+    sub.add_parser(
+        "dashboard", parents=[common], help="emit the dashboard JSON payload"
+    ).set_defaults(func=cmd_dashboard)
 
     sub.add_parser(
         "reset", parents=[common], help="delete all generated reports + summary"
