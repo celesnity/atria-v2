@@ -425,7 +425,10 @@ class ToolProcessingMixin:
             raise
         tool_duration_ms = int((_time.monotonic() - tool_start) * 1000)
 
-        result_preview = (result.get("output") or result.get("error") or "")[:200]
+        _preview_src = result.get("output") or result.get("error") or ""
+        if not isinstance(_preview_src, str):
+            _preview_src = str(_preview_src)
+        result_preview = _preview_src[:200]
         _session_debug().log(
             "tool_call_end",
             "tool",
@@ -500,7 +503,10 @@ class ToolProcessingMixin:
             return {"success": False, "error": str(exc)}
 
         tool_duration_ms = int((_time.monotonic() - tool_start) * 1000)
-        result_preview = (result.get("output") or result.get("error") or "")[:200]
+        _preview_src = result.get("output") or result.get("error") or ""
+        if not isinstance(_preview_src, str):
+            _preview_src = str(_preview_src)
+        result_preview = _preview_src[:200]
         _session_debug().log(
             "tool_call_end",
             "tool",

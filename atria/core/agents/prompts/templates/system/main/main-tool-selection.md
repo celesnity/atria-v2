@@ -6,6 +6,16 @@ version: 2.0.0
 
 # Tool Selection Guide
 
+## HARD RULE — dispatch requests
+
+If the user's message asks to **dispatch**, **run in the background**, **fan out**,
+or run a job/task across many items, you MUST call the **`solve`** tool as your
+FIRST action — with `strategy="divide"` (split into sub-tasks) or
+`strategy="parallel"` (N independent solvers). For a module workflow, pass
+`module="<name>"`. Do NOT instead use `spawn_subagent`, and do NOT run the work
+yourself with `run_command`/scripts — that is not dispatching. Only fall back to
+doing it inline if `solve` returns an explicit "unavailable" error.
+
 When choosing tools, prefer the more specific option:
 - **Reading files**: read_file (NOT run_command with cat/head/tail)
 - **Editing files**: edit_file (NOT run_command with sed/awk)
