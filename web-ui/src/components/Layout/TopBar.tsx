@@ -1,6 +1,7 @@
-import { Command } from "lucide-react";
+import { Command, Network } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
@@ -97,6 +98,17 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
 
       {/* ── Spacer ── */}
       <div className="flex-1" />
+
+      {/* ── Observe: divide-work agents (always visible) ── */}
+      <Link
+        to="/divide"
+        className={`${pillBase} bg-surface-soft text-ink/70 border-hairline-soft hover:bg-canvas hover:text-ink flex-shrink-0`}
+        title="Quan sát agents — work-division monitor"
+        aria-label="Open the agents observation page"
+      >
+        <Network className="w-3 h-3" strokeWidth={1.5} />
+        <span className="hidden sm:inline">Agents</span>
+      </Link>
 
       {/* ── Center-Right: Status Pills (minimal) ── */}
       {status && (
