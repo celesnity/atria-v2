@@ -126,6 +126,16 @@ export function AppNavBar() {
             >
               Parallel
             </Link>
+            <Link
+              to="/divide"
+              className={`${linkBase} ${
+                isActive('/divide')
+                  ? 'bg-surface-soft text-ink font-[480]'
+                  : 'text-ink/60 hover:text-ink hover:bg-surface-soft font-[400]'
+              }`}
+            >
+              Divide
+            </Link>
           </div>
         </div>
 
