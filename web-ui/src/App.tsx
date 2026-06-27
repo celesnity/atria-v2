@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'motion/react';
 import { ChatPage } from './pages/ChatPage';
 import { CodeWikiPage } from './pages/CodeWikiPage';
+import { ParallelAgentsPage } from './pages/ParallelAgentsPage';
 import { RepositoryDetailPage } from './components/CodeWiki/RepositoryDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { TenantsPage } from './pages/admin/TenantsPage';
@@ -82,6 +83,7 @@ function AppRoutes() {
         <Route path="/chat" element={<AuthGuard><ChatPage /></AuthGuard>} />
         <Route path="/codewiki" element={<AuthGuard><CodeWikiPage /></AuthGuard>} />
         <Route path="/codewiki/:repoName" element={<AuthGuard><RepositoryDetailPage /></AuthGuard>} />
+        <Route path="/parallel" element={<AuthGuard><ParallelAgentsPage /></AuthGuard>} />
         <Route path="/admin/tenants" element={<AuthGuard><TenantsPage /></AuthGuard>} />
         <Route path="/admin/tenants/:slug/users" element={<AuthGuard><TenantUsersPage /></AuthGuard>} />
         <Route path="/" element={<Navigate to="/chat" replace />} />

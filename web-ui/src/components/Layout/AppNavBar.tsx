@@ -116,6 +116,16 @@ export function AppNavBar() {
             >
               CodeWiki
             </Link>
+            <Link
+              to="/parallel"
+              className={`${linkBase} ${
+                isActive('/parallel')
+                  ? 'bg-surface-soft text-ink font-[480]'
+                  : 'text-ink/60 hover:text-ink hover:bg-surface-soft font-[400]'
+              }`}
+            >
+              Parallel
+            </Link>
           </div>
         </div>
 
