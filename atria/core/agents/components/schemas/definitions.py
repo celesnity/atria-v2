@@ -371,59 +371,6 @@ _BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
-    # ===== Send Data Tool (web UI) =====
-    {
-        "type": "function",
-        "function": {
-            "name": "send_data",
-            "description": (
-                "Send tabular data (CSV/Excel) to the web UI as an interactive chart "
-                "bubble with one or more chart suggestions. Provide either `path` "
-                "(absolute server-side file) or `url` (remote). Include 1+ suggestions; "
-                "the UI renders the first by default and lets the user swap and edit. "
-                "Only works in the web UI."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Absolute server-side path to .csv/.xlsx/.xls (≤10 MB).",
-                    },
-                    "url": {
-                        "type": "string",
-                        "description": "Public http(s) URL of a CSV or Excel file.",
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "Title shown above the chart bubble.",
-                    },
-                    "suggestions": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "chart_type": {
-                                    "type": "string",
-                                    "enum": ["bar", "line", "area", "pie", "doughnut", "scatter"],
-                                },
-                                "x": {
-                                    "type": "string",
-                                    "description": "Column name for x-axis or category.",
-                                },
-                                "y": {"type": "array", "items": {"type": "string"}, "minItems": 1},
-                                "title": {"type": "string"},
-                                "reason": {"type": "string"},
-                            },
-                            "required": ["chart_type", "x", "y"],
-                        },
-                    },
-                },
-                "required": ["title", "suggestions"],
-            },
-        },
-    },
     # ===== Send Image Tool (web UI) =====
     {
         "type": "function",
@@ -460,38 +407,6 @@ _BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
     # Skill-owned schemas live in their skill folders and are merged in via
     # ToolSchemaBuilder(extra_schemas=...).
-    {
-        "type": "function",
-        "function": {
-            "name": "chart",
-            "description": load_tool_description("chart"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "db_path": {"type": "string"},
-                    "source_table": {"type": "string"},
-                    "chart_type": {
-                        "type": "string",
-                        "enum": ["bar", "line", "scatter", "hist", "pie"],
-                    },
-                    "x": {"type": "string"},
-                    "y": {"type": "array", "items": {"type": "string"}},
-                    "title": {"type": "string"},
-                    "out_path": {"type": "string"},
-                    "agg": {"type": ["string", "null"]},
-                },
-                "required": [
-                    "db_path",
-                    "source_table",
-                    "chart_type",
-                    "x",
-                    "y",
-                    "title",
-                    "out_path",
-                ],
-            },
-        },
-    },
     {
         "type": "function",
         "function": {
@@ -1462,100 +1377,85 @@ _BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
-    # ===== Parallel Multi-Solver Tools (DeLM Phase 2b) =====
+    # ===== Unified Solver Tools (divide + parallel behind a strategy param) =====
     {
         "type": "function",
         "function": {
-            "name": "solve_parallel",
-            "description": load_tool_description("solve_parallel"),
+            "name": "solve",
+            "description": load_tool_description("solve"),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "strategy": {
+                        "type": "string",
+                        "enum": ["divide", "parallel"],
+                        "description": (
+                            "How to dispatch the work. 'divide' decomposes a request "
+                            "into a DAG of interdependent sub-tasks run across module "
+                            "workers and collects every result. 'parallel' fans out N "
+                            "independent solvers on isolated git worktrees, then judges "
+                            "the candidates and applies the winning diff."
+                        ),
+                    },
                     "task": {
                         "type": "string",
-                        "description": "The task for each solver to attempt independently.",
+                        "description": (
+                            "For strategy='parallel': the task each solver attempts "
+                            "independently. For strategy='divide': accepted as an alias "
+                            "of 'request'."
+                        ),
                     },
-                    "n": {
-                        "type": "integer",
-                        "description": "Number of parallel solvers. Clamped to [2, max_solvers]. "
-                        "Defaults to the configured default when omitted.",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_parallel_result",
-            "description": load_tool_description("get_parallel_result"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "job_id": {
-                        "type": "string",
-                        "description": "The job_id returned by solve_parallel.",
-                    },
-                    "block": {
-                        "type": "boolean",
-                        "description": "Whether to wait for all solvers to complete. "
-                        "Set to false for a non-blocking status check.",
-                        "default": True,
-                    },
-                    "timeout": {
-                        "type": "integer",
-                        "description": "Maximum wait time in milliseconds (max 600000).",
-                        "default": 30000,
-                        "maximum": 600000,
-                    },
-                },
-                "required": ["job_id"],
-            },
-        },
-    },
-    # ===== Divide-and-Conquer Tools (DeLM Phase 2c) =====
-    {
-        "type": "function",
-        "function": {
-            "name": "divide_work",
-            "description": load_tool_description("divide_work"),
-            "parameters": {
-                "type": "object",
-                "properties": {
                     "request": {
                         "type": "string",
-                        "description": "The complex request to decompose into sub-tasks.",
+                        "description": (
+                            "For strategy='divide': the complex request to decompose "
+                            "into sub-tasks."
+                        ),
                     },
                     "module": {
                         "type": "string",
                         "description": (
-                            "Name of the module whose workflow governs decomposition. "
-                            "Defaults to the active module when omitted."
+                            "For strategy='divide': name of the module whose workflow "
+                            "governs decomposition. Defaults to the active module."
+                        ),
+                    },
+                    "n": {
+                        "type": "integer",
+                        "description": (
+                            "For strategy='parallel': number of solvers. Clamped to "
+                            "[2, max_solvers]. Defaults to the configured default."
                         ),
                     },
                 },
-                "required": ["request"],
+                "required": ["strategy"],
             },
         },
     },
     {
         "type": "function",
         "function": {
-            "name": "get_divide_result",
-            "description": load_tool_description("get_divide_result"),
+            "name": "get_solve_result",
+            "description": load_tool_description("get_solve_result"),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "job_id": {
                         "type": "string",
-                        "description": "The job_id returned by divide_work.",
+                        "description": "The job_id returned by solve.",
+                    },
+                    "strategy": {
+                        "type": "string",
+                        "enum": ["divide", "parallel"],
+                        "description": (
+                            "Optional. The strategy used for this job; normally "
+                            "inferred automatically from the job_id."
+                        ),
                     },
                     "block": {
                         "type": "boolean",
                         "description": (
-                            "Whether to wait for all sub-tasks to complete. "
-                            "Set to false for a non-blocking status check."
+                            "Whether to wait for the job to complete. Set to false "
+                            "for a non-blocking status check."
                         ),
                         "default": True,
                     },
@@ -1623,51 +1523,6 @@ _BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     },
                 },
                 "required": ["plan_file_path"],
-            },
-        },
-    },
-    # ===== Render Chart Tool (analyze plugin) =====
-    {
-        "type": "function",
-        "function": {
-            "name": "render_chart",
-            "description": load_tool_description("render-chart"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "data_path": {
-                        "type": "string",
-                        "description": "Absolute path to a .csv/.xlsx/.xls file.",
-                    },
-                    "chart_type": {
-                        "type": "string",
-                        "enum": ["bar", "line", "scatter", "hist", "pie"],
-                    },
-                    "x": {
-                        "type": "string",
-                        "description": "Column name for x-axis (ignored for chart_type=hist).",
-                    },
-                    "y": {
-                        "type": "array",
-                        "minItems": 1,
-                        "items": {"type": "string"},
-                        "description": "One or more numeric column names for y-axis.",
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "Chart title shown at the top of the figure.",
-                    },
-                    "out_path": {
-                        "type": "string",
-                        "description": "Absolute output path, must end in .png.",
-                    },
-                    "agg": {
-                        "type": "string",
-                        "enum": ["sum", "mean", "count", "none"],
-                        "description": "Aggregation when x has duplicate values. Defaults to sum for bar/line/pie.",
-                    },
-                },
-                "required": ["data_path", "chart_type", "y", "title", "out_path"],
             },
         },
     },

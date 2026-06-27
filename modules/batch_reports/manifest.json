@@ -1,0 +1,20 @@
+{
+  "display_name": "Batch Reports",
+  "tooltip": "Per-region reports · fan-out + merge",
+  "icon": "icon.svg",
+  "activity": {
+    "default": { "running": "Đang xử lý báo cáo…", "done": "Xong" },
+    "actions": {
+      "gen":   { "running": "Đang tạo báo cáo vùng…", "done": "Đã tạo" },
+      "merge": { "running": "Đang tổng hợp…",          "done": "Đã tổng hợp" },
+      "list":  { "running": "Đang liệt kê…",           "done": "Xong" },
+      "show":  { "running": "Đang mở báo cáo…",        "done": "Xong" },
+      "reset": { "running": "Đang xoá dữ liệu…",       "done": "Đã xoá" }
+    }
+  },
+  "subagent": {
+    "enabled": true,
+    "model": null,
+    "tools": null
+  }
+}

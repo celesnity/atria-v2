@@ -36,14 +36,10 @@ from atria.core.context_engineering.tools.handlers.browser_handlers import Brows
 from atria.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from atria.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from atria.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
-from atria.core.context_engineering.tools.implementations.send_data_tool import SendDataHandler
-from atria.core.context_engineering.tools.implementations.chart_tool import RenderChartHandler
 from atria.core.context_engineering.tools.implementations.md_to_pdf_tool import (
     MarkdownToPdfHandler,
 )
-from atria.core.context_engineering.tools.handlers.chart_handler import ChartHandler
 from atria.core.context_engineering.tools.handlers.md_to_pdf_handler import MdToPdfHandler
-from atria.core.context_engineering.tools.implementations.chart_tool import ChartTool
 from atria.core.context_engineering.tools.implementations.md_to_pdf_tool import MdToPdfTool
 from atria.core.context_engineering.tools.handlers.artifacts_handler import ArtifactsToolHandler
 
@@ -194,8 +190,6 @@ class ToolRegistry:
             spec.name: spec
             for spec in SkillToolLoader(_skill_dirs).discover_and_register(self.skill_ctx)
         }
-        self._chart_tool = ChartTool()
-        self._chart_handler_new = ChartHandler(self._chart_tool)
         self._md_to_pdf_tool = MdToPdfTool()
         self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
@@ -232,8 +226,6 @@ class ToolRegistry:
         self._schedule_handler = ScheduleToolHandler()
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
-        self._send_data_handler = SendDataHandler()
-        self._render_chart_handler = RenderChartHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
         self._memory_handler = MemoryToolHandler()
         self._session_handler = SessionToolHandler()
@@ -254,7 +246,6 @@ class ToolRegistry:
             "kill_process": self._process_handler.kill_process,
             "fetch_url": self._web_handler.fetch_url,
             "web_search": self._web_search_handler.search,
-            "chart": self._chart_handler_new.chart,
             "md_to_pdf": self._md_to_pdf_handler_new.md_to_pdf,
             "notebook_edit": self._notebook_edit_handler.edit_cell,
             "ask_user": self._ask_user_handler.ask_questions,
@@ -278,12 +269,9 @@ class ToolRegistry:
             "spawn_subagent": self._execute_spawn_subagent,
             # Get output from background subagent
             "get_subagent_output": self._get_subagent_output,
-            # Parallel multi-solver tools (DeLM Phase 2b)
-            "solve_parallel": self._execute_solve_parallel,
-            "get_parallel_result": self._execute_get_parallel_result,
-            # Divide-and-conquer tools (DeLM Phase 2c)
-            "divide_work": self._execute_divide_work,
-            "get_divide_result": self._execute_get_divide_result,
+            # Unified solver tools (divide + parallel behind a strategy param)
+            "solve": self._execute_solve,
+            "get_solve_result": self._execute_get_solve_result,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
             # MCP tool discovery (token-efficient)
@@ -304,9 +292,6 @@ class ToolRegistry:
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
-            # Data push tool (web UI)
-            "send_data": self._send_data_handler.send,
-            "render_chart": self._render_chart_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
             # Memory tools
             "memory_search": self._memory_handler.search,
@@ -731,8 +716,8 @@ class ToolRegistry:
         from atria.core.parallel.tools import build_orchestrator, make_worktree_manager
 
         progress_cb = None
-        if ui_callback is not None and hasattr(ui_callback, "on_parallel_solver_event"):
-            progress_cb = ui_callback.on_parallel_solver_event
+        if ui_callback is not None and hasattr(ui_callback, "on_solver_event"):
+            progress_cb = lambda stage, data: ui_callback.on_solver_event("parallel", stage, data)  # noqa: E731
         self._parallel_orchestrator = build_orchestrator(
             task_client=task_client,
             worktree_manager=make_worktree_manager(self._get_repo_dir()),
@@ -801,8 +786,8 @@ class ToolRegistry:
         from atria.core.modules.registry import resolve_modules_root
 
         progress_cb = None
-        if ui_callback is not None and hasattr(ui_callback, "on_divide_event"):
-            progress_cb = ui_callback.on_divide_event
+        if ui_callback is not None and hasattr(ui_callback, "on_solver_event"):
+            progress_cb = lambda stage, data: ui_callback.on_solver_event("divide", stage, data)  # noqa: E731
 
         # Resolve owner/session from context — mirrors _execute_solve_parallel.
         # The orchestrator is built once; owner/session are baked in at build time.
@@ -881,6 +866,69 @@ class ToolRegistry:
         from atria.core.divide.tools import execute_get_divide_result
 
         return execute_get_divide_result(arguments, orch)
+
+    # ------------------------------------------------------------------
+    # Unified solver tools (divide + parallel behind a ``strategy`` param)
+    # ------------------------------------------------------------------
+
+    def _strategy_map(self) -> dict[str, str]:
+        """Lazy per-run map: job_id -> strategy, so get_solve_result can route."""
+        mapping = getattr(self, "_solve_strategy_by_job", None)
+        if mapping is None:
+            mapping = {}
+            self._solve_strategy_by_job = mapping
+        return mapping
+
+    def _execute_solve(
+        self, arguments: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
+        """Dispatch a solve job by ``strategy`` (divide or parallel).
+
+        'divide' decomposes a request into a DAG of interdependent sub-tasks and
+        collects results. 'parallel' fans out N independent worktree-isolated
+        solvers, judges candidates, and applies the winner's diff.
+        """
+        strategy = str(arguments.get("strategy") or "").strip().lower()
+        if strategy not in ("divide", "parallel"):
+            return {
+                "success": False,
+                "error": "strategy is required and must be 'divide' or 'parallel'.",
+                "output": None,
+            }
+        if strategy == "parallel":
+            result = self._execute_solve_parallel(arguments, context)
+        else:
+            result = self._execute_divide_work(arguments, context)
+        job_id = result.get("job_id")
+        if job_id:
+            self._strategy_map()[job_id] = strategy
+        return result
+
+    def _execute_get_solve_result(
+        self, arguments: dict[str, Any], context: Any = None
+    ) -> dict[str, Any]:
+        """Collect a solve job's result, routing by strategy.
+
+        Strategy is taken from the explicit ``strategy`` arg, else the per-run
+        job_id->strategy map. As a cross-restart fallback it probes parallel
+        (non-blocking) and otherwise routes to divide.
+        """
+        job_id = arguments.get("job_id", "")
+        if not job_id:
+            return {"success": False, "error": "job_id is required", "output": None}
+        strategy = str(
+            arguments.get("strategy") or self._strategy_map().get(job_id) or ""
+        ).strip().lower()
+        if strategy == "parallel":
+            return self._execute_get_parallel_result(arguments, context)
+        if strategy == "divide":
+            return self._execute_get_divide_result(arguments, context)
+        # Unknown (e.g. job created before a restart): probe parallel without
+        # blocking; if it doesn't own the job, route to divide.
+        probe = self._execute_get_parallel_result({**arguments, "block": False}, context)
+        if probe.get("success"):
+            return self._execute_get_parallel_result(arguments, context)
+        return self._execute_get_divide_result(arguments, context)
 
     def get_schemas(self) -> list[dict[str, Any]]:
         """Compatibility hook (schemas generated elsewhere)."""
@@ -971,14 +1019,11 @@ class ToolRegistry:
                 "list_sessions",
                 "get_session_history",
                 "send_image",
-                "send_data",
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",
-                "solve_parallel",
-                "get_parallel_result",
-                "divide_work",
-                "get_divide_result",
+                "solve",
+                "get_solve_result",
             }:
                 # Handlers requiring context
                 result = handler(arguments, context)

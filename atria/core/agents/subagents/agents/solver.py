@@ -9,7 +9,7 @@ SOLVER_SUBAGENT = SubAgentSpec(
         "Autonomous parallel solver. Attempts one task in an isolated git worktree, "
         "shares verified notes with peer solvers via the blackboard, and emits a "
         "PATCH_SUMMARY for the judge. USE FOR: the per-solver runs spawned by "
-        "solve_parallel (not invoked directly)."
+        "solve(strategy='parallel') (not invoked directly)."
     ),
     system_prompt=load_prompt("subagents/subagent-solver"),
     tools=[
