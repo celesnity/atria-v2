@@ -145,6 +145,18 @@ class WebUICallback(BaseUICallback):
     # Subagent lifecycle (used by SubAgentManager)
     # ------------------------------------------------------------------
 
+    def on_todos_updated(self, todos: list) -> None:
+        """Broadcast the current structured todo list to the client."""
+        self._broadcast(
+            {
+                "type": WSMessageType.TODOS_UPDATED,
+                "data": {
+                    "todos": todos,
+                    "session_id": self.session_id,
+                },
+            }
+        )
+
     def on_single_agent_start(self, agent_type: str, description: str, tool_call_id: str) -> None:
         """Broadcast when a single subagent begins executing."""
         logger.info(f"Subagent start: {agent_type} ({tool_call_id})")
