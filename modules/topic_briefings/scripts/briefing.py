@@ -21,6 +21,8 @@ import json
 import os
 import sys
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 _MODULE_ROOT = Path(__file__).resolve().parent.parent
@@ -63,8 +65,60 @@ def _pick(seq: tuple, idx: int):
     return seq[idx % len(seq)]
 
 
+def _serper_search(topic: str, timeout: float = 15.0) -> dict | None:
+    """Real web research via Serper. Returns None if unavailable/failed."""
+    api_key = os.environ.get("SERPER_API_KEY")
+    if not api_key:
+        return None
+    query = f"{topic} latest developments industry analysis"
+    body = json.dumps({"q": query, "num": 10}).encode("utf-8")
+    req = urllib.request.Request(
+        "https://google.serper.dev/search",
+        data=body,
+        headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
+        print(f"[serper] error: {e}", file=sys.stderr)
+        return None
+    organic = payload.get("organic") or []
+    if not organic:
+        return None
+    headline = organic[0].get("title") or f"{topic.upper()} briefing"
+    key_points = [
+        o.get("snippet", "").strip()
+        for o in organic[:3]
+        if o.get("snippet")
+    ]
+    sources = [{"title": o.get("title"), "link": o.get("link")} for o in organic[:5]]
+    kg = payload.get("knowledgeGraph") or {}
+    tags = []
+    if kg.get("type"):
+        tags.append(kg["type"].lower())
+    if payload.get("peopleAlsoAsk"):
+        tags.append("paa")
+    tags.append("serper")
+    reading_time_min = max(3, min(9, len(organic) // 2 + 2))
+    confidence = round(min(0.95, 0.6 + len(key_points) * 0.1), 2)
+    return {
+        "headline": headline,
+        "key_points": key_points or ["(no snippets returned)"],
+        "reading_time_min": reading_time_min,
+        "confidence": confidence,
+        "tags": sorted(set(tags)) or ["serper"],
+        "sources": sources,
+        "source": "serper",
+    }
+
+
 def _content(topic: str) -> dict:
-    """Deterministic synthetic briefing derived from the topic name."""
+    """Real Serper search when SERPER_API_KEY set; else deterministic synthetic."""
+    real = _serper_search(topic)
+    if real is not None:
+        return real
     key = topic.strip().lower()
     h = int(hashlib.sha256(key.encode()).hexdigest(), 16)
     T = key.upper()
@@ -80,6 +134,7 @@ def _content(topic: str) -> dict:
         "reading_time_min": reading_time_min,
         "confidence": confidence,
         "tags": tags,
+        "source": "synthetic",
     }
 
 
