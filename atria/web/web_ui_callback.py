@@ -277,6 +277,11 @@ class WebUICallback(BaseUICallback):
         ``strategy`` field lets the frontend pick the right rendering. Divide's
         ``task_update`` stage and parallel's ``progress`` stage both map to the
         single ``SOLVER_PROGRESS`` message.
+
+        On the ``done`` stage this also emits a synthetic assistant chat
+        message so the user is notified without having to reload the Dispatch
+        page. The notification is persisted to the session so it survives
+        a refresh.
         """
         mapping = {
             "started": WSMessageType.SOLVER_STARTED,
@@ -293,6 +298,82 @@ class WebUICallback(BaseUICallback):
                 "data": {**data, "strategy": strategy, "session_id": self.session_id},
             }
         )
+        if stage == "done":
+            self._auto_notify_solver_done(strategy, data)
+
+    def _auto_notify_solver_done(self, strategy: str, data: dict) -> None:
+        """Push a summary assistant message when a solve job finishes.
+
+        Streams a small synthetic assistant message (start → chunk → complete)
+        so the chat panel renders it as a normal assistant turn. Persists to
+        the session so it is not lost on refresh. Best-effort: any failure
+        here is logged and swallowed.
+        """
+        job_id = str(data.get("job_id") or "?")
+        status = str(data.get("status") or "done").lower()
+        summary = str(data.get("summary") or data.get("reasoning") or "").strip()
+        applied = data.get("applied")
+        winner = data.get("winner_thread")
+        conflicted = data.get("conflicted_files") or []
+
+        emoji = "✅" if status == "done" else "⚠️"
+        head = (
+            f"{emoji} Job `{job_id}` ({strategy}) "
+            f"{'hoàn thành' if status == 'done' else 'kết thúc với lỗi'}."
+        )
+        lines: list[str] = [head]
+        if summary:
+            lines.append(summary)
+        if strategy == "parallel":
+            if applied is True:
+                lines.append(
+                    f"Đã áp dụng diff từ solver #{winner if winner is not None else '?'}."
+                )
+            elif applied is False:
+                lines.append("Không áp dụng diff — judge từ chối các candidate.")
+            if conflicted:
+                lines.append(
+                    "Xung đột: " + ", ".join(f"`{f}`" for f in conflicted[:5])
+                    + (f" (+{len(conflicted) - 5})" if len(conflicted) > 5 else "")
+                )
+        lines.append("Xem chi tiết trên tab Dispatch.")
+        content = "\n\n".join(lines)
+
+        msg_id = f"autonotify-{job_id}-{uuid.uuid4().hex[:6]}"
+        base = {"messageId": msg_id, "session_id": self.session_id}
+        try:
+            self._broadcast({"type": WSMessageType.MESSAGE_START, "data": dict(base)})
+            self._broadcast(
+                {
+                    "type": WSMessageType.MESSAGE_CHUNK,
+                    "data": {**base, "content": content},
+                }
+            )
+            self._broadcast({"type": WSMessageType.MESSAGE_COMPLETE, "data": dict(base)})
+        except Exception as exc:  # noqa: BLE001 — never break the solver event pipeline
+            logger.warning("auto-notify broadcast failed for %s: %s", job_id, exc)
+            return
+
+        state = self.state
+        loop = self.loop
+        session_id = self.session_id
+        if getattr(state, "session_manager", None) is None or loop is None:
+            return
+
+        async def _persist() -> None:
+            try:
+                sess = await state.session_manager.get_session_by_id(session_id)
+                if sess is None:
+                    return
+                sess.add_message(ChatMessage(role=Role.ASSISTANT, content=content))
+                await state.session_manager.save_session(sess)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to persist auto-notify message: %s", exc)
+
+        try:
+            asyncio.run_coroutine_threadsafe(_persist(), loop)
+        except RuntimeError as exc:
+            logger.warning("Could not schedule auto-notify persist: %s", exc)
 
     # ------------------------------------------------------------------
     # Cost tracking
