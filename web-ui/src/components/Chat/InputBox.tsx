@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Paperclip, Square, SendHorizontal } from 'lucide-react';
+import { Paperclip, Square, SendHorizontal, Settings2, Lock, Brain } from 'lucide-react';
 import { DocumentIcon } from '@heroicons/react/24/outline';
 import Mentions from 'rc-mentions';
 import type { MentionsRef, DataDrivenOptionProps } from 'rc-mentions/es/Mentions';
@@ -8,7 +8,28 @@ import { useArtifactsStore } from '../../stores/artifacts';
 import { useArtifactUpload } from '../../hooks/useArtifactUpload';
 import { apiClient } from '../../api/client';
 import { PersonaSelector } from './PersonaSelector';
-import { StatusBar } from './StatusBar';
+
+// Pill styling tokens moved from StatusBar so all four control pills read as one row.
+const MODE_STYLES = {
+  normal: 'bg-bg-400/40 text-text-200 border-gray-300 hover:bg-bg-400/60',
+  plan: 'bg-accent-secondary-900 text-accent-secondary-100 border-accent-secondary-900/50 hover:bg-accent-secondary-900/80',
+} as const;
+
+const AUTONOMY_STYLES = {
+  'Manual': 'bg-bg-400/40 text-text-200 border-gray-300 hover:bg-bg-400/60',
+  'Semi-Auto': 'bg-accent-secondary-900 text-accent-secondary-100 border-accent-secondary-900/50 hover:bg-accent-secondary-900/80',
+  'Auto': 'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
+} as const;
+
+const THINKING_STYLES: Record<string, string> = {
+  'Off':    'bg-bg-200 text-text-500 border-gray-300 hover:bg-bg-300',
+  'Low':    'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 hover:bg-cyan-500/15',
+  'Medium': 'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
+  'High':   'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/15',
+} as const;
+
+const PILL_BASE =
+  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
 
 export function InputBox() {
   const [input, setInput] = useState('');
@@ -19,6 +40,13 @@ export function InputBox() {
 
   const sendMessage = useChatStore(state => state.sendMessage);
   const currentSessionId = useChatStore(state => state.currentSessionId);
+
+  // Control-pill state/setters (previously in StatusBar).
+  const status = useChatStore(state => state.status);
+  const thinkingLevel = useChatStore(state => state.thinkingLevel);
+  const toggleMode = useChatStore(state => state.toggleMode);
+  const cycleAutonomy = useChatStore(state => state.cycleAutonomy);
+  const cycleThinkingLevel = useChatStore(state => state.cycleThinkingLevel);
   const { upload, uploading: fileUploading } = useArtifactUpload();
   const scanArtifacts = useArtifactsStore(state => state.scanArtifacts);
 
@@ -144,7 +172,7 @@ export function InputBox() {
     : 'Type your message... (use @ to mention files)';
 
   return (
-    <div className="bg-canvas border-t border-hairline-soft/50 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="bg-canvas border-t border-hairline-soft/50 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="w-full relative">
         <div className="rounded-xl border border-hairline-soft bg-canvas focus-within:border-ink/20 focus-within:shadow-soft transition-all duration-fast">
           <div className="flex gap-2 px-2 py-1.5 items-center">
@@ -210,8 +238,47 @@ export function InputBox() {
         </div>
 
         {hasActiveSession && (
-          <div className="flex items-center gap-3 flex-wrap mt-2 px-0.5">
-            <StatusBar />
+          <div className="flex items-center gap-2 flex-wrap mt-2.5 px-0.5">
+            {/* Mode pill */}
+            {status && (
+              <button
+                onClick={toggleMode}
+                aria-label={`Mode: ${status.mode === 'normal' ? 'Normal' : 'Plan'}. Click to toggle.`}
+                className={`${PILL_BASE} ${MODE_STYLES[status.mode]}`}
+                title="Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
+              >
+                <Settings2 className="w-3 h-3" strokeWidth={2} />
+                Mode: {status.mode === 'normal' ? 'Normal' : 'Plan'}
+              </button>
+            )}
+
+            {/* Approval pill */}
+            {status && (
+              <button
+                onClick={cycleAutonomy}
+                aria-label={`Approval: ${status.autonomy_level}. Click to cycle.`}
+                className={`${PILL_BASE} ${AUTONOMY_STYLES[status.autonomy_level]}`}
+                title="Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
+              >
+                <Lock className="w-3 h-3" strokeWidth={2} />
+                Approval: {status.autonomy_level}
+              </button>
+            )}
+
+            {/* Think pill */}
+            {status && (
+              <button
+                onClick={cycleThinkingLevel}
+                aria-label={`Think: ${thinkingLevel}. Click to cycle.`}
+                className={`${PILL_BASE} ${THINKING_STYLES[thinkingLevel] || THINKING_STYLES['Medium']}`}
+                title="Controls how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
+              >
+                <Brain className="w-3 h-3" strokeWidth={2} />
+                Think: {thinkingLevel}
+              </button>
+            )}
+
+            {/* Persona pill (own dropdown) */}
             <PersonaSelector />
           </div>
         )}

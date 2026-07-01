@@ -86,6 +86,9 @@ export interface Message {
   block_title?: string;
   content: string;
   timestamp?: string;
+  // Groups all assistant text chunks from a single agent turn into one bubble,
+  // even when tool_call/tool_result messages are interleaved between chunks.
+  turnId?: string;
   tool_call_id?: string;
   tool_name?: string;
   tool_args?: Record<string, any>;

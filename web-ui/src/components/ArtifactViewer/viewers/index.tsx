@@ -39,14 +39,15 @@ export function ViewerDispatcher({ convId, tab }: Props) {
   const url = apiClient.readFsUrl(scope, path);
   const editable = tab.kind === 'module-file';
   const kind = pickRenderer(ext);
+  const convKey = String(convId);
 
   switch (kind) {
     case 'csv':
-      return <CsvViewer scope={scope} path={path} />;
+      return <CsvViewer scope={scope} path={path} convId={convKey} tabId={tab.id} />;
     case 'excel':
       return (
         <Suspense fallback={<Fallback />}>
-          <ExcelViewer scope={scope} path={path} />
+          <ExcelViewer scope={scope} path={path} convId={convKey} tabId={tab.id} />
         </Suspense>
       );
     case 'image':
@@ -54,13 +55,13 @@ export function ViewerDispatcher({ convId, tab }: Props) {
     case 'pdf':
       return <PdfViewer url={url} name={name} />;
     case 'markdown':
-      return <MarkdownViewer scope={scope} path={path} editable={editable} />;
+      return <MarkdownViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />;
     case 'html':
-      return <HtmlViewer scope={scope} path={path} editable={editable} />;
+      return <HtmlViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />;
     case 'monaco':
       return (
         <Suspense fallback={<Fallback />}>
-          <MonacoViewer scope={scope} path={path} editable={editable} />
+          <MonacoViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />
         </Suspense>
       );
     case 'binary':

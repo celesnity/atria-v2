@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 from pathlib import Path
 from typing import Dict, List
@@ -13,6 +14,24 @@ from atria.core.modules.deps import install_module_deps
 from atria.core.modules.store import Module, ModuleNotFound
 
 logger = logging.getLogger(__name__)
+
+
+def load_disabled_modules() -> set[str]:
+    """Names to exclude from discovery, read from ``ATRIA_DISABLED_MODULES``.
+
+    Comma- or whitespace-separated list of module folder names, or ``*`` /
+    ``all`` to disable every module. This is a true kill switch — disabled
+    modules never enter the registry, so they stay off the prompt catalog,
+    subagent routing, and dependency install — while their folder remains
+    untouched on disk. Empty/unset means nothing is disabled.
+    """
+    raw = os.environ.get("ATRIA_DISABLED_MODULES", "")
+    return {tok for tok in re.split(r"[,\s]+", raw) if tok}
+
+
+def _all_modules_disabled(disabled: set[str]) -> bool:
+    """True when the env requests disabling every module (``*`` or ``all``)."""
+    return "*" in disabled or "all" in disabled
 
 
 def resolve_modules_root() -> Path:
@@ -53,18 +72,31 @@ class ModuleRegistry:
 
     def load_all(self) -> None:
         """Replace contents with everything currently on disk. Bumps version."""
+        disabled = load_disabled_modules()
+        skip_all = _all_modules_disabled(disabled)
         with self._lock:
-            modules = store.list_modules(self.root)
+            modules = (
+                []
+                if skip_all
+                else [m for m in store.list_modules(self.root) if m.name not in disabled]
+            )
             for m in modules:
                 install_module_deps(m.dir)
             self._modules = {m.name: m for m in modules}
             self._version += 1
         logger.info(
-            "module registry: loaded %d module(s) (v=%d)", len(self._modules), self._version
+            "module registry: loaded %d module(s) (v=%d, %d disabled via env)",
+            len(self._modules),
+            self._version,
+            len(disabled),
         )
 
     def reload_one(self, name: str) -> None:
-        """Reload a single module from disk. If gone, remove it. Bumps version."""
+        """Reload a single module from disk. If gone or disabled, remove it. Bumps version."""
+        disabled = load_disabled_modules()
+        if name in disabled or _all_modules_disabled(disabled):
+            self.remove(name)
+            return
         with self._lock:
             try:
                 module = store.read_module(self.root, name)

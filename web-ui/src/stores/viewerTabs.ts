@@ -4,6 +4,7 @@ import type { ViewerTab } from '../types';
 interface TabSlice {
   tabs: ViewerTab[];
   activeId: string | null;
+  dirty: Record<string, boolean>;
 }
 
 interface ViewerTabsState {
@@ -13,6 +14,8 @@ interface ViewerTabsState {
   openModuleFileTab: (convId: string, module: string, path: string) => void;
   closeTab: (convId: string, id: string) => void;
   setActive: (convId: string, id: string) => void;
+  markDirty: (convId: string, id: string) => void;
+  markClean: (convId: string, id: string) => void;
   clearConv: (convId: string) => void;
 }
 
@@ -47,24 +50,24 @@ function tabFromModuleFile(module: string, path: string): ViewerTab {
 function openTabIn(slice: TabSlice, tab: ViewerTab): TabSlice {
   const existing = slice.tabs.find(t => t.id === tab.id);
   if (existing) return { ...slice, activeId: tab.id };
-  return { tabs: [...slice.tabs, tab], activeId: tab.id };
+  return { tabs: [...slice.tabs, tab], activeId: tab.id, dirty: slice.dirty };
 }
 
 export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
   tabsByConv: {},
 
   openTab: (convId, path) => {
-    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null };
+    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
     set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromPath(path)) } });
   },
 
   openModuleTab: (convId, name) => {
-    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null };
+    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
     set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) } });
   },
 
   openModuleFileTab: (convId, module, path) => {
-    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null };
+    const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
     set({
       tabsByConv: {
         ...get().tabsByConv,
@@ -84,10 +87,11 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
       if (remaining.length === 0) nextActive = null;
       else nextActive = remaining[Math.min(idx, remaining.length - 1)].id;
     }
+    const { [id]: _removed, ...dirty } = slice.dirty;
     set({
       tabsByConv: {
         ...get().tabsByConv,
-        [convId]: { tabs: remaining, activeId: nextActive },
+        [convId]: { tabs: remaining, activeId: nextActive, dirty },
       },
     });
   },
@@ -96,6 +100,25 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
     const slice = get().tabsByConv[convId];
     if (!slice || !slice.tabs.some(t => t.id === id)) return;
     set({ tabsByConv: { ...get().tabsByConv, [convId]: { ...slice, activeId: id } } });
+  },
+
+  markDirty: (convId, id) => {
+    const slice = get().tabsByConv[convId];
+    if (!slice) return;
+    if (slice.dirty[id]) return;
+    set({
+      tabsByConv: {
+        ...get().tabsByConv,
+        [convId]: { ...slice, dirty: { ...slice.dirty, [id]: true } },
+      },
+    });
+  },
+
+  markClean: (convId, id) => {
+    const slice = get().tabsByConv[convId];
+    if (!slice || !slice.dirty[id]) return;
+    const { [id]: _removed, ...dirty } = slice.dirty;
+    set({ tabsByConv: { ...get().tabsByConv, [convId]: { ...slice, dirty } } });
   },
 
   clearConv: (convId) => {

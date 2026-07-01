@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSolverJobsStore } from '../stores/solverJobs';
+import { useShallow } from 'zustand/react/shallow';
+import { Eyebrow } from '../components/ui/Eyebrow';
+import { useSolverJobsStore, solverStatusCounts } from '../stores/solverJobs';
 import type {
   SolverJob,
   DivideJobView,
@@ -183,12 +185,60 @@ function fmtDuration(fromMs: number, toMs: number): string {
   return `${m}m ${s % 60}s`;
 }
 
-/** Small pill marking which strategy produced a job. */
-function StrategyTag({ strategy }: { strategy: SolverJob['strategy'] }) {
+/** Uppercase status pill — the wireframe's dispatch task chip. */
+function StatusChip({ cfg }: { cfg: { color: string; bg: string; label: string } }) {
   return (
-    <span className="text-[10px] font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-sm bg-bg-200 text-text-400">
-      {strategy}
+    <span
+      className={`inline-flex items-center flex-shrink-0 text-[10px] font-mono font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg}`}
+    >
+      {cfg.label}
     </span>
+  );
+}
+
+/** Bordered mono pill for the module / strategy label on a task row. */
+function MetaPill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="flex-shrink-0 max-w-[150px] truncate text-[11px] font-mono text-text-400 px-2 py-0.5 rounded-full border border-border-300/20 whitespace-nowrap">
+      {children}
+    </span>
+  );
+}
+
+/** Module pill + progress bar + percent label — the wireframe's task progress row. */
+function ProgressRow({
+  pill,
+  pct,
+  fill,
+  ariaNow,
+  ariaMax,
+}: {
+  pill: React.ReactNode;
+  pct: number;
+  fill: string;
+  ariaNow: number;
+  ariaMax: number;
+}) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <div className="flex items-center gap-3">
+      {pill}
+      <div
+        className="flex-1 h-2 bg-bg-200 rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={ariaNow}
+        aria-valuemin={0}
+        aria-valuemax={ariaMax}
+      >
+        <div
+          className={`h-full rounded-full transition-all duration-slow ${fill}`}
+          style={{ width: `${Math.max(clamped, 2)}%` }}
+        />
+      </div>
+      <span className="w-10 flex-shrink-0 text-right text-[13px] font-mono tabular-nums text-text-400">
+        {Math.round(clamped)}%
+      </span>
+    </div>
   );
 }
 
@@ -238,38 +288,25 @@ function DivideCard({ job }: { job: DivideJobView }) {
       tabIndex={0}
       aria-label={`Divide job ${job.jobId.slice(0, 8)}, ${done} of ${total} tasks done`}
     >
-      <div className="flex items-start gap-3 px-4 py-3 border-b border-border-300/10">
-        <IconDivide />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-mono text-text-400">{job.jobId.slice(0, 8)}</span>
-            <StrategyTag strategy="divide" />
-            <Badge cfg={statusCfg} pulse={job.status === 'running'} />
-            <span className="text-[11px] font-mono text-text-500">{job.module}</span>
-            <span className="text-[11px] font-mono text-text-500">{done}/{total} tasks</span>
-            <span className="text-[11px] font-mono text-text-500" title="Elapsed">
-              {fmtDuration(job.startedAt, job.status === 'running' ? job.updatedAt : job.updatedAt)}
-            </span>
-          </div>
-          <p className="text-sm text-text-100 font-[330] truncate mt-0.5" title={job.request}>
+      <div className="px-4 py-3.5">
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="text-text-400"><IconDivide /></span>
+          <StatusChip cfg={statusCfg} />
+          <p className="flex-1 min-w-0 text-sm text-text-100 font-[500] truncate" title={job.request}>
             {job.request}
           </p>
+          <span className="flex-shrink-0 text-[11px] font-mono text-text-500" title="Tasks done · elapsed">
+            {done}/{total} · {fmtDuration(job.startedAt, job.updatedAt)}
+          </span>
         </div>
+        <ProgressRow
+          pill={<MetaPill>{job.module}</MetaPill>}
+          pct={pct}
+          fill={statusCfg.dot}
+          ariaNow={done}
+          ariaMax={total}
+        />
       </div>
-
-      {job.status === 'running' ? (
-        <div className="h-0.5 bg-bg-200">
-          <div
-            className="h-full bg-amber-400 transition-all duration-slow"
-            style={{ width: `${pct}%` }}
-            role="progressbar"
-            aria-valuenow={done}
-            aria-valuemax={total}
-          />
-        </div>
-      ) : (
-        <div className={`h-0.5 ${statusCfg.dot}`} />
-      )}
 
       <div>
         {job.tasks.map((t) => (
@@ -325,38 +362,25 @@ function ParallelCard({ job }: { job: ParallelJobView }) {
       role="region"
       aria-label={`Parallel job ${job.jobId.slice(0, 8)}`}
     >
-      <div className="flex items-start gap-3 px-4 py-3 border-b border-border-300/10">
-        <IconBranch />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-mono text-text-400">{job.jobId.slice(0, 8)}</span>
-            <StrategyTag strategy="parallel" />
-            <Badge cfg={statusCfg} pulse={job.status === 'running'} />
-            {job.status === 'running' && (
-              <span className="text-[11px] font-mono text-text-500">
-                {job.done}/{job.n} solvers
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-text-100 font-[330] truncate mt-0.5" title={job.task}>
+      <div className="px-4 py-3.5">
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="text-text-400"><IconBranch /></span>
+          <StatusChip cfg={statusCfg} />
+          <p className="flex-1 min-w-0 text-sm text-text-100 font-[500] truncate" title={job.task}>
             {job.task}
           </p>
+          <span className="flex-shrink-0 text-[11px] font-mono text-text-500" title="Solvers done · elapsed">
+            {job.done}/{job.n} · {fmtDuration(job.startedAt, job.updatedAt)}
+          </span>
         </div>
+        <ProgressRow
+          pill={<MetaPill>parallel</MetaPill>}
+          pct={job.n > 0 ? (job.done / job.n) * 100 : 0}
+          fill={statusCfg.dot}
+          ariaNow={job.done}
+          ariaMax={job.n}
+        />
       </div>
-
-      {job.status === 'running' ? (
-        <div className="h-0.5 bg-bg-200">
-          <div
-            className="h-full bg-amber-400 transition-all duration-slow"
-            style={{ width: `${job.n > 0 ? Math.max((job.done / job.n) * 100, 3) : 3}%` }}
-            role="progressbar"
-            aria-valuenow={job.done}
-            aria-valuemax={job.n}
-          />
-        </div>
-      ) : (
-        <div className={`h-0.5 ${statusCfg.dot}`} />
-      )}
 
       <div>
         {job.threads.map((t) => (
@@ -430,12 +454,53 @@ function EmptyState() {
   );
 }
 
+// ─── Summary cards ──────────────────────────────────────────────────────────
+// Dot colors mirror the status configs above: running→amber, queued→neutral
+// (pending/skipped's text-500), done→emerald.
+
+const SUMMARY_CARDS = [
+  { key: 'running', label: 'Running', dot: 'bg-amber-400' },
+  { key: 'queued', label: 'Queued', dot: 'bg-text-500' },
+  { key: 'done', label: 'Done', dot: 'bg-emerald-500' },
+] as const;
+
+function SummaryCards({
+  counts,
+}: {
+  counts: { running: number; queued: number; done: number };
+}) {
+  return (
+    <dl className="grid grid-cols-3 gap-4 mb-6">
+      {SUMMARY_CARDS.map(({ key, label, dot }) => (
+        <div
+          key={key}
+          className="flex items-center gap-3 bg-bg-000 border border-border-300/15 rounded-lg px-4 py-3.5"
+        >
+          <span
+            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dot} ${
+              key === 'running' && counts.running > 0 ? 'animate-pulse-dot' : ''
+            }`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0">
+            <dd className="text-[26px] leading-none font-[330] text-text-100 tabular-nums">
+              {counts[key]}
+            </dd>
+            <dt className="text-[12px] text-text-400 mt-1">{label}</dt>
+          </div>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function DispatchPage() {
   const jobs = useSolverJobsStore((s) => s.jobs);
   const order = useSolverJobsStore((s) => s.order);
   const clear = useSolverJobsStore((s) => s.clear);
+  const counts = useSolverJobsStore(useShallow(solverStatusCounts));
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-canvas">
@@ -443,8 +508,9 @@ export function DispatchPage() {
         <div className="max-w-content mx-auto px-6 py-8">
           <div className="flex items-start justify-between mb-8">
             <div>
-              <h1 className="text-headline text-ink tracking-[-0.26px]">Dispatch</h1>
-              <p className="text-body-sm text-ink/60 mt-1">
+              <Eyebrow as="p" className="mb-2 text-ink/50">Dispatch · background tasks</Eyebrow>
+              <h1 className="text-[28px] font-[600] leading-tight text-ink tracking-[-0.5px]">Dispatch</h1>
+              <p className="text-body-sm text-ink/60 mt-1.5">
                 Live task dispatch — divide (DAG decomposition) and parallel
                 (worktree-isolated solvers, judged and applied) in one view.
               </p>
@@ -460,6 +526,8 @@ export function DispatchPage() {
               </button>
             )}
           </div>
+
+          <SummaryCards counts={counts} />
 
           {order.length === 0 ? (
             <EmptyState />

@@ -40,4 +40,35 @@ describe('viewerTabs store', () => {
     expect(slice.tabs).toEqual([]);
     expect(slice.activeId).toBeNull();
   });
+
+  it('marks a tab dirty and clean', () => {
+    useViewerTabsStore.getState().openTab('1', 'a.txt');
+    expect(useViewerTabsStore.getState().tabsByConv['1'].dirty['a.txt']).toBeUndefined();
+
+    useViewerTabsStore.getState().markDirty('1', 'a.txt');
+    expect(useViewerTabsStore.getState().tabsByConv['1'].dirty['a.txt']).toBe(true);
+
+    useViewerTabsStore.getState().markClean('1', 'a.txt');
+    expect(useViewerTabsStore.getState().tabsByConv['1'].dirty['a.txt']).toBeUndefined();
+  });
+
+  it('keeps dirty flags independent across tabs', () => {
+    useViewerTabsStore.getState().openTab('1', 'a.txt');
+    useViewerTabsStore.getState().openTab('1', 'b.txt');
+    useViewerTabsStore.getState().markDirty('1', 'a.txt');
+    const { dirty } = useViewerTabsStore.getState().tabsByConv['1'];
+    expect(dirty['a.txt']).toBe(true);
+    expect(dirty['b.txt']).toBeUndefined();
+  });
+
+  it('clears the dirty flag when a tab is closed', () => {
+    useViewerTabsStore.getState().openTab('1', 'a.txt');
+    useViewerTabsStore.getState().openTab('1', 'b.txt');
+    useViewerTabsStore.getState().markDirty('1', 'a.txt');
+    useViewerTabsStore.getState().markDirty('1', 'b.txt');
+    useViewerTabsStore.getState().closeTab('1', 'a.txt');
+    const { dirty } = useViewerTabsStore.getState().tabsByConv['1'];
+    expect(dirty['a.txt']).toBeUndefined();
+    expect(dirty['b.txt']).toBe(true);
+  });
 });

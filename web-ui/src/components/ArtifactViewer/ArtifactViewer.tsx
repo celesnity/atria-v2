@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalStorage, useMediaQuery } from 'usehooks-ts';
 import { PanelRightOpen, PanelRightClose, FolderTree, X } from 'lucide-react';
 import { Resizable, type ResizeCallbackData } from 'react-resizable';
@@ -12,21 +12,37 @@ import { ModuleGallery } from './ModuleGallery';
 
 const KEY_COLLAPSED = 'artifact-viewer.collapsed';
 const KEY_WIDTH = 'artifact-viewer.width';
-const KEY_TREE_WIDTH = 'artifact-viewer.tree-width';
+const KEY_TOP_HEIGHT = 'artifact-viewer.top-height';
 
 const MIN_PANEL = 320;
 const MAX_PANEL = 1100;
-const MIN_TREE = 160;
-const MAX_TREE = 480;
-const MIN_VIEWER = 80;
+// Vertical split: top = Explorer, bottom = Editor.
+const MIN_TOP = 140;      // explorer min height
+const MAX_TOP = 720;      // fallback cap before the container height is measured
+const MIN_BOTTOM = 140;   // editor min height (keeps the bottom zone from collapsing)
 
 export function ArtifactViewer() {
   const currentSessionId = useChatStore(s => s.currentSessionId);
 
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(KEY_COLLAPSED, false);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>(KEY_WIDTH, 560);
-  const [treeWidth, setTreeWidth] = useLocalStorage<number>(KEY_TREE_WIDTH, 220);
+  const [topHeight, setTopHeight] = useLocalStorage<number>(KEY_TOP_HEIGHT, 400);
   const [leftMode, setLeftMode] = useLeftMode();
+
+  // Measure the inner stack so the Explorer's max height leaves room for the
+  // Editor below it (attached via callback ref since the node only exists on the
+  // desktop, non-collapsed branch).
+  const [contentH, setContentH] = useState(0);
+  const roRef = useRef<ResizeObserver | null>(null);
+  const measureRef = useCallback((node: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    if (node) {
+      const ro = new ResizeObserver(() => setContentH(node.clientHeight));
+      ro.observe(node);
+      roRef.current = ro;
+      setContentH(node.clientHeight);
+    }
+  }, []);
 
   // Below lg the viewer is a full-screen overlay rather than a side column, and
   // it starts collapsed so the chat keeps the full width on entry.
@@ -50,7 +66,8 @@ export function ArtifactViewer() {
     if (activeTab) setMobileShowTree(false);
   }, [activeTab?.id]);
 
-  const effectiveTreeWidth = Math.min(treeWidth, panelWidth - 2 - MIN_VIEWER);
+  const maxTop = contentH > 0 ? Math.max(MIN_TOP, contentH - MIN_BOTTOM) : MAX_TOP;
+  const effectiveTopHeight = Math.max(MIN_TOP, Math.min(topHeight, maxTop));
 
   // Shared defaults required by bundled .d.ts (static defaultProps not inferred by TS)
   const resizableDefaults = {
@@ -60,14 +77,12 @@ export function ArtifactViewer() {
   };
 
   const onPanelResize = useCallback((_: React.SyntheticEvent, data: ResizeCallbackData) => {
-    const next = data.size.width;
-    setPanelWidth(next);
-    setTreeWidth(prev => Math.min(prev, next - 2 - MIN_VIEWER));
-  }, [setPanelWidth, setTreeWidth]);
+    setPanelWidth(data.size.width);
+  }, [setPanelWidth]);
 
-  const onTreeResize = useCallback((_: React.SyntheticEvent, data: ResizeCallbackData) => {
-    setTreeWidth(data.size.width);
-  }, [setTreeWidth]);
+  const onTopResize = useCallback((_: React.SyntheticEvent, data: ResizeCallbackData) => {
+    setTopHeight(data.size.height);
+  }, [setTopHeight]);
 
   if (!currentSessionId) return null;
   const convInt = parseInt(currentSessionId, 10);
@@ -167,28 +182,28 @@ export function ArtifactViewer() {
       )}
       onResize={onPanelResize}
     >
-      <div className="relative flex h-full shadow-modal" style={{ width: panelWidth }}>
+      <div ref={measureRef} className="relative flex flex-col h-full shadow-modal" style={{ width: panelWidth }}>
 
-        {/* ── Left: file tree, full height ── */}
+        {/* ── Top: explorer (file tree / modules), height-resizable ── */}
         <Resizable
           {...resizableDefaults}
-          width={effectiveTreeWidth}
-          height={0}
-          axis="x"
-          minConstraints={[MIN_TREE, 0]}
-          maxConstraints={[Math.min(MAX_TREE, panelWidth - 2 - MIN_VIEWER), Infinity]}
-          resizeHandles={['e']}
+          width={0}
+          height={effectiveTopHeight}
+          axis="y"
+          minConstraints={[0, MIN_TOP]}
+          maxConstraints={[Infinity, maxTop]}
+          resizeHandles={['s']}
           handle={(_, ref) => (
             <div
               ref={ref as React.RefObject<HTMLDivElement>}
-              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-sky-400/25 transition-colors z-10"
+              className="absolute left-0 right-0 bottom-0 h-1 cursor-row-resize hover:bg-sky-400/25 transition-colors z-10"
             />
           )}
-          onResize={onTreeResize}
+          onResize={onTopResize}
         >
           <div
-            className="relative flex-shrink-0 h-full overflow-hidden border-r border-hairline-soft/60 flex flex-col"
-            style={{ width: effectiveTreeWidth }}
+            className="relative flex-shrink-0 w-full overflow-hidden border-b border-hairline-soft/60 flex flex-col"
+            style={{ height: effectiveTopHeight }}
           >
             <LeftPaneTabs mode={leftMode} onChange={setLeftMode} />
             <div className="flex-1 min-h-0 overflow-hidden">
@@ -203,7 +218,7 @@ export function ArtifactViewer() {
           </div>
         </Resizable>
 
-        {/* ── Right: [tab bar | collapse btn] + viewer ── */}
+        {/* ── Bottom: [tab bar | collapse btn] + viewer, fills remaining height ── */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 bg-canvas">
 
           {/* Tab row with collapse button pushed to far right */}

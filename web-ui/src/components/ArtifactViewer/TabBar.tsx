@@ -25,6 +25,7 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
 
   const tabs = slice?.tabs ?? [];
   const activeId = slice?.activeId ?? null;
+  const dirty = slice?.dirty ?? {};
 
   return (
     <div className="flex-1 flex items-center gap-0.5 overflow-x-auto px-1 py-1 min-w-0">
@@ -34,6 +35,7 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
       {tabs.map(tab => {
         const Icon = iconFor(tab);
         const isActive = tab.id === activeId;
+        const isDirty = !!dirty[tab.id];
         return (
           <div
             key={tab.id}
@@ -58,6 +60,15 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
           >
             <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-sky-400/80' : 'text-ink/40'}`} />
             <span className="truncate max-w-[140px]">{tab.name}</span>
+            {isDirty && (
+              <span
+                aria-label="Unsaved changes"
+                title="Unsaved changes"
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  isActive ? 'bg-sky-400/80' : 'bg-ink/50'
+                }`}
+              />
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); closeTab(convId, tab.id); }}
               aria-label={`Close ${tab.name}`}

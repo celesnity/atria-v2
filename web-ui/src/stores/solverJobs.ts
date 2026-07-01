@@ -169,6 +169,38 @@ export function runningSolverCount(state: SolverJobsState): number {
   return Object.values(state.jobs).filter((j) => j.status === 'running').length;
 }
 
+/**
+ * Aggregate running / queued / done counts across every job, at task/thread
+ * granularity — used for the Dispatch summary cards.
+ *
+ * Divide tasks: pending→queued, running→running, done|failed|skipped→done.
+ * Parallel threads: running→running, done|dropped→done (parallel has no queued).
+ */
+export function solverStatusCounts(state: SolverJobsState): {
+  running: number;
+  queued: number;
+  done: number;
+} {
+  let running = 0;
+  let queued = 0;
+  let done = 0;
+  for (const job of Object.values(state.jobs)) {
+    if (job.strategy === 'divide') {
+      for (const task of job.tasks) {
+        if (task.status === 'pending') queued += 1;
+        else if (task.status === 'running') running += 1;
+        else done += 1; // done | failed | skipped
+      }
+    } else {
+      for (const thread of job.threads) {
+        if (thread.status === 'running') running += 1;
+        else done += 1; // done | dropped
+      }
+    }
+  }
+  return { running, queued, done };
+}
+
 // ─── WS subscriptions — register once at module load ─────────────────────────
 
 let _initialized = false;

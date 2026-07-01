@@ -177,7 +177,7 @@ function WelcomeScreen() {
         </span>
       </div>
       <div className="relative z-10 max-w-xl w-full">
-        <div className="color-block bg-block-cream rounded-lg px-8 py-10 md:px-12 md:py-xxl text-center">
+        <div className="color-block bg-block-cream rounded-lg px-8 py-9 md:px-12 md:py-10 text-center">
           <span className="font-mono uppercase tracking-[0.54px] text-[12px] text-ink/60 block mb-4">
             Welcome
           </span>

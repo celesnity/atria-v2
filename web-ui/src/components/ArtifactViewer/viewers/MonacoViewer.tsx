@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import { Save, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../api/client';
 import { monacoLanguageFor } from './extensions';
+import { useViewerTabsStore } from '../../../stores/viewerTabs';
 import { fsScopeKey, type FsScope } from '../../../types';
 
 interface Props {
@@ -11,9 +12,15 @@ interface Props {
   languageOverride?: string;
   /** Allow editing + save (currently only honored for module scope). */
   editable?: boolean;
+  convId?: string;
+  tabId?: string;
 }
 
-export function MonacoViewer({ scope, path, languageOverride, editable = false }: Props) {
+export function MonacoViewer({ scope, path, languageOverride, editable = false, convId, tabId }: Props) {
+  const markDirty = useViewerTabsStore(s => s.markDirty);
+  const markClean = useViewerTabsStore(s => s.markClean);
+  const flagDirty = () => { if (convId && tabId) markDirty(convId, tabId); };
+  const flagClean = () => { if (convId && tabId) markClean(convId, tabId); };
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -45,6 +52,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false }
     try {
       await apiClient.writeFsText(scope, path, textRef.current);
       setDirty(false);
+      flagClean();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -87,7 +95,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false }
       value={text}
       language={language}
       theme="vs"
-      onChange={canSave ? (v) => { setText(v ?? ''); setDirty(true); } : undefined}
+      onChange={canSave ? (v) => { setText(v ?? ''); setDirty(true); flagDirty(); } : undefined}
       options={{
         readOnly: !canSave,
         automaticLayout: true,

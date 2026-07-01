@@ -576,6 +576,12 @@ function resolveSessionId(data: any): string | null {
 let connectionStableTimer: number | null = null;
 let wasEverStable = false;
 
+// Tracks the active agent turn per session so all assistant text chunks from
+// one ReAct turn accumulate into a single bubble, even when tool_call/tool_result
+// messages are interleaved between chunks. Set on message_start, cleared on
+// message_complete. See message_chunk handler below.
+const activeTurnBySession = new Map<string, string>();
+
 wsClient.on('connected', () => {
   useChatStore.getState().setConnected(true);
   if (wasEverStable) {
@@ -620,6 +626,8 @@ wsClient.on('user_message', (message) => {
 wsClient.on('message_start', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
+  // Begin a new turn: all assistant chunks until message_complete group here.
+  activeTurnBySession.set(sid, String(message.data.messageId ?? sid + ':' + Date.now()));
   useChatStore.setState(state => ({
     ...patchSession(state, sid, { isLoading: true }),
   }));
@@ -629,21 +637,40 @@ wsClient.on('message_chunk', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
+  // Fall back to a per-session turn id if no message_start was seen (e.g. after
+  // a reconnect mid-turn), so chunks still group instead of splitting per tool call.
+  let turnId = activeTurnBySession.get(sid);
+  if (!turnId) {
+    turnId = sid + ':' + Date.now();
+    activeTurnBySession.set(sid, turnId);
+  }
+
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
     const msgs = sessionState.messages;
-    const lastMessage = msgs[msgs.length - 1];
+
+    // Find the assistant bubble for the current turn (may sit above interleaved
+    // tool_call/tool_result messages), searching from the end for the latest turn.
+    let idx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'assistant' && msgs[i].turnId === turnId) {
+        idx = i;
+        break;
+      }
+    }
 
     let newMessages: Message[];
-    if (lastMessage && lastMessage.role === 'assistant') {
+    if (idx !== -1) {
+      const target = msgs[idx];
       newMessages = [
-        ...msgs.slice(0, -1),
-        { ...lastMessage, content: lastMessage.content + message.data.content },
+        ...msgs.slice(0, idx),
+        { ...target, content: target.content + message.data.content },
+        ...msgs.slice(idx + 1),
       ];
     } else {
       newMessages = [
         ...msgs,
-        { role: 'assistant' as const, content: message.data.content },
+        { role: 'assistant' as const, content: message.data.content, turnId },
       ];
     }
 
@@ -655,6 +682,8 @@ wsClient.on('message_complete', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
   console.log('[Frontend] Received message_complete');
+  // End the turn: next agent turn starts a fresh bubble.
+  activeTurnBySession.delete(sid);
   useChatStore.setState(state => ({
     ...patchSession(state, sid, { isLoading: false, queuedMessages: [] }),
   }));

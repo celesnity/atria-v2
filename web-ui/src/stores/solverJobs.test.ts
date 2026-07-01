@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useSolverJobsStore } from './solverJobs';
+import { useSolverJobsStore, solverStatusCounts } from './solverJobs';
 import type { DivideJobView, ParallelJobView } from './solverJobs';
 
 const NOW = 1;
@@ -105,6 +105,105 @@ describe('solverJobs blackboard.note', () => {
     expect(job.tasks[0].notes.length).toBe(50);
     expect(job.tasks[0].notes[0].content).toBe('n10');
     expect(job.tasks[0].notes[49].content).toBe('n59');
+  });
+});
+
+describe('solverStatusCounts', () => {
+  beforeEach(() => {
+    useSolverJobsStore.getState().clear();
+  });
+
+  it('returns zeros when there are no jobs', () => {
+    expect(solverStatusCounts(useSolverJobsStore.getState())).toEqual({
+      running: 0,
+      queued: 0,
+      done: 0,
+    });
+  });
+
+  it('maps divide task statuses: pending→queued, running→running, done|failed|skipped→done', () => {
+    const job: DivideJobView = {
+      strategy: 'divide',
+      jobId: 'jd',
+      module: 'm',
+      request: 'r',
+      tasks: [
+        { id: 't0', description: 'x', depends_on: [], status: 'pending', notes: [] },
+        { id: 't1', description: 'x', depends_on: [], status: 'running', notes: [] },
+        { id: 't2', description: 'x', depends_on: [], status: 'done', notes: [] },
+        { id: 't3', description: 'x', depends_on: [], status: 'failed', notes: [] },
+        { id: 't4', description: 'x', depends_on: [], status: 'skipped', notes: [] },
+      ],
+      status: 'running',
+      startedAt: NOW,
+      updatedAt: NOW,
+    };
+    useSolverJobsStore.setState({ jobs: { jd: job }, order: ['jd'] });
+    expect(solverStatusCounts(useSolverJobsStore.getState())).toEqual({
+      running: 1,
+      queued: 1,
+      done: 3,
+    });
+  });
+
+  it('maps parallel thread statuses: running→running, done|dropped→done (no queued)', () => {
+    const job: ParallelJobView = {
+      strategy: 'parallel',
+      jobId: 'jp',
+      task: 't',
+      n: 3,
+      status: 'running',
+      done: 0,
+      threads: [
+        { thread: 0, status: 'running', notes: [] },
+        { thread: 1, status: 'done', notes: [] },
+        { thread: 2, status: 'dropped', notes: [] },
+      ],
+      startedAt: NOW,
+      updatedAt: NOW,
+    };
+    useSolverJobsStore.setState({ jobs: { jp: job }, order: ['jp'] });
+    expect(solverStatusCounts(useSolverJobsStore.getState())).toEqual({
+      running: 1,
+      queued: 0,
+      done: 2,
+    });
+  });
+
+  it('aggregates across multiple divide and parallel jobs', () => {
+    const divide: DivideJobView = {
+      strategy: 'divide',
+      jobId: 'jd',
+      module: 'm',
+      request: 'r',
+      tasks: [
+        { id: 't0', description: 'x', depends_on: [], status: 'pending', notes: [] },
+        { id: 't1', description: 'x', depends_on: [], status: 'done', notes: [] },
+      ],
+      status: 'running',
+      startedAt: NOW,
+      updatedAt: NOW,
+    };
+    const parallel: ParallelJobView = {
+      strategy: 'parallel',
+      jobId: 'jp',
+      task: 't',
+      n: 2,
+      status: 'running',
+      done: 0,
+      threads: [
+        { thread: 0, status: 'running', notes: [] },
+        { thread: 1, status: 'running', notes: [] },
+      ],
+      startedAt: NOW,
+      updatedAt: NOW,
+    };
+    useSolverJobsStore.setState({ jobs: { jd: divide, jp: parallel }, order: ['jd', 'jp'] });
+    expect(solverStatusCounts(useSolverJobsStore.getState())).toEqual({
+      running: 2,
+      queued: 1,
+      done: 1,
+    });
   });
 });
 
