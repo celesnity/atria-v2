@@ -1,6 +1,6 @@
 ---
 name: maintenance_copilot
-description: AI Maintenance Knowledge Copilot (P1 concept brief + brainstorm) for the Maintenance Control Center (MCC) and engineering teams. Helps retrieve, validate, and cross-reference aircraft maintenance documentation (AMM, MEL, CDL, TSM, engineering orders, historical defect records) faster and with fewer errors, with a licensed engineer in the loop for every dispatch decision. Use for defect-assessment research, reference validation, dispatch-readiness support, and brainstorming the copilot's scope.
+description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). Runs RAG via copilot.py query — do NOT grep the manual files or answer from your own knowledge.
 ---
 
 # maintenance_copilot
