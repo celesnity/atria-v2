@@ -12,6 +12,7 @@ from atria.web.logging_config import logger
 from atria.web.protocol import WSMessageType
 from atria.models.message import ChatMessage, Role
 from atria.web.routes.auth import TOKEN_COOKIE, verify_token
+from atria.web.web_ui_callback import _BLOCK_FEED_EVENT_TYPES
 
 
 class WebSocketManager:
@@ -19,6 +20,7 @@ class WebSocketManager:
 
     def __init__(self):
         self.active_connections: list[WebSocket] = []
+        self._block_feed_subs: Dict[str, set] = {}
 
     async def connect(self, websocket: WebSocket):
         """Accept a new WebSocket connection."""
@@ -79,6 +81,47 @@ class WebSocketManager:
         # Clean up disconnected clients
         for conn in disconnected:
             self.disconnect(conn)
+
+    def forward_to_block_feed(
+        self, session_id: str, event: str, data: Dict[str, Any], loop: Any = None
+    ) -> None:
+        """Emit a block_event_feed message for every block subscribed in this session.
+
+        Args:
+            session_id: Session whose block subscriptions to fan-out to.
+            event: Event type string (e.g. ``"message_chunk"``).
+            data: Payload forwarded verbatim to subscribers.
+            loop: When provided (the web event loop from a worker thread), schedules
+                each broadcast via ``run_coroutine_threadsafe`` (fire-and-forget).
+                When None, falls back to ``get_running_loop().create_task`` or
+                ``asyncio.run``.
+        """
+        import asyncio as _asyncio
+
+        subs = self._block_feed_subs.get(session_id)
+        if not subs:
+            return
+        for block_id in list(subs):
+            msg: Dict[str, Any] = {
+                "type": "block_event_feed",
+                "data": {
+                    "block_id": block_id,
+                    "event": event,
+                    "data": data,
+                    "session_id": session_id,
+                },
+            }
+            if loop is not None:
+                try:
+                    _asyncio.run_coroutine_threadsafe(self.broadcast(msg), loop)
+                except Exception as exc:
+                    logger.debug("forward_to_block_feed run_coroutine_threadsafe: %s", exc)
+            else:
+                try:
+                    running_loop = _asyncio.get_running_loop()
+                    running_loop.create_task(self.broadcast(msg))
+                except RuntimeError:
+                    _asyncio.run(self.broadcast(msg))
 
     async def handle_message(self, websocket: WebSocket, data: Dict[str, Any]):
         """Handle incoming WebSocket message."""
@@ -509,9 +552,36 @@ class WebSocketManager:
                 ctx = ToolExecutionContext(session_manager=state.session_manager)
                 return handler.read_artifact_image({"artifact_id": artifact_id}, ctx)
 
+            if method == "config.read":
+                app_config = state.config_manager.get_config()
+                allowed_keys = set(getattr(
+                    getattr(getattr(app_config, "web", None), "iframe_rpc", None),
+                    "config_read_keys",
+                    [],
+                ) or [])
+                requested = args.get("keys") or list(allowed_keys)
+                out: Dict[str, Any] = {}
+                for k in requested:
+                    if k in allowed_keys:
+                        out[k] = getattr(app_config, k, None)
+                return out
+
             raise ValueError(f"unsupported method: {method}")
 
         async def _dispatch() -> None:
+            if method == "events.subscribe":
+                if not session_id:
+                    await _reply(False, error="no active session")
+                    return
+                requested = args.get("events")
+                if requested:
+                    subscribed = [e for e in requested if e in _BLOCK_FEED_EVENT_TYPES]
+                else:
+                    subscribed = list(_BLOCK_FEED_EVENT_TYPES)
+                self._block_feed_subs.setdefault(session_id, set()).add(block_id)
+                await _reply(True, data={"subscribed": subscribed})
+                return
+
             if method == "session.send_user_message":
                 text = args.get("text")
                 if not text or not isinstance(text, str):
