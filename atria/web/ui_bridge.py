@@ -41,6 +41,10 @@ class BlockNotFound(FileNotFoundError):
     """Raised when ``blocks/<name>.html`` does not exist inside a module."""
 
 
+class BlockPersistError(RuntimeError):
+    """Raised when a chat block cannot be durably persisted."""
+
+
 # ── Active-callback registries ───────────────────────────────────────────────
 
 _current_ui_callback: ContextVar[Optional["WebUICallback"]] = ContextVar(
@@ -173,57 +177,54 @@ def _publish_or_broadcast(
     return True
 
 
-def _persist_block_message(
+def _persist_block_message_sync(
+    session_id: str,
+    metadata: Dict[str, Any],
+    session_manager: Any,
+) -> None:
+    """Append + save a custom_block ChatMessage. Raises BlockPersistError on failure."""
+    import anyio
+
+    async def _save() -> None:
+        sess = await session_manager.get_session_by_id(session_id)
+        if sess is None:
+            raise BlockPersistError(f"session {session_id} not found")
+        msg = ChatMessage(role=Role.CUSTOM_BLOCK, content="", metadata=metadata)
+        sess.add_message(msg)
+        await session_manager.save_session(sess)
+
+    try:
+        anyio.from_thread.run(_save)
+    except RuntimeError:
+        # Not called from a worker thread bound to a loop — run our own.
+        try:
+            asyncio.run(_save())
+        except BlockPersistError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise BlockPersistError(str(exc)) from exc
+    except BlockPersistError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise BlockPersistError(str(exc)) from exc
+
+
+def _persist_block(
     session_id: Optional[str],
     metadata: Dict[str, Any],
     cb: Optional["WebUICallback"] = None,
 ) -> None:
-    """Append a ``custom_block``-role ChatMessage to ``session_id``.
-
-    Prefers the callback's bound ``state`` + ``loop`` when available (fast
-    path). Otherwise falls back to the process-global ``state.get_state()``
-    and resolves the session by id — required when ``push_block`` is invoked
-    in a worker that doesn't hold the WS for this session.
-    """
     if not session_id:
-        return
+        raise BlockPersistError("cannot persist block without a session_id")
+    sm = getattr(cb, "state", None)
+    session_manager = getattr(sm, "session_manager", None) if sm else None
+    if session_manager is None:
+        from atria.web.state import get_state
 
-    state = getattr(cb, "state", None) if cb is not None else None
-    loop = getattr(cb, "loop", None) if cb is not None else None
-
-    if state is None or loop is None:
-        try:
-            from atria.web.state import get_state
-
-            global_state = get_state()
-            state = state or global_state
-            loop = loop or getattr(global_state, "_event_loop", None)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("ui_bridge persist: cannot resolve global state (%s)", exc)
-            return
-
-    if state is None or loop is None or getattr(state, "session_manager", None) is None:
-        logger.debug(
-            "ui_bridge persist: missing state/loop/session_manager for session %s",
-            session_id,
-        )
-        return
-
-    async def _save() -> None:
-        try:
-            sess = await state.session_manager.get_session_by_id(session_id)
-            if sess is None:
-                return
-            msg = ChatMessage(role=Role.CUSTOM_BLOCK, content="", metadata=metadata)
-            sess.add_message(msg)
-            await state.session_manager.save_session(sess)
-        except Exception as exc:
-            logger.warning("Failed to persist custom_block message: %s", exc)
-
-    try:
-        asyncio.run_coroutine_threadsafe(_save(), loop)
-    except RuntimeError as exc:
-        logger.warning("Could not schedule custom_block persist: %s", exc)
+        session_manager = getattr(get_state(), "session_manager", None)
+    if session_manager is None:
+        raise BlockPersistError("no session_manager available to persist block")
+    _persist_block_message_sync(session_id, metadata, session_manager)
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -292,7 +293,7 @@ def push_block(
         raise RuntimeError("no active session")
 
     if persist:
-        _persist_block_message(session_id, payload, cb=get_current_ui_callback(session_id))
+        _persist_block(session_id, payload, cb=get_current_ui_callback(session_id))
 
     return bid
 
