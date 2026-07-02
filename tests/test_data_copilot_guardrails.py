@@ -38,3 +38,31 @@ def test_blocks_network_and_subprocess_and_escape():
         verdict = g.check_code(bad)
         assert verdict["allowed"] is False, bad
         assert verdict["reasons"], bad
+
+
+def test_blocks_from_import_comma_and_alias_forms():
+    g = _load("guardrails", "dc_guard_forms")
+    for bad in [
+        "from subprocess import run\nrun(['ls'])",
+        "from multiprocessing import Process",
+        "from os import system\nsystem('x')",
+        "from os import remove\nremove('/etc/passwd')",
+        "from shutil import rmtree\nrmtree('/x')",
+        "import os, socket",
+        "from ftplib import FTP",
+        "from smtplib import SMTP",
+        "import httpx",
+    ]:
+        assert g.check_code(bad)["allowed"] is False, bad
+
+
+def test_allows_relative_and_read_open():
+    g = _load("guardrails", "dc_guard_read")
+    assert g.check_code("open('data.csv')\nopen('out.png', 'w')")["allowed"] is True
+    assert g.check_code("open('/data/run/in.csv', 'r')")["allowed"] is True
+
+
+def test_blocks_write_to_absolute_or_parent_paths():
+    g = _load("guardrails", "dc_guard_write")
+    for bad in ["open('/etc/x', 'w')", "open('../y', 'a')", "open(f'/tmp/{n}', 'w')"]:
+        assert g.check_code(bad)["allowed"] is False, bad

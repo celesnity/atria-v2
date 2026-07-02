@@ -11,22 +11,35 @@ from __future__ import annotations
 import re
 from typing import Dict, List
 
-# (compiled pattern, human-readable reason). Substring/regex matches on source.
+_NETWORK_MODULES = "socket|requests|urllib|http|httpx|aiohttp|ftplib|smtplib"
+_PROCESS_MODULES = "subprocess|multiprocessing"
+
+# (compiled pattern, human-readable reason). Best-effort static screen; the
+# runtime is already sandboxed. Import rules match both `import X` and
+# `from X import ...` (incl. comma lists / aliases). The open() rule only blocks
+# WRITE/APPEND mode targeting an absolute or parent path — benign reads and
+# writes into the run dir are allowed. Keyword-arg open(mode=...) is a known
+# best-effort gap.
 _RULES = [
-    (re.compile(r"\bimport\s+(socket|requests|urllib|http|ftplib|smtplib)\b"),
+    (re.compile(rf"(?m)^\s*(?:import|from)\s+[^\n]*\b(?:{_NETWORK_MODULES})\b"),
      "network access is not allowed"),
-    (re.compile(r"\bfrom\s+(socket|requests|urllib|http)\b"),
-     "network access is not allowed"),
-    (re.compile(r"\bimport\s+(subprocess|multiprocessing)\b"),
+    (re.compile(rf"(?m)^\s*(?:import|from)\s+[^\n]*\b(?:{_PROCESS_MODULES})\b"),
      "spawning processes is not allowed"),
     (re.compile(r"\bos\.(system|popen|exec[lv]?[pe]*|spawn\w*)\s*\("),
+     "shell/process execution is not allowed"),
+    (re.compile(r"\bfrom\s+os\s+import\s+[^\n]*\b(system|popen|exec\w*|spawn\w*)\b"),
      "shell/process execution is not allowed"),
     (re.compile(r"\b__import__\s*\("), "dynamic __import__ is not allowed"),
     (re.compile(r"\b(eval|exec)\s*\("), "eval/exec is not allowed"),
     (re.compile(r"\bshutil\.rmtree\s*\("), "recursive delete is not allowed"),
-    (re.compile(r"\bos\.remove\s*\(|\bos\.unlink\s*\("), "file deletion is not allowed"),
-    # open(...) in a write/append mode targeting an absolute or parent path.
-    (re.compile(r"open\s*\(\s*['\"](/|[a-zA-Z]:\\|\.\.)"),
+    (re.compile(r"\bfrom\s+shutil\s+import\s+[^\n]*\brmtree\b"),
+     "recursive delete is not allowed"),
+    (re.compile(r"\bos\.(remove|unlink)\s*\("), "file deletion is not allowed"),
+    (re.compile(r"\bfrom\s+os\s+import\s+[^\n]*\b(remove|unlink)\b"),
+     "file deletion is not allowed"),
+    (re.compile(
+        r"open\s*\(\s*f?['\"](/|[a-zA-Z]:\\|\.\.)[^'\"]*['\"]\s*,\s*"
+        r"f?['\"][^'\"]*[wa][^'\"]*['\"]"),
      "writing outside the run directory is not allowed"),
 ]
 
