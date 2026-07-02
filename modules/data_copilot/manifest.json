@@ -1,0 +1,22 @@
+{
+  "display_name": "Data Copilot",
+  "tooltip": "Data-analysis copilot · generate → run → verify → grounded report",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Data Copilot · Analysis Loop",
+    "default_height": 780,
+    "badge_color": "info"
+  },
+  "activity": {
+    "default": { "running": "Working…", "done": "Done" },
+    "actions": {
+      "profile": { "running": "Profiling dataset…", "done": "Profiled" },
+      "analyze": { "running": "Analyzing…",         "done": "Report ready" }
+    }
+  },
+  "subagent": {
+    "enabled": false,
+    "model": null,
+    "tools": null
+  }
+}

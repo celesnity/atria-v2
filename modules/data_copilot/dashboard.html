@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Copilot · Analysis Loop</title>
+  <style>
+    :root { --ink:#1f2933; --muted:#647089; --accent:#2f6feb; --line:#e3e8f0; }
+    body { font-family: system-ui, sans-serif; color: var(--ink); margin: 0;
+           padding: 2rem; line-height: 1.55; max-width: 900px; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+    .sub { color: var(--muted); margin: 0 0 1.5rem; }
+    .loop { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+    .step { border: 1px solid var(--line); border-radius: 8px; padding: .5rem .75rem;
+            background: #f7f9fc; font-size: .9rem; }
+    .arrow { color: var(--accent); align-self: center; }
+    code { background: #f2f4f8; padding: .1rem .35rem; border-radius: 4px; }
+    ul { padding-left: 1.2rem; }
+    section { border-top: 1px solid var(--line); padding-top: 1.25rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Data Copilot</h1>
+  <p class="sub">Ask a question about a dataset — the copilot generates Python,
+     runs it in a bounded sandbox, self-repairs, verifies, and returns a grounded
+     report.</p>
+
+  <section>
+    <h2>The loop</h2>
+    <div class="loop">
+      <span class="step">Profile dataset</span><span class="arrow">→</span>
+      <span class="step">Generate code</span><span class="arrow">→</span>
+      <span class="step">Guardrail gate</span><span class="arrow">→</span>
+      <span class="step">Execute (sandbox)</span><span class="arrow">→</span>
+      <span class="step">Repair on error</span><span class="arrow">→</span>
+      <span class="step">Verify answer</span><span class="arrow">→</span>
+      <span class="step">Grounded report</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Commands</h2>
+    <ul>
+      <li><code>copilot.py health</code> — check the LLM endpoint</li>
+      <li><code>copilot.py profile &lt;data&gt;</code> — dataset schema + stats</li>
+      <li><code>copilot.py analyze &lt;data&gt; "&lt;question&gt;"</code> — full loop</li>
+      <li><code>copilot.py audit --limit N</code> — recent runs</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Guardrails</h2>
+    <ul>
+      <li>Bounded execution: timeout, output cap, scoped run dir; no network,
+          no process spawning, no writes outside the run dir.</li>
+      <li>Reports grounded in actual computed output — no invented numbers.</li>
+      <li>Exhausted repair/verify budget ⇒ result labelled UNVERIFIED.</li>
+      <li>Every analysis is appended to the audit trail.</li>
+    </ul>
+  </section>
+</body>
+</html>
