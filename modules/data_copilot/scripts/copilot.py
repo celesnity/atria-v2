@@ -150,7 +150,10 @@ def run_analysis(
             break
         hypotheses = verdict["hypotheses"]
 
-    report_md = report_fn(question, result["stdout"], result["figures"], verified=not unverified)
+    report_output = result["stdout"]
+    if result["status"] == "error":
+        report_output = (result["stdout"] + "\n\n[execution error]\n" + result["stderr"]).strip()
+    report_md = report_fn(question, report_output, result["figures"], verified=not unverified)
     audit.append_event(
         {
             "type": "analyze",
@@ -160,6 +163,9 @@ def run_analysis(
             "status": result["status"],
             "repairs": repairs,
             "verify_rounds": verify_round,
+            "code": code,
+            "verdict": verdict,
+            "figures": result["figures"],
         }
     )
     return {

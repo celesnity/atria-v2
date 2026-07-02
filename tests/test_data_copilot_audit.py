@@ -31,3 +31,11 @@ def test_read_missing_file_returns_empty(tmp_path, monkeypatch):
     monkeypatch.setenv("DC_AUDIT_PATH", str(tmp_path / "none.jsonl"))
     audit = _load("audit", "dc_audit_missing")
     assert audit.read_events() == []
+
+
+def test_append_event_stamps_utc_ts(tmp_path, monkeypatch):
+    monkeypatch.setenv("DC_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    audit = _load("audit", "dc_audit_ts")
+    audit.append_event({"type": "analyze", "question": "q"})
+    ev = audit.read_events()[0]
+    assert "ts" in ev and ev["question"] == "q"

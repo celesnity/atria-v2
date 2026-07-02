@@ -17,7 +17,7 @@ _SYSTEM = (
     "'STATUS: REVISE'. If REVISE, add a line 'HYPOTHESES: <concrete fixes>'. "
     "Default to REVISE when uncertain."
 )
-_STATUS_RE = re.compile(r"STATUS:\s*(OK|REVISE)", re.IGNORECASE)
+_STATUS_RE = re.compile(r"STATUS:\s*(OK|REVISE)\b", re.IGNORECASE)
 _HYP_RE = re.compile(r"HYPOTHESES:\s*(.+)", re.IGNORECASE | re.DOTALL)
 
 

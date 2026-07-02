@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -27,10 +28,11 @@ def append_event(event: Dict[str, object]) -> None:
     Args:
         event: JSON-serializable event payload.
     """
+    stamped = {"ts": datetime.now(timezone.utc).isoformat(), **event}
     path = audit_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(event, default=str) + "\n")
+        fh.write(json.dumps(stamped, default=str) + "\n")
 
 
 def read_events() -> List[Dict[str, object]]:

@@ -43,7 +43,7 @@ def run_code(
     """
     wd = Path(workdir)
     wd.mkdir(parents=True, exist_ok=True)
-    before = {p.name for p in wd.iterdir() if p.is_file()}
+    before = {p.name: p.stat().st_mtime for p in wd.iterdir() if p.is_file()}
     script = wd / "_run.py"
     script.write_text(code, encoding="utf-8")
 
@@ -68,11 +68,13 @@ def run_code(
             "returncode": None,
         }
 
-    figures: List[str] = [
-        str(wd / p.name)
-        for p in sorted(wd.iterdir())
-        if p.is_file() and p.name not in before and p.suffix.lower() in _IMAGE_EXTS
-    ]
+    figures: List[str] = []
+    for p in sorted(wd.iterdir()):
+        if not p.is_file() or p.suffix.lower() not in _IMAGE_EXTS:
+            continue
+        prev_mtime = before.get(p.name)
+        if prev_mtime is None or p.stat().st_mtime > prev_mtime:
+            figures.append(str(p))
     return {
         "status": "text" if rc == 0 else "error",
         "stdout": _cap(stdout, max_output),

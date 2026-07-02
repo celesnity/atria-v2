@@ -57,3 +57,23 @@ def test_output_is_capped(tmp_path):
     sandbox = _load("sandbox", "dc_sandbox_cap")
     res = sandbox.run_code("print('x' * 100000)", str(tmp_path), max_output=1000)
     assert len(res["stdout"]) <= 1000 + 64  # cap + truncation notice slack
+
+
+def test_reused_workdir_collects_new_and_overwritten_not_stale(tmp_path):
+    import os, time
+
+    sandbox = _load("sandbox", "dc_sandbox_reuse")
+    old = time.time() - 100
+    for n in ("old.png", "chart.png"):
+        (tmp_path / n).write_bytes(b"x")
+        os.utime(tmp_path / n, (old, old))
+    code = (
+        "with open('chart.png', 'w') as f: f.write('v2')\n"  # overwrite same name
+        "with open('new.png', 'w') as f: f.write('y')\n"  # brand new
+        "print('done')\n"
+    )
+    res = sandbox.run_code(code, str(tmp_path))
+    names = {f.split("/")[-1] for f in res["figures"]}
+    assert "new.png" in names
+    assert "chart.png" in names  # overwritten -> mtime advanced -> collected
+    assert "old.png" not in names  # untouched stale -> excluded

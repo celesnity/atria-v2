@@ -39,3 +39,8 @@ def test_verify_calls_model_and_returns_verdict():
     v = _load("verify", "dc_verify_flow")
     out = v.verify("q", "code", "output", lambda m: "STATUS: OK")
     assert out["status"] == "OK"
+
+
+def test_okay_is_not_parsed_as_ok():
+    v = _load("verify", "dc_verify_okay")
+    assert v.parse_verdict("STATUS: OKAY looks fine")["status"] == "REVISE"
