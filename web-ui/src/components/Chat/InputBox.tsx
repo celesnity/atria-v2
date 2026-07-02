@@ -11,18 +11,18 @@ import { PersonaSelector } from './PersonaSelector';
 
 // Pill styling tokens moved from StatusBar so all four control pills read as one row.
 const MODE_STYLES = {
-  normal: 'bg-bg-400/40 text-text-200 border-gray-300 hover:bg-bg-400/60',
+  normal: 'bg-bg-400/40 text-text-200 border-hairline-soft hover:bg-bg-400/60',
   plan: 'bg-accent-secondary-900 text-accent-secondary-100 border-accent-secondary-900/50 hover:bg-accent-secondary-900/80',
 } as const;
 
 const AUTONOMY_STYLES = {
-  'Manual': 'bg-bg-400/40 text-text-200 border-gray-300 hover:bg-bg-400/60',
+  'Manual': 'bg-bg-400/40 text-text-200 border-hairline-soft hover:bg-bg-400/60',
   'Semi-Auto': 'bg-accent-secondary-900 text-accent-secondary-100 border-accent-secondary-900/50 hover:bg-accent-secondary-900/80',
   'Auto': 'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
 } as const;
 
 const THINKING_STYLES: Record<string, string> = {
-  'Off':    'bg-bg-200 text-text-500 border-gray-300 hover:bg-bg-300',
+  'Off':    'bg-bg-200 text-text-500 border-hairline-soft hover:bg-bg-300',
   'Low':    'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 hover:bg-cyan-500/15',
   'Medium': 'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
   'High':   'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/15',
@@ -32,7 +32,6 @@ const PILL_BASE =
   'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
 
 export function InputBox() {
-  const [input, setInput] = useState('');
   const [fileOptions, setFileOptions] = useState<DataDrivenOptionProps[]>([]);
   const [isMentionSearching, setIsMentionSearching] = useState(false);
   const mentionsRef = useRef<MentionsRef>(null);
@@ -40,6 +39,18 @@ export function InputBox() {
 
   const sendMessage = useChatStore(state => state.sendMessage);
   const currentSessionId = useChatStore(state => state.currentSessionId);
+  const setDraft = useChatStore(state => state.setDraft);
+  // Draft input is kept per-conversation in the store so it survives this
+  // component unmounting (e.g. when opening a module dashboard) and switching
+  // conversations.
+  const input = useChatStore(state => {
+    const sid = state.currentSessionId;
+    return sid ? state.sessionStates[sid]?.draft ?? '' : '';
+  });
+  const setInput = useCallback(
+    (text: string) => { if (currentSessionId) setDraft(currentSessionId, text); },
+    [currentSessionId, setDraft],
+  );
 
   // Control-pill state/setters (previously in StatusBar).
   const status = useChatStore(state => state.status);
