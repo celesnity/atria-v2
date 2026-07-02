@@ -19,6 +19,7 @@ class WebSocketManager:
 
     def __init__(self):
         self.active_connections: list[WebSocket] = []
+        self._block_feed_subs: Dict[str, set] = {}
 
     async def connect(self, websocket: WebSocket):
         """Accept a new WebSocket connection."""
@@ -79,6 +80,25 @@ class WebSocketManager:
         # Clean up disconnected clients
         for conn in disconnected:
             self.disconnect(conn)
+
+    def forward_to_block_feed(self, session_id: str, event: str, data: Dict[str, Any]) -> None:
+        """Emit a block_event_feed message for every block subscribed in this session."""
+        import asyncio as _asyncio
+
+        subs = self._block_feed_subs.get(session_id)
+        if not subs:
+            return
+        for block_id in list(subs):
+            msg = {
+                "type": "block_event_feed",
+                "data": {"block_id": block_id, "event": event, "data": data,
+                         "session_id": session_id},
+            }
+            try:
+                loop = _asyncio.get_running_loop()
+                loop.create_task(self.broadcast(msg))
+            except RuntimeError:
+                _asyncio.run(self.broadcast(msg))
 
     async def handle_message(self, websocket: WebSocket, data: Dict[str, Any]):
         """Handle incoming WebSocket message."""
@@ -522,6 +542,16 @@ class WebSocketManager:
             raise ValueError(f"unsupported method: {method}")
 
         async def _dispatch() -> None:
+            if method == "events.subscribe":
+                if not session_id:
+                    await _reply(False, error="no active session")
+                    return
+                self._block_feed_subs.setdefault(session_id, set()).add(block_id)
+                await _reply(True, data={"subscribed": list(
+                    args.get("events") or ["tool_call", "tool_result", "message_complete"]
+                )})
+                return
+
             if method == "session.send_user_message":
                 text = args.get("text")
                 if not text or not isinstance(text, str):

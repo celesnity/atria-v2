@@ -18,6 +18,14 @@ from atria.web.logging_config import logger
 from atria.web.protocol import WSMessageType
 
 
+# Event types that flow through WebUICallback._broadcast and are forwarded
+# to subscribed block feeds. tool_call / tool_result are routed through
+# WebSocketToolBroadcaster and are NOT covered here (out of scope Phase 1).
+_BLOCK_FEED_EVENT_TYPES: frozenset[str] = frozenset(
+    {"message_start", "message_chunk", "message_complete", "task_completed"}
+)
+
+
 class WebUICallback(BaseUICallback):
     """UI callback for the web path.
 
@@ -670,3 +678,16 @@ class WebUICallback(BaseUICallback):
             future.result(timeout=5)
         except Exception as e:
             logger.error(f"WebUICallback broadcast failed: {e}")
+
+        # Forward to block_event_feed for subscribed blocks (opt-in via events.subscribe).
+        # tool_call / tool_result travel through WebSocketToolBroadcaster — not covered here.
+        try:
+            event_type = message.get("type")
+            if event_type in _BLOCK_FEED_EVENT_TYPES:
+                session_id = (message.get("data") or {}).get("session_id") or self.session_id
+                if session_id and self.ws_manager._block_feed_subs.get(session_id):
+                    self.ws_manager.forward_to_block_feed(
+                        session_id, event_type, message.get("data") or {}
+                    )
+        except Exception as fwd_err:
+            logger.debug("block_event_feed forward error (non-fatal): %s", fwd_err)
