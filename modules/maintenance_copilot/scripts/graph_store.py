@@ -18,7 +18,11 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from extraction import ALLOWED_ENTITY_TYPES, GraphExtraction  # type: ignore[import-not-found]
+from extraction import (  # type: ignore[import-not-found]
+    ALLOWED_EDGE_TYPES,
+    ALLOWED_ENTITY_TYPES,
+    GraphExtraction,
+)
 
 RunFn = Callable[[str, dict], list]
 
@@ -53,7 +57,7 @@ class GraphStore:
             )
         return len(ext.entities), len(ext.edges)
 
-    def neighbors(self, entity_key: str, hops: int = 1) -> list:
+    def neighbors(self, entity_key: str, hops: int = 1) -> list[dict]:
         """Return entities reachable from ``entity_key`` within ``hops`` hops."""
         depth = max(1, int(hops))
         cypher = (
@@ -66,6 +70,8 @@ class GraphStore:
 
     def confirm_edge(self, src_key: str, edge_type: str, dst_key: str) -> int:
         """Flip an edge's status to engineer_confirmed; return rows updated."""
+        if edge_type not in ALLOWED_EDGE_TYPES:
+            raise ValueError(f"unknown edge type: {edge_type!r}")
         cypher = (
             "MATCH (a {key: $src_key})-[r:" + edge_type + "]->(b {key: $dst_key}) "
             "SET r.status = 'engineer_confirmed' RETURN count(r) AS updated"

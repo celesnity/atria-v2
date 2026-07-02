@@ -81,3 +81,16 @@ def test_confirm_edge_sets_status_and_counts():
     assert n == 1
     assert "engineer_confirmed" in runner.calls[0][0]
     assert runner.calls[0][1] == {"src_key": "32-30-01", "dst_key": "32"}
+
+
+def test_confirm_edge_rejects_unknown_edge_type():
+    import pytest
+    _load("extraction", "mc_extraction_for_graph4")
+    graph_store = _load("graph_store", "mc_graph_store_uut4")
+    runner = _FakeRunner(rows=[{"updated": 1}])
+    store = graph_store.GraphStore(runner)
+    with pytest.raises(ValueError, match="unknown edge type"):
+        store.confirm_edge("a", "NOT_A_REAL_TYPE", "b")
+    # Valid edge type must still work
+    n = store.confirm_edge("32-30-01", "IN_CHAPTER", "32")
+    assert n == 1
