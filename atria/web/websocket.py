@@ -509,6 +509,16 @@ class WebSocketManager:
                 ctx = ToolExecutionContext(session_manager=state.session_manager)
                 return handler.read_artifact_image({"artifact_id": artifact_id}, ctx)
 
+            if method == "config.read":
+                app_config = state.config_manager.get_config()
+                allowed_keys = set(app_config.web.iframe_rpc.config_read_keys or [])
+                requested = args.get("keys") or list(allowed_keys)
+                out: Dict[str, Any] = {}
+                for k in requested:
+                    if k in allowed_keys:
+                        out[k] = getattr(app_config, k, None)
+                return out
+
             raise ValueError(f"unsupported method: {method}")
 
         async def _dispatch() -> None:
@@ -538,6 +548,52 @@ class WebSocketManager:
                     )
                     await _reply(True, data={"injected": True})
                 except Exception as exc:
+                    await _reply(False, error=str(exc))
+                return
+
+            if method in ("chat.get_messages", "chat.get_session"):
+                if not session_id:
+                    await _reply(False, error="no active session")
+                    return
+                try:
+                    session = await state.session_manager.get_session_by_id(session_id)
+                except Exception as exc:  # noqa: BLE001
+                    await _reply(False, error=str(exc))
+                    return
+                if session is None:
+                    await _reply(False, error="session not found")
+                    return
+                if method == "chat.get_session":
+                    await _reply(True, data={
+                        "session_id": session_id,
+                        "title": getattr(session, "title", None),
+                        "message_count": len(session.messages),
+                    })
+                    return
+                limit = args.get("limit")
+                msgs = session.messages
+                if isinstance(limit, int) and limit > 0:
+                    msgs = msgs[-limit:]
+                await _reply(True, data={
+                    "messages": [m.model_dump(mode="json") for m in msgs],
+                })
+                return
+
+            if method == "artifact.list":
+                try:
+                    from atria.core.context_engineering.tools.context import ToolExecutionContext
+                    from atria.core.context_engineering.tools.handlers.artifacts_handler import (
+                        ArtifactsHandler,
+                    )
+
+                    handler = ArtifactsHandler()
+                    ctx = ToolExecutionContext(session_manager=state.session_manager)
+                    scope = args.get("scope", "conversation")
+                    result = await _asyncio.to_thread(
+                        handler.list_artifact_images, {"scope": scope}, ctx
+                    )
+                    await _reply(True, data=result)
+                except Exception as exc:  # noqa: BLE001
                     await _reply(False, error=str(exc))
                 return
 
