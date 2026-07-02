@@ -28,7 +28,11 @@ This pilot implements the five stated pilot-scope items from the brief:
   every answer is cited.
 - **All models run locally** so OEM manual content never leaves the
   environment (addresses the data/IP risk in the brief).
-  - **Chunking:** Chonkie `SemanticChunker` (+ `OverlapRefinery`).
+  - **Chunking:** Chonkie `RecursiveChunker` for the pilot — structure-aware
+    (headings/paragraphs), deterministic, and needs no embedding model.
+    (`SemanticChunker` was the original choice but is deferred: it adds an
+    in-process embedding model and is less reproducible. Vector embeddings for
+    retrieval still come from TEI at index time regardless.)
   - **Embeddings:** HuggingFace model served locally via Text Embeddings
     Inference (TEI), OpenAI-compatible `/v1/embeddings`.
   - **Synthesis + KG extraction LLM:** self-hosted local chat model
@@ -112,10 +116,10 @@ Pipeline runs one document at a time: `ingest → index → graph`.
    PDFs → text via `pdftotext`/`pypdf` (reused from the prior rag engine). Each
    document carries fixed front-matter: `doc_type`, `title`, `revision`,
    `effective_date`.
-2. **Chunk** — Chonkie `SemanticChunker` (embedding model = `chunk_embed` role)
-   with `OverlapRefinery`. Each chunk retains `text`, `token_count`, and char
-   offsets; these become the citation anchor
-   (`source · rev · page/§ · chunkN`).
+2. **Chunk** — Chonkie `RecursiveChunker` (structure-aware, no embedding model
+   for the pilot). Each chunk retains `text`, `token_count`, and char offsets
+   (`start_index`/`end_index`); these become the citation anchor
+   (`source · rev · page/§ · chunkN`). (`SemanticChunker` deferred — see §2.)
 3. **Embed + index** — embed each chunk via TEI (`index_embed`), upsert into
    Qdrant `manual_chunks` with payload: `doc_type`, `ata_chapter`, `revision`,
    `page`, `mel_category`, `chunk_id`, `text`. Payload fields are the filter
