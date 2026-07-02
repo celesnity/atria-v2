@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from atria.core.modules import store
-from atria.core.modules.registry import ModuleRegistry
+from atria.core.modules.registry import ModuleRegistry, load_disabled_modules
 
 
 @pytest.fixture()
@@ -58,3 +58,40 @@ def test_all_returns_sorted_list(root: Path):
     reg = ModuleRegistry(root)
     reg.load_all()
     assert [m.name for m in reg.all()] == ["alpha", "bravo"]
+
+
+def test_load_disabled_modules_parses_env(monkeypatch):
+    monkeypatch.setenv("ATRIA_DISABLED_MODULES", "alpha, beta  gamma")
+    assert load_disabled_modules() == {"alpha", "beta", "gamma"}
+    monkeypatch.setenv("ATRIA_DISABLED_MODULES", "")
+    assert load_disabled_modules() == set()
+    monkeypatch.delenv("ATRIA_DISABLED_MODULES", raising=False)
+    assert load_disabled_modules() == set()
+
+
+def test_load_all_skips_disabled_modules(root: Path, monkeypatch):
+    store.create_module(root, "alpha")
+    store.create_module(root, "beta")
+    monkeypatch.setenv("ATRIA_DISABLED_MODULES", "beta")
+    reg = ModuleRegistry(root)
+    reg.load_all()
+    assert reg.names() == ["alpha"]
+
+
+def test_load_all_disables_everything_with_wildcard(root: Path, monkeypatch):
+    store.create_module(root, "alpha")
+    store.create_module(root, "beta")
+    for value in ("*", "all"):
+        monkeypatch.setenv("ATRIA_DISABLED_MODULES", value)
+        reg = ModuleRegistry(root)
+        reg.load_all()
+        assert reg.names() == []
+
+
+def test_reload_one_ignores_disabled_module(root: Path, monkeypatch):
+    store.create_module(root, "alpha")
+    reg = ModuleRegistry(root)
+    reg.load_all()
+    monkeypatch.setenv("ATRIA_DISABLED_MODULES", "alpha")
+    reg.reload_one("alpha")
+    assert "alpha" not in reg.names()
