@@ -66,3 +66,30 @@ def test_blocks_write_to_absolute_or_parent_paths():
     g = _load("guardrails", "dc_guard_write")
     for bad in ["open('/etc/x', 'w')", "open('../y', 'a')", "open(f'/tmp/{n}', 'w')"]:
         assert g.check_code(bad)["allowed"] is False, bad
+
+
+def test_ast_ignores_comments_and_strings():
+    g = _load("guardrails", "dc_guard_ast_comments")
+    assert g.check_code("import pandas as pd  # do not use requests here")["allowed"] is True
+    assert g.check_code("x = 'import socket'\nprint(x)")["allowed"] is True
+
+
+def test_allows_submodule_named_like_forbidden():
+    g = _load("guardrails", "dc_guard_submod")
+    assert g.check_code("from django.http import HttpResponse")["allowed"] is True
+
+
+def test_blocks_multiline_parenthesized_dangerous_import():
+    g = _load("guardrails", "dc_guard_multiline")
+    assert g.check_code("from os import (\n    path,\n    system,\n)")["allowed"] is False
+    assert g.check_code("from shutil import (\n    copy,\n    rmtree,\n)")["allowed"] is False
+
+
+def test_allows_pandas_eval_and_query_methods():
+    g = _load("guardrails", "dc_guard_pandas_eval")
+    assert g.check_code("df.eval('a + b')\ndf.query('a > 1')")["allowed"] is True
+
+
+def test_unparseable_code_is_allowed_through():
+    g = _load("guardrails", "dc_guard_syntax")
+    assert g.check_code("def (:\n  broken")["allowed"] is True
