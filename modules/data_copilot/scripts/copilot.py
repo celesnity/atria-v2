@@ -16,7 +16,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -31,8 +31,18 @@ from client import RoleClient  # type: ignore[import-not-found]
 from config import load_config  # type: ignore[import-not-found]
 
 
-def _gen_and_run(question, prof, out_dir, codegen_fn, guard_fn, exec_fn,
-                 prior_error, hypotheses, timeout, max_output):
+def _gen_and_run(
+    question: str,
+    prof: dict,
+    out_dir: str,
+    codegen_fn: Callable,
+    guard_fn: Callable,
+    exec_fn: Callable,
+    prior_error: Optional[str],
+    hypotheses: Optional[str],
+    timeout: float,
+    max_output: int,
+) -> tuple[str, Dict[str, object]]:
     """Generate code, screen it, and (if allowed) execute it once."""
     code = codegen_fn(question, prof, prior_error, hypotheses)
     guard = guard_fn(code)
@@ -188,11 +198,13 @@ def _default_out_dir() -> str:
     return str(Path(__file__).resolve().parent.parent / "runs" / "latest")
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """CLI entry point.
 
     Returns:
-        ``0`` on success, ``1`` when health fails, ``2`` for an unknown command.
+        ``0`` on success, ``1`` when a health probe fails. An unknown or missing
+        subcommand is rejected by argparse, which prints usage and exits with
+        code ``2`` (the trailing ``return 2`` is an unreachable safety net).
     """
     args = build_parser().parse_args(argv)
     if args.command == "health":
