@@ -27,8 +27,9 @@ from extraction import extract_graph  # type: ignore[import-not-found]
 from graph_store import GraphStore, neo4j_run_fn  # type: ignore[import-not-found]
 import audit  # type: ignore[import-not-found]
 
-# Output dimension of the deployed TEI embedding model (Qwen3-Embedding-0.6B).
-# Must match the model configured for the index_embed role.
+# Output dimension of the deployed embedding model. Defaults to TEI's
+# Qwen3-Embedding-0.6B (1024); override with MC_EMBED_DIM to match a different
+# index_embed model (e.g. 768 for nomic-embed-text via LM Studio).
 EMBED_DIM = 1024
 
 
@@ -56,7 +57,7 @@ def _build_store(
         rc = RoleClient(load_config())
         embed_fn = lambda texts: rc.embed("index_embed", texts)  # noqa: E731
     store = IndexStore(qdrant, embed_fn)
-    store.ensure_collection(dim=EMBED_DIM)
+    store.ensure_collection(dim=int(_env("MC_EMBED_DIM", str(EMBED_DIM))))
     return store
 
 

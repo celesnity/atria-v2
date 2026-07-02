@@ -13,6 +13,7 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import budget  # type: ignore[import-not-found]
 from guardrails import (  # type: ignore[import-not-found]
     ADVISORY_NOTE,
     answer_confidence,
@@ -26,17 +27,56 @@ _REVIEW_NOTICE = (
 )
 
 
-def build_synthesis_messages(query: str, hits: list[dict]) -> list[dict]:
-    """Build chat messages that force passage-grounded, cited answers."""
-    system = (
-        "You answer aircraft-maintenance questions using ONLY the provided "
-        "passages. Cite every claim with the passage tag in square brackets, "
-        "e.g. [amm_ata32#1]. Do not use outside knowledge. If the passages do "
-        "not answer the question, say so. Never state a dispatch decision."
+_SYSTEM_PROMPT = (
+    "You answer aircraft-maintenance questions using ONLY the provided "
+    "passages. Cite every claim with the passage tag in square brackets, "
+    "e.g. [amm_ata32#1]. Do not use outside knowledge. If the passages do "
+    "not answer the question, say so. Never state a dispatch decision."
+)
+
+
+def fit_hits_to_budget(query: str, hits: list[dict]) -> list[dict]:
+    """Return the leading hits whose passages fit the synthesis input budget.
+
+    Passages are kept in ranked order until the estimated prompt size would
+    exceed the model's input budget (context minus reserved output). At least
+    the top hit is always kept — if it alone overruns the budget its text is
+    truncated — so a grounded answer is still attempted rather than dropped.
+    """
+    available = budget.input_budget("synthesis")
+    overhead = (
+        budget.estimate_tokens(_SYSTEM_PROMPT)
+        + budget.estimate_tokens(query)
+        + 16  # "Question:"/"Passages:" framing
     )
+    remaining = max(0, available - overhead)
+    fitted: list[dict] = []
+    used = 0
+    for hit in hits:
+        line_cost = budget.estimate_tokens(f"[{hit['chunk_id']}] {hit['text']}")
+        if used + line_cost <= remaining:
+            fitted.append(hit)
+            used += line_cost
+        elif not fitted:
+            # Top hit alone overruns: truncate its text so we still answer.
+            budget_for_text = max(0, remaining - budget.estimate_tokens(hit["chunk_id"]) - 4)
+            fitted.append({**hit, "text": budget.fit_text(hit["text"], budget_for_text)})
+            break
+        else:
+            break
+    return fitted
+
+
+def build_synthesis_messages(query: str, hits: list[dict]) -> list[dict]:
+    """Build chat messages that force passage-grounded, cited answers.
+
+    Passages are trimmed to :func:`fit_hits_to_budget` so the prompt plus the
+    reserved completion stay within the deployed model's context window.
+    """
     passages = "\n".join(f"[{h['chunk_id']}] {h['text']}" for h in hits)
     user = f"Question: {query}\n\nPassages:\n{passages}"
-    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user}]
 
 
 def synthesize(query: str, hits: list[dict], chat_fn: Callable[[list], str]) -> dict:
@@ -51,8 +91,11 @@ def synthesize(query: str, hits: list[dict], chat_fn: Callable[[list], str]) -> 
         ``{"answer","grounded","dropped","confidence","needs_review",
         "disclaimer","citations"}``.
     """
-    raw = chat_fn(build_synthesis_messages(query, hits))
-    allowed = {h["chunk_id"] for h in hits}
+    fitted = fit_hits_to_budget(query, hits)
+    raw = chat_fn(build_synthesis_messages(query, fitted))
+    # Only passages actually sent are citable; confidence still reflects the
+    # full retrieval so a budget-trimmed prompt is not scored as stronger.
+    allowed = {h["chunk_id"] for h in fitted}
     checked = enforce_citations(raw, allowed)
     confidence = answer_confidence(hits)
     review = needs_manual_review(confidence, len(checked["grounded"]))

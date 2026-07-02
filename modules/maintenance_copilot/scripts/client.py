@@ -18,6 +18,7 @@ try:  # Import lazily so unit tests can inject a fake factory without openai.
 except ImportError:  # pragma: no cover - openai installed in real env
     _OpenAI = None  # type: ignore[assignment]
 
+import budget  # type: ignore[import-not-found]
 from config import RoleConfig  # type: ignore[import-not-found]
 
 ClientFactory = Callable[[str, str], object]
@@ -81,6 +82,10 @@ class RoleClient:
         """
         rc = self._role(role)
         client = self._client_for(rc)
+        # Cap the completion so the server does not reserve a large default
+        # output and overflow the model context (input + output must both fit).
+        # An explicit caller-supplied max_tokens always wins.
+        kw.setdefault("max_tokens", budget.output_tokens(role))
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=rc.model, messages=messages, **kw
         )

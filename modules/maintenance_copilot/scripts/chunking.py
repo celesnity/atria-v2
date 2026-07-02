@@ -7,12 +7,27 @@ the exact span of the source document.
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from corpus import Document  # type: ignore[import-not-found]
+
+# Default target chunk size in tokens. Override with MC_CHUNK_SIZE to re-index
+# with smaller (or larger) chunks — smaller chunks yield tighter citations and
+# smaller synthesis prompts; re-run ``reset`` + ``ingest`` after changing it.
+_DEFAULT_CHUNK_SIZE = 512
+
+
+def _chunk_size() -> int:
+    """Resolve the chunk size from ``MC_CHUNK_SIZE``, falling back on the default."""
+    try:
+        value = int(os.environ["MC_CHUNK_SIZE"])
+    except (KeyError, TypeError, ValueError):
+        return _DEFAULT_CHUNK_SIZE
+    return value if value > 0 else _DEFAULT_CHUNK_SIZE
 
 
 @dataclass(frozen=True)
@@ -35,7 +50,7 @@ class ChunkRecord:
 def _default_chunker():
     from chonkie import RecursiveChunker  # local import: heavy optional dep
 
-    return RecursiveChunker(chunk_size=512)
+    return RecursiveChunker(chunk_size=_chunk_size())
 
 
 def chunk_document(doc: Document, chunker: object | None = None) -> list[ChunkRecord]:
