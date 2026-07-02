@@ -34,13 +34,8 @@ def build_messages(question: str, output: str, figures: List[str]) -> List[dict]
         OpenAI-format message list.
     """
     fig_lines = "\n".join(f"- {f}" for f in figures) if figures else "(none)"
-    user = (
-        f"Question: {question}\n\n"
-        f"Computed output:\n{output}\n\n"
-        f"Figures:\n{fig_lines}\n"
-    )
-    return [{"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": user}]
+    user = f"Question: {question}\n\n" f"Computed output:\n{output}\n\n" f"Figures:\n{fig_lines}\n"
+    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
 
 
 def generate_report(

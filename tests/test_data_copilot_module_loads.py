@@ -1,4 +1,5 @@
 """The data_copilot module is well-formed and loads via the module store."""
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,16 @@ def test_manifest_json_is_valid_and_has_activity_labels():
 
 def test_key_scripts_present():
     scripts = _ROOT / "data_copilot" / "scripts"
-    for name in ["config", "client", "profile", "guardrails", "sandbox",
-                 "generate", "verify", "report", "audit", "copilot"]:
+    for name in [
+        "config",
+        "client",
+        "profile",
+        "guardrails",
+        "sandbox",
+        "generate",
+        "verify",
+        "report",
+        "audit",
+        "copilot",
+    ]:
         assert (scripts / f"{name}.py").is_file(), name

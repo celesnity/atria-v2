@@ -47,9 +47,13 @@ def _gen_and_run(
     code = codegen_fn(question, prof, prior_error, hypotheses)
     guard = guard_fn(code)
     if not guard["allowed"]:
-        return code, {"status": "error", "stdout": "",
-                      "stderr": "GUARDRAIL: " + "; ".join(guard["reasons"]),
-                      "figures": [], "returncode": None}
+        return code, {
+            "status": "error",
+            "stdout": "",
+            "stderr": "GUARDRAIL: " + "; ".join(guard["reasons"]),
+            "figures": [],
+            "returncode": None,
+        }
     return code, exec_fn(code, out_dir, timeout, max_output)
 
 
@@ -98,17 +102,39 @@ def run_analysis(
     unverified = True
 
     while True:
-        code, result = _gen_and_run(question, prof, out_dir, codegen_fn, guard_fn,
-                                    exec_fn, prior_error, hypotheses, timeout, max_output)
+        code, result = _gen_and_run(
+            question,
+            prof,
+            out_dir,
+            codegen_fn,
+            guard_fn,
+            exec_fn,
+            prior_error,
+            hypotheses,
+            timeout,
+            max_output,
+        )
         prior_error = None
         hypotheses = None
         while result["status"] == "error" and repairs < max_repair:
             repairs += 1
-            code, result = _gen_and_run(question, prof, out_dir, codegen_fn, guard_fn,
-                                        exec_fn, result["stderr"], None, timeout, max_output)
+            code, result = _gen_and_run(
+                question,
+                prof,
+                out_dir,
+                codegen_fn,
+                guard_fn,
+                exec_fn,
+                result["stderr"],
+                None,
+                timeout,
+                max_output,
+            )
         if result["status"] == "error":
-            verdict = {"status": "REVISE",
-                       "hypotheses": "code could not be made to run: " + result["stderr"]}
+            verdict = {
+                "status": "REVISE",
+                "hypotheses": "code could not be made to run: " + result["stderr"],
+            }
             unverified = True
             break
         verdict = verify_fn(question, code, result["stdout"])
@@ -121,15 +147,30 @@ def run_analysis(
             break
         hypotheses = verdict["hypotheses"]
 
-    report_md = report_fn(question, result["stdout"], result["figures"],
-                          verified=not unverified)
-    audit.append_event({"type": "analyze", "dataset": dataset, "question": question,
-                        "verified": not unverified, "status": result["status"],
-                        "repairs": repairs, "verify_rounds": verify_round})
-    return {"dataset": dataset, "question": question, "code": code,
-            "status": result["status"], "verified": not unverified, "verdict": verdict,
-            "figures": result["figures"], "report": report_md,
-            "repairs": repairs, "verify_rounds": verify_round}
+    report_md = report_fn(question, result["stdout"], result["figures"], verified=not unverified)
+    audit.append_event(
+        {
+            "type": "analyze",
+            "dataset": dataset,
+            "question": question,
+            "verified": not unverified,
+            "status": result["status"],
+            "repairs": repairs,
+            "verify_rounds": verify_round,
+        }
+    )
+    return {
+        "dataset": dataset,
+        "question": question,
+        "code": code,
+        "status": result["status"],
+        "verified": not unverified,
+        "verdict": verdict,
+        "figures": result["figures"],
+        "report": report_md,
+        "repairs": repairs,
+        "verify_rounds": verify_round,
+    }
 
 
 def _role_chat(rc: RoleClient, role: str) -> Callable:
@@ -153,16 +194,23 @@ def _cmd_profile(dataset: str) -> int:
     return 0
 
 
-def _cmd_analyze(dataset: str, question: str, out_dir: str,
-                 max_repair: int, max_verify: int) -> int:
+def _cmd_analyze(
+    dataset: str, question: str, out_dir: str, max_repair: int, max_verify: int
+) -> int:
     rc = RoleClient(load_config())
     summary = run_analysis(
-        dataset, question, out_dir=out_dir, max_repair=max_repair, max_verify=max_verify,
+        dataset,
+        question,
+        out_dir=out_dir,
+        max_repair=max_repair,
+        max_verify=max_verify,
         codegen_fn=lambda q, p, pe=None, hy=None: generate.generate_code(
-            q, p, _role_chat(rc, "codegen"), pe, hy),
+            q, p, _role_chat(rc, "codegen"), pe, hy
+        ),
         verify_fn=lambda q, c, o: verify_mod.verify(q, c, o, _role_chat(rc, "verify")),
         report_fn=lambda q, o, f, verified=True: report_mod.generate_report(
-            q, o, f, _role_chat(rc, "report"), verified=verified),
+            q, o, f, _role_chat(rc, "report"), verified=verified
+        ),
     )
     print(json.dumps(summary, indent=2, default=str))
     return 0
@@ -212,9 +260,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "profile":
         return _cmd_profile(args.dataset)
     if args.command == "analyze":
-        return _cmd_analyze(args.dataset, args.question,
-                            args.out or _default_out_dir(),
-                            args.max_repair, args.max_verify)
+        return _cmd_analyze(
+            args.dataset,
+            args.question,
+            args.out or _default_out_dir(),
+            args.max_repair,
+            args.max_verify,
+        )
     if args.command == "audit":
         return _cmd_audit(args.limit)
     return 2

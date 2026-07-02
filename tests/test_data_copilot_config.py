@@ -1,4 +1,5 @@
 """Tests for data_copilot module-local model config."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -28,12 +29,14 @@ def test_defaults_use_openai_and_env_key():
 
 def test_env_overrides_take_precedence():
     config = _load("config", "dc_config_override")
-    cfg = config.load_config({
-        "OPENAI_API_KEY": "sk-test",
-        "DC_CODEGEN_BASE_URL": "http://localhost:8000/v1",
-        "DC_CODEGEN_MODEL": "qwen2.5-coder",
-        "DC_CODEGEN_API_KEY": "sk-local",
-    })
+    cfg = config.load_config(
+        {
+            "OPENAI_API_KEY": "sk-test",
+            "DC_CODEGEN_BASE_URL": "http://localhost:8000/v1",
+            "DC_CODEGEN_MODEL": "qwen2.5-coder",
+            "DC_CODEGEN_API_KEY": "sk-local",
+        }
+    )
     assert cfg["codegen"].base_url == "http://localhost:8000/v1"
     assert cfg["codegen"].model == "qwen2.5-coder"
     assert cfg["codegen"].api_key == "sk-local"

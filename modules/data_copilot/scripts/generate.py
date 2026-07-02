@@ -58,8 +58,7 @@ def build_messages(
         OpenAI-format message list.
     """
     prof_json = json.dumps(
-        {k: profile[k] for k in ("path", "n_rows", "n_cols", "columns", "sample")
-         if k in profile},
+        {k: profile[k] for k in ("path", "n_rows", "n_cols", "columns", "sample") if k in profile},
         default=str,
     )
     user = (
@@ -68,17 +67,10 @@ def build_messages(
         f"Question: {question}\n"
     )
     if prior_error:
-        user += (
-            "\nThe previous code failed with this error — fix it:\n"
-            f"{prior_error}\n"
-        )
+        user += "\nThe previous code failed with this error — fix it:\n" f"{prior_error}\n"
     if hypotheses:
-        user += (
-            "\nA verifier judged the previous result insufficient. Address:\n"
-            f"{hypotheses}\n"
-        )
-    return [{"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": user}]
+        user += "\nA verifier judged the previous result insufficient. Address:\n" f"{hypotheses}\n"
+    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
 
 
 def generate_code(

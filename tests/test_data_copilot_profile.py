@@ -1,4 +1,5 @@
 """Tests for dataset loading + profiling."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -46,9 +47,11 @@ def test_load_dataset_unsupported_extension_raises(tmp_path):
 def test_numeric_summary_is_strict_json_serializable():
     import json
     import pandas as pd
+
     profile = _load("profile", "dc_profile_nan")
-    df = pd.DataFrame({"empty": pd.Series([None, None], dtype="float64"),
-                       "one": pd.Series([5.0, None])})
+    df = pd.DataFrame(
+        {"empty": pd.Series([None, None], dtype="float64"), "one": pd.Series([5.0, None])}
+    )
     prof = profile.profile_dataframe(df)
     dumped = json.dumps(prof, allow_nan=False)
     assert "NaN" not in dumped

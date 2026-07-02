@@ -1,4 +1,5 @@
 """Tests for the static code guardrail gate."""
+
 from __future__ import annotations
 
 import importlib.util

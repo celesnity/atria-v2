@@ -14,8 +14,7 @@ import ast
 import re
 from typing import Dict, List, Optional
 
-_NETWORK_MODULES = {"socket", "requests", "urllib", "http", "httpx", "aiohttp",
-                    "ftplib", "smtplib"}
+_NETWORK_MODULES = {"socket", "requests", "urllib", "http", "httpx", "aiohttp", "ftplib", "smtplib"}
 _PROCESS_MODULES = {"subprocess", "multiprocessing"}
 _OS_EXEC_FUNCS = {"system", "popen"}
 _OS_DELETE_FUNCS = {"remove", "unlink"}
@@ -38,8 +37,7 @@ def _root(module: Optional[str]) -> str:
 
 def _is_os_exec(attr: str) -> bool:
     """True for os functions that spawn a shell/process (system/popen/exec*/spawn*)."""
-    return attr in _OS_EXEC_FUNCS or attr.startswith("exec") or attr.startswith(
-        "spawn")
+    return attr in _OS_EXEC_FUNCS or attr.startswith("exec") or attr.startswith("spawn")
 
 
 def _str_prefix(node: ast.AST) -> Optional[str]:

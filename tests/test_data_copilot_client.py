@@ -1,4 +1,5 @@
 """Tests for the data_copilot role-dispatched chat client."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -60,7 +61,8 @@ def test_chat_dispatches_to_role_endpoint():
 def test_unknown_role_raises():
     config = _load("config", "dc_config_for_client2")
     client = _load("client", "dc_client_uut2")
-    rc = client.RoleClient(config.load_config({"OPENAI_API_KEY": "k"}),
-                           client_factory=lambda b, a: _FakeClient(b, a))
+    rc = client.RoleClient(
+        config.load_config({"OPENAI_API_KEY": "k"}), client_factory=lambda b, a: _FakeClient(b, a)
+    )
     with pytest.raises(ValueError):
         rc.chat("nope", [{"role": "user", "content": "x"}])

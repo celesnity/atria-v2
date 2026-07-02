@@ -1,4 +1,5 @@
 """Tests for the bounded subprocess sandbox."""
+
 from __future__ import annotations
 
 import importlib.util

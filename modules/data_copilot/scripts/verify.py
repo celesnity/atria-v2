@@ -49,13 +49,8 @@ def build_messages(question: str, code: str, output: str) -> List[dict]:
     Returns:
         OpenAI-format message list.
     """
-    user = (
-        f"Question: {question}\n\n"
-        f"Code:\n```python\n{code}\n```\n\n"
-        f"Output:\n{output}\n"
-    )
-    return [{"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": user}]
+    user = f"Question: {question}\n\n" f"Code:\n```python\n{code}\n```\n\n" f"Output:\n{output}\n"
+    return [{"role": "system", "content": _SYSTEM}, {"role": "user", "content": user}]
 
 
 def verify(

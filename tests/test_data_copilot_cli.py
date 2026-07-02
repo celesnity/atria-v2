@@ -1,4 +1,5 @@
 """Tests for the copilot orchestrator loop + CLI (injected fakes, no real LLM)."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -18,9 +19,14 @@ def _load(name: str, sentinel: str):
 
 
 def _fakes():
-    prof = {"path": "d.csv", "n_rows": 1, "n_cols": 1,
-            "columns": [{"name": "x", "dtype": "int64", "non_null": 1, "n_unique": 1}],
-            "sample": [], "numeric_summary": {}}
+    prof = {
+        "path": "d.csv",
+        "n_rows": 1,
+        "n_cols": 1,
+        "columns": [{"name": "x", "dtype": "int64", "non_null": 1, "n_unique": 1}],
+        "sample": [],
+        "numeric_summary": {},
+    }
     return prof
 
 
@@ -29,15 +35,23 @@ def test_happy_path_verifies_first_try(tmp_path, monkeypatch):
     copilot = _load("copilot", "dc_cli_happy")
     prof = _fakes()
     result = copilot.run_analysis(
-        "d.csv", "sum?", out_dir=str(tmp_path / "run"),
-        max_repair=3, max_verify=2,
+        "d.csv",
+        "sum?",
+        out_dir=str(tmp_path / "run"),
+        max_repair=3,
+        max_verify=2,
         codegen_fn=lambda q, p, pe=None, hy=None: "print(42)",
         verify_fn=lambda q, c, o: {"status": "OK", "hypotheses": ""},
         report_fn=lambda q, o, f, verified=True: "# Report\n42",
         profile_fn=lambda path: prof,
         guard_fn=lambda code: {"allowed": True, "reasons": []},
         exec_fn=lambda code, wd, timeout, max_output: {
-            "status": "text", "stdout": "42", "stderr": "", "figures": [], "returncode": 0},
+            "status": "text",
+            "stdout": "42",
+            "stderr": "",
+            "figures": [],
+            "returncode": 0,
+        },
     )
     assert result["verified"] is True
     assert result["repairs"] == 0
@@ -53,14 +67,21 @@ def test_repairs_execution_error_then_succeeds(tmp_path, monkeypatch):
     def exec_fn(code, wd, timeout, max_output):
         runs["n"] += 1
         if runs["n"] == 1:
-            return {"status": "error", "stdout": "", "stderr": "NameError",
-                    "figures": [], "returncode": 1}
-        return {"status": "text", "stdout": "ok", "stderr": "", "figures": [],
-                "returncode": 0}
+            return {
+                "status": "error",
+                "stdout": "",
+                "stderr": "NameError",
+                "figures": [],
+                "returncode": 1,
+            }
+        return {"status": "text", "stdout": "ok", "stderr": "", "figures": [], "returncode": 0}
 
     result = copilot.run_analysis(
-        "d.csv", "q", out_dir=str(tmp_path / "run"),
-        max_repair=3, max_verify=2,
+        "d.csv",
+        "q",
+        out_dir=str(tmp_path / "run"),
+        max_repair=3,
+        max_verify=2,
         codegen_fn=lambda q, p, pe=None, hy=None: "code",
         verify_fn=lambda q, c, o: {"status": "OK", "hypotheses": ""},
         report_fn=lambda q, o, f, verified=True: "r",
@@ -83,15 +104,23 @@ def test_verify_budget_exhausted_marks_unverified(tmp_path, monkeypatch):
         return "r"
 
     result = copilot.run_analysis(
-        "d.csv", "q", out_dir=str(tmp_path / "run"),
-        max_repair=1, max_verify=1,
+        "d.csv",
+        "q",
+        out_dir=str(tmp_path / "run"),
+        max_repair=1,
+        max_verify=1,
         codegen_fn=lambda q, p, pe=None, hy=None: "code",
         verify_fn=lambda q, c, o: {"status": "REVISE", "hypotheses": "try again"},
         report_fn=report_fn,
         profile_fn=lambda path: prof,
         guard_fn=lambda code: {"allowed": True, "reasons": []},
         exec_fn=lambda code, wd, timeout, max_output: {
-            "status": "text", "stdout": "x", "stderr": "", "figures": [], "returncode": 0},
+            "status": "text",
+            "stdout": "x",
+            "stderr": "",
+            "figures": [],
+            "returncode": 0,
+        },
     )
     assert result["verified"] is False
     assert captured["verified"] is False
@@ -102,15 +131,23 @@ def test_guardrail_block_counts_as_repair(tmp_path, monkeypatch):
     copilot = _load("copilot", "dc_cli_guard")
     prof = _fakes()
     result = copilot.run_analysis(
-        "d.csv", "q", out_dir=str(tmp_path / "run"),
-        max_repair=2, max_verify=1,
+        "d.csv",
+        "q",
+        out_dir=str(tmp_path / "run"),
+        max_repair=2,
+        max_verify=1,
         codegen_fn=lambda q, p, pe=None, hy=None: "import socket",
         verify_fn=lambda q, c, o: {"status": "OK", "hypotheses": ""},
         report_fn=lambda q, o, f, verified=True: "r",
         profile_fn=lambda path: prof,
         guard_fn=lambda code: {"allowed": False, "reasons": ["network"]},
         exec_fn=lambda code, wd, timeout, max_output: {
-            "status": "text", "stdout": "x", "stderr": "", "figures": [], "returncode": 0},
+            "status": "text",
+            "stdout": "x",
+            "stderr": "",
+            "figures": [],
+            "returncode": 0,
+        },
     )
     # every generation is blocked -> exhausts repair budget -> unverified error
     assert result["verified"] is False

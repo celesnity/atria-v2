@@ -1,4 +1,5 @@
 """Tests for code generation + extraction."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -39,10 +40,14 @@ def test_generate_code_passes_profile_and_extracts():
         captured["messages"] = messages
         return "```python\ndf['revenue'].sum()\n```"
 
-    profile = {"path": "demo.csv", "n_rows": 8, "n_cols": 5,
-               "columns": [{"name": "revenue", "dtype": "int64",
-                            "non_null": 8, "n_unique": 8}],
-               "sample": [], "numeric_summary": {}}
+    profile = {
+        "path": "demo.csv",
+        "n_rows": 8,
+        "n_cols": 5,
+        "columns": [{"name": "revenue", "dtype": "int64", "non_null": 8, "n_unique": 8}],
+        "sample": [],
+        "numeric_summary": {},
+    }
     code = gen.generate_code("total revenue?", profile, chat_fn)
     assert "revenue" in code
     # the column name is present in the prompt sent to the model (grounding)
@@ -58,8 +63,11 @@ def test_prior_error_included_in_repair_prompt():
         captured["messages"] = messages
         return "```python\npass\n```"
 
-    gen.generate_code("q", {"path": "d", "columns": [], "sample": [],
-                            "numeric_summary": {}, "n_rows": 0, "n_cols": 0},
-                      chat_fn, prior_error="NameError: x not defined")
+    gen.generate_code(
+        "q",
+        {"path": "d", "columns": [], "sample": [], "numeric_summary": {}, "n_rows": 0, "n_cols": 0},
+        chat_fn,
+        prior_error="NameError: x not defined",
+    )
     joined = " ".join(m["content"] for m in captured["messages"])
     assert "NameError" in joined

@@ -1,4 +1,5 @@
 """Tests for the append-only audit trail."""
+
 from __future__ import annotations
 
 import importlib.util
