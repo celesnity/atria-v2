@@ -13,6 +13,37 @@ from .definitions import NOTE_SCHEMA, _BUILTIN_TOOL_SCHEMAS
 from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
 
 
+# Tools whose schemas are never advertised to the model. Each tool schema costs
+# tokens on EVERY request (the full `tools` array is resent per call), so on a
+# small-context deployment we drop groups this deployment does not use. The
+# handlers still exist — the tools are simply not offered to the LLM. To
+# re-enable a tool, remove its name from this set. Token cost (cl100k) noted for
+# reference; dropping all 17 reclaims ~5,978 tokens per call.
+_DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        # Web / browser / media (~3,747 tokens)
+        "fetch_url",
+        "browser",
+        "capture_web_screenshot",
+        "web_search",
+        "analyze_image",
+        "render_component",
+        "capture_screenshot",
+        "send_image",
+        "send_editable_table",
+        "open_browser",
+        # Code symbol tools + notebook (~2,231 tokens)
+        "find_symbol",
+        "rename_symbol",
+        "find_referencing_symbols",
+        "replace_symbol_body",
+        "insert_after_symbol",
+        "insert_before_symbol",
+        "notebook_edit",
+    }
+)
+
+
 class ToolSchemaBuilder:
     """Assemble tool schemas for NORMAL mode agents."""
 
@@ -91,6 +122,16 @@ class ToolSchemaBuilder:
         # Apply provider-specific schema adaptations
         if self._provider:
             schemas = adapt_for_provider(schemas, self._provider)
+
+        # Drop deployment-disabled tools last, so it also strips any MCP/task/
+        # extra schemas that happen to share a disabled name. Saves per-call
+        # tokens on small-context models.
+        if _DISABLED_TOOL_NAMES:
+            schemas = [
+                schema
+                for schema in schemas
+                if schema.get("function", {}).get("name") not in _DISABLED_TOOL_NAMES
+            ]
 
         return schemas
 
