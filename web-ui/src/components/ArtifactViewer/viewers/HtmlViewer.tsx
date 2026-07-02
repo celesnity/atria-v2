@@ -12,6 +12,8 @@ interface Props {
   path: string;
   /** When true and scope is module, the Source tab edits + saves via Monaco. */
   editable?: boolean;
+  convId?: string;
+  tabId?: string;
 }
 
 const SHIM_TAG = '__atria_html_viewer_shim__';
@@ -130,7 +132,7 @@ function dirname(p: string): string {
   return i === -1 ? '' : p.slice(0, i);
 }
 
-export function HtmlViewer({ scope, path, editable = false }: Props) {
+export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Props) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -259,7 +261,7 @@ export function HtmlViewer({ scope, path, editable = false }: Props) {
       {mode === 'source' && canEdit ? (
         <div className="flex-1 min-h-0">
           <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading editor…</div>}>
-            <MonacoViewer scope={scope} path={path} editable languageOverride="html" />
+            <MonacoViewer scope={scope} path={path} editable languageOverride="html" convId={convId} tabId={tabId} />
           </Suspense>
         </div>
       ) : (

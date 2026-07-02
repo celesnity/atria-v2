@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { apiClient } from '../../../api/client';
 import { BinaryFallback } from './BinaryFallback';
 import { wsClient } from '../../../api/websocket';
+import { useViewerTabsStore } from '../../../stores/viewerTabs';
 import { fsScopeKey, type FsScope, type WSMessage } from '../../../types';
 import { createUniverInstance, type UniverHandle } from './excel/setupUniver';
 import {
@@ -14,6 +15,8 @@ import {
 interface Props {
   scope: FsScope;
   path: string;
+  convId?: string;
+  tabId?: string;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'confirming' | 'saving' | 'saved' | 'error';
@@ -25,8 +28,10 @@ function lossyAckKey(scope: FsScope, path: string): string {
   return `atria.xlsx.lossyAck.${fsScopeKey(scope)}.${path}`;
 }
 
-export function ExcelViewer({ scope, path }: Props) {
+export function ExcelViewer({ scope, path, convId, tabId }: Props) {
   const scopeKey = useMemo(() => fsScopeKey(scope), [scope]);
+  const markDirty = useViewerTabsStore(s => s.markDirty);
+  const markClean = useViewerTabsStore(s => s.markClean);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<UniverHandle | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,6 +58,7 @@ export function ExcelViewer({ scope, path }: Props) {
       ignoreNextChangeRef.current = true;
       await apiClient.writeFsBinary(scope, path, bytes);
       setSaveStatus('saved');
+      if (convId && tabId) markClean(convId, tabId);
     } catch (err) {
       ignoreNextChangeRef.current = false;
       setSaveStatus('error');
@@ -62,6 +68,7 @@ export function ExcelViewer({ scope, path }: Props) {
   };
 
   const scheduleSave = () => {
+    if (convId && tabId) markDirty(convId, tabId);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     const ackd = localStorage.getItem(lossyAckKey(scope, path)) === '1';
     if (!ackd) {

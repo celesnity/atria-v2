@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,6 +8,10 @@ import type { Message } from '../../types';
 import { useChatStore } from '../../stores/chat';
 import { ToolCallMessage } from './ToolCallMessage';
 import { ModuleActivityLine } from './ModuleActivityLine';
+import { SolveDispatchCard } from './SolveDispatchCard';
+import { TodoListCard } from './TodoListCard';
+import { SubagentCard } from './SubagentCard';
+import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
@@ -173,14 +177,14 @@ function WelcomeScreen() {
         </span>
       </div>
       <div className="relative z-10 max-w-xl w-full">
-        <div className="color-block bg-block-cream rounded-lg px-8 py-10 md:px-12 md:py-xxl text-center">
-          <span className="font-mono uppercase tracking-[0.54px] text-[12px] text-ink/60 block mb-4">
+        <div className="glass-card rounded-xl px-8 py-9 md:px-12 md:py-10 text-center">
+          <span className="font-sans uppercase tracking-[0.24em] text-[13px] font-[500] text-text-muted block mb-4">
             Welcome
           </span>
-          <h2 className="text-[40px] md:text-display-lg font-sans font-[340] leading-[1.05] tracking-[-0.96px] text-ink">
+          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.02] tracking-[-0.03em] text-gradient-brand">
             Let&rsquo;s get to work.
           </h2>
-          <p className="mt-5 text-body-sm text-ink/80">
+          <p className="mt-5 text-body-sm text-text-secondary">
             Start a conversation with your AI coding assistant.
           </p>
         </div>
@@ -199,7 +203,9 @@ interface ListContext {
   actions: ReturnType<typeof useMessageActions>;
 }
 
-const MessageItem = memo(function MessageItem({
+// Renders the body for a single message based on its role. Shared by standalone
+// MessageItem rows and the expanded contents of an ActivityGroup.
+function MessageBody({
   message,
   index,
   context,
@@ -208,24 +214,33 @@ const MessageItem = memo(function MessageItem({
   index: number;
   context: ListContext;
 }) {
-  const { isLoading, totalCount, turnByIndex, actions } = context;
-  const turnEntry = turnByIndex.get(index);
+  const { isLoading, totalCount } = context;
   const simpleMode = useChatStore(s => s.status?.simple_mode ?? true);
 
-  let body: ReactNode;
+  if (message.role === 'todos') return <TodoListCard message={message} />;
   if (message.role === 'tool_call') {
     const hasResult = message.tool_result != null && Object.keys(message.tool_result).length > 0;
-    body = simpleMode
+    if (message.tool_name === 'solve') {
+      // Dispatch card: request text + strategy + live job progress.
+      return <SolveDispatchCard message={message} />;
+    }
+    if (message.tool_name === 'spawn_subagent') {
+      // Always show subagents as a distinct card, even in Simple Mode.
+      return <SubagentCard message={message} hasResult={hasResult} />;
+    }
+    return simpleMode
       ? <ModuleActivityLine message={message} hasResult={hasResult} />
       : <ToolCallMessage message={message} hasResult={hasResult} />;
-  } else if (message.role === 'thinking') {
+  }
+  if (message.role === 'thinking') {
     const isLastThinking = (isLoading || !!message.streaming) && index === totalCount - 1;
-    body = <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
-  } else if (message.role === 'search_result') body = <SearchResultBlock message={message} />;
-  else if (message.role === 'data_message') body = <DataMessage message={message} />;
-  else if (message.role === 'image_message') body = <ImageMessage message={message} />;
-  else if (message.role === 'custom_block' && message.block_id && message.block_src) {
-    body = (
+    return <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
+  }
+  if (message.role === 'search_result') return <SearchResultBlock message={message} />;
+  if (message.role === 'data_message') return <DataMessage message={message} />;
+  if (message.role === 'image_message') return <ImageMessage message={message} />;
+  if (message.role === 'custom_block' && message.block_id && message.block_src) {
+    return (
       <SandboxedBlock
         blockId={message.block_id}
         src={message.block_src}
@@ -235,18 +250,31 @@ const MessageItem = memo(function MessageItem({
       />
     );
   }
-  else if (message.role === 'deep_research') body = <DeepResearchBlock message={message} />;
-  else if (message.role === 'deep_analyze') body = <DeepAnalyzeBlock message={message} />;
-  else body = message.role === 'user'
+  if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
+  if (message.role === 'deep_analyze') return <DeepAnalyzeBlock message={message} />;
+  return message.role === 'user'
     ? <UserTurn content={message.content} />
     : <AssistantMarkdown content={message.content} />;
+}
+
+const MessageItem = memo(function MessageItem({
+  message,
+  index,
+  context,
+}: {
+  message: Message;
+  index: number;
+  context: ListContext;
+}) {
+  const { turnByIndex, actions } = context;
+  const turnEntry = turnByIndex.get(index);
 
   const showBlockActions = !!turnEntry?.isLastInTurn;
   const align = message.role === 'user' ? 'right' : 'left';
 
   return (
     <div className="group relative">
-      {body}
+      <MessageBody message={message} index={index} context={context} />
       <MessageActions
         align={align}
         onCopyMessage={() => actions.copyMessage(message)}
@@ -254,6 +282,84 @@ const MessageItem = memo(function MessageItem({
         onDeleteBlock={showBlockActions && turnEntry ? () => actions.deleteTurn(turnEntry.turn) : undefined}
         deleteDisabled={actions.isLoading}
       />
+    </div>
+  );
+});
+
+// ─── activity group: collapses intra-turn thinking + tool exec ───────────────
+
+function activitySummaryText(s: ReturnType<typeof summarizeActivity>): string {
+  const parts: string[] = [];
+  if (s.reads) parts.push(`${s.reads} đọc`);
+  if (s.edits) parts.push(`${s.edits} sửa`);
+  if (s.commands) parts.push(`${s.commands} lệnh`);
+  if (s.other) parts.push(`${s.other} khác`);
+  if (s.thinking) parts.push(`${s.thinking} suy nghĩ`);
+  return parts.join(' · ');
+}
+
+const ActivityGroupItem = memo(function ActivityGroupItem({
+  entries,
+  context,
+  isTail,
+}: {
+  entries: Array<{ message: Message; index: number }>;
+  context: ListContext;
+  isTail: boolean;
+}) {
+  const running = isTail && context.isLoading;
+  // Collapsed by default once finished; while running, stay collapsed but show a
+  // live status line so the user sees progress without the wall of steps.
+  const [expanded, setExpanded] = useState(false);
+
+  const summary = summarizeActivity(entries);
+  const stepCount = summary.steps;
+  const summaryText = activitySummaryText(summary);
+
+  // Live label = the last entry's current action (for the running state).
+  const last = entries[entries.length - 1]?.message;
+  const liveLabel =
+    last?.role === 'thinking'
+      ? 'Đang suy nghĩ…'
+      : last?.activity?.running || (last?.tool_name ? `Đang chạy ${last.tool_name}…` : 'Đang xử lý…');
+
+  return (
+    <div className="rounded-md border border-hairline-soft/40 bg-surface-soft/20 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring"
+      >
+        {running ? (
+          <Loader2 className="w-3.5 h-3.5 text-ink/45 flex-shrink-0 animate-spin motion-reduce:animate-none" strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <ChevronRight className={`w-3.5 h-3.5 text-ink/35 flex-shrink-0 transition-transform duration-fast ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
+        )}
+        <span className="text-[13px] font-[450] text-ink/55">
+          {running ? liveLabel : 'Activity'}
+        </span>
+        <span className="text-[12px] text-ink/35 font-mono ml-0.5">
+          {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
+          {summaryText ? ` · ${summaryText}` : ''}
+        </span>
+        {!running && (
+          <span className="ml-auto text-[11px] text-ink/30">{expanded ? 'thu gọn' : 'bung'}</span>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-hairline-soft/30 px-2 py-1.5 space-y-1">
+          {entries.map(({ message, index }) => (
+            <div
+              key={index}
+              style={message.depth ? { paddingLeft: `${message.depth * 1.25}rem` } : undefined}
+            >
+              <MessageBody message={message} index={index} context={context} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -309,6 +415,10 @@ export function MessageList() {
     () => allMessages.filter(m => !(m.role === 'thinking' && thinkingLevel === 'Off')),
     [allMessages, thinkingLevel]
   );
+
+  // Coalesce runs of intra-turn activity (thinking + tool exec) into collapsible
+  // groups so real messages stay prominent.
+  const renderItems = useMemo(() => groupActivity(messages), [messages]);
 
   const turnInfos = useMemo(() => computeTurns(messages), [messages]);
   const turnByIndex = useMemo(() => {
@@ -388,10 +498,10 @@ export function MessageList() {
 
   return (
     <div className="flex-1 min-h-0 relative bg-canvas">
-      <Virtuoso<Message, ListContext>
+      <Virtuoso<RenderItem, ListContext>
         ref={virtuosoRef}
         style={{ height: '100%' }}
-        data={messages}
+        data={renderItems}
         context={context}
         // Sole auto-follow authority. Sticks to the bottom (instant, no animation
         // bounce) while at the bottom — for both new messages AND the last
@@ -413,6 +523,25 @@ export function MessageList() {
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
         itemContent={itemContent}
         components={components}
+        atBottomThreshold={50}
+        initialTopMostItemIndex={renderItems.length - 1}
+        scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
+        itemContent={(itemIndex, item, ctx) => (
+          <div
+            className="max-w-4.5xl mx-auto px-4 md:px-8 pb-5 md:pb-6"
+            style={item.kind === 'message' && item.message.depth
+              ? { paddingLeft: `calc(${item.message.depth * 1.5}rem + 1rem)` }
+              : undefined}
+          >
+            {item.kind === 'activity'
+              ? <ActivityGroupItem entries={item.entries} context={ctx} isTail={itemIndex === renderItems.length - 1} />
+              : <MessageItem message={item.message} index={item.index} context={ctx} />}
+          </div>
+        )}
+        components={{
+          Header: () => <div className="h-8 md:h-10" aria-hidden="true" />,
+          Footer: ListFooter,
+        }}
       />
 
       {/* Scroll-to-bottom pill — appears when user has scrolled up into history */}

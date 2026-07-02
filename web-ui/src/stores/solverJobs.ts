@@ -6,6 +6,17 @@ import type {
   ParallelSolverDoneData,
 } from '../types';
 
+// ─── Blackboard notes ─────────────────────────────────────────────────────────
+
+export interface BBNote {
+  type: string;
+  content: string;
+  ts: number;
+  thread_id: number;
+}
+
+const MAX_NOTES = 50;
+
 // ─── Divide (DAG decomposition) shapes ───────────────────────────────────────
 
 export interface DivideTaskView {
@@ -14,6 +25,7 @@ export interface DivideTaskView {
   depends_on: string[];
   status: 'pending' | 'running' | 'done' | 'failed' | 'skipped';
   result?: string;
+  notes: BBNote[];
 }
 
 export interface DivideJobView {
@@ -36,6 +48,7 @@ export interface ThreadState {
   ok?: boolean;
   summary?: string;
   winner?: boolean;
+  notes: BBNote[];
 }
 
 export interface ParallelJobView {
@@ -61,7 +74,12 @@ export type SolverJob = DivideJobView | ParallelJobView;
 interface SolverJobsState {
   jobs: Record<string, SolverJob>;
   order: string[];
+  bbToJob: Record<string, string>;
   clear(): void;
+  onBlackboardNote(
+    payload: { task_id: string; thread_id: number; type: string; content: string; ts: number },
+    hintedJobId?: string,
+  ): void;
 }
 
 // ─── Persistence (P2) — survive full page reloads ────────────────────────────
@@ -85,15 +103,52 @@ function loadPersisted(): Pick<SolverJobsState, 'jobs' | 'order'> {
   return { jobs: {}, order: [] };
 }
 
-export const useSolverJobsStore = create<SolverJobsState>((set) => ({
+export const useSolverJobsStore = create<SolverJobsState>((set, _get) => ({
   ...loadPersisted(),
+  bbToJob: {},
   clear: () => {
     try {
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }
-    set({ jobs: {}, order: [] });
+    set({ jobs: {}, order: [], bbToJob: {} });
+  },
+  onBlackboardNote: (payload, hintedJobId) => {
+    set((state) => {
+      const jobId = hintedJobId ?? state.bbToJob[payload.task_id];
+      if (!jobId) return {};
+      const job = state.jobs[jobId];
+      if (!job) return {};
+
+      const note: BBNote = {
+        type: payload.type,
+        content: payload.content,
+        ts: payload.ts,
+        thread_id: payload.thread_id,
+      };
+
+      if (job.strategy === 'divide') {
+        const idx = job.tasks.findIndex((t) => t.id === `t${payload.thread_id}`);
+        if (idx < 0) return {};
+        const tasks = [...job.tasks];
+        const existing = tasks[idx].notes ?? [];
+        const merged = [...existing, note];
+        if (merged.length > MAX_NOTES) merged.splice(0, merged.length - MAX_NOTES);
+        tasks[idx] = { ...tasks[idx], notes: merged };
+        return { jobs: { ...state.jobs, [jobId]: { ...job, tasks, updatedAt: Date.now() } } };
+      }
+
+      // parallel
+      const idx = job.threads.findIndex((t) => t.thread === payload.thread_id);
+      if (idx < 0) return {};
+      const threads = [...job.threads];
+      const existing = threads[idx].notes ?? [];
+      const merged = [...existing, note];
+      if (merged.length > MAX_NOTES) merged.splice(0, merged.length - MAX_NOTES);
+      threads[idx] = { ...threads[idx], notes: merged };
+      return { jobs: { ...state.jobs, [jobId]: { ...job, threads, updatedAt: Date.now() } } };
+    });
   },
 }));
 
@@ -112,6 +167,38 @@ useSolverJobsStore.subscribe((state) => {
 /** Count of jobs still running — used for the nav activity badge. */
 export function runningSolverCount(state: SolverJobsState): number {
   return Object.values(state.jobs).filter((j) => j.status === 'running').length;
+}
+
+/**
+ * Aggregate running / queued / done counts across every job, at task/thread
+ * granularity — used for the Dispatch summary cards.
+ *
+ * Divide tasks: pending→queued, running→running, done|failed|skipped→done.
+ * Parallel threads: running→running, done|dropped→done (parallel has no queued).
+ */
+export function solverStatusCounts(state: SolverJobsState): {
+  running: number;
+  queued: number;
+  done: number;
+} {
+  let running = 0;
+  let queued = 0;
+  let done = 0;
+  for (const job of Object.values(state.jobs)) {
+    if (job.strategy === 'divide') {
+      for (const task of job.tasks) {
+        if (task.status === 'pending') queued += 1;
+        else if (task.status === 'running') running += 1;
+        else done += 1; // done | failed | skipped
+      }
+    } else {
+      for (const thread of job.threads) {
+        if (thread.status === 'running') running += 1;
+        else done += 1; // done | dropped
+      }
+    }
+  }
+  return { running, queued, done };
 }
 
 // ─── WS subscriptions — register once at module load ─────────────────────────
@@ -151,7 +238,8 @@ export function initSolverJobsStore() {
           id: t.id,
           description: t.description,
           depends_on: t.depends_on,
-          status: 'pending',
+          status: 'pending' as const,
+          notes: [],
         })),
         status: 'running',
         startedAt: now,
@@ -169,15 +257,27 @@ export function initSolverJobsStore() {
         threads: Array.from({ length: p.n }, (_, i) => ({
           thread: i,
           status: 'running' as const,
+          notes: [],
         })),
         startedAt: now,
         updatedAt: now,
       };
     }
 
+    // Derive blackboard task id from convention when backend omits it:
+    //   divide  → "dw_" + job_id
+    //   parallel → "bb_" + job_id
+    // An explicit payload value takes precedence if provided.
+    const explicitBbId = (data as Record<string, unknown>).blackboard_task_id as
+      | string
+      | undefined;
+    const derivedBbId =
+      explicitBbId ??
+      (data.strategy === 'divide' ? `dw_${data.job_id}` : `bb_${data.job_id}`);
     useSolverJobsStore.setState((state) => ({
       jobs: { ...state.jobs, [data.job_id]: job },
       order: upsertOrder(state.order, data.job_id),
+      bbToJob: { ...state.bbToJob, [derivedBbId]: data.job_id },
     }));
   });
 
@@ -300,6 +400,13 @@ export function initSolverJobsStore() {
         applied ? 'success' : 'info',
       );
     }
+  });
+
+  // ── blackboard notes ──────────────────────────────────────────────────────
+  wsClient.on('blackboard.note', (msg) => {
+    useSolverJobsStore.getState().onBlackboardNote(
+      msg.data as { task_id: string; thread_id: number; type: string; content: string; ts: number },
+    );
   });
 }
 

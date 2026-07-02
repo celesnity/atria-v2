@@ -139,6 +139,12 @@ class BlackboardConfig(BaseModel):
     redis_url: str = Field(default_factory=_default_redis_url)
     ttl: int = 3600  # seconds a task's blackboard lives in Redis
     window_tokens: int = 2000  # digest token budget injected into context
+    # Admission-time LLM verification (DeLM §A.3) — the paper's largest single accuracy
+    # contributor. Notes are checked for grounding before entering shared state.
+    verify: bool = True
+    # Cheap model for verification; None resolves model_critique -> model_compact -> model.
+    # Fig 4c: a cheap model matches a frontier model for this check.
+    verify_model: Optional[str] = None
 
 
 class ParallelConfig(BaseModel):
@@ -147,6 +153,10 @@ class ParallelConfig(BaseModel):
     max_solvers: int = 5
     default_solvers: int = 3
     solver_start_stagger_seconds: float = 0.0
+    # DeLM W2: split the N solvers into this many sequential waves so later waves read
+    # earlier waves' verified blackboard notes (shared progress) instead of running fully
+    # isolated (pass@k). 1 = original single simultaneous fan-out.
+    waves: int = 2
     pjob_ttl: int = 3600
     redis_url: str = Field(default_factory=_default_redis_url)
 
@@ -156,6 +166,9 @@ class DivideConfig(BaseModel):
 
     max_tasks: int = 8  # cap on decomposed subtasks
     max_parallel: int = 3  # max workers running at once
+    # DeLM stage 4: when the queue drains, the orchestrator inspects the shared context
+    # and may enqueue more subtasks. Bounds the number of such follow-up rounds (0 = off).
+    max_redecompose_rounds: int = 1
     pjob_ttl: int = 3600  # seconds a divide job lives in Redis
     job_timeout_s: int = 600  # coordinator total/no-progress timeout
     redis_url: str = Field(default_factory=_default_redis_url)
@@ -269,16 +282,34 @@ class AppConfig(BaseModel):
     command_dir: str = f"{APP_DIR_NAME}/commands"
 
     def get_api_key(self) -> str:
-        """Get API key from config or environment."""
+        """Get API key from config or environment.
+
+        Resolution order: an explicit ``api_key`` value, then a
+        provider-appropriate environment variable. When the configured
+        endpoint is OpenRouter, ``OPENROUTER_API_KEY`` is preferred; otherwise
+        ``OPENAI_API_KEY``. Both are accepted as fallbacks so either key works
+        against any OpenAI-compatible endpoint.
+        """
         import os
 
         if self.api_key:
             return self.api_key
 
-        key = os.getenv("OPENAI_API_KEY")
-        if not key:
-            raise ValueError("No API key found. Set OPENAI_API_KEY environment variable")
-        return key
+        base_url = (self.api_base_url or "").lower()
+        if "openrouter.ai" in base_url:
+            env_order = ("OPENROUTER_API_KEY", "OPENAI_API_KEY")
+        else:
+            env_order = ("OPENAI_API_KEY", "OPENROUTER_API_KEY")
+
+        for var in env_order:
+            key = os.getenv(var)
+            if key:
+                return key
+
+        raise ValueError(
+            "No API key found. Set OPENAI_API_KEY or OPENROUTER_API_KEY "
+            "environment variable."
+        )
 
     def get_model_info(self):
         """Get model information from the registry.
