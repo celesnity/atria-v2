@@ -1,7 +1,8 @@
 import {
+  Check,
+  ChevronDown,
   ChevronRight,
   Folder,
-  FolderOpen,
   MessageSquare,
   Package,
   Plus,
@@ -9,8 +10,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
-import { useLocalStorage } from "usehooks-ts";
+import { useEffect, useRef, useState } from "react";
+import { useLocalStorage, useMediaQuery } from "usehooks-ts";
 import { ResizeHandle } from "../ui/ResizeHandle";
 import { useChatStore } from "../../stores/chat";
 import { useModulesStore } from "../../stores/modules";
@@ -20,17 +21,31 @@ import { SettingsModal } from "../Settings/SettingsModal";
 import { CreateConversationModal } from "./CreateConversationModal";
 import { CreateProjectModal } from "./CreateProjectModal";
 
+/** Short relative time, e.g. "Just now", "5m ago", "3h ago", "2d ago", or a date. */
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
 export function ProjectSidebar() {
   const {
     projects,
     conversations,
-    expandedProjects,
     isLoading,
     loadProjects,
-    toggleProject,
+    loadConversations,
     deleteProject,
     deleteConversation,
-    createWorkspaceConversation,
+    createConversation,
   } = useProjectsStore();
   const workspaceProjectId = useProjectsStore((s) => s.workspaceProjectId);
 
@@ -39,6 +54,11 @@ export function ProjectSidebar() {
   const isCollapsed = useChatStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useChatStore((s) => s.toggleSidebar);
   const runningSessions = useChatStore((s) => s.runningSessions);
+
+  // Below md the sidebar becomes an off-canvas drawer instead of a static column.
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const mobileSidebarOpen = useChatStore((s) => s.mobileSidebarOpen);
+  const closeMobileSidebar = useChatStore((s) => s.closeMobileSidebar);
 
   const modulesWithDashboards = useModulesStore((s) => s.modulesWithDashboards);
   const activeModuleDashboard = useModulesStore((s) => s.activeModuleDashboard);
@@ -56,7 +76,16 @@ export function ProjectSidebar() {
     projectId?: string;
   } | null>(null);
   const [creatingChat, setCreatingChat] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>("sidebar.width", 256);
+  // Persisted, drag-to-resize width for the desktop sidebar column.
+  const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
+    "sidebar.width",
+    256,
+  );
+
+  // Project switcher: which project's conversations are shown in the flat CHATS list.
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
   const reduce = useReducedMotion();
 
@@ -65,12 +94,51 @@ export function ProjectSidebar() {
     refreshModules();
   }, []);
 
+  // Default the active project to the user's workspace project once it loads.
+  useEffect(() => {
+    if (!activeProjectId && workspaceProjectId) {
+      setActiveProjectId(workspaceProjectId);
+      loadConversations(workspaceProjectId);
+    }
+  }, [workspaceProjectId, activeProjectId]);
+
+  // Close the switcher dropdown on outside click.
+  useEffect(() => {
+    if (!switcherOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setSwitcherOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [switcherOpen]);
+
+  const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
+  const activeConversations = activeProjectId
+    ? conversations[activeProjectId] ?? []
+    : [];
+  // The workspace project's name is a long filesystem path; show a friendly label instead.
+  const activeProjectLabel =
+    activeProjectId && activeProjectId === workspaceProjectId
+      ? "Workspace"
+      : activeProject?.name ?? "";
+
+  const selectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
+    setSwitcherOpen(false);
+    loadConversations(projectId);
+  };
+
   const handleNewChat = async () => {
-    if (creatingChat || !workspaceProjectId) return;
+    const pid = activeProjectId || workspaceProjectId;
+    if (creatingChat || !pid) return;
     setCreatingChat(true);
     try {
-      await createWorkspaceConversation("New Chat");
+      // createConversation loads the new session automatically.
+      await createConversation(pid, "New Chat");
       closeModuleDashboard();
+      closeMobileSidebar();
     } finally {
       setCreatingChat(false);
     }
@@ -86,7 +154,7 @@ export function ProjectSidebar() {
     setConfirmDelete(null);
   };
 
-  if (isCollapsed) {
+  if (isCollapsed && !isMobile) {
     return (
       <aside
         data-surface="dark"
@@ -152,29 +220,12 @@ export function ProjectSidebar() {
     );
   }
 
-  return (
+  const sidebarBody = (
     <>
-      <motion.aside
-        initial={reduce ? false : { opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        data-surface="dark"
-        style={{ width: sidebarWidth }}
-        className="relative flex-shrink-0 flex flex-col bg-bg-100 border-r border-border-300/15 overflow-hidden"
-      >
-        {/* Drag the right edge to resize the sidebar (kept within bounds — aside is overflow-hidden) */}
-        <ResizeHandle
-          side="right"
-          width={sidebarWidth}
-          min={200}
-          max={480}
-          onResize={setSidebarWidth}
-          className="absolute top-0 bottom-0 right-0 w-2 cursor-col-resize hover:bg-sky-400/30 transition-colors z-30"
-        />
         {/* Header: collapse + New Chat + New Project + Settings */}
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border-300/10">
           <button
-            onClick={toggleSidebar}
+            onClick={() => (isMobile ? closeMobileSidebar() : toggleSidebar())}
             className="text-xs font-mono font-semibold text-text-300 hover:text-text-100 transition-colors flex items-center gap-1"
           >
             <ChevronRight className="w-3 h-3 rotate-180" />
@@ -191,13 +242,80 @@ export function ProjectSidebar() {
               <Plus className="w-3 h-3" />
               Chat
             </button>
-            <button
-              onClick={() => setCreateProjectOpen(true)}
-              className="p-1 rounded hover:bg-bg-200 text-text-400 hover:text-text-200 transition-colors"
-              title="New project"
-            >
-              <Folder className="w-3.5 h-3.5" />
-            </button>
+            {/* Project switcher — pick which project's chats are listed */}
+            <div className="relative" ref={switcherRef}>
+              <button
+                onClick={() => setSwitcherOpen((o) => !o)}
+                className="flex items-center gap-0.5 p-1 rounded hover:bg-bg-200 text-text-400 hover:text-text-200 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-main-100"
+                title="Switch project"
+                aria-label="Switch project"
+                aria-haspopup="menu"
+                aria-expanded={switcherOpen}
+              >
+                <Folder className="w-3.5 h-3.5" />
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {switcherOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-1 z-50 w-56 max-h-72 overflow-y-auto bg-bg-000 border border-border-300/20 rounded-lg shadow-modal py-1"
+                >
+                  <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-text-500">
+                    Projects
+                  </div>
+                  {projects.map((project) => {
+                    const isActive = project.id === activeProjectId;
+                    return (
+                      <div
+                        key={project.id}
+                        className="group flex items-center gap-1.5 px-2 py-1.5 hover:bg-bg-200/50"
+                      >
+                        <button
+                          role="menuitemradio"
+                          aria-checked={isActive}
+                          onClick={() => selectProject(project.id)}
+                          className="flex-1 flex items-center gap-1.5 min-w-0 text-left cursor-pointer focus:outline-none"
+                        >
+                          {isActive ? (
+                            <Check className="w-3.5 h-3.5 flex-shrink-0 text-accent-main-100" />
+                          ) : (
+                            <Folder className="w-3.5 h-3.5 flex-shrink-0 text-text-400" />
+                          )}
+                          <span
+                            className={`flex-1 text-xs truncate ${isActive ? "text-accent-main-100 font-medium" : "text-text-200"}`}
+                          >
+                            {project.name}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() =>
+                            setConfirmDelete({ type: "project", id: project.id })
+                          }
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-semantic-danger transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-semantic-danger"
+                          title="Delete project"
+                          aria-label={`Delete project ${project.name}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t border-border-300/10 mt-1 pt-1">
+                    <button
+                      onClick={() => {
+                        setSwitcherOpen(false);
+                        setCreateProjectOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-text-300 hover:text-accent-main-100 hover:bg-bg-200/50 font-mono transition-colors cursor-pointer focus:outline-none"
+                      role="menuitem"
+                    >
+                      <Plus className="w-3 h-3" />
+                      New project
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setSettingsOpen(true)}
               className="p-1 rounded hover:bg-bg-200 text-text-400 hover:text-text-200 transition-colors"
@@ -238,8 +356,8 @@ export function ProjectSidebar() {
             </div>
           )}
           {modulesWithDashboards.length > 0 && (
-            <div className="border-t border-border-300/10 mt-2 pt-2">
-              <div className="px-3 pb-1 text-[10px] font-mono uppercase tracking-wider text-text-500">
+            <div className="border-t border-border-300/10 mt-3 pt-3">
+              <div className="px-3 pb-1.5 text-[10px] font-mono uppercase tracking-wider text-text-500">
                 Modules
               </div>
               {modulesWithDashboards.map((m) => {
@@ -248,13 +366,14 @@ export function ProjectSidebar() {
                 return (
                   <button
                     key={m.name}
-                    onClick={() =>
+                    onClick={() => {
                       isActive
                         ? closeModuleDashboard()
-                        : openModuleDashboard(m.name)
-                    }
+                        : openModuleDashboard(m.name);
+                      closeMobileSidebar();
+                    }}
                     title={m.tooltip}
-                    className={`group flex items-center gap-2 px-3 py-1.5 w-full transition-colors text-left ${
+                    className={`group flex items-center gap-2 px-3 py-2.5 md:py-2 w-full transition-colors text-left ${
                       isActive
                         ? "bg-accent-main-100/10 border-r-2 border-accent-main-100"
                         : "hover:bg-bg-200/40"
@@ -293,117 +412,148 @@ export function ProjectSidebar() {
               })}
             </div>
           )}
-          {projects.map((project) => {
-            const isExpanded = expandedProjects.has(project.id);
-            const convs = conversations[project.id] ?? [];
-
-            return (
-              <div key={project.id}>
-                <div
-                  className="group flex items-center gap-1.5 px-2 py-1.5 hover:bg-bg-200/50 cursor-pointer select-none"
-                  onClick={() => toggleProject(project.id)}
-                >
-                  {isExpanded ? (
-                    <FolderOpen className="w-4 h-4 text-accent-main-100 flex-shrink-0" />
-                  ) : (
-                    <Folder className="w-4 h-4 text-text-400 flex-shrink-0" />
-                  )}
-                  <span className="flex-1 text-xs font-medium text-text-100 truncate">
-                    {project.name}
-                  </span>
-                  <span className="text-[10px] text-text-500 font-mono opacity-0 group-hover:opacity-100">
-                    {convs.length}
-                  </span>
-                  <div
-                    className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5"
-                    onClick={(e) => e.stopPropagation()}
+          {/* CHATS — flat list of the active project's conversations */}
+          {activeProjectId && (
+            <div className="border-t border-border-300/10 mt-3 pt-3">
+              <div className="flex items-center gap-1.5 px-3 pb-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-text-500">
+                  Chats
+                </span>
+                {activeProjectLabel && (
+                  <span
+                    className="flex-1 min-w-0 text-[10px] font-mono text-text-400 truncate"
+                    title={activeProjectLabel}
                   >
+                    · {activeProjectLabel}
+                  </span>
+                )}
+                <button
+                  onClick={() =>
+                    activeProject && setCreateConvFor(activeProject)
+                  }
+                  className="ml-auto p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-accent-main-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-main-100"
+                  title="New conversation"
+                  aria-label="New conversation"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+
+              {activeConversations.length === 0 && (
+                <button
+                  onClick={() =>
+                    activeProject && setCreateConvFor(activeProject)
+                  }
+                  className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-text-400 hover:text-accent-main-100 font-mono transition-colors cursor-pointer focus:outline-none"
+                >
+                  <Plus className="w-3 h-3" />
+                  New conversation
+                </button>
+              )}
+
+              {activeConversations.map((conv) => {
+                const isActive = currentSessionId === conv.id;
+                const isRunning = runningSessions.has(conv.id);
+                return (
+                  <div
+                    key={conv.id}
+                    onClick={() => {
+                      closeModuleDashboard();
+                      loadSession(conv.id);
+                      closeMobileSidebar();
+                    }}
+                    className={`group flex items-center gap-1.5 px-3 py-2.5 md:py-2 cursor-pointer transition-colors ${
+                      isActive
+                        ? "bg-accent-main-100/10 border-r-2 border-accent-main-100"
+                        : "hover:bg-bg-200/40"
+                    }`}
+                  >
+                    {isRunning ? (
+                      <span className="w-3 h-3 flex-shrink-0 inline-block rounded-full bg-amber-400 animate-pulse" />
+                    ) : (
+                      <MessageSquare
+                        className={`w-3 h-3 flex-shrink-0 ${isActive ? "text-accent-main-100" : "text-text-400"}`}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`text-xs truncate ${isActive ? "text-accent-main-100 font-medium" : "text-text-200"}`}
+                      >
+                        {conv.name}
+                      </div>
+                      <div className="text-[10px] text-text-500 font-mono truncate">
+                        {formatRelativeTime(conv.updated_at)}
+                      </div>
+                    </div>
+                    {conv.message_count > 0 && (
+                      <span className="text-[10px] text-text-500 font-mono">
+                        {conv.message_count}
+                      </span>
+                    )}
                     <button
-                      onClick={() => setCreateConvFor(project)}
-                      className="p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-accent-main-100 transition-colors"
-                      title="New conversation"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() =>
-                        setConfirmDelete({ type: "project", id: project.id })
-                      }
-                      className="p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-semantic-danger transition-colors"
-                      title="Delete project"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDelete({
+                          type: "conv",
+                          id: conv.id,
+                          projectId: conv.project_id,
+                        });
+                      }}
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1 md:p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-semantic-danger transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-semantic-danger"
+                      aria-label={`Delete conversation ${conv.name}`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="ml-3 border-l border-border-300/15">
-                    {convs.length === 0 && (
-                      <button
-                        onClick={() => setCreateConvFor(project)}
-                        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-text-400 hover:text-accent-main-100 font-mono transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                        New conversation
-                      </button>
-                    )}
-                    {convs.map((conv) => {
-                      const isActive = currentSessionId === conv.id;
-                      const isRunning = runningSessions.has(conv.id);
-                      return (
-                        <div
-                          key={conv.id}
-                          onClick={() => {
-                            closeModuleDashboard();
-                            loadSession(conv.id);
-                          }}
-                          className={`group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer transition-colors ${
-                            isActive
-                              ? "bg-accent-main-100/10 border-r-2 border-accent-main-100"
-                              : "hover:bg-bg-200/40"
-                          }`}
-                        >
-                          {isRunning ? (
-                            <span className="w-3 h-3 flex-shrink-0 inline-block rounded-full bg-amber-400 animate-pulse" />
-                          ) : (
-                            <MessageSquare
-                              className={`w-3 h-3 flex-shrink-0 ${isActive ? "text-accent-main-100" : "text-text-400"}`}
-                            />
-                          )}
-                          <span
-                            className={`flex-1 text-xs truncate ${isActive ? "text-accent-main-100 font-medium" : "text-text-200"}`}
-                          >
-                            {conv.name}
-                          </span>
-                          {conv.message_count > 0 && (
-                            <span className="text-[10px] text-text-500 font-mono">
-                              {conv.message_count}
-                            </span>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmDelete({
-                                type: "conv",
-                                id: conv.id,
-                                projectId: project.id,
-                              });
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-300 text-text-400 hover:text-semantic-danger transition-colors"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
-      </motion.aside>
+    </>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <>
+          {mobileSidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/50 md:hidden"
+              onClick={closeMobileSidebar}
+              aria-hidden
+            />
+          )}
+          <aside
+            data-surface="dark"
+            className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] flex flex-col bg-bg-100 border-r border-border-300/15 overflow-hidden md:hidden transition-transform duration-200 ease-out ${
+              mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+          >
+            {sidebarBody}
+          </aside>
+        </>
+      ) : (
+        <motion.aside
+          initial={reduce ? false : { opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          data-surface="dark"
+          style={{ width: sidebarWidth }}
+          className="relative flex-shrink-0 flex flex-col bg-bg-100 border-r border-border-300/15 overflow-hidden"
+        >
+          {/* Drag the right edge to resize the sidebar (kept within bounds — aside is overflow-hidden) */}
+          <ResizeHandle
+            side="right"
+            width={sidebarWidth}
+            min={200}
+            max={480}
+            onResize={setSidebarWidth}
+            className="absolute top-0 bottom-0 right-0 w-2 cursor-col-resize hover:bg-sky-400/30 transition-colors z-30"
+          />
+          {sidebarBody}
+        </motion.aside>
+      )}
 
       <CreateProjectModal
         isOpen={createProjectOpen}

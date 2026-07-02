@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo, DataColumn, ChartSuggestion } from '../types';
+import { applyTodosUpdate } from '../lib/todos';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -201,6 +202,15 @@ function expandMessages(rawMessages: Message[]): Message[] {
       continue;
     }
 
+    // Reconstruct a persisted todo snapshot (role 'todos') into a live card.
+    if (msg.role === 'todos') {
+      const todos = msg.metadata?.todos ?? msg.todos ?? [];
+      if (Array.isArray(todos) && todos.length > 0) {
+        expanded.push({ role: 'todos', content: '', todos, timestamp: msg.timestamp });
+      }
+      continue;
+    }
+
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       if (msg.content && msg.content.trim()) {
         expanded.push({
@@ -238,7 +248,9 @@ interface ChatState {
   runningSessions: Set<string>;
   sessionListVersion: number;
   sidebarCollapsed: boolean;
+  mobileSidebarOpen: boolean;
   settingsModalOpen: boolean;
+  commandPaletteOpen: boolean;
 
   // Actions
   loadSession: (sessionId: string) => Promise<void>;
@@ -258,6 +270,9 @@ interface ChatState {
   bumpSessionList: () => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  openMobileSidebar: () => void;
+  closeMobileSidebar: () => void;
+  toggleMobileSidebar: () => void;
   setSelectedPersona: (personaName: string | null) => void;
   setDraft: (sessionId: string, text: string) => void;
   updateDataMessageRows: (
@@ -267,6 +282,8 @@ interface ChatState {
   ) => void;
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
+  openCommandPalette: () => void;
+  closeCommandPalette: () => void;
 }
 
 const AUTONOMY_CYCLE: Array<'Manual' | 'Semi-Auto' | 'Auto'> = ['Manual', 'Semi-Auto', 'Auto'];
@@ -282,11 +299,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
   runningSessions: new Set<string>(),
   sessionListVersion: 0,
   sidebarCollapsed: false,
+  mobileSidebarOpen: false,
   settingsModalOpen: false,
+  commandPaletteOpen: false,
 
   bumpSessionList: () => set(state => ({ sessionListVersion: state.sessionListVersion + 1 })),
   toggleSidebar: () => set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  openMobileSidebar: () => set({ mobileSidebarOpen: true }),
+  closeMobileSidebar: () => set({ mobileSidebarOpen: false }),
+  toggleMobileSidebar: () => set(state => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
   setSelectedPersona: (personaName: string | null) => {
     const sessionId = get().currentSessionId;
     if (sessionId) {
@@ -317,6 +339,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
   openSettingsModal: () => set({ settingsModalOpen: true }),
   closeSettingsModal: () => set({ settingsModalOpen: false }),
+  openCommandPalette: () => set({ commandPaletteOpen: true }),
+  closeCommandPalette: () => set({ commandPaletteOpen: false }),
   loadSession: async (sessionId: string) => {
     console.log(`[Frontend] Loading session ${sessionId}`);
 
@@ -583,6 +607,12 @@ function resolveSessionId(data: any): string | null {
 let connectionStableTimer: number | null = null;
 let wasEverStable = false;
 
+// Tracks the active agent turn per session so all assistant text chunks from
+// one ReAct turn accumulate into a single bubble, even when tool_call/tool_result
+// messages are interleaved between chunks. Set on message_start, cleared on
+// message_complete. See message_chunk handler below.
+const activeTurnBySession = new Map<string, string>();
+
 wsClient.on('connected', () => {
   useChatStore.getState().setConnected(true);
   if (wasEverStable) {
@@ -627,6 +657,8 @@ wsClient.on('user_message', (message) => {
 wsClient.on('message_start', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
+  // Begin a new turn: all assistant chunks until message_complete group here.
+  activeTurnBySession.set(sid, String(message.data.messageId ?? sid + ':' + Date.now()));
   useChatStore.setState(state => ({
     ...patchSession(state, sid, { isLoading: true }),
   }));
@@ -636,21 +668,40 @@ wsClient.on('message_chunk', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
+  // Fall back to a per-session turn id if no message_start was seen (e.g. after
+  // a reconnect mid-turn), so chunks still group instead of splitting per tool call.
+  let turnId = activeTurnBySession.get(sid);
+  if (!turnId) {
+    turnId = sid + ':' + Date.now();
+    activeTurnBySession.set(sid, turnId);
+  }
+
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
     const msgs = sessionState.messages;
-    const lastMessage = msgs[msgs.length - 1];
+
+    // Find the assistant bubble for the current turn (may sit above interleaved
+    // tool_call/tool_result messages), searching from the end for the latest turn.
+    let idx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === 'assistant' && msgs[i].turnId === turnId) {
+        idx = i;
+        break;
+      }
+    }
 
     let newMessages: Message[];
-    if (lastMessage && lastMessage.role === 'assistant') {
+    if (idx !== -1) {
+      const target = msgs[idx];
       newMessages = [
-        ...msgs.slice(0, -1),
-        { ...lastMessage, content: lastMessage.content + message.data.content },
+        ...msgs.slice(0, idx),
+        { ...target, content: target.content + message.data.content },
+        ...msgs.slice(idx + 1),
       ];
     } else {
       newMessages = [
         ...msgs,
-        { role: 'assistant' as const, content: message.data.content },
+        { role: 'assistant' as const, content: message.data.content, turnId },
       ];
     }
 
@@ -662,6 +713,8 @@ wsClient.on('message_complete', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
   console.log('[Frontend] Received message_complete');
+  // End the turn: next agent turn starts a fresh bubble.
+  activeTurnBySession.delete(sid);
   useChatStore.setState(state => ({
     ...patchSession(state, sid, { isLoading: false, queuedMessages: [] }),
   }));
@@ -1019,6 +1072,24 @@ wsClient.on('task_completed', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
   console.log('[Frontend] Task completed:', message.data.summary);
+});
+
+// ─── Todo List Events ────────────────────────────────────────────────────────
+// A single live "todos" card lives in the message flow and updates in place as
+// the agent writes/updates/completes todos. Empty payload removes the card.
+// Reducer lives in lib/todos.ts (applyTodosUpdate) for isolated testing.
+
+wsClient.on('todos_updated', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const todos = Array.isArray(message.data.todos) ? message.data.todos : [];
+
+  useChatStore.setState(state => {
+    const sessionState = getSessionState(state.sessionStates, sid);
+    const next = applyTodosUpdate(sessionState.messages, todos, new Date().toISOString());
+    if (next === sessionState.messages) return {};
+    return patchSession(state, sid, { messages: next });
+  });
 });
 
 // ─── Progress Events ─────────────────────────────────────────────────────────

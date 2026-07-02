@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,6 +8,10 @@ import type { Message } from '../../types';
 import { useChatStore } from '../../stores/chat';
 import { ToolCallMessage } from './ToolCallMessage';
 import { ModuleActivityLine } from './ModuleActivityLine';
+import { SolveDispatchCard } from './SolveDispatchCard';
+import { TodoListCard } from './TodoListCard';
+import { SubagentCard } from './SubagentCard';
+import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
@@ -173,14 +177,14 @@ function WelcomeScreen() {
         </span>
       </div>
       <div className="relative z-10 max-w-xl w-full">
-        <div className="color-block bg-block-cream rounded-lg px-8 py-10 md:px-12 md:py-xxl text-center">
-          <span className="font-mono uppercase tracking-[0.54px] text-[12px] text-ink/60 block mb-4">
+        <div className="glass-card rounded-xl px-8 py-9 md:px-12 md:py-10 text-center">
+          <span className="font-sans uppercase tracking-[0.24em] text-[13px] font-[500] text-text-muted block mb-4">
             Welcome
           </span>
-          <h2 className="text-[40px] md:text-display-lg font-sans font-[340] leading-[1.05] tracking-[-0.96px] text-ink">
+          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.02] tracking-[-0.03em] text-gradient-brand">
             Let&rsquo;s get to work.
           </h2>
-          <p className="mt-5 text-body-sm text-ink/80">
+          <p className="mt-5 text-body-sm text-text-secondary">
             Start a conversation with your AI coding assistant.
           </p>
         </div>
@@ -199,7 +203,9 @@ interface ListContext {
   actions: ReturnType<typeof useMessageActions>;
 }
 
-const MessageItem = memo(function MessageItem({
+// Renders the body for a single message based on its role. Shared by standalone
+// MessageItem rows and the expanded contents of an ActivityGroup.
+function MessageBody({
   message,
   index,
   context,
@@ -208,24 +214,33 @@ const MessageItem = memo(function MessageItem({
   index: number;
   context: ListContext;
 }) {
-  const { isLoading, totalCount, turnByIndex, actions } = context;
-  const turnEntry = turnByIndex.get(index);
+  const { isLoading, totalCount } = context;
   const simpleMode = useChatStore(s => s.status?.simple_mode ?? true);
 
-  let body: ReactNode;
+  if (message.role === 'todos') return <TodoListCard message={message} />;
   if (message.role === 'tool_call') {
     const hasResult = message.tool_result != null && Object.keys(message.tool_result).length > 0;
-    body = simpleMode
+    if (message.tool_name === 'solve') {
+      // Dispatch card: request text + strategy + live job progress.
+      return <SolveDispatchCard message={message} />;
+    }
+    if (message.tool_name === 'spawn_subagent') {
+      // Always show subagents as a distinct card, even in Simple Mode.
+      return <SubagentCard message={message} hasResult={hasResult} />;
+    }
+    return simpleMode
       ? <ModuleActivityLine message={message} hasResult={hasResult} />
       : <ToolCallMessage message={message} hasResult={hasResult} />;
-  } else if (message.role === 'thinking') {
+  }
+  if (message.role === 'thinking') {
     const isLastThinking = (isLoading || !!message.streaming) && index === totalCount - 1;
-    body = <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
-  } else if (message.role === 'search_result') body = <SearchResultBlock message={message} />;
-  else if (message.role === 'data_message') body = <DataMessage message={message} />;
-  else if (message.role === 'image_message') body = <ImageMessage message={message} />;
-  else if (message.role === 'custom_block' && message.block_id && message.block_src) {
-    body = (
+    return <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
+  }
+  if (message.role === 'search_result') return <SearchResultBlock message={message} />;
+  if (message.role === 'data_message') return <DataMessage message={message} />;
+  if (message.role === 'image_message') return <ImageMessage message={message} />;
+  if (message.role === 'custom_block' && message.block_id && message.block_src) {
+    return (
       <SandboxedBlock
         blockId={message.block_id}
         src={message.block_src}
@@ -235,18 +250,31 @@ const MessageItem = memo(function MessageItem({
       />
     );
   }
-  else if (message.role === 'deep_research') body = <DeepResearchBlock message={message} />;
-  else if (message.role === 'deep_analyze') body = <DeepAnalyzeBlock message={message} />;
-  else body = message.role === 'user'
+  if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
+  if (message.role === 'deep_analyze') return <DeepAnalyzeBlock message={message} />;
+  return message.role === 'user'
     ? <UserTurn content={message.content} />
     : <AssistantMarkdown content={message.content} />;
+}
+
+const MessageItem = memo(function MessageItem({
+  message,
+  index,
+  context,
+}: {
+  message: Message;
+  index: number;
+  context: ListContext;
+}) {
+  const { turnByIndex, actions } = context;
+  const turnEntry = turnByIndex.get(index);
 
   const showBlockActions = !!turnEntry?.isLastInTurn;
   const align = message.role === 'user' ? 'right' : 'left';
 
   return (
     <div className="group relative">
-      {body}
+      <MessageBody message={message} index={index} context={context} />
       <MessageActions
         align={align}
         onCopyMessage={() => actions.copyMessage(message)}
@@ -254,6 +282,84 @@ const MessageItem = memo(function MessageItem({
         onDeleteBlock={showBlockActions && turnEntry ? () => actions.deleteTurn(turnEntry.turn) : undefined}
         deleteDisabled={actions.isLoading}
       />
+    </div>
+  );
+});
+
+// ─── activity group: collapses intra-turn thinking + tool exec ───────────────
+
+function activitySummaryText(s: ReturnType<typeof summarizeActivity>): string {
+  const parts: string[] = [];
+  if (s.reads) parts.push(`${s.reads} đọc`);
+  if (s.edits) parts.push(`${s.edits} sửa`);
+  if (s.commands) parts.push(`${s.commands} lệnh`);
+  if (s.other) parts.push(`${s.other} khác`);
+  if (s.thinking) parts.push(`${s.thinking} suy nghĩ`);
+  return parts.join(' · ');
+}
+
+const ActivityGroupItem = memo(function ActivityGroupItem({
+  entries,
+  context,
+  isTail,
+}: {
+  entries: Array<{ message: Message; index: number }>;
+  context: ListContext;
+  isTail: boolean;
+}) {
+  const running = isTail && context.isLoading;
+  // Collapsed by default once finished; while running, stay collapsed but show a
+  // live status line so the user sees progress without the wall of steps.
+  const [expanded, setExpanded] = useState(false);
+
+  const summary = summarizeActivity(entries);
+  const stepCount = summary.steps;
+  const summaryText = activitySummaryText(summary);
+
+  // Live label = the last entry's current action (for the running state).
+  const last = entries[entries.length - 1]?.message;
+  const liveLabel =
+    last?.role === 'thinking'
+      ? 'Đang suy nghĩ…'
+      : last?.activity?.running || (last?.tool_name ? `Đang chạy ${last.tool_name}…` : 'Đang xử lý…');
+
+  return (
+    <div className="rounded-md border border-hairline-soft/40 bg-surface-soft/20 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring"
+      >
+        {running ? (
+          <Loader2 className="w-3.5 h-3.5 text-ink/45 flex-shrink-0 animate-spin motion-reduce:animate-none" strokeWidth={1.75} aria-hidden="true" />
+        ) : (
+          <ChevronRight className={`w-3.5 h-3.5 text-ink/35 flex-shrink-0 transition-transform duration-fast ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
+        )}
+        <span className="text-[13px] font-[450] text-ink/55">
+          {running ? liveLabel : 'Activity'}
+        </span>
+        <span className="text-[12px] text-ink/35 font-mono ml-0.5">
+          {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
+          {summaryText ? ` · ${summaryText}` : ''}
+        </span>
+        {!running && (
+          <span className="ml-auto text-[11px] text-ink/30">{expanded ? 'thu gọn' : 'bung'}</span>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-hairline-soft/30 px-2 py-1.5 space-y-1">
+          {entries.map(({ message, index }) => (
+            <div
+              key={index}
+              style={message.depth ? { paddingLeft: `${message.depth * 1.25}rem` } : undefined}
+            >
+              <MessageBody message={message} index={index} context={context} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -272,11 +378,6 @@ function ListFooter({ context }: { context?: ListContext }) {
   );
 }
 
-// Stable top spacer. Defined at module scope (not inline) so Virtuoso doesn't
-// see a new component type on every render and remount/re-measure it — that
-// remounting was a source of scroll flicker.
-const ListHeader = () => <div className="h-8 md:h-10" aria-hidden="true" />;
-
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function MessageList() {
@@ -293,22 +394,22 @@ export function MessageList() {
     return sid ? state.sessionStates[sid]?.progressMessage ?? null : null;
   });
   const thinkingLevel = useChatStore(state => state.thinkingLevel);
-  const currentSessionId = useChatStore(state => state.currentSessionId);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
   // Ref for synchronous reads inside effects/events — avoids stale closure issues
   const atBottomRef = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
   const scrollerRef = useRef<HTMLElement | null>(null);
-  // True while the user is actively scrolling — used to suppress auto-follow so
-  // we never yank the viewport while they're trying to read.
-  const isScrollingRef = useRef(false);
 
   // Exclude thinking messages when the user has thinking display turned off
   const messages = useMemo(
     () => allMessages.filter(m => !(m.role === 'thinking' && thinkingLevel === 'Off')),
     [allMessages, thinkingLevel]
   );
+
+  // Coalesce runs of intra-turn activity (thinking + tool exec) into collapsible
+  // groups so real messages stay prominent.
+  const renderItems = useMemo(() => groupActivity(messages), [messages]);
 
   const turnInfos = useMemo(() => computeTurns(messages), [messages]);
   const turnByIndex = useMemo(() => {
@@ -329,48 +430,13 @@ export function MessageList() {
     [isLoading, progressMessage, messages.length, turnByIndex, actions]
   );
 
-  // Stable references for Virtuoso. Passing fresh inline objects/functions every
-  // render makes Virtuoso re-create Header/Footer/items and re-measure them,
-  // which jumps the scroll position (the flicker).
-  const itemContent = useCallback(
-    (index: number, message: Message, ctx: ListContext) => (
-      <div
-        // flow-root establishes a block formatting context so the markdown's
-        // child margins are CONTAINED and counted in the measured height.
-        // react-virtuoso mis-measures items whose content margins escape, which
-        // caused the scroll flicker / "can't reach the end".
-        className="flow-root max-w-4.5xl mx-auto px-4 md:px-8 pb-5 md:pb-6"
-        style={message.depth ? { paddingLeft: `calc(${message.depth * 1.5}rem + 1rem)` } : undefined}
-      >
-        <MessageItem message={message} index={index} context={ctx} />
-      </div>
-    ),
-    [],
-  );
-  const components = useMemo(() => ({ Header: ListHeader, Footer: ListFooter }), []);
-
-  // On conversation switch, jump to the latest message once. The component does
-  // not remount between conversations, so initialTopMostItemIndex (mount-only)
-  // isn't enough. After this, Virtuoso's followOutput keeps the viewport pinned
-  // during streaming as long as the user stays at the bottom — we deliberately
-  // do NOT scroll on every message update, which previously fought the user's
-  // own scrolling and made the view jump.
+  // Keep viewport pinned to bottom during streaming (item content grows, no new
+  // array entry added, so Virtuoso's followOutput alone won't fire).
   useEffect(() => {
-    atBottomRef.current = true;
-    setAtBottom(true);
-    const id = requestAnimationFrame(() => {
+    if (atBottomRef.current && messages.length > 0) {
       virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [currentSessionId]);
-
-  // Auto-follow is handled SOLELY by Virtuoso's own `followOutput` (see the prop
-  // below). We deliberately do NOT run a manual scroll effect here: a manual
-  // scrollToIndex/scrollTo fired per streamed token reads the last item's
-  // *previous* (smaller) height while it's still growing, so its target lands
-  // above the current position and the view visibly jumps UP — the flicker.
-  // `followOutput` scrolls only after Virtuoso has re-measured, so it sticks to
-  // the bottom smoothly during streaming without the bounce.
+    }
+  }, [messages]);
 
   // PageUp / PageDown keyboard scrolling
   useEffect(() => {
@@ -388,31 +454,38 @@ export function MessageList() {
 
   return (
     <div className="flex-1 min-h-0 relative bg-canvas">
-      <Virtuoso<Message, ListContext>
+      <Virtuoso<RenderItem, ListContext>
         ref={virtuosoRef}
         style={{ height: '100%' }}
-        data={messages}
+        data={renderItems}
         context={context}
-        // Sole auto-follow authority. Sticks to the bottom (instant, no animation
-        // bounce) while at the bottom — for both new messages AND the last
-        // message growing during streaming — and stops the moment the user
-        // scrolls up. No competing manual scroll effect (that caused the flicker).
-        followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
+        // followOutput: auto-scroll to bottom only when already pinned there.
+        // Covers new message arrivals; the useEffect above covers streaming growth.
+        followOutput={(isAtBottom) => isAtBottom ? 'auto' : false}
+        alignToBottom
         atBottomStateChange={(bottom) => {
           atBottomRef.current = bottom;
           setAtBottom(bottom);
         }}
-        isScrolling={(scrolling) => { isScrollingRef.current = scrolling; }}
-        // Generous threshold so fast streaming growth doesn't briefly flip
-        // "at bottom" off (which would stop the follow mid-stream).
-        atBottomThreshold={100}
-        increaseViewportBy={{ top: 400, bottom: 400 }}
-        initialTopMostItemIndex={messages.length - 1}
-        // Stable per-item identity so re-renders don't remount/re-measure items.
-        computeItemKey={(index, m) => m.tool_call_id ?? m.data_message_id ?? `${m.role}:${index}`}
+        atBottomThreshold={50}
+        initialTopMostItemIndex={renderItems.length - 1}
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
-        itemContent={itemContent}
-        components={components}
+        itemContent={(itemIndex, item, ctx) => (
+          <div
+            className="max-w-4.5xl mx-auto px-4 md:px-8 pb-5 md:pb-6"
+            style={item.kind === 'message' && item.message.depth
+              ? { paddingLeft: `calc(${item.message.depth * 1.5}rem + 1rem)` }
+              : undefined}
+          >
+            {item.kind === 'activity'
+              ? <ActivityGroupItem entries={item.entries} context={ctx} isTail={itemIndex === renderItems.length - 1} />
+              : <MessageItem message={item.message} index={item.index} context={ctx} />}
+          </div>
+        )}
+        components={{
+          Header: () => <div className="h-8 md:h-10" aria-hidden="true" />,
+          Footer: ListFooter,
+        }}
       />
 
       {/* Scroll-to-bottom pill — appears when user has scrolled up into history */}

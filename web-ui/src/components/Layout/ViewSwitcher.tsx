@@ -51,11 +51,7 @@ export function ViewSwitcher({ className }: { className?: string }) {
   return (
     <nav
       aria-label="Primary view"
-      className={cn(
-        "inline-flex items-center gap-0.5 p-0.5 rounded-lg",
-        "bg-surface-soft border border-hairline-soft",
-        className,
-      )}
+      className={cn("inline-flex items-center gap-4", className)}
     >
       {VIEWS.map(({ to, label, Icon, isActive }) => {
         const active = isActive(location.pathname);
@@ -70,13 +66,13 @@ export function ViewSwitcher({ className }: { className?: string }) {
               showBadge ? `${label}, ${runningJobs} running` : label
             }
             className={cn(
-              "relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md",
+              "relative inline-flex items-center gap-1.5 h-8 border-b-2",
               "text-[13px] font-[480] tracking-[-0.1px] select-none cursor-pointer",
               "transition-colors duration-200",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas rounded-sm",
               active
-                ? "bg-canvas text-ink shadow-soft border border-hairline-soft"
-                : "text-ink/60 hover:text-ink hover:bg-canvas/60 border border-transparent",
+                ? "text-ink border-ink"
+                : "text-ink/55 hover:text-ink border-transparent",
             )}
           >
             <Icon className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden="true" />

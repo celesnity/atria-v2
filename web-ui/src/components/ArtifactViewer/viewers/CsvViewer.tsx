@@ -3,13 +3,14 @@ import Papa from 'papaparse';
 import { apiClient } from '../../../api/client';
 import { DataTable } from './DataTable';
 import { wsClient } from '../../../api/websocket';
+import { useViewerTabsStore } from '../../../stores/viewerTabs';
 import { fsScopeKey, type FsScope, type WSMessage } from '../../../types';
 
 const MonacoViewer = lazy(() =>
   import('./MonacoViewer').then(m => ({ default: m.MonacoViewer })),
 );
 
-interface Props { scope: FsScope; path: string }
+interface Props { scope: FsScope; path: string; convId?: string; tabId?: string }
 
 interface Parsed {
   columns: string[];
@@ -21,8 +22,10 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function CsvViewer({ scope, path }: Props) {
+export function CsvViewer({ scope, path, convId, tabId }: Props) {
   const scopeKey = useMemo(() => fsScopeKey(scope), [scope]);
+  const markDirty = useViewerTabsStore(s => s.markDirty);
+  const markClean = useViewerTabsStore(s => s.markClean);
   const [state, setState] = useState<
     { kind: 'loading' } | { kind: 'ok'; data: Parsed } | { kind: 'error'; msg: string }
   >({ kind: 'loading' });
@@ -78,6 +81,7 @@ export function CsvViewer({ scope, path }: Props) {
   const scheduleSave = (next: Parsed) => {
     setSaveStatus('pending');
     setSaveError(null);
+    if (convId && tabId) markDirty(convId, tabId);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       const text = Papa.unparse([next.columns, ...next.rows]);
@@ -85,6 +89,7 @@ export function CsvViewer({ scope, path }: Props) {
       ignoreNextChangeRef.current = true;
       apiClient.writeFsText(scope, path, text).then(() => {
         setSaveStatus('saved');
+        if (convId && tabId) markClean(convId, tabId);
       }).catch(err => {
         ignoreNextChangeRef.current = false;
         setSaveStatus('error');

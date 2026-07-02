@@ -9,9 +9,9 @@ const MonacoViewer = lazy(() =>
   import('./MonacoViewer').then(m => ({ default: m.MonacoViewer })),
 );
 
-interface Props { scope: FsScope; path: string; editable?: boolean }
+interface Props { scope: FsScope; path: string; editable?: boolean; convId?: string; tabId?: string }
 
-export function MarkdownViewer({ scope, path, editable }: Props) {
+export function MarkdownViewer({ scope, path, editable, convId, tabId }: Props) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'preview' | 'source'>('preview');
@@ -57,7 +57,7 @@ export function MarkdownViewer({ scope, path, editable }: Props) {
           </div>
         ) : (
           <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading editor…</div>}>
-            <MonacoViewer scope={scope} path={path} languageOverride="markdown" editable={editable} />
+            <MonacoViewer scope={scope} path={path} languageOverride="markdown" editable={editable} convId={convId} tabId={tabId} />
           </Suspense>
         )}
       </div>
