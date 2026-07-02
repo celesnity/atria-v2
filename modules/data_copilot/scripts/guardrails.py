@@ -105,6 +105,17 @@ def check_code(code: str) -> Dict[str, object]:
         if reason not in reasons:
             reasons.append(reason)
 
+    # Resolve local names bound to os/shutil (incl. aliases) so attribute-call
+    # checks catch `import os as o; o.system(...)`.
+    aliased: Dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = _root(alias.name)
+                if root in ("os", "shutil"):
+                    local = (alias.asname or alias.name).split(".")[0]
+                    aliased[local] = root
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -139,12 +150,13 @@ def check_code(code: str) -> Dict[str, object]:
             elif isinstance(func, ast.Attribute):
                 base = func.value
                 base_name = base.id if isinstance(base, ast.Name) else None
-                if base_name == "os":
+                canonical = aliased.get(base_name, base_name)
+                if canonical == "os":
                     if _is_os_exec(func.attr):
                         add(_SHELL_REASON)
                     if func.attr in _OS_DELETE_FUNCS:
                         add(_DELETE_REASON)
-                elif base_name == "shutil" and func.attr == "rmtree":
+                elif canonical == "shutil" and func.attr == "rmtree":
                     add(_RMTREE_REASON)
 
     return {"allowed": not reasons, "reasons": reasons}

@@ -52,6 +52,7 @@ def test_blocks_from_import_comma_and_alias_forms():
         "from ftplib import FTP",
         "from smtplib import SMTP",
         "import httpx",
+        "import requests as r\nr.get('http://x')",
     ]:
         assert g.check_code(bad)["allowed"] is False, bad
 
@@ -93,3 +94,13 @@ def test_allows_pandas_eval_and_query_methods():
 def test_unparseable_code_is_allowed_through():
     g = _load("guardrails", "dc_guard_syntax")
     assert g.check_code("def (:\n  broken")["allowed"] is True
+
+
+def test_blocks_aliased_os_and_shutil_calls():
+    g = _load("guardrails", "dc_guard_alias_calls")
+    for bad in [
+        "import os as o\no.system('rm -rf /')",
+        "import os as o\no.remove('/etc/passwd')",
+        "import shutil as sh\nsh.rmtree('/x')",
+    ]:
+        assert g.check_code(bad)["allowed"] is False, bad
