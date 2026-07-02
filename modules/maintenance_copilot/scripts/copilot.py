@@ -346,11 +346,13 @@ def _cmd_validate(raw: str) -> int:
     store = _build_store()
     results = []
     for ref in data.get("cited_refs", []):
-        token = ref.split()[-1].lower() if ref.split() else ref.lower()
+        parts = ref.split()
+        token = parts[-1].lower() if parts else ""
         hits = store.query(ref, k=3, revision="current")
         support = None
+        # An empty/whitespace ref has no identifier to match — never auto-pass.
         for h in hits:
-            if token in h["citation"].lower() or token in h["text"].lower():
+            if token and (token in h["citation"].lower() or token in h["text"].lower()):
                 support = h["citation"]
                 break
         results.append({"ref": ref, "status": "pass" if support else "fail",
