@@ -22,6 +22,8 @@ from client import RoleClient  # type: ignore[import-not-found]
 from corpus import load_corpus  # type: ignore[import-not-found]
 from chunking import chunk_document  # type: ignore[import-not-found]
 from index_store import IndexStore  # type: ignore[import-not-found]
+from extraction import extract_graph  # type: ignore[import-not-found]
+from graph_store import GraphStore, neo4j_run_fn  # type: ignore[import-not-found]
 
 # Output dimension of the deployed TEI embedding model (Qwen3-Embedding-0.6B).
 # Must match the model configured for the index_embed role.
@@ -114,6 +116,118 @@ def _env(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
+def _kg_chat_fn() -> Callable:
+    """Return a chat callable bound to the kg_extract role."""
+    rc = RoleClient(load_config())
+    return lambda messages: rc.chat("kg_extract", messages)
+
+
+def _build_graph_store(run_fn: Callable | None = None) -> GraphStore:
+    """Build a GraphStore from MC_NEO4J_* env (or an injected run_fn) + constraints.
+
+    Args:
+        run_fn: Optional Neo4j run callable; defaults to one built from MC_NEO4J_* env vars.
+
+    Returns:
+        A :class:`GraphStore` with constraints ensured.
+    """
+    if run_fn is None:
+        from neo4j import GraphDatabase  # local import: optional dep
+
+        driver = GraphDatabase.driver(
+            _env("MC_NEO4J_URI", "bolt://localhost:7687"),
+            auth=(_env("MC_NEO4J_USER", "neo4j"), _env("MC_NEO4J_PASSWORD", "atria-neo4j")),
+        )
+        run_fn = neo4j_run_fn(driver)
+    store = GraphStore(run_fn)
+    store.ensure_constraints()
+    return store
+
+
+def _cmd_graph_build(samples: str) -> int:
+    """Extract knowledge-graph triples from corpus chunks and upsert into the graph store.
+
+    Args:
+        samples: Path to the corpus directory.
+
+    Returns:
+        ``0`` on success.
+    """
+    store = _build_graph_store()
+    chat_fn = _kg_chat_fn()
+    docs = load_corpus(samples)
+    chunks = nodes = edges = 0
+    for doc in docs:
+        for rec in chunk_document(doc):
+            chunks += 1
+            prov = {
+                "source_doc": Path(rec.source_path).name,
+                "revision": rec.revision,
+                "page": rec.chunk_id,
+                "extracted_by": load_config()["kg_extract"].model,
+            }
+            ext = extract_graph(rec.text, chat_fn, prov)
+            n, e = store.upsert_extraction(ext)
+            nodes += n
+            edges += e
+    print(json.dumps({"chunks": chunks, "nodes": nodes, "edges": edges}, indent=2))
+    return 0
+
+
+def _cmd_graph_show(key: str, hops: int) -> int:
+    """Show neighbors of an entity, flagging unverified edges.
+
+    Args:
+        key: Entity key to look up.
+        hops: Number of hops to traverse.
+
+    Returns:
+        ``0`` on success.
+    """
+    store = _build_graph_store()
+    rows = store.neighbors(key, hops=hops)
+    unverified = sum(1 for r in rows if r.get("status") == "unverified")
+    print(json.dumps({"key": key, "neighbors": rows, "unverified": unverified}, indent=2))
+    return 0
+
+
+def _cmd_graph_confirm(src: str, edge_type: str, dst: str) -> int:
+    """Mark an edge as engineer_confirmed.
+
+    Args:
+        src: Source entity key.
+        edge_type: Edge type label.
+        dst: Destination entity key.
+
+    Returns:
+        ``0`` on success.
+    """
+    store = _build_graph_store()
+    print(json.dumps({"confirmed": store.confirm_edge(src, edge_type, dst)}, indent=2))
+    return 0
+
+
+def _cmd_graph_stats() -> int:
+    """Print graph node/edge counts.
+
+    Returns:
+        ``0`` on success.
+    """
+    print(json.dumps(_build_graph_store().stats(), indent=2))
+    return 0
+
+
+def _cmd_graph_reset() -> int:
+    """Delete all graph data and print confirmation.
+
+    Returns:
+        ``0`` on success.
+    """
+    _build_graph_store().reset()
+    print(json.dumps({"reset": True}, indent=2))
+    return 0
+
+
 def _cmd_ingest(samples: str) -> int:
     """Parse + chunk + upsert the corpus from *samples* dir.
 
@@ -195,6 +309,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub.add_parser("list", help="Show index stats.")
     sub.add_parser("reset", help="Delete the index collection.")
+    p_graph = sub.add_parser("graph", help="Knowledge-graph build/query/verify.")
+    graph_sub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_build = graph_sub.add_parser("build", help="Extract + upsert the graph from the corpus.")
+    g_build.add_argument("--samples", default=None)
+    g_show = graph_sub.add_parser("show", help="Show neighbors of an entity.")
+    g_show.add_argument("key")
+    g_show.add_argument("--hops", type=int, default=1)
+    g_confirm = graph_sub.add_parser("confirm", help="Mark an edge engineer_confirmed.")
+    g_confirm.add_argument("src")
+    g_confirm.add_argument("edge_type")
+    g_confirm.add_argument("dst")
+    graph_sub.add_parser("stats", help="Graph node/edge counts.")
+    graph_sub.add_parser("reset", help="Delete all graph data.")
     return parser
 
 
@@ -221,6 +348,19 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_list()
     if args.command == "reset":
         return _cmd_reset()
+    if args.command == "graph":
+        if args.graph_command == "build":
+            return _cmd_graph_build(
+                args.samples if getattr(args, "samples", None) else _samples_dir()
+            )
+        if args.graph_command == "show":
+            return _cmd_graph_show(args.key, args.hops)
+        if args.graph_command == "confirm":
+            return _cmd_graph_confirm(args.src, args.edge_type, args.dst)
+        if args.graph_command == "stats":
+            return _cmd_graph_stats()
+        if args.graph_command == "reset":
+            return _cmd_graph_reset()
     return 2
 
 
