@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Callable
@@ -360,6 +361,59 @@ def _cmd_validate(raw: str) -> int:
     return 0
 
 
+def _cmd_check(raw: str) -> int:
+    """Flag inconsistencies in a defect write-up against approved docs and the graph.
+
+    Args:
+        raw: JSON string (or ``"-"`` for stdin) with ``defect``, ``cited_mel``,
+            ``dispatch_condition``, and ``classification`` keys.
+
+    Returns:
+        ``0`` on success. Never returns a verdict; advisory-only.
+    """
+    data = _read_json_arg(raw)
+    mel = data.get("cited_mel", "")
+    mel_token = mel.split()[-1].lower() if mel.split() else mel.lower()
+    store = _build_store()
+    hits = store.query(mel, k=3, revision="current")
+    inconsistencies: list[dict] = []
+    advisories: list[dict] = []
+
+    mel_hit = next(
+        (h for h in hits if mel_token in h["citation"].lower()
+         or mel_token in h["text"].lower()),
+        None,
+    )
+    if mel_hit is None:
+        inconsistencies.append({"severity": "high", "source": mel,
+                                "issue": "cited MEL item not found in approved docs"})
+
+    classification = (data.get("classification") or "").strip()
+    if mel_hit is not None and classification:
+        match = re.search(r"Category\s+([A-D])", mel_hit["text"])
+        if match and match.group(1).upper() != classification.upper():
+            inconsistencies.append({
+                "severity": "medium", "source": mel_hit["citation"],
+                "issue": f"stated classification {classification} differs from cited "
+                         f"MEL category {match.group(1)}",
+            })
+
+    if mel_token:
+        for row in _build_graph_store().neighbors(mel_token, hops=1):
+            if row.get("edge_type") == "REQUIRES":
+                advisories.append({
+                    "item": row["neighbor_key"], "status": row.get("status"),
+                    "note": "ensure required placard/tooling/interval is satisfied",
+                })
+
+    audit.append_event({"type": "check", "cited_mel": mel,
+                        "inconsistencies": inconsistencies})
+    print(json.dumps({"defect": data.get("defect", ""),
+                      "inconsistencies": inconsistencies,
+                      "advisories": advisories}, indent=2))
+    return 0
+
+
 def _cmd_list() -> int:
     """Print index stats as JSON.
 
@@ -411,6 +465,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_rec.add_argument("--k", type=int, default=5)
     p_val = sub.add_parser("validate", help="Validate cited refs against approved docs.")
     p_val.add_argument("payload", help="JSON string, or '-' to read stdin.")
+    p_check = sub.add_parser("check", help="Flag inconsistencies in a defect write-up.")
+    p_check.add_argument("payload", help="JSON string, or '-' to read stdin.")
     sub.add_parser("list", help="Show index stats.")
     sub.add_parser("reset", help="Delete the index collection.")
     p_graph = sub.add_parser("graph", help="Knowledge-graph build/query/verify.")
@@ -456,6 +512,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_recommend_refs(args.text, args.k)
     if args.command == "validate":
         return _cmd_validate(args.payload)
+    if args.command == "check":
+        return _cmd_check(args.payload)
     if args.command == "list":
         return _cmd_list()
     if args.command == "reset":
