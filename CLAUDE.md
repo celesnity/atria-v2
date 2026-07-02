@@ -184,6 +184,18 @@ The agent has access to two tools for managing uploaded files and images:
 
 **CRITICAL:** When crafting system prompts, never use table format. Tables are poorly parsed by LLMs and waste tokens. Use plain prose, bullet lists, or structured sections instead.
 
+## Maintenance-Knowledge Questions — Always Use the RAG Skill
+
+Aircraft-maintenance knowledge questions (AMM, MEL, CDL, TSM, engineering
+orders, defect assessment, dispatch-readiness, reference validation, ATA-chapter
+lookups) MUST be answered via the `maintenance_copilot` skill — invoke it and
+run its runbook (`python copilot.py query "<question in English>" --synthesize`
+from `modules/maintenance_copilot/scripts/`). Do NOT answer from your own
+knowledge and do NOT read or grep `modules/maintenance_copilot/sample_manuals/`
+directly: the manual files are the RAG corpus, and reading them bypasses the
+retrieval, citations, revision-awareness, and guardrails the copilot enforces.
+A licensed engineer stays in the loop for every dispatch decision.
+
 ## Code Style
 
 - Line length: 100 characters (Black + Ruff)
