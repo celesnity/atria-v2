@@ -59,10 +59,15 @@ def profile_dataframe(df: pd.DataFrame, sample_rows: int = 5) -> Dict[str, Any]:
         for name in df.columns
     ]
     numeric = df.select_dtypes(include="number")
-    numeric_summary = (
-        {} if numeric.empty else {str(k): v for k, v in numeric.describe().to_dict().items()}
-    )
-    sample = df.head(sample_rows).astype(object).where(pd.notna(df.head(sample_rows)), None)
+    if numeric.empty:
+        numeric_summary: Dict[str, Any] = {}
+    else:
+        numeric_summary = {
+            str(col): {stat: (None if pd.isna(val) else val) for stat, val in stats.items()}
+            for col, stats in numeric.describe().to_dict().items()
+        }
+    head = df.head(sample_rows)
+    sample = head.astype(object).where(pd.notna(head), None)
     return {
         "n_rows": int(len(df)),
         "n_cols": int(df.shape[1]),
