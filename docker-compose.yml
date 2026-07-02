@@ -152,7 +152,7 @@ services:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
     command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
     ports:
-      - "8082:80"
+      - "8083:80"
     volumes:
       - tei_data:/data
     restart: unless-stopped
