@@ -17,7 +17,9 @@ ADVISORY_NOTE = (
 )
 
 _DEFAULT_MIN_CONFIDENCE = 0.35
-_SENTENCE_RE = re.compile(r"[^.!?]*[.!?]+", re.DOTALL)
+# A sentence is a run up to terminal punctuation, OR a trailing run with none
+# (so an answer whose final sentence lacks a period is not silently dropped).
+_SENTENCE_RE = re.compile(r"[^.!?]*[.!?]+|[^.!?]+")
 _MARKER_RE = re.compile(r"\[([^\[\]]+?)\]")
 
 

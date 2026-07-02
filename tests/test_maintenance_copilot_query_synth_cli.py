@@ -56,7 +56,6 @@ def test_query_synthesize_attaches_answer_and_audits(cli, capsys):
     assert "answer" in out
     assert "disclaimer" in out["answer"]
     # An audit event was recorded.
-    from importlib import import_module  # noqa: F401
     lines = Path(audit_log).read_text(encoding="utf-8").splitlines()
     assert any(json.loads(ln)["type"] == "query" for ln in lines)
 
