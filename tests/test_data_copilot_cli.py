@@ -154,6 +154,46 @@ def test_guardrail_block_counts_as_repair(tmp_path, monkeypatch):
     assert result["status"] == "error"
 
 
+def test_dataset_path_resolved_to_absolute(tmp_path, monkeypatch):
+    monkeypatch.setenv("DC_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    copilot = _load("copilot", "dc_cli_abspath")
+    seen = {}
+
+    def profile_fn(path):
+        seen["path"] = path
+        return {
+            "path": path,
+            "n_rows": 1,
+            "n_cols": 1,
+            "columns": [],
+            "sample": [],
+            "numeric_summary": {},
+        }
+
+    copilot.run_analysis(
+        "rel.csv",
+        "q",
+        out_dir=str(tmp_path / "run"),
+        max_repair=0,
+        max_verify=0,
+        codegen_fn=lambda q, p, pe=None, hy=None: "print(1)",
+        verify_fn=lambda q, c, o: {"status": "OK", "hypotheses": ""},
+        report_fn=lambda q, o, f, verified=True: "r",
+        profile_fn=profile_fn,
+        guard_fn=lambda code: {"allowed": True, "reasons": []},
+        exec_fn=lambda code, wd, timeout, max_output: {
+            "status": "text",
+            "stdout": "1",
+            "stderr": "",
+            "figures": [],
+            "returncode": 0,
+        },
+    )
+    import os
+
+    assert os.path.isabs(seen["path"]), seen["path"]
+
+
 def test_cli_audit_subcommand_prints_events(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("DC_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
     copilot = _load("copilot", "dc_cli_audit")

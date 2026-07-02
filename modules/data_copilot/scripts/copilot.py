@@ -91,6 +91,9 @@ def run_analysis(
     Returns:
         A summary dict (see Interfaces block in the plan).
     """
+    # Resolve to an absolute path: the sandbox runs generated code with cwd set
+    # to out_dir, so a relative dataset path would not resolve at execution time.
+    dataset = str(Path(dataset).resolve())
     prof = profile_fn(dataset)
     prior_error: Optional[str] = None
     hypotheses: Optional[str] = None
