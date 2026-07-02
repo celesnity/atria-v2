@@ -100,10 +100,22 @@ class PlaybookConfig(BaseModel):
     cache_file: Optional[str] = None  # Path to embedding cache file (None = session-based default)
 
 
+def _default_iframe_allowlist() -> list[str]:
+    # Read-only gates are safe to enable by default; write/RPC gates are opt-in.
+    return ["chat.get_messages", "chat.get_session", "artifact.list", "config.read"]
+
+
+def _default_config_read_keys() -> list[str]:
+    # Only non-secret, UI-relevant AppConfig attributes. mode/autonomy_level/thinking_level
+    # are runtime-state, not AppConfig fields — excluded to avoid confusing None returns.
+    return ["model", "simple_mode"]
+
+
 class IframeRpcConfig(BaseModel):
     """RPC settings for custom-block iframes (push_block)."""
 
-    tool_allowlist: list[str] = Field(default_factory=list)
+    tool_allowlist: list[str] = Field(default_factory=_default_iframe_allowlist)
+    config_read_keys: list[str] = Field(default_factory=_default_config_read_keys)
 
 
 def _default_redis_url() -> str:
