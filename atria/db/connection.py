@@ -93,3 +93,11 @@ async def init_schema() -> None:
                 await conn.execute(text(f"DROP TABLE IF EXISTS {_legacy} CASCADE"))
             except Exception as _drop_err:
                 logger.warning("Failed to drop legacy table %s: %s", _legacy, _drop_err)
+
+    # Widen messages.role so block roles (e.g. custom_block) are not truncated.
+    # Run in its own transaction so an error here never aborts create_all above.
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ALTER COLUMN role TYPE VARCHAR(32)"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to widen messages.role: %s", exc)

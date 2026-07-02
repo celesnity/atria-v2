@@ -175,7 +175,7 @@ SWE-agent/
 SWE-ReX/
 ace/
 # claude-code-system-prompts/
-
+.ignore/
 docs/
 figures/
 .opendev/
