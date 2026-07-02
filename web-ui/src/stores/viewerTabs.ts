@@ -9,6 +9,9 @@ interface TabSlice {
 
 interface ViewerTabsState {
   tabsByConv: Record<string, TabSlice>;
+  // Increments on every open request so the ArtifactViewer can react (e.g.
+  // un-collapse the panel) even when the same tab is re-opened.
+  openNonce: number;
   openTab: (convId: string, path: string) => void;
   openModuleTab: (convId: string, name: string) => void;
   openModuleFileTab: (convId: string, module: string, path: string) => void;
@@ -55,15 +58,22 @@ function openTabIn(slice: TabSlice, tab: ViewerTab): TabSlice {
 
 export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
   tabsByConv: {},
+  openNonce: 0,
 
   openTab: (convId, path) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
-    set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromPath(path)) } });
+    set({
+      tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromPath(path)) },
+      openNonce: get().openNonce + 1,
+    });
   },
 
   openModuleTab: (convId, name) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
-    set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) } });
+    set({
+      tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) },
+      openNonce: get().openNonce + 1,
+    });
   },
 
   openModuleFileTab: (convId, module, path) => {
@@ -73,6 +83,7 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
         ...get().tabsByConv,
         [convId]: openTabIn(slice, tabFromModuleFile(module, path)),
       },
+      openNonce: get().openNonce + 1,
     });
   },
 

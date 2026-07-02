@@ -227,6 +227,67 @@ class FileToolHandler:
         except Exception as exc:  # noqa: BLE001
             return {"success": False, "error": str(exc), "output": None}
 
+    def open_file(
+        self, args: dict[str, Any], context: ToolExecutionContext | None = None
+    ) -> dict[str, Any]:
+        """Signal the UI to open a file in the right-hand viewer panel.
+
+        This is a pure UI action: it does NOT read file contents into the agent
+        context. It is meant to be called only when the user explicitly asks to
+        open/show/view a specific file. The web frontend listens for this tool's
+        result and opens the file in a viewer tab. To read a file's contents in
+        order to answer a question, use read_file instead.
+        """
+        raw_path = args.get("file_path")
+        if not raw_path:
+            return {"success": False, "error": "file_path is required", "output": None}
+        if not self._file_ops:
+            return {"success": False, "error": "FileOperations not available", "output": None}
+
+        cleaned = sanitize_path(raw_path)
+
+        # 1) Try to resolve the path directly against the conversation workspace.
+        resolved = self._file_ops._resolve_path(cleaned)
+        if resolved.is_file():
+            rel = self._file_ops._format_display_path(resolved)
+            return {
+                "success": True,
+                "output": f"Opened {resolved.name} in the viewer.",
+                "file_path": rel,
+                "error": None,
+            }
+
+        # 2) Not found directly — locate it by filename anywhere in the workspace
+        #    so "open file X" works even without the exact path.
+        basename = Path(cleaned).name
+        try:
+            matches = [
+                m
+                for m in self._file_ops.find_files(f"**/{basename}", max_results=10)
+                if not str(m).startswith("Error:")
+            ]
+        except Exception:  # noqa: BLE001 — locating must never crash the tool
+            matches = []
+
+        if len(matches) == 1:
+            return {
+                "success": True,
+                "output": f"Opened {Path(matches[0]).name} in the viewer.",
+                "file_path": matches[0],
+                "error": None,
+            }
+        if len(matches) > 1:
+            return {
+                "success": False,
+                "error": (
+                    f"Multiple files match '{basename}': {', '.join(matches)}. "
+                    f"Call open_file again with the exact path."
+                ),
+                "output": None,
+            }
+
+        return {"success": False, "error": f"File not found in workspace: {cleaned}", "output": None}
+
     def _get_file_instruction(self, file_path: str) -> str | None:
         """Check for instruction file paired with the target file."""
         target = Path(file_path)

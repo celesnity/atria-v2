@@ -23,6 +23,17 @@ import { THINKING_VERBS } from '../../constants/spinner';
 import { computeTurns, type TurnInfo } from '../../lib/turns';
 import { MessageActions } from './MessageActions';
 import { useMessageActions } from '../../hooks/useMessageActions';
+import { FileLink, LinkifiedChildren } from './FileLink';
+import { looksLikeFileToken, looksLikeFilename } from '../../utils/fileLinks';
+
+/** Extract a plain string from ReactMarkdown children when it is pure text. */
+function textOf(children: React.ReactNode): string | null {
+  if (typeof children === 'string') return children;
+  if (Array.isArray(children) && children.every((c) => typeof c === 'string')) {
+    return children.join('');
+  }
+  return null;
+}
 
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
@@ -38,6 +49,12 @@ const MARKDOWN_COMPONENTS: Components = {
     const language = /language-(\w+)/.exec(className || '')?.[1];
     if (language) {
       return <code className="text-inverse-ink text-[14px] font-mono leading-relaxed" data-language={language} {...props}>{children}</code>;
+    }
+    // Inline code that is a workspace file path/name → clickable, opens the
+    // file in the right-hand viewer.
+    const codeText = textOf(children);
+    if (codeText && looksLikeFileToken(codeText.trim())) {
+      return <FileLink token={codeText.trim()} variant="chip" />;
     }
     return (
       <code className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-ink border border-hairline-soft" {...props}>
@@ -55,9 +72,14 @@ const MARKDOWN_COMPONENTS: Components = {
     return <ol className="list-decimal pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-body">{children}</li>;
+    return <li className="text-ink text-body"><LinkifiedChildren>{children}</LinkifiedChildren></li>;
   },
   strong({ children }) {
+    // A bold bare filename (e.g. **sample_accounts.csv**) → clickable link.
+    const boldText = textOf(children);
+    if (boldText && looksLikeFilename(boldText.trim())) {
+      return <FileLink token={boldText.trim()} variant="text" />;
+    }
     return <strong className="font-[540] text-ink">{children}</strong>;
   },
   a({ children, href }) {
@@ -98,7 +120,7 @@ const MARKDOWN_COMPONENTS: Components = {
         style={style}
         className="px-3 py-2 align-top text-ink/90 border-r border-hairline-soft last:border-r-0"
       >
-        {children}
+        <LinkifiedChildren>{children}</LinkifiedChildren>
       </td>
     );
   },

@@ -95,6 +95,37 @@ SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "open_file",
+            "description": (
+                "Open a file in the user's file viewer panel (the right-hand side of the "
+                "UI) so the user can see and edit it. Use this ONLY when the user "
+                "explicitly asks to open, show, view, or display a specific file (e.g. "
+                "'open sample_accounts.csv', 'show me that file', 'mo file X'). This is a "
+                "UI action only and does NOT return the file's contents — to read a file "
+                "to answer a question, use read_file instead. You may pass either a full "
+                "path or just the filename; if only a filename is given, open_file locates "
+                "it in the workspace automatically. Do NOT call open_file for files you "
+                "read while searching or exploring; only for the exact file the user asked "
+                "to open."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": (
+                            "The file to open — either a full path or just the filename "
+                            "(open_file will find it in the workspace)."
+                        ),
+                    },
+                },
+                "required": ["file_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "list_files",
             "description": load_tool_description("list_files"),
             "parameters": {

@@ -5,6 +5,8 @@ import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
 import { useArtifactsStore } from './artifacts';
+import { useViewerTabsStore } from './viewerTabs';
+import { toWorkspaceRelative } from '../utils/fileLinks';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -746,6 +748,20 @@ wsClient.on('tool_call', (message) => {
 wsClient.on('tool_result', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
+
+  // open_file is a UI-only action: when the agent calls it (only when the user
+  // explicitly asked to open a file), pop the file into the right-hand viewer.
+  // read_file and other file tools intentionally do NOT trigger this.
+  if (message.data.tool_name === 'open_file' && message.data.success) {
+    // Prefer the backend-resolved path (relative to workspace) over the raw
+    // path the model passed, since the backend may have located the file by name.
+    const fp = message.data.raw_result?.file_path ?? message.data.arguments?.file_path;
+    if (fp) {
+      const workingDir = useChatStore.getState().status?.working_dir ?? '';
+      const rel = toWorkspaceRelative(String(fp), workingDir);
+      if (rel != null) useViewerTabsStore.getState().openTab(sid, rel);
+    }
+  }
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);

@@ -66,6 +66,19 @@ export function ArtifactViewer() {
     if (activeTab) setMobileShowTree(false);
   }, [activeTab?.id]);
 
+  // Whenever something requests to open a file/tab (openNonce bumps), pop the
+  // panel open if it was collapsed — otherwise a click/open_file would add a tab
+  // the user can't see. Uses a ref so it never force-opens on initial mount.
+  const openNonce = useViewerTabsStore(s => s.openNonce);
+  const prevOpenNonce = useRef(openNonce);
+  useEffect(() => {
+    if (openNonce !== prevOpenNonce.current) {
+      prevOpenNonce.current = openNonce;
+      setCollapsed(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openNonce]);
+
   const maxTop = contentH > 0 ? Math.max(MIN_TOP, contentH - MIN_BOTTOM) : MAX_TOP;
   const effectiveTopHeight = Math.max(MIN_TOP, Math.min(topHeight, maxTop));
 

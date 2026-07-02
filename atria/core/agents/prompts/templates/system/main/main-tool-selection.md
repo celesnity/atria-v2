@@ -26,6 +26,7 @@ Choose `strategy`:
 
 When choosing tools, prefer the more specific option:
 - **Reading files**: read_file (NOT run_command with cat/head/tail)
+- **Opening/showing a file for the user to view**: open_file — call this ONLY when the user explicitly asks to open/show/view/display a specific file (e.g. "open sample_accounts.csv", "mở file X cho tôi"). It pops the file into the user's viewer panel. Do NOT call read_file for these requests, and do NOT call open_file for files you read while searching or exploring — only for the exact file the user asked to open.
 - **Editing files**: edit_file (NOT run_command with sed/awk)
 - **Creating files**: write_file (NOT run_command with echo/cat heredoc)
 - **Searching code**: search (NOT run_command with grep/rg)

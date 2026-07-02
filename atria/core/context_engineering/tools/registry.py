@@ -174,6 +174,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "write_file": self._file_handler.write_file,
             "edit_file": self._file_handler.edit_file,
             "read_file": self._file_handler.read_file,
+            "open_file": self._file_handler.open_file,
             "list_files": self._file_handler.list_files,
             "search": self._file_handler.search,  # Unified: type="text" (default) or "ast"
             "run_command": self._process_handler.run_command,
