@@ -81,20 +81,35 @@ a **wiring job on existing components**, not a Recharts port.
 New `modules/data_copilot/scripts/paths.py` — single source of truth for where
 artifacts live.
 
+**Keying decision (resolved during planning):** data_copilot's own artifacts are
+keyed by **`session_id`** (the 8-char atria session id), not the DB
+`conversation_id`. Rationale: the bash-invoked scripts, the agent-side tools, and
+the save route must all resolve the *same* directory. `session_id` is available
+to all three (env `ATRIA_CONVERSATION_ID`, `cb.session_id`, and the session
+record) with no DB round-trip, whereas the DB `conversation_id` used by uploaded
+artifacts (`.artifacts/conversations/<conv_id>/`) would require a lookup on every
+bash exec. data_copilot's storage does not need to co-locate with uploaded input
+files (the agent passes those by absolute path), so a dedicated session-keyed
+root is both correct and unambiguous.
+
 - `conversation_root() -> Path`: resolves
-  `<ATRIA_WORKSPACE>/.artifacts/conversations/<ATRIA_CONVERSATION_ID>/data_copilot/`.
-  When either env var is unset (bare CLI/TUI with no conversation), fall back to
-  the legacy module dir so the CLI keeps working standalone.
+  `<ATRIA_WORKSPACE>/.artifacts/data_copilot/<ATRIA_CONVERSATION_ID>/`
+  (`ATRIA_WORKSPACE` falls back to `ATRIA_SESSION_DIR`; `ATRIA_CONVERSATION_ID`
+  holds the session id). When either env var is unset (bare CLI/TUI with no
+  session), fall back to the legacy module dir so the CLI keeps working standalone.
 - Helpers: `data_dir()`, `runs_dir()`, `new_run_dir()`, `audit_path()` — all
   under the resolved root.
+- Server-side mirror `atria/core/modules/data_copilot_paths.py`:
+  `data_copilot_root(session_id, working_dir) -> Path` computes the identical
+  path for the tools and the route.
 
 Layout:
 
 ```
-<workspace>/.artifacts/conversations/<id>/data_copilot/
+<workspace>/.artifacts/data_copilot/<session_id>/
     data/         ingested + derived CSVs      (was <module>/data/)
     runs/<run>/   code.py, stdout, figures/*.png, result.csv, result.meta.json
-    audit.jsonl   per-conversation audit        (was module-level)
+    audit.jsonl   per-session audit             (was module-level)
 ```
 
 Touch points:
@@ -156,17 +171,18 @@ chart.js/react-chartjs-2 are already installed.
 
 ### §5 Editable table rebound to conversation files
 
-- New route module (e.g. extend `atria/web/routes/artifacts.py` or a new
-  `conversation_data` router): `GET /api/conversations/{id}/data/read?file=...`
-  and `PUT /api/conversations/{id}/data/write` — read/write a CSV confined to
-  `get_artifact_dir(conversation_id, working_dir)/data_copilot/data/` (reuse
-  `store.read_dataset`/`write_dataset` logic against a conversation base path,
-  including the existing size/row/col caps).
-- `send_editable_table_tool.py`: accept a conversation-scoped file, read via the
-  conversation path, set `source = {conversation: <id>, file: <rel>}`. Keep
+- New route module `atria/web/routes/data_copilot.py`:
+  `GET /api/data-copilot/read?session_id=…&file=…` and
+  `PUT /api/data-copilot/write` (body `{session_id, file, columns, rows}`) —
+  read/write a CSV confined to `data_copilot_root(session_id, working_dir)/data/`
+  (reuse the CSV parse/serialize + size/row/col caps from
+  `store.read_dataset`/`write_dataset` against this base path). `working_dir` is
+  resolved from the session record by `session_id`.
+- `send_editable_table_tool.py`: accept a session-scoped file, read via
+  `data_copilot_root`, set `source = {session: <session_id>, file: <rel>}`. Keep
   module-bound behavior working when `module` is supplied (back-compat).
-- Frontend: `EditableDataTable` / `DataMessage` round-trip `source.conversation`
-  to the new route; keep the `source.module` path for back-compat.
+- Frontend: `EditableDataTable` / `DataMessage` round-trip `source.session` to
+  the new route; keep the `source.module` path for back-compat.
 
 ### §6 Charts as PNG + SKILL.md instruction
 
@@ -184,7 +200,8 @@ chart.js/react-chartjs-2 are already installed.
 - `analyze` summary adds `result_table: str | None`, `suggestions: list[dict]`.
 - `send_table(file, title, suggestions?, max_rows?) -> {success, output, data_payload}`.
 - `data_message` payload (read-only): `{title, columns, rows, suggestions, editable: false}`.
-- `GET /api/conversations/{id}/data/read`, `PUT /api/conversations/{id}/data/write`.
+- `data_copilot_root(session_id: str, working_dir: str) -> Path` (server-side).
+- `GET /api/data-copilot/read?session_id=&file=`, `PUT /api/data-copilot/write`.
 
 ## Testing
 
