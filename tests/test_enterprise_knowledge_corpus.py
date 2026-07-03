@@ -58,3 +58,12 @@ def test_knowledge_space_derived_when_absent(tmp_path):
     p.write_text(body, encoding="utf-8")
     doc = c.parse_document(str(p))
     assert doc.knowledge_space == "Company Knowledge"
+
+
+def test_unterminated_frontmatter_raises(tmp_path):
+    c = _load()
+    p = tmp_path / "unterminated.md"
+    p.write_text("---\ndoc_id: DOC001\ntitle: t\ndepartment: COMP\nclassification: Public\nbody line without closing fence\n", encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError):
+        c.parse_document(str(p))
