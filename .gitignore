@@ -217,3 +217,8 @@ modules/item_flow_tracking/data/flow.db-*
 
 # Local reference material / scratch (not source)
 .references/
+
+# Planning docs, per-task notes, and generated reports — local only, never commit.
+# (Tasks/ is already ignored above.)
+plans/
+report/
