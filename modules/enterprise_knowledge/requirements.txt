@@ -1,0 +1,4 @@
+openai>=1.40
+qdrant-client>=1.11
+chonkie>=1.0
+openpyxl>=3.1
