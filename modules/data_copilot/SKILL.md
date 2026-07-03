@@ -42,16 +42,27 @@ to stdout; parse it and act on the fields named below.
    required**. Tune with `--max-repair` / `--max-verify` only if needed.
    (`profile "<path>"` gives a quick schema/stats look without an LLM call.)
 
-3. **Present the result.** Show the `report` field to the user as the answer. If
-   `verified` is `false` (or the report carries the UNVERIFIED banner), say so
-   explicitly and do not present the numbers as settled.
-   - If the summary has a non-null `result_table`, call the `send_table` tool with
-     `file=<result_table>`, a short `title`, and `suggestions=<summary.suggestions>`
-     to show an interactive, read-only table + chart in the chat. The web UI
-     renders the chart from the suggestions (chart_type/x/y) — no image needed.
-   - For any file listed in `figures` (matplotlib PNGs saved to the run dir), you
-     may also call `send_image` with its absolute path and a short caption to show
-     the pre-rendered chart as an image bubble.
+3. **Present the result — and always push the visuals to the chat.** Show the
+   `report` field to the user as the answer. If `verified` is `false` (or the
+   report carries the UNVERIFIED banner), say so explicitly and do not present the
+   numbers as settled. Then, in the **same turn**, without asking first:
+   - **For every file listed in `figures`** (matplotlib PNGs saved to the run
+     dir), call the `send_image` tool with its absolute path and a short caption.
+     This is how the chart the analysis drew reaches the user — do not just
+     describe it or print the path; send the image.
+   - **If the summary has a non-null `result_table`**, call the `send_table` tool
+     with `file=<result_table>`, a short `title`, and
+     `suggestions=<summary.suggestions>` to render an interactive table + chart in
+     the chat. The web UI renders the chart from the suggestions (chart_type/x/y).
+   - **When the user wants to edit the result** (or asked for an editable
+     dataframe), use the ingest → `send_editable_table` flow below — a plain
+     `analyze` result table is read-only. See "Only when the user wants to
+     view/edit the raw data".
+
+   These `send_*` tools render only in the web UI; in a plain terminal/CLI they
+   return `"UI callback unavailable"`. In that case, do not silently drop the
+   data — state that visuals need the web UI and fall back to showing the
+   values inline (e.g. `cat` the `result_table`).
 
    Ingested datasets, run outputs (code, figures, `result.csv`), and the audit
    trail are stored automatically in the per-session data_copilot folder, not the

@@ -622,6 +622,25 @@ class WebUICallback(BaseUICallback):
         )
 
     # ------------------------------------------------------------------
+    # Data table / chart push (used by send_table / send_editable_table)
+    # ------------------------------------------------------------------
+
+    def on_data(self, payload: dict[str, Any]) -> None:
+        """Broadcast a data table / chart message to the chat UI.
+
+        ``payload`` is the dict assembled by the send_table / send_editable_table
+        tools (title, columns, rows, suggestions, editable, optional source and
+        warning). The frontend ``data_message`` handler renders it as an
+        interactive table, chart, or editable grid.
+        """
+        self._broadcast(
+            {
+                "type": WSMessageType.DATA_MESSAGE,
+                "data": {**payload, "session_id": self.session_id},
+            }
+        )
+
+    # ------------------------------------------------------------------
     # Debug
     # ------------------------------------------------------------------
 

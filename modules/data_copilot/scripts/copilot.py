@@ -110,6 +110,16 @@ def _gen_and_run(
     return code, exec_fn(code, out_dir, timeout, max_output)
 
 
+def _progress(message: str) -> None:
+    """Emit a stage marker to stderr.
+
+    The final JSON result is written to stdout, so progress goes to stderr to
+    keep stdout a single parseable object. It also keeps output flowing during
+    slow LLM stages so the caller's activity-based idle timeout is not tripped.
+    """
+    print(f"[data_copilot] {message}", file=sys.stderr, flush=True)
+
+
 def run_analysis(
     dataset: str,
     question: str,
@@ -147,6 +157,7 @@ def run_analysis(
     # Resolve to an absolute path: the sandbox runs generated code with cwd set
     # to out_dir, so a relative dataset path would not resolve at execution time.
     dataset = str(Path(dataset).resolve())
+    _progress("profiling dataset")
     prof = profile_fn(dataset)
     prior_error: Optional[str] = None
     hypotheses: Optional[str] = None
@@ -158,6 +169,7 @@ def run_analysis(
     unverified = True
 
     while True:
+        _progress("generating and running analysis code")
         code, result = _gen_and_run(
             question,
             prof,
@@ -174,6 +186,7 @@ def run_analysis(
         hypotheses = None
         while result["status"] == "error" and repairs < max_repair:
             repairs += 1
+            _progress(f"repairing code (attempt {repairs}/{max_repair})")
             code, result = _gen_and_run(
                 question,
                 prof,
@@ -193,6 +206,7 @@ def run_analysis(
             }
             unverified = True
             break
+        _progress(f"verifying result (round {verify_round + 1}/{max_verify})")
         verdict = verify_fn(question, code, result["stdout"])
         if verdict["status"] == "OK":
             unverified = False
@@ -206,6 +220,7 @@ def run_analysis(
     report_output = result["stdout"]
     if result["status"] == "error":
         report_output = (result["stdout"] + "\n\n[execution error]\n" + result["stderr"]).strip()
+    _progress("composing report")
     report_md = report_fn(question, report_output, result["figures"], verified=not unverified)
 
     # Persist the result table (if the generated code wrote result.csv) and derive
