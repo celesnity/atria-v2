@@ -54,3 +54,37 @@ def test_build_filter_is_a_qdrant_filter_for_employee():
     from qdrant_client import models
     f = acl.build_filter(_user("Employee", "ENG"))
     assert isinstance(f, models.Filter)
+
+
+def test_build_filter_excludes_restricted_and_other_dept_confidential():
+    """Behavioral guard: an Employee's filter admits only their accessible docs."""
+    from qdrant_client import QdrantClient, models
+
+    acl = _load("acl", "ek_acl_filter_behavior")
+    q = QdrantClient(":memory:")
+    q.create_collection(
+        "t",
+        vectors_config=models.VectorParams(size=1, distance=models.Distance.COSINE),
+    )
+    docs = [
+        ("public_COMP", "Public", "COMP"),
+        ("internal_COMP", "Internal", "COMP"),
+        ("conf_ENG", "Confidential", "ENG"),
+        ("conf_HR", "Confidential", "HR"),
+        ("restricted_EXEC", "Restricted", "EXEC"),
+    ]
+    q.upsert("t", points=[
+        models.PointStruct(
+            id=i, vector=[1.0],
+            payload={"classification": c, "department": d, "name": n},
+        )
+        for i, (n, c, d) in enumerate(docs)
+    ])
+    eng = _user("Employee", "ENG")
+    rows, _ = q.scroll(
+        "t", scroll_filter=acl.build_filter(eng), with_payload=True, limit=100
+    )
+    visible = {r.payload["name"] for r in rows}
+    assert visible == {"public_COMP", "internal_COMP", "conf_ENG"}
+    assert "conf_HR" not in visible          # other-department Confidential excluded
+    assert "restricted_EXEC" not in visible  # Restricted excluded for non-executive
