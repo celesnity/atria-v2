@@ -78,7 +78,7 @@ class OrchestrationOpsMixin:
     # Divide-and-conquer tools (DeLM Phase 2c)
     # ------------------------------------------------------------------
 
-    def _get_divide_orchestrator(self, ui_callback: Any = None) -> Any:
+    def _get_divide_orchestrator(self, ui_callback: Any = None, context: Any = None) -> Any:
         """Build (once per run) the DivideOrchestrator from this run's context.
 
         Requires the run's TaskIQClient (attached to the subagent manager via
@@ -101,18 +101,29 @@ class OrchestrationOpsMixin:
                 "divide", stage, data
             )  # noqa: E731
 
-        # Resolve owner/session from context — mirrors _execute_solve_parallel.
-        # The orchestrator is built once; owner/session are baked in at build time.
-        # (A per-call approach would require passing context here; the lazy-singleton
-        # pattern matches the parallel implementation.)
-        owner_id = ""
-        session_id = ""
+        # Resolve the real session id + working_dir from context so dispatched
+        # workers write their artifacts into the conversation's session-scoped
+        # folder (``<working_dir>/.artifacts/…/<session_id>``) — the exact path the
+        # main agent's send_table/send_image tools read back. resolve_session()
+        # is the same helper those tools use, guaranteeing the paths align.
+        # Baked in at build time (the lazy-singleton is per-run, one session).
+        from atria.core.context_engineering.tools.implementations.send_table_tool import (
+            resolve_session,
+        )
+
+        session_id, working_dir = resolve_session(context)
+        session_id = session_id or ""
+        working_dir = working_dir or self._get_repo_dir()
+        _sess_mgr = getattr(context, "session_manager", None) if context else None
+        _current = getattr(_sess_mgr, "current_session", None) if _sess_mgr else None
+        owner_id = (getattr(_current, "owner_id", None) or "") if _current else ""
 
         self._divide_orchestrator = build_divide_orchestrator(
             task_client=task_client,
             config=self._app_config,
             llm_call=self.skill_ctx.llm_chat,
             modules_root=str(resolve_modules_root()),
+            working_dir=str(working_dir),
             owner_id=owner_id,
             session_id=session_id,
             progress_cb=progress_cb,
@@ -123,7 +134,9 @@ class OrchestrationOpsMixin:
         self, arguments: dict[str, Any], context: Any = None
     ) -> dict[str, Any]:
         """Dispatch divide_work: decompose a request and fan sub-tasks out via the orchestrator."""
-        orch = self._get_divide_orchestrator(ui_callback=getattr(context, "ui_callback", None))
+        orch = self._get_divide_orchestrator(
+            ui_callback=getattr(context, "ui_callback", None), context=context
+        )
         if orch is None:
             return {
                 "success": False,
@@ -167,7 +180,9 @@ class OrchestrationOpsMixin:
         self, arguments: dict[str, Any], context: Any = None
     ) -> dict[str, Any]:
         """Dispatch get_divide_result: poll or await a divide_work job."""
-        orch = self._get_divide_orchestrator(ui_callback=getattr(context, "ui_callback", None))
+        orch = self._get_divide_orchestrator(
+            ui_callback=getattr(context, "ui_callback", None), context=context
+        )
         if orch is None:
             return {
                 "success": False,

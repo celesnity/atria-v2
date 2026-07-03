@@ -26,6 +26,7 @@ def build_divide_orchestrator(
     modules_root: str,
     owner_id: str,
     session_id: str,
+    working_dir: str = "",
     progress_cb: Callable[[str, dict], None] | None = None,
     redis_client: Any = None,
 ) -> DivideOrchestrator:
@@ -35,9 +36,13 @@ def build_divide_orchestrator(
         task_client: The run's TaskIQClient. Its persistent event loop is reused.
         config: The AppConfig (its ``.divide`` section configures the orchestrator).
         llm_call: Callable (system, user) -> assistant_text for decomposition.
-        modules_root: Absolute path to the modules directory.
+        modules_root: Absolute path to the modules directory (used only to render
+            the module gateway block in each worker's prompt).
         owner_id: Owner identifier for job scoping.
         session_id: Session identifier for job scoping.
+        working_dir: The conversation's workspace dir. Each worker runs here so its
+            artifacts land in ``<working_dir>/.artifacts/…/<session_id>`` — the same
+            session-scoped folder the main agent reads. Falls back to modules_root.
         progress_cb: Optional progress callback (str event_type, dict payload).
         redis_client: Optional async redis client; created from config when omitted.
 
@@ -84,6 +89,7 @@ def build_divide_orchestrator(
         enqueue_worker=enqueue_worker,
         await_worker=await_worker,
         modules_root=modules_root,
+        working_dir=working_dir or modules_root,
         owner_id=owner_id,
         session_id=session_id,
         progress_cb=progress_cb,
