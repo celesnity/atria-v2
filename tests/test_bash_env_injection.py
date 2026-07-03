@@ -55,3 +55,47 @@ def test_explicit_env_overrides_session(monkeypatch):
 
     assert env["ATRIA_CONVERSATION_ID"] == "99"
     assert env["ATRIA_PROJECT_SLUG"] == "conv-99"
+
+
+def test_worker_overrides_win_without_ui_callback(monkeypatch):
+    """Background worker path: no UI callback, but explicit overrides (from the
+    task payload) inject the session id + workspace and win over os.environ.
+
+    This is what lets a dispatched data_copilot subagent write into the
+    conversation's session folder instead of the module fallback dir.
+    """
+    from atria.core.context_engineering.tools.implementations.bash_tool import tool as bash_mod
+
+    # Simulate a worker whose process env already has a stale/wrong workspace.
+    monkeypatch.setenv("ATRIA_WORKSPACE", "/modules")
+    monkeypatch.delenv("ATRIA_CONVERSATION_ID", raising=False)
+
+    overrides = {
+        "ATRIA_WORKSPACE": "/ws/conv",
+        "ATRIA_SESSION_DIR": "/ws/conv",
+        "ATRIA_SESSION_ID": "sess42",
+        "ATRIA_CONVERSATION_ID": "sess42",
+        "ATRIA_PROJECT_SLUG": "conv-sess42",
+    }
+    with patch.object(bash_mod, "get_current_ui_callback", return_value=None):
+        env = bash_mod._build_exec_env(working_dir="/modules", overrides=overrides)
+
+    # Overrides win unconditionally, even over a pre-existing os.environ value.
+    assert env["ATRIA_WORKSPACE"] == "/ws/conv"
+    assert env["ATRIA_CONVERSATION_ID"] == "sess42"
+    assert env["ATRIA_SESSION_ID"] == "sess42"
+
+
+def test_empty_override_values_are_ignored(monkeypatch):
+    """Blank override values must not clobber real env (no-session worker)."""
+    from atria.core.context_engineering.tools.implementations.bash_tool import tool as bash_mod
+
+    monkeypatch.delenv("ATRIA_CONVERSATION_ID", raising=False)
+
+    with patch.object(bash_mod, "get_current_ui_callback", return_value=None):
+        env = bash_mod._build_exec_env(
+            working_dir="/ws", overrides={"ATRIA_WORKSPACE": "/ws", "ATRIA_CONVERSATION_ID": ""}
+        )
+
+    assert env["ATRIA_WORKSPACE"] == "/ws"
+    assert "ATRIA_CONVERSATION_ID" not in env
