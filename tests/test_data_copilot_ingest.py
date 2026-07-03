@@ -123,6 +123,18 @@ def test_list_datasets_reports_files_and_columns(tmp_path):
     assert Path(entry["path"]).is_file()
 
 
+def test_module_root_is_script_relative_and_valid(monkeypatch, tmp_path):
+    """_module_root() resolves to the real module dir regardless of CWD.
+
+    Guards the deployed-container bug where the CLI ran from a workspace dir and
+    a CWD-dependent resolver pointed at a modules root without this module.
+    """
+    monkeypatch.chdir(tmp_path)  # a CWD with no modules/ dir
+    root = ingest_mod._module_root()
+    assert root.name == "modules"
+    assert (root / "data_copilot" / "SKILL.md").is_file()
+
+
 def test_list_datasets_excludes_bak_files(tmp_path):
     root = _module_root(tmp_path)
     data_dir = root / "data_copilot" / "data"

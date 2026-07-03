@@ -205,7 +205,13 @@ def _cmd_health() -> int:
 def _cmd_ingest(source: str, name: Optional[str]) -> int:
     try:
         result = ingest_mod.ingest(source, name)
-    except (FileNotFoundError, ValueError) as exc:
+    except FileNotFoundError as exc:
+        # ModuleNotFound is a FileNotFoundError whose str is just the module name;
+        # label it so the failure is legible rather than a bare "data_copilot".
+        msg = f"module not found: {exc}" if type(exc).__name__ == "ModuleNotFound" else str(exc)
+        print(json.dumps({"error": msg}, indent=2))
+        return 1
+    except ValueError as exc:
         print(json.dumps({"error": str(exc)}, indent=2))
         return 1
     print(json.dumps(result, indent=2, default=str))

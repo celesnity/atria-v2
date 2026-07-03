@@ -30,20 +30,22 @@ MODULE_NAME = "data_copilot"
 
 
 def _module_root() -> Path:
-    """Return the modules root to write into.
+    """Return the modules root that contains this module.
 
-    Prefers Atria's own resolver (``resolve_modules_root`` — honors
-    ``ATRIA_MODULES_DIR``/CWD) so ingest writes to the exact directory the
-    ``send_editable_table`` tool later reads from. Falls back to this script's
-    physical location (``modules/data_copilot/scripts/ingest.py`` → three parents
-    up) if the resolver is unavailable.
+    Ground truth is this script's own location: it always lives at
+    ``<modules_root>/data_copilot/scripts/ingest.py``, so ``parents[2]`` is the
+    modules root that provably contains ``data_copilot/``. Because the app loads
+    and runs this module *from* that root, it is also the root the
+    ``send_editable_table`` tool reads from — so ingest and the editable-table
+    Save loop stay aligned.
+
+    This is deterministic regardless of the CWD the CLI is invoked with.
+    ``resolve_modules_root()`` is intentionally *not* used here: it is
+    CWD/``ATRIA_MODULES_DIR``-dependent and, when the script runs as a bash
+    subprocess from a workspace directory, resolves to the wrong root (e.g.
+    ``~/.atria/modules``) that may not contain this module at all.
     """
-    try:
-        from atria.core.modules.registry import resolve_modules_root
-
-        return resolve_modules_root()
-    except Exception:  # noqa: BLE001 — fall back to the script-relative modules dir
-        return Path(__file__).resolve().parent.parent.parent
+    return Path(__file__).resolve().parents[2]
 
 
 def _slug(text: str) -> str:
