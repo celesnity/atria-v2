@@ -63,8 +63,8 @@ INTERACTIVE_COMMANDS = [
 
 # Timeout configuration for activity-based timeout
 # Only timeout if command produces no output for IDLE_TIMEOUT seconds
-IDLE_TIMEOUT = 60  # Timeout after 60 seconds of no output
-MAX_TIMEOUT = 600  # Absolute max runtime: 10 minutes (safety cap)
+IDLE_TIMEOUT = 180  # Timeout after 180s of no output (LLM-backed tools can stall this long)
+MAX_TIMEOUT = 900  # Absolute max runtime: 15 minutes (safety cap)
 
 # Output truncation
 MAX_OUTPUT_CHARS = 30_000
