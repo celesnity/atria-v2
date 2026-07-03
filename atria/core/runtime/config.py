@@ -137,6 +137,7 @@ class ConfigManager:
             "model_compact",
             "api_base_url",
             "debug_logging",
+            "disabled_tools",
         }
         data = {k: v for k, v in config.model_dump().items() if k in user_fields and v is not None}
         with open(config_path, "w") as f:
