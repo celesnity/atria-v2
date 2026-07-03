@@ -1,8 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import type { DataColumn, Message } from '../../../types';
 import { apiClient } from '../../../api/client';
 import { EditableDataTable } from './EditableDataTable';
+import { ChartView } from './ChartView';
+import { EditPanel } from './EditPanel';
+import { processChart } from './chartProcessor';
+import { useChartsStore } from '../../../stores/charts';
 
 function SqlDisclosure({ sql }: { sql: string }) {
   const [open, setOpen] = useState(false);
@@ -48,7 +52,7 @@ export function DataMessage({ message }: { message: Message }) {
   // to the module CSV. Falls through to the read-only renderer if the binding is
   // malformed, so a bad payload never breaks the chat.
   const src = message.data_source;
-  if (message.data_editable && src && src.module && src.file) {
+  if (message.data_editable && src && src.file && (src.module || src.session)) {
     return (
       <EditableDataTable
         messageId={message.data_message_id ?? ''}
@@ -97,12 +101,28 @@ export function DataMessage({ message }: { message: Message }) {
   const imageSrc = message.data_image_src || fetchedImageSrc || null;
   const hasData = rows.length > 0;
 
-  const [view, setView] = useState<'preview' | 'table'>(imageSrc ? 'preview' : 'table');
+  // Interactive chart (chart.js) rendered from agent-provided suggestions.
+  const suggestions = message.data_suggestions ?? [];
+  const hasCharts = suggestions.length > 0 && hasData;
+  const chartRef = useRef<any>(null);
+  const chartState = useChartsStore((s) => s.states[messageId]);
+  const initFromSuggestion = useChartsStore((s) => s.initFromSuggestion);
+  const [showEdit, setShowEdit] = useState(false);
+  useEffect(() => {
+    if (hasCharts && !chartState) {
+      initFromSuggestion(messageId, suggestions, columns, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasCharts, !!chartState, messageId, columns.length, suggestions.length]);
+
+  const [view, setView] = useState<'preview' | 'table' | 'chart'>(
+    hasCharts ? 'chart' : imageSrc ? 'preview' : 'table'
+  );
   const TABLE_PAGE = 200;
 
   // Auto-switch to preview when image arrives after initial mount
   useEffect(() => {
-    if (imageSrc) setView('preview');
+    if (imageSrc && !hasCharts) setView('preview');
   }, [!!imageSrc]);
 
   if (fetchError) {
@@ -143,18 +163,26 @@ export function DataMessage({ message }: { message: Message }) {
           </div>
           <div className="flex items-center gap-1">
             <div className="flex rounded border border-border-300/15 overflow-hidden text-xs">
+              {hasCharts && (
+                <button
+                  onClick={() => setView('chart')}
+                  className={`px-2 py-1 ${view === 'chart' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                >
+                  Chart
+                </button>
+              )}
               {imageSrc && (
                 <button
                   onClick={() => setView('preview')}
-                  className={`px-2 py-1 ${view === 'preview' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                  className={`px-2 py-1 ${imageSrc && hasCharts ? 'border-l border-border-300/15' : ''} ${view === 'preview' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
                 >
-                  Chart
+                  Image
                 </button>
               )}
               {hasData && (
                 <button
                   onClick={() => setView('table')}
-                  className={`px-2 py-1 ${imageSrc ? 'border-l border-border-300/15' : ''} ${view === 'table' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                  className={`px-2 py-1 ${(imageSrc || hasCharts) ? 'border-l border-border-300/15' : ''} ${view === 'table' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
                 >
                   Table <span className="opacity-60">({rows.length.toLocaleString()})</span>
                 </button>
@@ -164,7 +192,60 @@ export function DataMessage({ message }: { message: Message }) {
         </div>
 
         {/* Body */}
-        {view === 'preview' && imageSrc ? (
+        {view === 'chart' && hasCharts && chartState ? (
+          (() => {
+            const res = processChart(rows, columns, chartState);
+            return (
+              <div>
+                {suggestions.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto px-3 pt-3">
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => initFromSuggestion(messageId, suggestions, columns, i)}
+                        className={`px-2 py-1 text-xs rounded border ${chartState.activeSuggestionIdx === i ? 'border-accent-main-100 text-accent-main-100' : 'border-border-300/15 text-text-300'}`}
+                      >
+                        {s.title ?? s.chart_type}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="p-3" style={{ height: 320 }}>
+                  {res.ok ? (
+                    <ChartView
+                      ref={chartRef}
+                      chart={res.chart}
+                      chartType={chartState.chartType}
+                      title={chartState.title}
+                      axisLabels={chartState.axisLabels}
+                      legend={chartState.legend}
+                      grid={chartState.grid}
+                      numberFormat={chartState.numberFormat}
+                    />
+                  ) : (
+                    <div className="text-sm text-text-300">{res.error}</div>
+                  )}
+                </div>
+                <div className="px-3 pb-2">
+                  <button
+                    onClick={() => setShowEdit((v) => !v)}
+                    className="text-xs text-text-300 hover:text-text-000"
+                  >
+                    {showEdit ? 'Hide' : 'Edit chart'}
+                  </button>
+                </div>
+                {showEdit && (
+                  <EditPanel
+                    messageId={messageId}
+                    columns={columns}
+                    chartRef={chartRef}
+                    onClose={() => setShowEdit(false)}
+                  />
+                )}
+              </div>
+            );
+          })()
+        ) : view === 'preview' && imageSrc ? (
           <div>
             <div className="p-3 flex justify-center">
               <img

@@ -44,8 +44,18 @@ to stdout; parse it and act on the fields named below.
 
 3. **Present the result.** Show the `report` field to the user as the answer. If
    `verified` is `false` (or the report carries the UNVERIFIED banner), say so
-   explicitly and do not present the numbers as settled. Mention any files in
-   `figures` (charts saved to the run directory).
+   explicitly and do not present the numbers as settled.
+   - If the summary has a non-null `result_table`, call the `send_table` tool with
+     `file=<result_table>`, a short `title`, and `suggestions=<summary.suggestions>`
+     to show an interactive, read-only table + chart in the chat. The web UI
+     renders the chart from the suggestions (chart_type/x/y) — no image needed.
+   - For any file listed in `figures` (matplotlib PNGs saved to the run dir), you
+     may also call `send_image` with its absolute path and a short caption to show
+     the pre-rendered chart as an image bubble.
+
+   Ingested datasets, run outputs (code, figures, `result.csv`), and the audit
+   trail are stored automatically in the per-session data_copilot folder, not the
+   module folder — you do not pass or manage those paths.
 
 **Only when the user wants to view/edit the raw data first (web UI):** ingest it
 into the module, then show an editable grid, then analyze the ingested copy:
@@ -97,7 +107,9 @@ After ingesting, you can let the user inspect and correct the raw data before
 analysis. Call the `send_editable_table` tool with `module="data_copilot"` and
 `file="<the file field from ingest>"` (e.g. `sales.csv`) to render an editable
 grid; when the user edits cells or adds/removes rows and clicks Save, the CSV is
-rewritten in place. Then run `analyze` against the ingested `path` so the report
+rewritten in place. In a chat session the grid binds to the session's copy of the
+dataset and saves back through the `/api/data-copilot/write` route, so edits
+persist where the analysis reads from. Then run `analyze` against the ingested `path` so the report
 reflects the corrected data. Recommended flow for a user-supplied dataset:
 **ingest → (optionally) `send_editable_table` for review/fix → `analyze` the
 ingested path.** This closes the loop so users analyze the data they actually

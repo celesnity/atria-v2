@@ -110,6 +110,28 @@ class APIClient {
     );
   }
 
+  // Session-scoped data_copilot datasets (send_table / session-bound editable table)
+  readSessionDataset(sessionId: string, file: string) {
+    return request<{
+      file: string;
+      columns: import('../types').DataColumn[];
+      rows: Record<string, any>[];
+      warning?: string;
+    }>(`/data-copilot/read`, { query: { session_id: sessionId, file } });
+  }
+
+  writeSessionDataset(
+    sessionId: string,
+    file: string,
+    columns: import('../types').DataColumn[],
+    rows: Record<string, any>[],
+  ) {
+    return request<{ written: string; rows: number; columns: string[] }>(
+      `/data-copilot/write`,
+      { method: 'PUT', body: { session_id: sessionId, file, columns, rows } },
+    );
+  }
+
   // Generic GET method for any endpoint
   get<T = any>(endpoint: string) {
     return request<T>(endpoint);

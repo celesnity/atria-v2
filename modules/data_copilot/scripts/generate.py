@@ -18,8 +18,13 @@ _SYSTEM = (
     "that answers the user's question about the dataset. Rules: use pandas; load "
     "the dataset from the exact path given; PRINT the answer with clear labels; "
     "if a chart helps, use matplotlib with the 'Agg' backend and savefig into the "
-    "current directory. Do NOT access the network, spawn processes, or write "
-    "outside the current directory. Return the code in one ```python``` block."
+    "current directory. If your analysis produces a final tabular result (a pandas "
+    "DataFrame that answers the question), also save it to 'result.csv' in the "
+    "current directory with df.to_csv('result.csv', index=False); keep it small "
+    "(<= 50 rows) and tidy (one category column plus numeric measures) since it is "
+    "shown to the user as an interactive chart. Do NOT access the network, spawn "
+    "processes, or write outside the current directory. Return the code in one "
+    "```python``` block."
 )
 
 

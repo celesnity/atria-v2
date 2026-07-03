@@ -170,3 +170,20 @@ def test_list_datasets_excludes_bak_files(tmp_path):
     (data_dir / "a.csv.bak").write_text("x\n0\n")
     files = [e["file"] for e in ingest_mod.list_datasets(root=root)]
     assert files == ["a.csv"]
+
+
+def test_ingest_writes_into_session_data_dir(tmp_path, monkeypatch):
+    """With a session in env and no explicit root, ingest targets the session dir."""
+    monkeypatch.setenv("ATRIA_WORKSPACE", str(tmp_path))
+    monkeypatch.setenv("ATRIA_CONVERSATION_ID", "sess9999")
+    monkeypatch.delenv("ATRIA_SESSION_DIR", raising=False)
+    src = tmp_path / "sales data.csv"
+    src.write_text("region,rev\nNorth,10\nSouth,20\n", encoding="utf-8")
+    result = ingest_mod.ingest(str(src))
+    stored = tmp_path / ".artifacts" / "data_copilot" / "sess9999" / "data" / "sales-data.csv"
+    assert stored.is_file()
+    assert result["files"][0]["path"] == str(stored)
+    assert result["files"][0]["file"] == "sales-data.csv"
+    assert ingest_mod.resolve_dataset("sales-data") == str(stored.resolve())
+    names = [e["file"] for e in ingest_mod.list_datasets()]
+    assert "sales-data.csv" in names

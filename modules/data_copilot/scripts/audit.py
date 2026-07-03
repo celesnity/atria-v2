@@ -13,13 +13,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
+try:
+    import paths  # type: ignore[import-not-found]
+except ModuleNotFoundError:  # loaded by path (tests) — import the sibling file
+    import importlib.util as _ilu
+
+    _p = Path(__file__).resolve().parent / "paths.py"
+    _spec = _ilu.spec_from_file_location("dc_paths", _p)
+    paths = _ilu.module_from_spec(_spec)  # type: ignore[assignment]
+    _spec.loader.exec_module(paths)  # type: ignore[union-attr]
+
 
 def audit_path() -> Path:
-    """Return the audit log path (``DC_AUDIT_PATH`` or module-local default)."""
+    """Return the audit log path (``DC_AUDIT_PATH`` override or session default)."""
     override = os.environ.get("DC_AUDIT_PATH")
     if override:
         return Path(override)
-    return Path(__file__).resolve().parent.parent / "audit_log.jsonl"
+    return paths.audit_path()
 
 
 def append_event(event: Dict[str, object]) -> None:

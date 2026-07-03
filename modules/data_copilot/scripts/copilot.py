@@ -16,6 +16,7 @@ The loop is a clean reimplementation of .reference/data-agent/langgraph_agent.
 from __future__ import annotations
 
 import argparse
+import csv as _csv
 import json
 import sys
 from pathlib import Path
@@ -24,15 +25,63 @@ from typing import Callable, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import audit  # type: ignore[import-not-found]
+import charts as charts_mod  # type: ignore[import-not-found]
 import generate  # type: ignore[import-not-found]
 import ingest as ingest_mod  # type: ignore[import-not-found]
 import guardrails  # type: ignore[import-not-found]
+import paths as paths_mod  # type: ignore[import-not-found]
 import profile as profile_mod  # type: ignore[import-not-found]
 import report as report_mod  # type: ignore[import-not-found]
 import sandbox  # type: ignore[import-not-found]
 import verify as verify_mod  # type: ignore[import-not-found]
 from client import RoleClient  # type: ignore[import-not-found]
 from config import load_config  # type: ignore[import-not-found]
+
+
+def _infer_type(values: List[str]) -> str:
+    """Return ``number`` if every non-empty value parses as float, else ``string``."""
+    saw = False
+    for v in values:
+        if v is None or v == "":
+            continue
+        saw = True
+        try:
+            float(v)
+        except (TypeError, ValueError):
+            return "string"
+    return "number" if saw else "string"
+
+
+def _load_result_table(out_dir: str):
+    """Read ``result.csv`` from *out_dir* → ``(columns, rows)`` or ``None``.
+
+    ``columns`` is ``[{"name", "type"}]``; numeric cells are coerced to float so
+    the chart renderer plots numbers rather than strings.
+    """
+    path = Path(out_dir) / "result.csv"
+    if not path.is_file():
+        return None
+    with path.open("r", encoding="utf-8", errors="replace", newline="") as fh:
+        reader = list(_csv.reader(fh))
+    if not reader:
+        return None
+    header = [h.strip() or f"column_{i + 1}" for i, h in enumerate(reader[0])]
+    body = reader[1:]
+    rows: List[dict] = [
+        {header[i]: (r[i] if i < len(r) else "") for i in range(len(header))} for r in body
+    ]
+    columns: List[dict] = []
+    for name in header:
+        col_vals = [r.get(name, "") for r in rows]
+        columns.append({"name": name, "type": _infer_type(col_vals)})
+    for col in columns:
+        if col["type"] == "number":
+            for r in rows:
+                try:
+                    r[col["name"]] = float(r[col["name"]])
+                except (TypeError, ValueError):
+                    r[col["name"]] = None
+    return columns, rows
 
 
 def _gen_and_run(
@@ -158,6 +207,21 @@ def run_analysis(
     if result["status"] == "error":
         report_output = (result["stdout"] + "\n\n[execution error]\n" + result["stderr"]).strip()
     report_md = report_fn(question, report_output, result["figures"], verified=not unverified)
+
+    # Persist the result table (if the generated code wrote result.csv) and derive
+    # heuristic chart suggestions so the agent can push an interactive table/chart.
+    result_table_path: Optional[str] = None
+    suggestions: List[dict] = []
+    loaded = _load_result_table(out_dir)
+    if loaded is not None:
+        columns, rows = loaded
+        suggestions = charts_mod.detect_suggestions(columns, rows)
+        meta = {"columns": columns, "suggestions": suggestions}
+        (Path(out_dir) / "result.meta.json").write_text(
+            json.dumps(meta, default=str), encoding="utf-8"
+        )
+        result_table_path = str((Path(out_dir) / "result.csv").resolve())
+
     audit.append_event(
         {
             "type": "analyze",
@@ -183,6 +247,8 @@ def run_analysis(
         "report": report_md,
         "repairs": repairs,
         "verify_rounds": verify_round,
+        "result_table": result_table_path,
+        "suggestions": suggestions,
     }
 
 
@@ -309,7 +375,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _default_out_dir() -> str:
-    return str(Path(__file__).resolve().parent.parent / "runs" / "latest")
+    return str(paths_mod.new_run_dir())
 
 
 def main(argv: Optional[List[str]] = None) -> int:

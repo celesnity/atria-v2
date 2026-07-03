@@ -26,7 +26,32 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+try:
+    import paths  # type: ignore[import-not-found]
+except ModuleNotFoundError:  # loaded by path (tests) — import the sibling file
+    import importlib.util as _ilu
+
+    _p = Path(__file__).resolve().parent / "paths.py"
+    _spec = _ilu.spec_from_file_location("dc_paths", _p)
+    paths = _ilu.module_from_spec(_spec)  # type: ignore[assignment]
+    _spec.loader.exec_module(paths)  # type: ignore[union-attr]
+
 MODULE_NAME = "data_copilot"
+
+
+def _target_data_dir(root: Optional[Path] = None, module_name: str = MODULE_NAME) -> Path:
+    """The active data dir.
+
+    An explicit *root* (used by tests) wins and points at
+    ``root/<module_name>/data``. Otherwise the session-scoped dir is used when a
+    session is present in the environment, falling back to the module's own
+    ``data/`` dir for the bare CLI.
+    """
+    if root is not None:
+        d = root / module_name / "data"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    return paths.data_dir()
 
 
 def _module_root() -> Path:
@@ -101,10 +126,8 @@ def ingest(
 
     Raises:
         FileNotFoundError: if *source* does not exist.
-        ValueError: on unsupported file types or store validation failures.
+        ValueError: on unsupported file types.
     """
-    from atria.core.modules import store
-
     src = Path(source).expanduser().resolve()
     if not src.is_file():
         raise FileNotFoundError(f"source not found: {source}")
@@ -112,14 +135,12 @@ def ingest(
     base = _slug(name or src.stem)
     pairs = to_csv_files(src, base)
 
-    modules_root = root or _module_root()
-    written = store.write_data_files(modules_root, module_name, pairs)  # ["data/x.csv", ...]
-
-    module_dir = modules_root / module_name
+    data_dir = _target_data_dir(root, module_name)
     files = []
-    for rel in written:
-        data_rel = rel[len("data/") :] if rel.startswith("data/") else rel
-        files.append({"file": data_rel, "path": str(module_dir / rel)})
+    for filename, content in pairs:
+        dest = data_dir / filename
+        dest.write_bytes(content)
+        files.append({"file": filename, "path": str(dest.resolve())})
     return {"module": module_name, "files": files}
 
 
@@ -142,13 +163,12 @@ def resolve_dataset(
     if p.is_file():
         return str(p.resolve())
 
-    modules_root = root or _module_root()
-    data_dir = modules_root / module_name / "data"
+    data_dir = _target_data_dir(root, module_name)
     for candidate in (data_dir / arg, data_dir / f"{arg}.csv"):
         if candidate.is_file():
             return str(candidate.resolve())
 
-    available = [e["file"] for e in list_datasets(root=modules_root, module_name=module_name)]
+    available = [e["file"] for e in list_datasets(root=root, module_name=module_name)]
     hint = ", ".join(available) if available else "none ingested yet — run `ingest <file>` first"
     raise FileNotFoundError(
         f"dataset not found: {arg!r}. Pass a file path or an ingested dataset name. "
@@ -164,8 +184,7 @@ def list_datasets(*, root: Optional[Path] = None, module_name: str = MODULE_NAME
     absolute ``path``, byte ``size``, and header ``columns``. Powers the
     dashboard's dataset picker. Returns ``[]`` when no data dir exists yet.
     """
-    modules_root = root or _module_root()
-    data_dir = modules_root / module_name / "data"
+    data_dir = _target_data_dir(root, module_name)
     if not data_dir.is_dir():
         return []
 

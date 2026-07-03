@@ -183,7 +183,7 @@ export interface Message {
   // editable-table fields (send_editable_table): when set, the data bubble
   // renders an editable grid that saves back to the module's CSV.
   data_editable?: boolean;
-  data_source?: { module: string; file: string };
+  data_source?: { module?: string; file: string; session?: string };
   // lazy-load fallback: fetch rows via /api/analyze/table-data
   data_db_path?: string;
   data_table_name?: string;
