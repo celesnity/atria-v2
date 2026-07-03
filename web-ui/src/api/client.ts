@@ -74,6 +74,21 @@ class APIClient {
     return request<{ status: string; message: string }>('/chat/clear', { method: 'DELETE' });
   }
 
+  /** Fetch the `{chart_id: overrides}` map of persisted chart edits for a session. */
+  getChartOverrides(sessionId: string) {
+    return request<Record<string, Record<string, unknown>>>('/charts/overrides', {
+      query: { session_id: sessionId },
+    });
+  }
+
+  /** Persist one chart's display overrides for a session. */
+  saveChartOverrides(sessionId: string, chartId: string, overrides: Record<string, unknown>) {
+    return request<{ success: boolean }>('/charts/overrides', {
+      method: 'PUT',
+      body: { session_id: sessionId, chart_id: chartId, overrides },
+    });
+  }
+
   async fetchChartImage(pngPath: string): Promise<string> {
     const { src } = await request<{ src: string }>('/analyze/chart-image', {
       query: { path: pngPath },

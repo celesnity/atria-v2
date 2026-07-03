@@ -1,4 +1,3 @@
-import type { RefObject } from 'react';
 import type { DataColumn } from '../../../types';
 import {
   useChartsStore,
@@ -9,7 +8,7 @@ import {
 interface EditPanelProps {
   messageId: string;
   columns: DataColumn[];
-  chartRef: RefObject<any>;
+  rows: Record<string, any>[];
   onClose: () => void;
 }
 
@@ -20,22 +19,16 @@ function update(messageId: string, partial: any) {
   useChartsStore.getState().update(messageId, partial);
 }
 
-function downloadPNG(chartRef: RefObject<any>, filename: string) {
-  const chart = chartRef.current;
-  if (!chart || typeof chart.toBase64Image !== 'function') return;
-  const url = chart.toBase64Image();
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-}
-
-export function EditPanel({ messageId, columns, chartRef, onClose }: EditPanelProps) {
+export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps) {
   const state = useChartsStore((s) => s.states[messageId]);
   if (!state) return null;
 
   const xOptions = columns.map((c) => c.name);
   const yOptions = columns.filter((c) => c.type === 'number').map((c) => c.name);
+  // Distinct x-axis category values, for per-value display renames.
+  const xValues = Array.from(
+    new Set(rows.map((r) => String(r[state.xField] ?? '')).filter(Boolean))
+  ).slice(0, 50);
 
   const toggleY = (name: string) => {
     const next = state.yFields.includes(name)
@@ -86,6 +79,18 @@ export function EditPanel({ messageId, columns, chartRef, onClose }: EditPanelPr
             type="text"
             value={state.title}
             onChange={(e) => update(messageId, { title: e.target.value })}
+            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+          />
+        </label>
+
+        {/* Subtitle */}
+        <label className="block">
+          <span className="block text-xs text-text-300 mb-1">Subtitle</span>
+          <input
+            type="text"
+            value={state.subtitle}
+            placeholder="Optional caption"
+            onChange={(e) => update(messageId, { subtitle: e.target.value })}
             className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
           />
         </label>
@@ -192,6 +197,31 @@ export function EditPanel({ messageId, columns, chartRef, onClose }: EditPanelPr
           </div>
         </div>
 
+        {/* X-axis value renames */}
+        {xValues.length > 0 && (
+          <div>
+            <span className="block text-xs text-text-300 mb-1">X-axis value labels</span>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {xValues.map((v) => (
+                <div key={v} className="flex items-center gap-2">
+                  <span className="w-20 shrink-0 truncate text-xs text-text-300" title={v}>{v}</span>
+                  <input
+                    type="text"
+                    value={state.valueLabels[v] ?? ''}
+                    placeholder={v}
+                    onChange={(e) =>
+                      update(messageId, {
+                        valueLabels: { ...state.valueLabels, [v]: e.target.value },
+                      })
+                    }
+                    className="flex-1 min-w-0 px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Toggles */}
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-1.5 text-text-100">
@@ -211,16 +241,6 @@ export function EditPanel({ messageId, columns, chartRef, onClose }: EditPanelPr
             <span>Grid</span>
           </label>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border-300/15">
-        <button
-          onClick={() => downloadPNG(chartRef, `${state.title || 'chart'}.png`)}
-          className="px-2 py-1 text-xs rounded border border-border-300/15 text-text-100 hover:bg-bg-200"
-        >
-          Download PNG
-        </button>
       </div>
     </div>
   );
