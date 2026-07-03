@@ -17,31 +17,11 @@
 #    defaults to max_context_tokens=100000 / max_tokens=16384 — which overflows
 #    the real window. We write the correct values (from .env) instead.
 services:
-  tei:
-    platform: linux/amd64
-
   atria:
     environment:
-      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_INDEX_EMBED_PROVIDER=lmstudio
-      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_CHUNK_EMBED_PROVIDER=lmstudio
-      - MC_EMBED_DIM=768
       # No GPU on this host, so the copilot-llm (vLLM) sidecar is not started.
       # Point the chat roles (synthesis + kg_extract) at the host LM Studio
       # chat model instead, mirroring the embedding override above.
-      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=gemma-4-e2b-heretic-uncensored-mlx
-      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_SYNTHESIS_PROVIDER=lmstudio
-      - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=gemma-4-e2b-heretic-uncensored-mlx
-      - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_KG_EXTRACT_PROVIDER=lmstudio
       # Real token budget for the deployed model's 30000-token window.
       - ATRIA_MAX_CONTEXT_TOKENS=${ATRIA_MAX_CONTEXT_TOKENS:-24000}
       - ATRIA_MAX_TOKENS=${ATRIA_MAX_TOKENS:-4096}
@@ -57,23 +37,6 @@ services:
 
   atria-worker:
     environment:
-      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_INDEX_EMBED_PROVIDER=lmstudio
-      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_CHUNK_EMBED_PROVIDER=lmstudio
-      - MC_EMBED_DIM=768
-      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=gemma-4-e2b-heretic-uncensored-mlx
-      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_SYNTHESIS_PROVIDER=lmstudio
-      - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=gemma-4-e2b-heretic-uncensored-mlx
-      - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_KG_EXTRACT_PROVIDER=lmstudio
       - ATRIA_MAX_CONTEXT_TOKENS=${ATRIA_MAX_CONTEXT_TOKENS:-24000}
       - ATRIA_MAX_TOKENS=${ATRIA_MAX_TOKENS:-4096}
     entrypoint:
