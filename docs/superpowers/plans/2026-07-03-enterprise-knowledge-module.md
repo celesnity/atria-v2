@@ -6,7 +6,7 @@
 
 **Architecture:** A one-time converter materializes the dataset `.xlsx` into a file corpus (`sample_documents/*.md`) plus access data (`access/users.csv`). Retrieval is permission-aware: the querying user's `(role, department)` compiles into a Qdrant pre-retrieval filter so forbidden documents never enter the candidate set, with an independent second access check before synthesis. Answers are grounded, cited, Vietnamese.
 
-**Tech Stack:** Python 3, `openai` (OpenAI-compatible hosted API), `qdrant-client` (vector store), `chonkie` (chunking), `openpyxl` (converter only). Tests: `pytest` via `uv run pytest`, injected fakes, in-memory Qdrant.
+**Tech Stack:** Python 3, `openai` (OpenAI-compatible hosted API), `qdrant-client` (vector store), `chonkie` (chunking), `openpyxl` (converter only). Tests: `pytest` via `uv run --extra dev pytest`, injected fakes, in-memory Qdrant.
 
 ## Global Constraints
 
@@ -129,7 +129,7 @@ def test_env_overrides_win_per_role():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_config.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_config.py -v`
 Expected: FAIL (module file does not exist / import error).
 
 - [ ] **Step 3: Create the scaffold files**
@@ -239,7 +239,7 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Dict[str, RoleConfig
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_config.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_config.py -v`
 Expected: 4 passed.
 
 - [ ] **Step 6: Commit**
@@ -329,7 +329,7 @@ def test_unknown_role_raises():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_client.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_client.py -v`
 Expected: FAIL (client.py missing).
 
 - [ ] **Step 3: Create `scripts/client.py`**
@@ -338,7 +338,7 @@ Clone `modules/maintenance_copilot/scripts/client.py` **verbatim** into `modules
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_client.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_client.py -v`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -401,7 +401,7 @@ def test_fit_text_truncates_when_over_budget():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_budget.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_budget.py -v`
 Expected: FAIL (budget.py missing).
 
 - [ ] **Step 3: Create `scripts/budget.py`**
@@ -415,7 +415,7 @@ Everything else (the `_CHARS_PER_TOKEN` heuristic, `_SAFETY_MARGIN`, function bo
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_budget.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_budget.py -v`
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
@@ -504,7 +504,7 @@ def test_knowledge_space_derived_when_absent(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_corpus.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_corpus.py -v`
 Expected: FAIL (corpus.py missing).
 
 - [ ] **Step 3: Create `scripts/corpus.py`**
@@ -608,7 +608,7 @@ def load_corpus(root: str) -> list[Document]:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_corpus.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_corpus.py -v`
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
@@ -681,7 +681,7 @@ def test_chunk_document_builds_citation_anchored_records():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_chunking.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_chunking.py -v`
 Expected: FAIL (chunking.py missing).
 
 - [ ] **Step 3: Create `scripts/chunking.py`**
@@ -779,7 +779,7 @@ def chunk_document(doc: Document, chunker: object | None = None) -> list[ChunkRe
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_chunking.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_chunking.py -v`
 Expected: 1 passed.
 
 - [ ] **Step 5: Commit**
@@ -851,7 +851,7 @@ def test_unknown_user_raises(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_identity.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_identity.py -v`
 Expected: FAIL (identity.py missing).
 
 - [ ] **Step 3: Create `scripts/identity.py`**
@@ -922,7 +922,7 @@ def resolve(users: Dict[str, User], user_id: str) -> User:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_identity.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_identity.py -v`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -1008,7 +1008,7 @@ def test_build_filter_is_a_qdrant_filter_for_employee():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_acl.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_acl.py -v`
 Expected: FAIL (acl.py missing).
 
 - [ ] **Step 3: Create `scripts/acl.py`**
@@ -1118,7 +1118,7 @@ def build_filter(user: User):
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_acl.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_acl.py -v`
 Expected: 10 passed (8 parametrized + 2).
 
 - [ ] **Step 5: Commit**
@@ -1228,7 +1228,7 @@ def test_executive_sees_all(env):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_index_store.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_index_store.py -v`
 Expected: FAIL (index_store.py missing).
 
 - [ ] **Step 3: Create `scripts/index_store.py`**
@@ -1390,7 +1390,7 @@ class IndexStore:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_index_store.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_index_store.py -v`
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
@@ -1457,7 +1457,7 @@ def test_needs_review_when_low_confidence():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_guardrails.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_guardrails.py -v`
 Expected: FAIL (guardrails.py missing).
 
 - [ ] **Step 3: Create `scripts/guardrails.py`**
@@ -1476,7 +1476,7 @@ Everything else (`split_sentences`, `enforce_citations`, `answer_confidence`, `n
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_guardrails.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_guardrails.py -v`
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
@@ -1546,7 +1546,7 @@ def test_synthesize_flags_review_when_uncited():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_synthesis.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_synthesis.py -v`
 Expected: FAIL (synthesis.py missing).
 
 - [ ] **Step 3: Create `scripts/synthesis.py`**
@@ -1573,7 +1573,7 @@ Everything else (`fit_hits_to_budget`, `build_synthesis_messages`, `synthesize` 
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_synthesis.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_synthesis.py -v`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -1632,7 +1632,7 @@ def test_append_then_read_roundtrip(tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_audit.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_audit.py -v`
 Expected: FAIL (audit.py missing).
 
 - [ ] **Step 3: Create `scripts/audit.py`**
@@ -1641,7 +1641,7 @@ Clone `modules/maintenance_copilot/scripts/audit.py` and apply exactly one edit:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_audit.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_audit.py -v`
 Expected: 1 passed.
 
 - [ ] **Step 5: Commit**
@@ -1721,7 +1721,7 @@ def test_can_access_command_denies(capsys, tmp_path):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_cli.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_cli.py -v`
 Expected: FAIL (knowledge.py missing).
 
 - [ ] **Step 3: Create `scripts/knowledge.py`**
@@ -2001,7 +2001,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_cli.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_cli.py -v`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -2109,7 +2109,7 @@ def test_canonical_department_maps_hr_alias():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_build_corpus.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_build_corpus.py -v`
 Expected: FAIL (build_corpus.py missing).
 
 - [ ] **Step 3: Create `tools/build_corpus.py`**
@@ -2264,7 +2264,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_build_corpus.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_build_corpus.py -v`
 Expected: 2 passed.
 
 - [ ] **Step 5: Commit**
@@ -2368,7 +2368,7 @@ cp modules/maintenance_copilot/icon.svg modules/enterprise_knowledge/icon.svg
 
 - [ ] **Step 5: Full unit-test sweep**
 
-Run: `uv run pytest tests/test_enterprise_knowledge_*.py -v`
+Run: `uv run --extra dev pytest tests/test_enterprise_knowledge_*.py -v`
 Expected: all green (config, client, budget, corpus, chunking, identity, acl, index_store, guardrails, synthesis, audit, cli, build_corpus).
 
 - [ ] **Step 6: Real end-to-end simulation (per CLAUDE.md testing rule)**
