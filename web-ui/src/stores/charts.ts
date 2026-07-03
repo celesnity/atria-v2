@@ -11,9 +11,12 @@ export interface ChartEditState {
   xField: string;
   yFields: string[];
   title: string;
+  subtitle: string;
   description?: string;
   axisLabels: { x?: string; y?: string };
   seriesLabels: Record<string, string>;
+  /** X-axis category value → display override (e.g. "A" → "Product Alpha"). */
+  valueLabels: Record<string, string>;
   seriesColors: Record<string, string>;
   /** Series key → 'bar'|'line' for a mixed (combo) chart. */
   combo: Record<string, 'bar' | 'line'>;
@@ -28,13 +31,42 @@ export interface ChartEditState {
   numberFormat: NumberFormat;
 }
 
+/** User-intent fields persisted across reload (not derived data). */
+export type ChartOverrides = Pick<
+  ChartEditState,
+  | 'activeSuggestionIdx'
+  | 'chartType'
+  | 'title'
+  | 'subtitle'
+  | 'axisLabels'
+  | 'seriesLabels'
+  | 'valueLabels'
+  | 'seriesColors'
+  | 'legend'
+  | 'grid'
+  | 'numberFormat'
+>;
+
+const OVERRIDE_KEYS: (keyof ChartOverrides)[] = [
+  'activeSuggestionIdx', 'chartType', 'title', 'subtitle', 'axisLabels',
+  'seriesLabels', 'valueLabels', 'seriesColors', 'legend', 'grid', 'numberFormat',
+];
+
+/** Pull the persistable slice out of a full chart edit state. */
+export function extractOverrides(state: ChartEditState): ChartOverrides {
+  const out = {} as ChartOverrides;
+  for (const k of OVERRIDE_KEYS) (out as any)[k] = (state as any)[k];
+  return out;
+}
+
 interface ChartsStore {
   states: Record<string, ChartEditState>;
   initFromSuggestion: (
     messageId: string,
     suggestions: ChartSuggestion[],
     columns: DataColumn[],
-    idx: number
+    idx: number,
+    overrides?: Partial<ChartOverrides> | null
   ) => void;
   update: (messageId: string, partial: Partial<ChartEditState>) => void;
   reset: (messageId: string) => void;
@@ -57,9 +89,11 @@ function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx:
     xField: s.x,
     yFields: [...s.y],
     title: s.title ?? '',
+    subtitle: '',
     description: s.description,
     axisLabels: {},
     seriesLabels,
+    valueLabels: {},
     seriesColors,
     combo: s.combo ?? {},
     secondaryAxis: s.secondaryAxis ?? [],
@@ -73,10 +107,22 @@ function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx:
 
 export const useChartsStore = create<ChartsStore>((set) => ({
   states: {},
-  initFromSuggestion: (messageId, suggestions, columns, idx) =>
-    set((state) => ({
-      states: { ...state.states, [messageId]: buildState(suggestions, columns, idx) },
-    })),
+  initFromSuggestion: (messageId, suggestions, columns, idx, overrides) =>
+    set((state) => {
+      // Saved overrides may re-point the active suggestion; honor that first so
+      // the base chart type/series match what the user last saw.
+      const effectiveIdx =
+        overrides && typeof overrides.activeSuggestionIdx === 'number'
+          ? overrides.activeSuggestionIdx
+          : idx;
+      const base = buildState(suggestions, columns, effectiveIdx);
+      return {
+        states: {
+          ...state.states,
+          [messageId]: overrides ? { ...base, ...overrides } : base,
+        },
+      };
+    }),
   update: (messageId, partial) =>
     set((state) => {
       const prev = state.states[messageId];

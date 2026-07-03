@@ -68,13 +68,19 @@ function expandToolCalls(
     // Reconstruct the chart bubble from persisted send_data tool calls so
     // it survives session reload (the live WS data_message event isn't
     // replayed from DB).
-    if ((tc.name === 'send_data' || tc.name === 'send_editable_table') && !tc.error && depth === 0) {
+    if (
+      (tc.name === 'send_table' || tc.name === 'send_data' || tc.name === 'send_editable_table') &&
+      !tc.error &&
+      depth === 0
+    ) {
       const payload = extractDataPayload(tc.result);
       if (payload) {
         messages.push({
           role: 'data_message',
           content: payload.title || '',
-          data_message_id: `data-${tc.id}`,
+          // Key on the stable chart_id (matches the live event) so persisted
+          // overrides restore; fall back to the tool-call id for old sessions.
+          data_message_id: (payload.chart_id as string | undefined) || `data-${tc.id}`,
           data_title: payload.title,
           data_columns: payload.columns as DataColumn[] | undefined,
           data_rows: payload.rows as Record<string, any>[] | undefined,
@@ -95,6 +101,7 @@ function expandToolCalls(
 }
 
 function extractDataPayload(result: unknown): {
+  chart_id?: unknown;
   title?: string;
   columns?: unknown;
   rows?: unknown;
@@ -851,10 +858,13 @@ wsClient.on('data_message', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
+  // Prefer the backend's stable chart_id so overrides key the same across the
+  // live event and a later reload; fall back to a random id for non-chart data.
   const dataMessageId =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    (message.data.chart_id as string | undefined) ||
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `data-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      : `data-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);

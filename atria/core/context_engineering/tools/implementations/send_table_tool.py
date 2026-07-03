@@ -9,6 +9,7 @@ interactive chart + table without any save-back.
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,9 @@ class SendTableHandler:
             rows = rows[:max_rows]
 
         payload: dict[str, Any] = {
+            # Stable id so the web UI can key persisted chart overrides to this
+            # chart across both the live WS event and a later session reload.
+            "chart_id": uuid.uuid4().hex,
             "title": title,
             "columns": columns,
             "rows": rows,
