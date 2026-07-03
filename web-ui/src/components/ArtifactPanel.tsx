@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Filter, FileText, Trash2 } from 'lucide-react';
+import { LayoutGrid, Filter, FileText, Trash2, Loader2 } from 'lucide-react';
 import type { Artifact } from '../types';
 import { ArtifactThumbnail } from './ArtifactThumbnail';
 
@@ -129,8 +129,8 @@ export function ArtifactPanel({
       <div className="flex-1 overflow-y-auto">
         {isLoading && (
           <div className="flex items-center justify-center h-full">
-            <div className="text-text-muted">
-              <div className="inline-block animate-spin">⏳</div>
+            <div className="text-text-muted flex flex-col items-center">
+              <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} aria-hidden="true" />
               <p className="mt-2 text-sm">Loading artifacts...</p>
             </div>
           </div>

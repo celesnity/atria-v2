@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ChevronRight, ChevronDown, ArrowRight, FileText, ClipboardList } from 'lucide-react';
+import { ChevronRight, ChevronDown, ArrowRight, ArrowUpRight, FileText, ClipboardList } from 'lucide-react';
 import type { Message, TaxonomyCategory, DeepResearchSection } from '../../types';
 import { wsClient } from '../../api/websocket';
 
@@ -204,7 +204,11 @@ function ReviewPanel({ message }: { message: Message }) {
               <span className="inline-block w-2.5 h-2.5 border-2 border-bg-000/60 border-t-transparent rounded-full animate-spin" />
               Starting…
             </span>
-          ) : 'Start Research ↗'}
+          ) : (
+            <span className="inline-flex items-center justify-center gap-1">
+              Start Research <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+            </span>
+          )}
         </button>
       </div>
     </div>

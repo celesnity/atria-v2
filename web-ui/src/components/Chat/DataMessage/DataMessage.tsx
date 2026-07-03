@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import type { DataColumn, Message } from '../../../types';
 import { apiClient } from '../../../api/client';
@@ -29,7 +29,7 @@ function SqlDisclosure({ sql }: { sql: string }) {
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-1.5 w-full px-3 py-1.5 text-[11px] text-text-muted hover:text-ink"
       >
-        <span className={`transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
+        <ChevronRight className={`w-3 h-3 shrink-0 transition-transform duration-fast ${open ? 'rotate-90' : ''}`} strokeWidth={2} aria-hidden="true" />
         <span className="font-mono opacity-70">SQL</span>
         <span className="truncate opacity-50 flex-1 text-left">{!open && sql.replace(/\s+/g, ' ').slice(0, 80)}</span>
       </button>

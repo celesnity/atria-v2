@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { CloudUpload } from 'lucide-react';
+import { CloudUpload, X } from 'lucide-react';
 import { useArtifactUpload, type UploadScope } from '../hooks/useArtifactUpload';
 import { formatFileSize } from '../utils/fileUtils';
 
@@ -185,9 +185,10 @@ export function FileUploadWidget({
                     <button
                       onClick={() => handleRemoveFile(index)}
                       disabled={uploading}
-                      className="flex-shrink-0 ml-2 p-1 text-text-muted hover:text-semantic-danger disabled:opacity-50"
+                      className="flex-shrink-0 ml-2 p-1 text-text-muted hover:text-semantic-danger disabled:opacity-50 cursor-pointer"
+                      aria-label="Remove file"
                     >
-                      ✕
+                      <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -207,9 +208,10 @@ export function FileUploadWidget({
             </div>
             <button
               onClick={clearError}
-              className="text-semantic-danger hover:opacity-80"
+              className="text-semantic-danger hover:opacity-80 cursor-pointer"
+              aria-label="Dismiss error"
             >
-              ✕
+              <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Diamond } from 'lucide-react';
 
 interface ThinkingBlockProps {
   content: string;
@@ -29,7 +29,12 @@ export function ThinkingBlock({ content, level, isActive }: ThinkingBlockProps) 
         aria-label={isExpanded ? 'Collapse thinking' : 'Expand thinking'}
         className={`flex items-center gap-1.5 py-0.5 text-left cursor-pointer rounded transition-colors ${isActive ? 'thinking-shimmer' : ''}`}
       >
-        <span className="text-ink/30 text-[13px] select-none">{isCritique ? '◆' : '◇'}</span>
+        <Diamond
+          className="w-3 h-3 text-ink/30 shrink-0"
+          strokeWidth={2}
+          fill={isCritique ? 'currentColor' : 'none'}
+          aria-hidden="true"
+        />
         <span className="text-[13px] text-ink/50 font-medium">
           {isCritique ? 'Critique' : 'Thought'}
         </span>

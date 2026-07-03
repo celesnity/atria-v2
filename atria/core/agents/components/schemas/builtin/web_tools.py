@@ -206,18 +206,46 @@ SCHEMAS: list[dict[str, Any]] = [
                 "wrote — e.g. the `result_table` from data_copilot analyze — or a name "
                 "relative to the session's data_copilot data/ dir) and a `title`. "
                 "Optionally pass `suggestions` (chart specs) so the UI renders an "
-                "interactive chart. Normally forward the `suggestions` returned by "
-                "analyze verbatim — they already carry the rich fields below. Each "
-                "suggestion has: `chart_type` (bar|line|area|pie|doughnut|scatter|combo|"
-                "radar), `x` (category column), `y` (list of numeric columns), `title`, "
-                "and optionally `description` (one line under the chart), `labels` "
-                "(series key → display name), `units` (series key → unit e.g. '%', 'triệu "
-                "VND'), `combo` (series key → 'bar'|'line' for a mixed chart), "
-                "`secondaryAxis` (series keys on the right-hand y-axis), and `normalized` "
-                "(true for 0–100 radar). Whenever the data is chartable (a category "
-                "column plus one or more numeric columns), include at least one "
-                "suggestion so the user gets a chart, not just a table. Use this to "
-                "show computed results; it is NOT editable. Only works in the web UI."
+                "interactive chart. If analyze already returned `suggestions`, forward "
+                "them verbatim. Otherwise build them yourself — do NOT guess column "
+                "names or reuse the same column for x and y.\n"
+                "\n"
+                "CHOOSING FEATURES (this matters — wrong x/y renders an empty or "
+                "meaningless chart):\n"
+                "- First inspect the CSV header + a few rows. `x` and `y` MUST be exact "
+                "column names that exist in the data. `y` columns must hold numbers "
+                "(measures like total_sales, quantity, profit); `x` is usually a "
+                "dimension (a category, group, or date).\n"
+                "- Pick charts that answer a real question and match the data shape. "
+                "Emit 2–4 focused suggestions, not every column combination.\n"
+                "\n"
+                "PER CHART TYPE:\n"
+                "- bar: x = a categorical dimension with a manageable number of groups "
+                "(e.g. region, category, channel); y = one or more numeric measures. "
+                "Rows are shown/grouped per x value.\n"
+                "- line / area: x = a date or naturally ordered column; y = numeric "
+                "measure(s) trended over that order. Use for time series.\n"
+                "- pie / doughnut: x = a categorical column with FEW distinct values "
+                "(≤ ~8, e.g. region, category); y = exactly ONE numeric measure. The UI "
+                "auto-sums that measure per category and shows each category's share, so "
+                "never put a high-cardinality or numeric column in x here.\n"
+                "- scatter: BOTH x and y MUST be numeric measure columns, to show the "
+                "relationship between them (e.g. x=quantity, y=total_sales, or "
+                "x=unit_price, y=profit_margin). Never use a text/category column as the "
+                "scatter x — the plot comes out empty.\n"
+                "- radar: x = a categorical column with a few values; y = one or more "
+                "numeric measures on comparable scales; set `normalized: true` when the "
+                "measures span very different ranges.\n"
+                "- combo: x = category or date; y = 2+ measures with a `combo` mapping "
+                "(e.g. one series 'bar', another 'line'); put a very-different-scale "
+                "measure on `secondaryAxis`.\n"
+                "\n"
+                "Other per-suggestion fields: `title`, `description` (one line under the "
+                "chart), `labels` (series/column → display name), `units` (series → unit "
+                "e.g. '%', 'USD'). Whenever the data is chartable (a dimension plus one "
+                "or more numeric columns), include at least one suggestion so the user "
+                "gets a chart, not just a table. This tool is NOT editable and only "
+                "works in the web UI."
             ),
             "parameters": {
                 "type": "object",
@@ -255,9 +283,33 @@ SCHEMAS: list[dict[str, Any]] = [
                                         "bar", "line", "area", "pie", "doughnut",
                                         "scatter", "combo", "radar",
                                     ],
+                                    "description": (
+                                        "Match to the data: bar=compare by category, "
+                                        "line/area=trend over date/order, "
+                                        "pie/doughnut=share of ONE measure across few "
+                                        "categories, scatter=relationship between TWO "
+                                        "numeric measures, radar=multi-measure by "
+                                        "category, combo=mixed bar+line."
+                                    ),
                                 },
-                                "x": {"type": "string"},
-                                "y": {"type": "array", "items": {"type": "string"}},
+                                "x": {
+                                    "type": "string",
+                                    "description": (
+                                        "Exact column name for the x axis / category. A "
+                                        "dimension (category/group/date) for most charts; "
+                                        "MUST be a numeric column for scatter."
+                                    ),
+                                },
+                                "y": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": (
+                                        "Exact numeric column name(s) for the value axis. "
+                                        "Use exactly one for pie/doughnut/scatter; may use "
+                                        "several for bar/line/area/combo/radar. Never "
+                                        "equal to x."
+                                    ),
+                                },
                                 "title": {"type": "string"},
                                 "description": {"type": "string"},
                                 "labels": {"type": "object"},

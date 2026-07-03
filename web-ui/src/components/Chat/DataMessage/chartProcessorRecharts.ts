@@ -69,12 +69,21 @@ export function processChartRecharts(
     }
 
     const xKey = state.xField;
+    const isScatter = state.chartType === 'scatter';
     const data = safeRows.map((r) => {
       const rawX = String(r[xKey] ?? '');
-      const out: Record<string, unknown> = { [xKey]: state.valueLabels?.[rawX] ?? r[xKey] };
+      // Scatter needs a numeric x; other charts keep x as a category label.
+      const xVal = isScatter ? Number(r[xKey]) : (state.valueLabels?.[rawX] ?? r[xKey]);
+      const out: Record<string, unknown> = { [xKey]: xVal };
       for (const y of state.yFields) {
         const v = Number(r[y]);
-        out[y] = state.normalized && !Number.isNaN(v) ? (v / scale[y]) * 100 : r[y];
+        if (state.normalized && !Number.isNaN(v)) {
+          out[y] = (v / scale[y]) * 100;
+        } else {
+          // Coerce numeric strings (CSV values arrive as strings) so axes,
+          // tooltips and scatter/pie math work; keep non-numeric values as-is.
+          out[y] = Number.isNaN(v) ? r[y] : v;
+        }
       }
       return out;
     });
@@ -93,7 +102,23 @@ export function processChartRecharts(
       };
     });
 
-    return { ok: true, chart: { data, xKey, series, hasSecondaryAxis, isCircular } };
+    // Pie/doughnut render one slice per row, so raw un-aggregated data (e.g. 89
+    // rows all tagged "Clothing"/"Electronics"/"Home") explodes into hundreds of
+    // duplicate slices + legend entries. Collapse to one slice per distinct
+    // category, summing the first value series.
+    let finalData = data;
+    if (isCircular) {
+      const yk = state.yFields[0];
+      const agg = new Map<string, number>();
+      for (const row of data) {
+        const key = String(row[xKey] ?? '');
+        if (!key) continue;
+        agg.set(key, (agg.get(key) ?? 0) + (Number(row[yk]) || 0));
+      }
+      finalData = Array.from(agg, ([k, v]) => ({ [xKey]: k, [yk]: v }));
+    }
+
+    return { ok: true, chart: { data: finalData, xKey, series, hasSecondaryAxis, isCircular } };
   } catch (err: any) {
     return { ok: false, error: err?.message ?? String(err) };
   }

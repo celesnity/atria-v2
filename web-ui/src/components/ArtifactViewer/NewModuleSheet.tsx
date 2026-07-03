@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, CheckCircle2, AlertCircle, FilePlus2, FolderPlus, Trash2 } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, AlertCircle, FilePlus2, FolderPlus, Trash2, ArrowRight } from 'lucide-react';
 import { useModulesStore } from '../../stores/modules';
 import { useToastStore } from '../../stores/toast';
 import { ModulesApi, type ModuleTemplate, type UploadFileEntry } from '../../api/modules';
@@ -380,7 +380,11 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                 : 'bg-sky-500/40 hover:bg-sky-500/50'
             } disabled:opacity-60 disabled:cursor-not-allowed`}
           >
-            {busy ? 'Creating…' : 'Create →'}
+            {busy ? 'Creating…' : (
+              <span className="inline-flex items-center justify-center gap-1">
+                Create <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+              </span>
+            )}
           </button>
         </div>
       </form>

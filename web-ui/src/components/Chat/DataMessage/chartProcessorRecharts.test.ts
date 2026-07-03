@@ -125,6 +125,25 @@ describe('processChartRecharts', () => {
     expect(r.chart.data.map((d) => d.sales)).toEqual([50, 100]);
   });
 
+  it('aggregates pie/doughnut data by category (one slice per distinct x)', () => {
+    const many = [
+      { region: 'Clothing', sales: 10 },
+      { region: 'Clothing', sales: 5 },
+      { region: 'Electronics', sales: 20 },
+      { region: 'Home', sales: 1 },
+      { region: 'Home', sales: 2 },
+    ];
+    const r = processChartRecharts(many, columns, baseState({ chartType: 'pie' }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    // 5 rows → 3 distinct categories, values summed.
+    expect(r.chart.data).toEqual([
+      { region: 'Clothing', sales: 15 },
+      { region: 'Electronics', sales: 20 },
+      { region: 'Home', sales: 3 },
+    ]);
+  });
+
   it('returns ok:false on empty rows / missing fields', () => {
     expect(processChartRecharts([], columns, baseState()).ok).toBe(false);
     expect(processChartRecharts(rows, columns, baseState({ xField: '' })).ok).toBe(false);
