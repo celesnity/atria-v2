@@ -82,3 +82,47 @@ def test_executive_sees_restricted(indexed):
     ex = identity.User("U007", "n", "Executive", "EXEC", "Active")
     hits = store.query("dự báo", k=100, acl_filter=acl.build_filter(ex))
     assert any(h["classification"] == "Restricted" for h in hits)
+
+
+def test_cmd_query_empty_store_returns_no_leak_message(capsys, tmp_path, monkeypatch):
+    """_cmd_query with zero accessible hits prints the no-leak message, no answer."""
+    from qdrant_client import QdrantClient
+
+    monkeypatch.setenv("EK_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
+    knowledge = _load("knowledge", "ek_knowledge_e2e_empty")
+    index_store = _load("index_store", "ek_index_store_e2e_empty")
+    users = tmp_path / "users.csv"
+    users.write_text(
+        "user_id,full_name,department,role,email,status\n"
+        "U004,n,ENG,Employee,e,Active\n", encoding="utf-8")
+    store = index_store.IndexStore(QdrantClient(":memory:"), _fake_embed)
+    store.ensure_collection(dim=8)  # empty — nothing ingested
+    rc = knowledge._cmd_query("bất kỳ", "U004", 5, None, False, str(users), store=store)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "phạm vi truy cập" in out   # the Vietnamese no-leak message
+    assert '"answer"' not in out
+    assert '"hits": []' in out
+
+
+def test_cmd_query_excludes_other_dept_confidential(capsys, tmp_path, monkeypatch):
+    """_cmd_query over the real corpus never returns another department's Confidential doc."""
+    from qdrant_client import QdrantClient
+
+    monkeypatch.setenv("EK_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
+    knowledge = _load("knowledge", "ek_knowledge_e2e_real")
+    corpus = _load("corpus", "ek_corpus_e2e_real")
+    chunking = _load("chunking", "ek_chunking_e2e_real")
+    index_store = _load("index_store", "ek_index_store_e2e_real")
+    users = tmp_path / "users.csv"
+    users.write_text(
+        "user_id,full_name,department,role,email,status\n"
+        "U004,n,ENG,Employee,e,Active\n", encoding="utf-8")
+    store = index_store.IndexStore(QdrantClient(":memory:"), _fake_embed)
+    store.ensure_collection(dim=8)
+    for doc in corpus.load_corpus(str(_DOCS)):
+        store.upsert_chunks(chunking.chunk_document(doc))
+    rc = knowledge._cmd_query("khung lương", "U004", 100, None, False, str(users), store=store)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "DOC007" not in out   # HR Confidential never leaks to an ENG employee

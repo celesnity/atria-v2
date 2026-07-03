@@ -1,8 +1,9 @@
 """Append-only JSONL audit trail for advisory actions.
 
-Every query, recommendation, validation, and engineer confirmation is appended
-with a UTC timestamp so an AI-suggested reference can be traced to the exact
-document/revision/page used — the regulatory-traceability requirement.
+Every query, permission check, and access decision is appended with a UTC
+timestamp so an AI-surfaced document or answer can be traced to the exact
+user, action, and result — the traceability requirement for a
+permission-aware knowledge system.
 """
 
 from __future__ import annotations

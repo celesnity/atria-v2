@@ -128,9 +128,10 @@ def _resolve_user(user_id: str, users_path: str | None) -> "identity.User":
 
 
 def _cmd_query(text: str, user_id: str, k: int, department: str | None,
-               synthesize: bool, users_path: str | None) -> int:
+               synthesize: bool, users_path: str | None, store: IndexStore | None = None) -> int:
     user = _resolve_user(user_id, users_path)
-    store = _build_store()
+    if store is None:
+        store = _build_store()
     hits = store.query(text, k=k, acl_filter=acl.build_filter(user), department=department)
     hits, blocked = guard_accessible(user, hits)
     payload: dict[str, object] = {
