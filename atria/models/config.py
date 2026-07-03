@@ -243,6 +243,11 @@ class AppConfig(BaseModel):
     # technical tool cards. Developers can disable via settings.json.
     simple_mode: bool = True
 
+    # Per-tool enable/disable — names of built-in tools whose schemas are dropped
+    # from the LLM request (saves context tokens). None = unset → fall back to the
+    # seed defaults (DEFAULT_DISABLED_TOOLS); a list (even empty) is explicit.
+    disabled_tools: Optional[list[str]] = None
+
     # Permissions
     permissions: PermissionConfig = Field(default_factory=PermissionConfig)
 
