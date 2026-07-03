@@ -214,8 +214,10 @@ SCHEMAS: list[dict[str, Any]] = [
                 "(series key → display name), `units` (series key → unit e.g. '%', 'triệu "
                 "VND'), `combo` (series key → 'bar'|'line' for a mixed chart), "
                 "`secondaryAxis` (series keys on the right-hand y-axis), and `normalized` "
-                "(true for 0–100 radar). Use this to show computed results; it is NOT "
-                "editable. Only works in the web UI."
+                "(true for 0–100 radar). Whenever the data is chartable (a category "
+                "column plus one or more numeric columns), include at least one "
+                "suggestion so the user gets a chart, not just a table. Use this to "
+                "show computed results; it is NOT editable. Only works in the web UI."
             ),
             "parameters": {
                 "type": "object",

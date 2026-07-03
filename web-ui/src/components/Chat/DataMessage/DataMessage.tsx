@@ -3,10 +3,12 @@ import { useCopyToClipboard } from 'usehooks-ts';
 import type { DataColumn, Message } from '../../../types';
 import { apiClient } from '../../../api/client';
 import { EditableDataTable } from './EditableDataTable';
-import { ChartView } from './ChartView';
+import { RechartsView } from './RechartsView';
 import { EditPanel } from './EditPanel';
-import { processChart } from './chartProcessor';
-import { useChartsStore } from '../../../stores/charts';
+import { processChartRecharts } from './chartProcessorRecharts';
+import { extractOverrides, useChartsStore, type ChartOverrides } from '../../../stores/charts';
+import { useChatStore } from '../../../stores/chat';
+import { loadSessionOverrides, saveChartOverridesDebounced } from './chartOverrides';
 
 function SqlDisclosure({ sql }: { sql: string }) {
   const [open, setOpen] = useState(false);
@@ -101,19 +103,43 @@ export function DataMessage({ message }: { message: Message }) {
   const imageSrc = message.data_image_src || fetchedImageSrc || null;
   const hasData = rows.length > 0;
 
-  // Interactive chart (chart.js) rendered from agent-provided suggestions.
+  // Interactive chart (Recharts) rendered from agent-provided suggestions.
   const suggestions = message.data_suggestions ?? [];
   const hasCharts = suggestions.length > 0 && hasData;
-  const chartRef = useRef<any>(null);
   const chartState = useChartsStore((s) => s.states[messageId]);
   const initFromSuggestion = useChartsStore((s) => s.initFromSuggestion);
+  const sessionId = useChatStore((s) => s.currentSessionId);
   const [showEdit, setShowEdit] = useState(false);
+
+  // Init the chart edit state once, merging any persisted overrides for this
+  // chart_id so a reload restores the user's last edits.
+  const initingRef = useRef(false);
   useEffect(() => {
-    if (hasCharts && !chartState) {
-      initFromSuggestion(messageId, suggestions, columns, 0);
-    }
+    if (!hasCharts || chartState || initingRef.current) return;
+    initingRef.current = true;
+    let cancelled = false;
+    (async () => {
+      let ov: Partial<ChartOverrides> | null = null;
+      if (sessionId) {
+        const map = await loadSessionOverrides(sessionId);
+        ov = map[messageId] ?? null;
+      }
+      if (!cancelled) initFromSuggestion(messageId, suggestions, columns, 0, ov);
+      initingRef.current = false;
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCharts, !!chartState, messageId, columns.length, suggestions.length]);
+  }, [hasCharts, !!chartState, messageId, columns.length, suggestions.length, sessionId]);
+
+  // Debounce-persist edits. Skip the first run (the init above) so we only save
+  // real user changes, not the freshly-restored defaults.
+  const skipSaveRef = useRef(true);
+  useEffect(() => {
+    if (!chartState || !sessionId) return;
+    if (skipSaveRef.current) { skipSaveRef.current = false; return; }
+    saveChartOverridesDebounced(sessionId, messageId, extractOverrides(chartState));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chartState, sessionId]);
 
   const [view, setView] = useState<'preview' | 'table' | 'chart'>(
     hasCharts ? 'chart' : imageSrc ? 'preview' : 'table'
@@ -194,7 +220,7 @@ export function DataMessage({ message }: { message: Message }) {
         {/* Body */}
         {view === 'chart' && hasCharts && chartState ? (
           (() => {
-            const res = processChart(rows, columns, chartState);
+            const res = processChartRecharts(rows, columns, chartState);
             return (
               <div>
                 {suggestions.length > 1 && (
@@ -212,23 +238,14 @@ export function DataMessage({ message }: { message: Message }) {
                 )}
                 <div className="p-3" style={{ height: 320 }}>
                   {res.ok ? (
-                    <ChartView
-                      ref={chartRef}
-                      chart={res.chart}
-                      chartType={chartState.chartType}
-                      title={chartState.title}
-                      axisLabels={chartState.axisLabels}
-                      legend={chartState.legend}
-                      grid={chartState.grid}
-                      numberFormat={chartState.numberFormat}
-                    />
+                    <RechartsView processed={res.chart} state={chartState} />
                   ) : (
                     <div className="text-sm text-text-300">{res.error}</div>
                   )}
                 </div>
-                {chartState.description && (
+                {(chartState.subtitle || chartState.description) && (
                   <div className="px-3 pb-1 text-xs text-text-300">
-                    {chartState.description}
+                    {chartState.subtitle || chartState.description}
                   </div>
                 )}
                 <div className="px-3 pb-2">
@@ -243,7 +260,7 @@ export function DataMessage({ message }: { message: Message }) {
                   <EditPanel
                     messageId={messageId}
                     columns={columns}
-                    chartRef={chartRef}
+                    rows={rows}
                     onClose={() => setShowEdit(false)}
                   />
                 )}
