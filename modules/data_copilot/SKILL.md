@@ -84,6 +84,30 @@ If a step returns `{"error": …}`, surface that message to the user and stop �
 do not fabricate an answer. Run `health` first if you suspect the LLM endpoint
 is misconfigured (it returns `{"codegen": "ok"}` when reachable).
 
+## Persona / customer segmentation
+
+When the user asks to **cluster / segment customers or build personas**
+("phân cụm", "persona", "segment", "customer groups"), use `persona` instead of
+`analyze`:
+
+`python <modules>/data_copilot/scripts/copilot.py persona "<absolute path>" "<the request>" [--domain telecom] [--k N]`
+
+It runs the same generate → run → repair loop, but forces the generated code to
+emit a persona array (schema below) which is validated and **written to
+`persona.json`** in the run dir, plus a narrative report. Present the `report`
+field; if `summary.result_table` is non-null call `send_table` with
+`file=<result_table>` and `suggestions=<summary.suggestions>`; mention that
+`persona.json` (path in `summary.persona_json`) holds the structured personas.
+If `verified` is `false`, say so and do not present the personas as settled.
+Add `--domain telecom` only for FTEL/telecom-churn datasets (stricter
+anti-hallucination rules). `--k` pins the cluster count when the user asks for a
+specific number of segments.
+
+Each persona in `persona.json` has: `cluster_id`, `persona_name`, `support`,
+`support_pct`, `confidence`, `priority_score`, `is_anomaly`,
+`segmentation_quality`, `risk_tier`, `evidence`, `profile_attributes`,
+`recommended_actions`, `sample_persona_text`.
+
 ## Commands (reference)
 
 Run the CLI via the bash tool (``<modules>`` resolves to the active modules
@@ -108,6 +132,9 @@ directory — see the SKILL block header in the system prompt):
   `python <modules>/data_copilot/scripts/copilot.py profile path/to/data.csv`
 - Analyze:
   `python <modules>/data_copilot/scripts/copilot.py analyze path/to/data.csv "What is total revenue by region?"`
+  Flags: `--max-repair` (default 3), `--max-verify` (default 2), `--out <dir>`.
+- Persona clustering (writes persona.json + narrative report):
+  `python <modules>/data_copilot/scripts/copilot.py persona path/to/data.csv "Segment customers into personas" [--domain telecom] [--k N]`
   Flags: `--max-repair` (default 3), `--max-verify` (default 2), `--out <dir>`.
 - Recent audit events:
   `python <modules>/data_copilot/scripts/copilot.py audit --limit 20`

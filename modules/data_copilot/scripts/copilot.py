@@ -8,6 +8,7 @@ Subcommands:
   datasets — list datasets ingested into the module data/ dir.
   profile  — print a dataset profile as JSON.
   analyze  — run the full generate → execute → repair → verify → report loop.
+  persona  — cluster the dataset into personas and write persona.json.
   audit    — print recent audit-trail events.
 
 The loop is a clean reimplementation of .reference/data-agent/langgraph_agent.
@@ -30,6 +31,10 @@ import generate  # type: ignore[import-not-found]
 import ingest as ingest_mod  # type: ignore[import-not-found]
 import guardrails  # type: ignore[import-not-found]
 import paths as paths_mod  # type: ignore[import-not-found]
+import persona as persona_mod  # type: ignore[import-not-found]
+import persona_generate  # type: ignore[import-not-found]
+import persona_report  # type: ignore[import-not-found]
+import persona_verify  # type: ignore[import-not-found]
 import profile as profile_mod  # type: ignore[import-not-found]
 import report as report_mod  # type: ignore[import-not-found]
 import sandbox  # type: ignore[import-not-found]
@@ -352,6 +357,54 @@ def _cmd_analyze(
     return 0
 
 
+def _cmd_persona(
+    dataset: str,
+    question: Optional[str],
+    out_dir: str,
+    max_repair: int,
+    max_verify: int,
+    domain: Optional[str],
+    k: Optional[int],
+) -> int:
+    if not question or not question.strip():
+        print(
+            json.dumps(
+                {
+                    "error": "a question is required: "
+                    'persona "<dataset path or name>" "<your question>"'
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        dataset = ingest_mod.resolve_dataset(dataset)
+    except FileNotFoundError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 1
+    rc = RoleClient(load_config())
+    summary = persona_mod.run_persona(
+        dataset,
+        question,
+        out_dir=out_dir,
+        max_repair=max_repair,
+        max_verify=max_verify,
+        domain=domain,
+        k=k,
+        codegen_fn=lambda q, p, pe=None, hy=None: persona_generate.generate_code(
+            q, p, _role_chat(rc, "codegen"), k=k, domain=domain, prior_error=pe, hypotheses=hy
+        ),
+        verify_fn=lambda q, c, o, personas: persona_verify.verify_personas(
+            q, c, o, personas, domain=domain
+        ),
+        report_fn=lambda personas, q, verified=True: persona_report.render_report(
+            personas, q, _role_chat(rc, "report"), verified=verified
+        ),
+    )
+    print(json.dumps(summary, indent=2, default=str))
+    return 0
+
+
 def _cmd_audit(limit: int) -> int:
     events = audit.read_events()
     if limit and limit > 0:
@@ -384,6 +437,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_an.add_argument("--out", default=None, help="Run output dir (default: runs/latest).")
     p_an.add_argument("--max-repair", type=int, default=3)
     p_an.add_argument("--max-verify", type=int, default=2)
+    p_per = sub.add_parser(
+        "persona", help="Cluster the dataset into personas (writes persona.json)."
+    )
+    p_per.add_argument("dataset")
+    p_per.add_argument("question", nargs="?", default=None)
+    p_per.add_argument("--out", default=None, help="Run output dir (default: runs/latest).")
+    p_per.add_argument("--max-repair", type=int, default=3)
+    p_per.add_argument("--max-verify", type=int, default=2)
+    p_per.add_argument("--domain", default=None, help="Optional domain pack (e.g. telecom).")
+    p_per.add_argument("--k", type=int, default=None, help="Optional fixed cluster count.")
     p_aud = sub.add_parser("audit", help="Show recent audit-trail events.")
     p_aud.add_argument("--limit", type=int, default=50)
     return parser
@@ -417,6 +480,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             args.out or _default_out_dir(),
             args.max_repair,
             args.max_verify,
+        )
+    if args.command == "persona":
+        return _cmd_persona(
+            args.dataset,
+            args.question,
+            args.out or _default_out_dir(),
+            args.max_repair,
+            args.max_verify,
+            args.domain,
+            args.k,
         )
     if args.command == "audit":
         return _cmd_audit(args.limit)
