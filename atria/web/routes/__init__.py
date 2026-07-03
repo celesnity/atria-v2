@@ -11,6 +11,8 @@ from atria.web.routes.artifacts import router as artifacts_router
 from atria.web.routes.fs import router as fs_router
 from atria.web.routes.personas import router as personas_router
 from atria.web.routes.analyze import router as analyze_router
+from atria.web.routes.transcribe import router as transcribe_router
+from atria.web.routes.maintenance import router as maintenance_router
 from atria.web.routes.data_copilot import router as data_copilot_router
 from atria.web.routes.modules import router as modules_router
 from atria.web.routes.blocks import router as blocks_router
@@ -36,6 +38,8 @@ __all__ = [
     "fs_router",
     "personas_router",
     "analyze_router",
+    "transcribe_router",
+    "maintenance_router",
     "data_copilot_router",
     "modules_router",
     "blocks_router",

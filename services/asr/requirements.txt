@@ -1,0 +1,12 @@
+# ASR sidecar deps. torch CPU wheel is installed separately in the Dockerfile
+# from the pytorch CPU index so we don't pull the multi-GB CUDA build.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+numpy>=1.26
+soundfile>=0.12
+librosa>=0.10
+# transformers is installed FROM SOURCE in the Dockerfile — the released wheels
+# don't yet carry the nemotron3_5_asr architecture. accelerate pulls in
+# huggingface_hub, which the build-time model pre-download needs.
+accelerate>=0.34

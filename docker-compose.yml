@@ -77,6 +77,9 @@ services:
       - MC_NEO4J_URI=bolt://neo4j:7687
       - MC_NEO4J_USER=neo4j
       - MC_NEO4J_PASSWORD=atria-neo4j
+      # Speech-to-text backend (voice input). Hard-coded to the internal `asr`
+      # sidecar so it is correct regardless of the host-oriented value in .env.
+      - ATRIA_ASR_BASE_URL=http://asr:9000/v1
       - AUTH_MODE=${AUTH_MODE:-keycloak}
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
@@ -106,6 +109,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # CPU speech-to-text sidecar — nvidia/nemotron-3.5-asr-streaming-0.6b via HF
+  # transformers, exposing an OpenAI-compatible /v1/audio/transcriptions. No GPU
+  # needed (push-to-talk latency ~2-6s per short clip). Swap ATRIA_ASR_BASE_URL
+  # to a managed/GPU endpoint to replace it with zero code change. Not gated by a
+  # profile, so it starts with the normal `docker compose up`.
+  asr:
+    build: ./services/asr
+    ports:
+      - "9000:9000"
+    volumes:
+      - asr_models:/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
 
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
   # divide + parallel). Shares modules + ~/.atria with the web service so
@@ -202,3 +224,4 @@ volumes:
   qdrant_data:
   neo4j_data:
   hf_cache:
+  asr_models:
