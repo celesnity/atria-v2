@@ -30,8 +30,9 @@ def test_guard_accessible_splits_hits():
     assert [h["doc_id"] for h in blocked] == ["DOC007"]
 
 
-def test_can_access_command_denies(capsys, tmp_path):
+def test_can_access_command_denies(capsys, tmp_path, monkeypatch):
     k = _load("knowledge", "ek_knowledge_uut2")
+    monkeypatch.setenv("EK_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
     # users.csv
     users = tmp_path / "users.csv"
     users.write_text(
@@ -48,3 +49,16 @@ def test_can_access_command_denies(capsys, tmp_path):
     out = capsys.readouterr().out
     assert rc == 0
     assert '"allowed": false' in out.lower() or '"allowed": false' in out
+
+
+def test_whoami_unknown_user_returns_clean_error(capsys, tmp_path, monkeypatch):
+    k = _load("knowledge", "ek_knowledge_uut_unknown")
+    monkeypatch.setenv("EK_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
+    users = tmp_path / "users.csv"
+    users.write_text(
+        "user_id,full_name,department,role,email,status\n"
+        "U004,n,ENG,Employee,e,Active\n", encoding="utf-8")
+    rc = k.main(["whoami", "U999", "--users", str(users)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "error" in out.lower()

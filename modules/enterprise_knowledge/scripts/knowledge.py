@@ -245,25 +245,29 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
     args = build_parser().parse_args(argv)
-    if args.command == "health":
-        return _cmd_health()
-    if args.command == "ingest":
-        return _cmd_ingest(args.samples or _samples_dir())
-    if args.command == "query":
-        return _cmd_query(args.text, args.user, args.k, args.department,
-                          args.synthesize, args.users)
-    if args.command == "whoami":
-        return _cmd_whoami(args.user_id, args.users)
-    if args.command == "can-access":
-        return _cmd_can_access(args.user_id, args.doc_id, args.users,
-                               args.samples or _samples_dir())
-    if args.command == "list":
-        return _cmd_list()
-    if args.command == "reset":
-        return _cmd_reset()
-    if args.command == "audit":
-        return _cmd_audit(args.limit)
-    return 2
+    try:
+        if args.command == "health":
+            return _cmd_health()
+        if args.command == "ingest":
+            return _cmd_ingest(args.samples or _samples_dir())
+        if args.command == "query":
+            return _cmd_query(args.text, args.user, args.k, args.department,
+                              args.synthesize, args.users)
+        if args.command == "whoami":
+            return _cmd_whoami(args.user_id, args.users)
+        if args.command == "can-access":
+            return _cmd_can_access(args.user_id, args.doc_id, args.users,
+                                   args.samples or _samples_dir())
+        if args.command == "list":
+            return _cmd_list()
+        if args.command == "reset":
+            return _cmd_reset()
+        if args.command == "audit":
+            return _cmd_audit(args.limit)
+        return 2
+    except identity.UnknownUserError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2, ensure_ascii=False))
+        return 1
 
 
 if __name__ == "__main__":
