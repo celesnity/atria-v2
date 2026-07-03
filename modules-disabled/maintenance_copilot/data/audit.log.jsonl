@@ -1,0 +1,5 @@
+{"ts": "2026-07-02T16:41:14.219997+00:00", "type": "query", "query": "How do I remove the main landing gear and what must I do first?", "citations": ["amm_ata32#18"], "needs_review": false}
+{"ts": "2026-07-02T16:58:29.381525+00:00", "type": "query", "query": "Càng đáp không thu được sau khi cất cánh thì tra quy trình nào?", "citations": ["cdl_ata52#17", "cdl_ata52#40"], "needs_review": false}
+{"ts": "2026-07-02T17:01:26.606994+00:00", "type": "query", "query": "1", "citations": ["cdl_ata52#30", "cdl_ata52#31", "mel_ata32#63"], "needs_review": false}
+{"ts": "2026-07-02T17:01:57.108354+00:00", "type": "query", "query": "Càng đáp không thu được sau khi cất cánh thì tra quy trình nào", "citations": [], "needs_review": true}
+{"ts": "2026-07-02T17:02:31.233472+00:00", "type": "query", "query": "How do I remove the main landing gear and what must I do first", "citations": ["amm_ata32#15", "amm_ata32#25"], "needs_review": false}
