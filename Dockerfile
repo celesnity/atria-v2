@@ -14,7 +14,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # ── Layer 2: install playwright browsers (slow; cached separately) ─────────────
-RUN uv run playwright install --with-deps chromium 2>/dev/null || true
+# RUN uv run playwright install --with-deps chromium 2>/dev/null || true
 
 # ── Layer 3: pre-cache tiktoken encodings so container works offline ──────────
 RUN uv run python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"

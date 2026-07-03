@@ -130,6 +130,27 @@ class TestExtractRefs:
         refs = injector._extract_refs("just a normal query")
         assert len(refs) == 0
 
+    def test_extract_unquoted_path_with_space_and_parens(self, injector):
+        """An uploaded artifact name with a space + parens must survive extraction
+        as a single ref (regression: it used to truncate at the space)."""
+        q = "analyze @.artifacts/conversations/239/2750674a_telecom_churn (1).csv please"
+        refs = injector._extract_refs(q)
+        assert len(refs) == 1
+        assert refs[0][0] == ".artifacts/conversations/239/2750674a_telecom_churn (1).csv"
+
+    def test_space_path_not_double_counted_with_prefix(self, injector):
+        """The truncated prefix must not also be emitted as a second ref."""
+        q = "@data/customer churn (1).csv"
+        refs = injector._extract_refs(q)
+        assert len(refs) == 1
+        assert refs[0][0] == "data/customer churn (1).csv"
+
+    def test_parens_without_space(self, injector):
+        """A name with parens but no space still extracts whole."""
+        refs = injector._extract_refs("read @report(final).pdf now")
+        assert len(refs) == 1
+        assert refs[0][0] == "report(final).pdf"
+
 
 class TestTextFileProcessing:
     """Tests for text file processing."""
