@@ -20,7 +20,14 @@ class ContextTokenMonitor:
             self.encoding = tiktoken.get_encoding("cl100k_base")
 
     def count_tokens(self, text: str) -> int:
-        """Count tokens in text."""
+        """Count tokens in text.
+
+        Defensively coerces non-string input to a string: tiktoken's ``encode``
+        raises ``TypeError`` on a dict/list, and token counting must never crash
+        the agent loop even if a caller passes a structured value.
+        """
+        if not isinstance(text, str):
+            text = "" if text is None else str(text)
         return len(self.encoding.encode(text))
 
     def count_message_tokens(self, message: ChatMessage) -> int:
