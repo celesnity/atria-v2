@@ -523,7 +523,15 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
         fullOutput = String(resultData);
       }
     }
-    const hasExpandableContent = !!fullOutput && fullOutput.length > 200;
+    // Offer the expander whenever the raw output carries more than the collapsed
+    // summary already shows — either meaningfully longer text or more lines — so
+    // results stay inspectable instead of hiding behind a 200-char cutoff.
+    const summaryChars = summaryLines.join('\n').length;
+    const hasExpandableContent =
+      !!fullOutput &&
+      (fullOutput.length > 120 ||
+        fullOutput.split('\n').length > summaryLines.length ||
+        fullOutput.length > summaryChars + 40);
 
     const isRunning = hasResult === false;
 
