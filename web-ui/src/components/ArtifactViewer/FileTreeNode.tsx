@@ -5,8 +5,9 @@ import {
   FileText, Code2, Image, Table2, Braces, FileType2,
   BookOpen, Database, Archive, Globe, Sheet,
   File as FileIcon,
-  FilePlus, FolderPlus, MoreHorizontal,
+  FilePlus, FolderPlus, MoreHorizontal, Download,
 } from 'lucide-react';
+import { apiClient } from '../../api/client';
 import { useFileExplorerStore } from '../../stores/fileExplorer';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
 import { fsScopeKey, type FsEntry, type FsScope } from '../../types';
@@ -76,7 +77,16 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
     return null;
   }
 
-  const canMutate = scope.kind === 'module' && !(entry.name === 'SKILL.md' && parentPath === '');
+  // Protected entries can't be renamed/deleted: a module's SKILL.md manifest,
+  // and a conversation's `.artifacts` container folder.
+  const isProtected =
+    (scope.kind === 'module' && entry.name === 'SKILL.md' && parentPath === '') ||
+    (scope.kind === 'conv' && entry.name === '.artifacts' && parentPath === '');
+  // Rename/delete are backed for both conv and module scopes; create (new
+  // file/folder) has backend endpoints only for module scope.
+  const canModify = !isProtected;
+  const canCreate = scope.kind === 'module';
+  const canDownload = entry.kind === 'file';
   const isRenaming = renamingPath === fullPath;
   const isSelected = selectedPath === fullPath;
 
@@ -95,28 +105,35 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
     void beginCreate(scope, fullPath, kind);
   };
 
+  const handleDownload = () => {
+    apiClient.downloadFsFile(scope, fullPath, entry.name);
+  };
+
   const buildMenu = (): Array<MenuItem | 'divider'> => {
     const items: Array<MenuItem | 'divider'> = [];
     if (entry.kind === 'dir') {
-      items.push({ label: 'New File', onSelect: () => onCreateInside('file') });
-      items.push({ label: 'New Folder', onSelect: () => onCreateInside('dir') });
-      items.push('divider');
+      if (canCreate) {
+        items.push({ label: 'New File', onSelect: () => onCreateInside('file') });
+        items.push({ label: 'New Folder', onSelect: () => onCreateInside('dir') });
+        items.push('divider');
+      }
     } else {
       items.push({ label: 'Open', onSelect: handleClick });
+      items.push({ label: 'Download', onSelect: handleDownload });
       items.push('divider');
     }
     items.push({
       label: 'Rename',
       shortcut: 'F2',
       onSelect: () => beginRename(scope, fullPath),
-      disabled: !canMutate,
+      disabled: !canModify,
     });
     items.push({
       label: 'Delete',
       shortcut: '⌫',
       onSelect: () => setConfirmDel(true),
       danger: true,
-      disabled: !canMutate,
+      disabled: !canModify,
     });
     return items;
   };
@@ -129,8 +146,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (isRenaming) return;
     if (e.key === 'Enter') { e.preventDefault(); handleClick(); return; }
-    if (e.key === 'F2' && canMutate) { e.preventDefault(); beginRename(scope, fullPath); return; }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && canMutate) {
+    if (e.key === 'F2' && canModify) { e.preventDefault(); beginRename(scope, fullPath); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && canModify) {
       e.preventDefault();
       setConfirmDel(true);
       return;
@@ -187,9 +204,9 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
           {loading && <span className="text-[11px] text-ink/35 animate-pulse">…</span>}
 
           {/* Hover/focus row actions */}
-          {!loading && canMutate && (
+          {!loading && (canModify || canCreate || canDownload) && (
             <span className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 flex-shrink-0">
-              {entry.kind === 'dir' && (
+              {canCreate && entry.kind === 'dir' && (
                 <>
                   <button
                     type="button"
@@ -210,6 +227,17 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
                     <FolderPlus className="w-3 h-3" />
                   </button>
                 </>
+              )}
+              {canDownload && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+                  aria-label={`Download ${entry.name}`}
+                  title="Download"
+                  className="p-0.5 rounded text-ink/45 hover:text-ink/90 hover:bg-ink/5 cursor-pointer"
+                >
+                  <Download className="w-3 h-3" />
+                </button>
               )}
               <button
                 type="button"
