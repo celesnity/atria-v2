@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { ChartSuggestion, DataColumn } from '../types';
 
-export type ChartType = 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter';
+export type ChartType =
+  | 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'combo' | 'radar';
 export type NumberFormat = 'plain' | 'thousands' | 'percent' | 'currency';
 
 export interface ChartEditState {
@@ -10,9 +11,18 @@ export interface ChartEditState {
   xField: string;
   yFields: string[];
   title: string;
+  description?: string;
   axisLabels: { x?: string; y?: string };
   seriesLabels: Record<string, string>;
   seriesColors: Record<string, string>;
+  /** Series key → 'bar'|'line' for a mixed (combo) chart. */
+  combo: Record<string, 'bar' | 'line'>;
+  /** Series keys bound to the right-hand y-axis. */
+  secondaryAxis: string[];
+  /** Series key → unit label; drives axis + tooltip suffix. */
+  units: Record<string, string>;
+  /** True for 0–100 normalized radar values. */
+  normalized: boolean;
   legend: boolean;
   grid: boolean;
   numberFormat: NumberFormat;
@@ -38,7 +48,8 @@ function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx:
   const seriesLabels: Record<string, string> = {};
   s.y.forEach((y, i) => {
     seriesColors[y] = DEFAULT_COLORS[i % DEFAULT_COLORS.length];
-    seriesLabels[y] = y;
+    // Prefer the suggestion's display name for this series, falling back to the key.
+    seriesLabels[y] = s.labels?.[y] ?? y;
   });
   return {
     activeSuggestionIdx: idx,
@@ -46,9 +57,14 @@ function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx:
     xField: s.x,
     yFields: [...s.y],
     title: s.title ?? '',
+    description: s.description,
     axisLabels: {},
     seriesLabels,
     seriesColors,
+    combo: s.combo ?? {},
+    secondaryAxis: s.secondaryAxis ?? [],
+    units: s.units ?? {},
+    normalized: s.normalized ?? false,
     legend: true,
     grid: true,
     numberFormat: 'plain',

@@ -13,7 +13,7 @@ interface EditPanelProps {
   onClose: () => void;
 }
 
-const CHART_TYPES: ChartType[] = ['bar', 'line', 'area', 'pie', 'doughnut', 'scatter'];
+const CHART_TYPES: ChartType[] = ['bar', 'line', 'area', 'pie', 'doughnut', 'scatter', 'combo', 'radar'];
 const NUMBER_FORMATS: NumberFormat[] = ['plain', 'thousands', 'percent', 'currency'];
 
 function update(messageId: string, partial: any) {

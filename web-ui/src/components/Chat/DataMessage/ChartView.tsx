@@ -3,26 +3,34 @@ import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  RadialLinearScale,
   BarElement,
   LineElement,
   PointElement,
   ArcElement,
+  BarController,
+  LineController,
+  RadarController,
   Title,
   Tooltip,
   Legend,
   Filler,
 } from 'chart.js';
-import { Bar, Line, Pie, Doughnut, Scatter } from 'react-chartjs-2';
+import { Bar, Line, Pie, Doughnut, Scatter, Radar, Chart } from 'react-chartjs-2';
 import type { ChartType, NumberFormat } from '../../../stores/charts';
 import type { ProcessedChart } from './chartProcessor';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  RadialLinearScale,
   BarElement,
   LineElement,
   PointElement,
   ArcElement,
+  BarController,
+  LineController,
+  RadarController,
   Title,
   Tooltip,
   Legend,
@@ -75,6 +83,12 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
   );
 
   const isCircular = chartType === 'pie' || chartType === 'doughnut';
+  const isRadar = chartType === 'radar';
+  const isCombo = chartType === 'combo';
+  const hasSecondaryAxis = chart.hasSecondaryAxis;
+
+  const withUnit = (value: string, unit?: string) =>
+    unit ? `${value} ${unit}` : value;
 
   const options = useMemo<any>(() => {
     const base: any = {
@@ -89,14 +103,28 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
           callbacks: {
             label: (ctx: any) => {
               const lbl = ctx.dataset?.label ? `${ctx.dataset.label}: ` : '';
-              const raw = ctx.parsed?.y ?? ctx.parsed ?? ctx.raw;
-              return `${lbl}${formatValue(raw as number, numberFormat)}`;
+              const raw = ctx.parsed?.y ?? ctx.parsed?.r ?? ctx.parsed ?? ctx.raw;
+              const unit = ctx.dataset?.unit as string | undefined;
+              return `${lbl}${withUnit(formatValue(raw as number, numberFormat), unit)}`;
             },
           },
         },
       },
     };
-    if (!isCircular) {
+    if (isRadar) {
+      base.scales = {
+        r: {
+          grid: { display: grid, color: 'rgba(148,163,184,0.15)' },
+          angleLines: { color: 'rgba(148,163,184,0.15)' },
+          pointLabels: { color: '#cbd5e1' },
+          ticks: {
+            color: '#94a3b8',
+            backdropColor: 'transparent',
+            callback: (val: any) => formatValue(val as number, numberFormat),
+          },
+        },
+      };
+    } else if (!isCircular) {
       base.scales = {
         x: {
           title: axisLabels.x
@@ -106,6 +134,8 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
           ticks: { color: '#94a3b8' },
         },
         y: {
+          type: 'linear',
+          position: 'left',
           title: axisLabels.y
             ? { display: true, text: axisLabels.y, color: '#cbd5e1' }
             : { display: false },
@@ -116,9 +146,22 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
           },
         },
       };
+      if (hasSecondaryAxis) {
+        // Right-hand axis for combo/secondary-axis series; no gridlines so it
+        // doesn't clash with the primary axis grid.
+        base.scales.y1 = {
+          type: 'linear',
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: {
+            color: '#94a3b8',
+            callback: (val: any) => formatValue(val as number, numberFormat),
+          },
+        };
+      }
     }
     return base;
-  }, [title, legend, grid, axisLabels.x, axisLabels.y, numberFormat, isCircular]);
+  }, [title, legend, grid, axisLabels.x, axisLabels.y, numberFormat, isCircular, isRadar, hasSecondaryAxis]);
 
   // scatter expects {x,y} points
   const scatterData = useMemo(() => {
@@ -131,6 +174,19 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
     };
   }, [chartType, chart, data]);
 
+  // For combo charts each dataset carries its own `type`; give the base a type so
+  // Chart.js can mix. Bars render behind lines by default.
+  const comboData = useMemo(() => {
+    if (!isCombo) return data;
+    return {
+      labels: chart.labels,
+      datasets: chart.datasets.map((ds) => ({
+        ...ds,
+        type: ds.type ?? 'bar',
+      })),
+    };
+  }, [isCombo, chart, data]);
+
   const chartProps: any = { ref: ref as any, data, options };
   return (
     <div style={{ height: 360 }} className="w-full">
@@ -139,6 +195,10 @@ export const ChartView = forwardRef<any, ChartViewProps>(function ChartView(
       {chartType === 'area' && <Line key="area" {...chartProps} />}
       {chartType === 'pie' && <Pie key="pie" {...chartProps} />}
       {chartType === 'doughnut' && <Doughnut key="doughnut" {...chartProps} />}
+      {chartType === 'radar' && <Radar key="radar" {...chartProps} />}
+      {chartType === 'combo' && (
+        <Chart key="combo" type="bar" ref={ref as any} data={comboData as any} options={options} />
+      )}
       {chartType === 'scatter' && (
         <Scatter key="scatter" ref={ref as any} data={scatterData as any} options={options} />
       )}

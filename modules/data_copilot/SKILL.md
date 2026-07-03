@@ -21,6 +21,13 @@ correlations, trends, quick charts — rather than by reading documentation.
 
 ## Runbook — the standard flow
 
+**Run this entire runbook inline, in the current agent turn — never dispatch a
+subagent for it.** Do not spawn a Task/Agent/subagent to run `analyze`/`persona`,
+to draw or send charts, or to call `send_image`/`send_table`/`send_editable_table`.
+These UI-callback tools only reach the chat from the main agent loop; a spawned
+subagent cannot render them and will drop the visuals. Call the CLI and the
+`send_*` tools yourself, directly, in this conversation.
+
 Follow these steps in order. Every command is a `python
 <modules>/data_copilot/scripts/copilot.py <subcommand> …` call run through the
 bash tool (`<modules>` resolves to the active modules directory — see the SKILL
@@ -53,7 +60,17 @@ to stdout; parse it and act on the fields named below.
    - **If the summary has a non-null `result_table`**, call the `send_table` tool
      with `file=<result_table>`, a short `title`, and
      `suggestions=<summary.suggestions>` to render an interactive table + chart in
-     the chat. The web UI renders the chart from the suggestions (chart_type/x/y).
+     the chat. **Forward `summary.suggestions` verbatim** — do not strip fields.
+     Each suggestion already carries the chart-drawing fields the web UI needs:
+     `chart_type` (`bar`/`line`/`area`/`pie`/`doughnut`/`scatter`/`combo`/`radar`),
+     `x`, `y[]`, `title`, `description` (one-line caption), `labels` (series key →
+     display name), `units` (series key → unit label such as `%` or `triệu VND`),
+     and — for mixed charts — `combo` (series key → `bar`/`line`), `secondaryAxis`
+     (series keys on the right-hand y-axis), and `normalized` (radar 0–100). The
+     web UI draws bars/lines/combo/radar, a secondary axis, and unit-suffixed
+     ticks/tooltips from these fields, so passing them all is what makes the chart
+     rich. You may lightly adjust them (e.g. fill in a `units` map or set a
+     clearer `title`) but keep the structure intact.
    - **When the user wants to edit the result** (or asked for an editable
      dataframe), use the ingest → `send_editable_table` flow below — a plain
      `analyze` result table is read-only. See "Only when the user wants to
