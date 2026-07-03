@@ -194,11 +194,23 @@ export interface Message {
 }
 
 export interface ChartSuggestion {
-  chart_type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter';
+  chart_type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'combo' | 'radar';
   x: string;
   y: string[];
   title?: string;
   reason?: string;
+  /** One-line explanation shown as a caption under the chart. */
+  description?: string;
+  /** Series key → display name (legend/series label). */
+  labels?: Record<string, string>;
+  /** Series key → short unit label (e.g. '%', 'triệu VND'); drives axis + tooltip suffix. */
+  units?: Record<string, string>;
+  /** Series key → per-series render type; makes a mixed (combo) chart. */
+  combo?: Record<string, 'bar' | 'line'>;
+  /** Series keys bound to the right-hand (secondary) y-axis. */
+  secondaryAxis?: string[];
+  /** True when numeric values are 0–100 normalized (radar). */
+  normalized?: boolean;
 }
 
 export type DataColumnType = 'number' | 'string' | 'date' | 'bool';

@@ -431,8 +431,18 @@ class APIClient {
     return request<Artifact>(`/artifacts/${artifactId}`, { method: 'PATCH', body: data });
   }
 
-  deleteArtifact(artifactId: number) {
-    return request<void>(`/artifacts/${artifactId}`, { method: 'DELETE' });
+  renameArtifact(artifactId: number, newName: string) {
+    return request<Artifact>(`/artifacts/${artifactId}/rename`, {
+      method: 'POST',
+      body: { new_name: newName },
+    });
+  }
+
+  deleteArtifact(artifactId: number, hardDelete = false) {
+    return request<void>(`/artifacts/${artifactId}`, {
+      method: 'DELETE',
+      query: { hard_delete: hardDelete },
+    });
   }
 
   scanArtifacts(conversationId: number) {

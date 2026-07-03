@@ -205,10 +205,17 @@ SCHEMAS: list[dict[str, Any]] = [
                 "table + chart. Provide `file` (absolute path to a CSV the analysis "
                 "wrote — e.g. the `result_table` from data_copilot analyze — or a name "
                 "relative to the session's data_copilot data/ dir) and a `title`. "
-                "Optionally pass `suggestions` (chart specs with chart_type, x, y[], "
-                "title) so the UI renders an interactive chart; forward the "
-                "`suggestions` returned by analyze. Use this to show computed results; "
-                "it is NOT editable. Only works in the web UI."
+                "Optionally pass `suggestions` (chart specs) so the UI renders an "
+                "interactive chart. Normally forward the `suggestions` returned by "
+                "analyze verbatim — they already carry the rich fields below. Each "
+                "suggestion has: `chart_type` (bar|line|area|pie|doughnut|scatter|combo|"
+                "radar), `x` (category column), `y` (list of numeric columns), `title`, "
+                "and optionally `description` (one line under the chart), `labels` "
+                "(series key → display name), `units` (series key → unit e.g. '%', 'triệu "
+                "VND'), `combo` (series key → 'bar'|'line' for a mixed chart), "
+                "`secondaryAxis` (series keys on the right-hand y-axis), and `normalized` "
+                "(true for 0–100 radar). Use this to show computed results; it is NOT "
+                "editable. Only works in the web UI."
             ),
             "parameters": {
                 "type": "object",
@@ -225,10 +232,35 @@ SCHEMAS: list[dict[str, Any]] = [
                     },
                     "suggestions": {
                         "type": "array",
-                        "items": {"type": "object"},
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "chart_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "bar", "line", "area", "pie", "doughnut",
+                                        "scatter", "combo", "radar",
+                                    ],
+                                },
+                                "x": {"type": "string"},
+                                "y": {"type": "array", "items": {"type": "string"}},
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                                "labels": {"type": "object"},
+                                "units": {"type": "object"},
+                                "combo": {"type": "object"},
+                                "secondaryAxis": {
+                                    "type": "array", "items": {"type": "string"},
+                                },
+                                "normalized": {"type": "boolean"},
+                            },
+                            "required": ["chart_type", "x", "y"],
+                        },
                         "description": (
-                            "Optional chart specs (chart_type, x, y[], title) to render "
-                            "an interactive chart above the table."
+                            "Optional chart specs to render an interactive chart above "
+                            "the table. Forward the `suggestions` from analyze verbatim "
+                            "to keep their rich fields (description, labels, units, "
+                            "combo, secondaryAxis, normalized)."
                         ),
                     },
                     "max_rows": {

@@ -226,6 +226,11 @@ export function DataMessage({ message }: { message: Message }) {
                     <div className="text-sm text-text-300">{res.error}</div>
                   )}
                 </div>
+                {chartState.description && (
+                  <div className="px-3 pb-1 text-xs text-text-300">
+                    {chartState.description}
+                  </div>
+                )}
                 <div className="px-3 pb-2">
                   <button
                     onClick={() => setShowEdit((v) => !v)}
