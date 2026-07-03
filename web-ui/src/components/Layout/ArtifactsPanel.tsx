@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FileText,
   Code2,
@@ -7,13 +7,15 @@ import {
   Paperclip,
   Globe,
   Pin,
-  X,
+  MoreHorizontal,
   RefreshCw,
   type LucideIcon,
 } from 'lucide-react';
 import { useArtifactsStore } from '../../stores/artifacts';
 import { useChatStore } from '../../stores/chat';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
+import { NodeContextMenu, type MenuItem } from '../ArtifactViewer/tree/NodeContextMenu';
+import { DeleteConfirmDialog } from '../ArtifactViewer/tree/DeleteConfirmDialog';
 import type { Artifact } from '../../types';
 
 // ── Type icon + color ─────────────────────────────────────────────────────────
@@ -39,7 +41,7 @@ function ArtifactRow({
   artifact: Artifact;
   conversationId: string;
 }) {
-  const { togglePin, deleteArtifact } = useArtifactsStore();
+  const { togglePin, renameArtifact, deleteArtifact } = useArtifactsStore();
   const openTab = useViewerTabsStore(s => s.openTab);
   const meta = TYPE_META[artifact.type] ?? TYPE_META.file;
   const TypeIcon = meta.Icon;
@@ -47,69 +49,133 @@ function ArtifactRow({
 
   const openable = !!artifact.payload_ref;
 
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [draftName, setDraftName] = useState(name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renaming) {
+      setDraftName(name);
+      // Focus + select the basename after the input mounts.
+      requestAnimationFrame(() => inputRef.current?.select());
+    }
+  }, [renaming]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleOpen = () => {
     if (!artifact.payload_ref) return;
     openTab(conversationId, artifact.payload_ref);
   };
 
+  const commitRename = async () => {
+    const next = draftName.trim();
+    setRenaming(false);
+    if (!next || next === name) return;
+    try {
+      await renameArtifact(conversationId, artifact.id, next);
+    } catch {
+      /* keep the row as-is on failure */
+    }
+  };
+
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!openable) return;
+    if (!openable || renaming) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleOpen();
     }
   };
 
+  const openMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setMenu({ x: rect.right, y: rect.bottom });
+  };
+
+  const menuItems: Array<MenuItem | 'divider'> = [
+    {
+      label: artifact.pinned ? 'Unpin' : 'Pin',
+      onSelect: () => togglePin(conversationId, artifact.id, artifact.pinned),
+    },
+    { label: 'Rename', onSelect: () => setRenaming(true), disabled: !openable },
+    'divider',
+    { label: 'Delete', danger: true, onSelect: () => setConfirmOpen(true) },
+  ];
+
   return (
     <div
-      role={openable ? 'button' : undefined}
-      tabIndex={openable ? 0 : -1}
-      onClick={openable ? handleOpen : undefined}
+      role={openable && !renaming ? 'button' : undefined}
+      tabIndex={openable && !renaming ? 0 : -1}
+      onClick={openable && !renaming ? handleOpen : undefined}
       onKeyDown={onKey}
       aria-label={openable ? `Open ${name}` : undefined}
       className={`group flex items-center gap-1.5 px-2 py-1 hover:bg-bg-200/40 rounded transition-colors ${
-        openable ? 'cursor-pointer' : ''
+        openable && !renaming ? 'cursor-pointer' : ''
       }`}
     >
       <TypeIcon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} aria-label={meta.label} />
 
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] text-text-200 font-mono truncate leading-tight" title={artifact.payload_ref ?? ''}>
-          {name}
-        </p>
-        {artifact.payload_ref && (
-          <p className="text-[10px] text-text-500 font-mono truncate leading-none mt-0.5">
-            {artifact.payload_ref.replace(/^.*\/([^/]+\/[^/]+)$/, '$1')}
-          </p>
+        {renaming ? (
+          <input
+            ref={inputRef}
+            value={draftName}
+            onChange={e => setDraftName(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            onBlur={commitRename}
+            onKeyDown={e => {
+              e.stopPropagation();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void commitRename();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setRenaming(false);
+              }
+            }}
+            className="w-full bg-canvas border border-hairline-soft rounded px-1 text-[11px] text-text-200 font-mono outline-none focus:border-accent-main-100"
+          />
+        ) : (
+          <>
+            <p className="text-[11px] text-text-200 font-mono truncate leading-tight" title={artifact.payload_ref ?? ''}>
+              {name}
+            </p>
+            {artifact.payload_ref && (
+              <p className="text-[10px] text-text-500 font-mono truncate leading-none mt-0.5">
+                {artifact.payload_ref.replace(/^.*\/([^/]+\/[^/]+)$/, '$1')}
+              </p>
+            )}
+          </>
         )}
       </div>
 
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {!renaming && (
         <button
-          onClick={e => {
-            e.stopPropagation();
-            togglePin(conversationId, artifact.id, artifact.pinned);
-          }}
-          className={`p-0.5 rounded cursor-pointer transition-colors ${artifact.pinned ? 'text-amber-400' : 'text-text-500 hover:text-amber-400'}`}
-          title={artifact.pinned ? 'Unpin' : 'Pin'}
+          onClick={openMenu}
+          className="p-0.5 rounded cursor-pointer text-text-500 hover:text-text-200 opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Actions"
+          aria-label="Artifact actions"
         >
-          <Pin className={`w-3 h-3 ${artifact.pinned ? 'fill-current' : ''}`} />
+          <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            deleteArtifact(conversationId, artifact.id);
-          }}
-          className="p-0.5 rounded cursor-pointer text-text-500 hover:text-semantic-danger transition-colors"
-          title="Remove"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      </div>
+      )}
 
-      {artifact.pinned && (
+      {artifact.pinned && !renaming && (
         <Pin className="w-2.5 h-2.5 text-amber-400 flex-shrink-0 opacity-60 fill-current" />
       )}
+
+      {menu && (
+        <NodeContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
+      )}
+
+      <DeleteConfirmDialog
+        open={confirmOpen}
+        title="Delete file"
+        message={`Delete "${name}"? This removes the file from disk and cannot be undone.`}
+        onConfirm={() => deleteArtifact(conversationId, artifact.id)}
+        onClose={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ interface ArtifactsState {
   loadArtifacts: (conversationId: string) => Promise<void>;
   scanArtifacts: (conversationId: string) => Promise<void>;
   togglePin: (conversationId: string, artifactId: number, pinned: boolean) => Promise<void>;
+  renameArtifact: (conversationId: string, artifactId: number, newName: string) => Promise<void>;
   deleteArtifact: (conversationId: string, artifactId: number) => Promise<void>;
   addArtifact: (conversationId: string, artifact: Artifact) => void;
   setArtifacts: (conversationId: string, artifacts: Artifact[]) => void;
@@ -56,8 +57,21 @@ export const useArtifactsStore = create<ArtifactsState>((set, get) => ({
     await get().loadArtifacts(conversationId);
   },
 
+  renameArtifact: async (conversationId: string, artifactId: number, newName: string) => {
+    const updated = await apiClient.renameArtifact(artifactId, newName);
+    set(s => ({
+      artifacts: {
+        ...s.artifacts,
+        [conversationId]: (s.artifacts[conversationId] ?? []).map(a =>
+          a.id === artifactId ? updated : a,
+        ),
+      },
+    }));
+  },
+
   deleteArtifact: async (conversationId: string, artifactId: number) => {
-    await apiClient.deleteArtifact(artifactId);
+    // Hard delete — remove the file from disk as well, matching the module file tree.
+    await apiClient.deleteArtifact(artifactId, true);
     set(s => ({
       artifacts: {
         ...s.artifacts,
