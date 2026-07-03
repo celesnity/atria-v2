@@ -135,6 +135,33 @@ def test_module_root_is_script_relative_and_valid(monkeypatch, tmp_path):
     assert (root / "data_copilot" / "SKILL.md").is_file()
 
 
+def test_resolve_dataset_accepts_existing_path(tmp_path):
+    root = _module_root(tmp_path)
+    src = tmp_path / "raw.csv"
+    src.write_text("a\n1\n")
+    assert ingest_mod.resolve_dataset(str(src), root=root) == str(src.resolve())
+
+
+def test_resolve_dataset_accepts_ingested_name_with_and_without_suffix(tmp_path):
+    root = _module_root(tmp_path)
+    src = tmp_path / "demo.csv"
+    src.write_text("region,revenue\nNorth,100\n")
+    ingest_mod.ingest(str(src), name="telecom-churn", root=root)
+
+    expected = str((root / "data_copilot" / "data" / "telecom-churn.csv").resolve())
+    assert ingest_mod.resolve_dataset("telecom-churn", root=root) == expected
+    assert ingest_mod.resolve_dataset("telecom-churn.csv", root=root) == expected
+
+
+def test_resolve_dataset_missing_lists_available(tmp_path):
+    root = _module_root(tmp_path)
+    src = tmp_path / "demo.csv"
+    src.write_text("a\n1\n")
+    ingest_mod.ingest(str(src), name="sales", root=root)
+    with pytest.raises(FileNotFoundError, match="sales.csv"):
+        ingest_mod.resolve_dataset("nope", root=root)
+
+
 def test_list_datasets_excludes_bak_files(tmp_path):
     root = _module_root(tmp_path)
     data_dir = root / "data_copilot" / "data"

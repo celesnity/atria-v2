@@ -224,13 +224,34 @@ def _cmd_datasets() -> int:
 
 
 def _cmd_profile(dataset: str) -> int:
-    print(json.dumps(profile_mod.profile_dataset(dataset), indent=2, default=str))
+    try:
+        path = ingest_mod.resolve_dataset(dataset)
+    except FileNotFoundError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(profile_mod.profile_dataset(path), indent=2, default=str))
     return 0
 
 
 def _cmd_analyze(
-    dataset: str, question: str, out_dir: str, max_repair: int, max_verify: int
+    dataset: str, question: Optional[str], out_dir: str, max_repair: int, max_verify: int
 ) -> int:
+    if not question or not question.strip():
+        print(
+            json.dumps(
+                {
+                    "error": "a question is required: "
+                    'analyze "<dataset path or name>" "<your question>"'
+                },
+                indent=2,
+            )
+        )
+        return 1
+    try:
+        dataset = ingest_mod.resolve_dataset(dataset)
+    except FileNotFoundError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 1
     rc = RoleClient(load_config())
     summary = run_analysis(
         dataset,
@@ -276,7 +297,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_prof.add_argument("dataset")
     p_an = sub.add_parser("analyze", help="Run the full analysis loop.")
     p_an.add_argument("dataset")
-    p_an.add_argument("question")
+    # Optional at the argparse level so a missing question yields a clean JSON
+    # error (the contract callers parse) instead of an argparse exit-2 usage dump.
+    p_an.add_argument("question", nargs="?", default=None)
     p_an.add_argument("--out", default=None, help="Run output dir (default: runs/latest).")
     p_an.add_argument("--max-repair", type=int, default=3)
     p_an.add_argument("--max-verify", type=int, default=2)

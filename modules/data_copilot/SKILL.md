@@ -27,34 +27,37 @@ bash tool (`<modules>` resolves to the active modules directory — see the SKIL
 block header in the system prompt). Each subcommand prints a single JSON object
 to stdout; parse it and act on the fields named below.
 
-1. **Locate the dataset.** Use the exact path to the user's file. When the user
-   uploaded it, that is the artifact path (e.g.
-   `".../conversations/234/008af448_telecom_churn (1).csv"`) — always quote
-   paths with spaces or parentheses. Supported inputs: `.csv`, `.xlsx`/`.xls`,
+1. **Get the dataset's absolute path.** Use the file's full absolute path — for
+   an uploaded file that is the artifact path, e.g.
+   `"/root/.atria/workspaces/.../conversations/234/008af448_telecom_churn (1).csv"`.
+   Always quote paths with spaces or parentheses. Do **not** `cd` into the module
+   or pass a path relative to it. Supported inputs: `.csv`, `.xlsx`/`.xls`,
    `.parquet`.
 
-2. **Ingest it into the module.** Run `ingest "<source path>"` (optionally
-   `--name <base>`). This is required before any editable table and recommended
-   before analysis. Read the printed `files[].path` (absolute — use for
-   `profile`/`analyze`) and `files[].file` (data/-relative — use for
-   `send_editable_table`). Use these returned values verbatim; do not re-derive
-   the name (it is slugified, e.g. `Telecom Churn (1).csv` → `telecom-churn.csv`).
-   A multi-sheet Excel file returns one entry per sheet — ask the user which
-   sheet to analyze if there is more than one.
+2. **Analyze it directly — no ingest needed.** Run
+   `analyze "<absolute path>" "<the user's question in plain language>"`.
+   `analyze` and `profile` read CSV/Excel/Parquet from any path, so this is the
+   normal path for "just answer my question". The dataset and question are both
+   **positional** (no `--dataset`/`--question` flags), and the **question is
+   required**. Tune with `--max-repair` / `--max-verify` only if needed.
+   (`profile "<path>"` gives a quick schema/stats look without an LLM call.)
 
-3. **(Web UI, optional) Let the user review/fix the data.** If the user wants to
-   inspect or correct the raw data first, call the `send_editable_table` tool
-   with `module="data_copilot"` and `file="<files[].file>"`. Edits are saved back
-   to the CSV in place. Skip this if the user just wants an answer.
-
-4. **Analyze.** Run `analyze "<files[].path>" "<the user's question in plain
-   language>"`. Phrase the question the way the user asked it. Tune with
-   `--max-repair` / `--max-verify` only if needed.
-
-5. **Present the result.** Show the `report` field to the user as the answer. If
+3. **Present the result.** Show the `report` field to the user as the answer. If
    `verified` is `false` (or the report carries the UNVERIFIED banner), say so
    explicitly and do not present the numbers as settled. Mention any files in
    `figures` (charts saved to the run directory).
+
+**Only when the user wants to view/edit the raw data first (web UI):** ingest it
+into the module, then show an editable grid, then analyze the ingested copy:
+  a. `ingest "<absolute path>"` (optionally `--name <base>`) → read `files[].path`
+     (absolute) and `files[].file` (data/-relative). Use these verbatim; the name
+     is slugified (`Telecom Churn (1).csv` → `telecom-churn.csv`). Multi-sheet
+     Excel yields one entry per sheet — ask which sheet if there is more than one.
+  b. Call the `send_editable_table` tool with `module="data_copilot"` and
+     `file="<files[].file>"`; edits save back to the CSV in place.
+  c. `analyze "<files[].path>" "<question>"` — or pass the ingested name (with or
+     without `.csv`, e.g. `telecom-churn`), which `analyze`/`profile` also resolve
+     against the module's `data/` dir.
 
 If a step returns `{"error": …}`, surface that message to the user and stop —
 do not fabricate an answer. Run `health` first if you suspect the LLM endpoint

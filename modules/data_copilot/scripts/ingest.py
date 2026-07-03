@@ -123,6 +123,39 @@ def ingest(
     return {"module": module_name, "files": files}
 
 
+def resolve_dataset(
+    arg: str, *, root: Optional[Path] = None, module_name: str = MODULE_NAME
+) -> str:
+    """Resolve a dataset argument to an absolute file path.
+
+    Accepts either an existing filesystem path (returned resolved) or the name of
+    a dataset already ingested into the module's ``data/`` dir — with or without
+    the ``.csv`` suffix (e.g. ``telecom-churn`` or ``telecom-churn.csv``). This
+    lets ``profile``/``analyze`` take the same short name the ``datasets`` command
+    and ``ingest`` report, not just a full path.
+
+    Raises:
+        FileNotFoundError: if *arg* is neither an existing path nor an ingested
+            dataset; the message lists the available dataset names.
+    """
+    p = Path(arg).expanduser()
+    if p.is_file():
+        return str(p.resolve())
+
+    modules_root = root or _module_root()
+    data_dir = modules_root / module_name / "data"
+    for candidate in (data_dir / arg, data_dir / f"{arg}.csv"):
+        if candidate.is_file():
+            return str(candidate.resolve())
+
+    available = [e["file"] for e in list_datasets(root=modules_root, module_name=module_name)]
+    hint = ", ".join(available) if available else "none ingested yet — run `ingest <file>` first"
+    raise FileNotFoundError(
+        f"dataset not found: {arg!r}. Pass a file path or an ingested dataset name. "
+        f"Available: {hint}"
+    )
+
+
 def list_datasets(*, root: Optional[Path] = None, module_name: str = MODULE_NAME) -> List[dict]:
     """List CSV datasets under the module's ``data/`` dir.
 
