@@ -1,9 +1,0 @@
-region,product,units,revenue,date
-North,Widget,120,2400,2026-01-05
-North,Gadget,80,3200,2026-01-06
-South,Widget,60,1200,2026-01-07
-South,Gadget,140,5600,2026-01-08
-East,Widget,90,1800,2026-01-09
-East,Gadget,110,4400,2026-01-10
-West,Widget,200,4000,2026-01-11
-West,Gadget,50,2000,2026-01-12
