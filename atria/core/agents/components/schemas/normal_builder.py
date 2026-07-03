@@ -21,7 +21,9 @@ from atria.core.agents.components.schemas.schema_adapter import adapt_for_provid
 # reference; dropping all 17 reclaims ~5,978 tokens per call.
 _DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
     {
-        # Web / browser / media (~3,747 tokens)
+        # Web / browser / media. NOTE: send_image / send_editable_table /
+        # send_table are intentionally NOT disabled — the data_copilot analytics
+        # flow pushes charts and result/editable tables to the web chat with them.
         "fetch_url",
         "browser",
         "capture_web_screenshot",
@@ -29,8 +31,6 @@ _DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
         "analyze_image",
         "render_component",
         "capture_screenshot",
-        "send_image",
-        "send_editable_table",
         "open_browser",
         # Code symbol tools + notebook (~2,231 tokens)
         "find_symbol",
@@ -40,6 +40,20 @@ _DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
         "insert_after_symbol",
         "insert_before_symbol",
         "notebook_edit",
+        # Subagents — this deployment does not spawn or manage subagents.
+        "spawn_subagent",
+        "list_subagents",
+        "list_agents",
+        "get_subagent_output",
+        # Uploaded-image artifacts — users don't upload images here.
+        "list_artifact_images",
+        "read_artifact_image",
+        # Todo tracking — not used in this deployment.
+        "write_todos",
+        "update_todo",
+        "complete_todo",
+        "list_todos",
+        "clear_todos",
     }
 )
 
