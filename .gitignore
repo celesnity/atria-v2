@@ -205,6 +205,13 @@ testingData
 
 *.csv
 
+# enterprise_knowledge is tracked SOURCE (a module clone of maintenance_copilot),
+# not a runtime data-module — re-include it and its access CSVs so normal
+# `git add` picks it up. Its own modules/enterprise_knowledge/.gitignore still
+# ignores its runtime data/ dir.
+!modules/enterprise_knowledge/
+!modules/enterprise_knowledge/**
+
 .slide/
 
 # Warehouse module live SQLite store (bootstrapped at runtime)
