@@ -1,0 +1,19 @@
+{
+  "name": "Atria — Agentic AI Coding Assistant",
+  "short_name": "Atria",
+  "description": "Atria is an agentic AI coding assistant that plans, writes, and ships code — with a live web workspace for chat, files, and data.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05060F",
+  "theme_color": "#2D44E0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
