@@ -498,6 +498,17 @@ class APIClient {
     return `${fsBase(scope)}/read?${qs.toString()}`;
   }
 
+  /** Trigger a browser download of a file via the read endpoint. */
+  downloadFsFile(scope: FsScope, path: string, filename?: string): void {
+    const a = document.createElement('a');
+    a.href = this.readFsUrl(scope, path);
+    a.download = filename ?? path.split('/').pop() ?? 'download';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   writeFsText(scope: FsScope, path: string, content: string): Promise<void> {
     return request<void>(`${fsPath(scope)}/write`, {
       method: 'PUT',
@@ -533,9 +544,6 @@ class APIClient {
   }
 
   deleteFsFile(scope: FsScope, path: string): Promise<void> {
-    if (scope.kind !== 'module') {
-      throw new Error('deleteFsFile only supported for module scope');
-    }
     return request<void>(`${fsPath(scope)}/file`, {
       method: 'DELETE',
       query: { path },
@@ -559,7 +567,6 @@ class APIClient {
   }
 
   renameFs(scope: FsScope, from: string, to: string): Promise<void> {
-    if (scope.kind !== 'module') throw new Error('renameFs only supported for module scope');
     return request<void>(`${fsPath(scope)}/rename`, {
       method: 'POST',
       body: { from, to },
