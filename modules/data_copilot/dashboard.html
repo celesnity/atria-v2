@@ -443,7 +443,8 @@
       var args = ["analyze", path, q,
         "--max-repair", String(el("an-repair").value || 3),
         "--max-verify", String(el("an-verify").value || 2)];
-      run(args, 240000).then(function (d) {
+      // 120000 ms is the host's max module-run timeout (server rejects higher).
+      run(args, 120000).then(function (d) {
         renderReport(d);
         D.toast({ message: d.verified ? "Analysis verified" : "Analysis complete (unverified)",
                   severity: d.verified ? "success" : "warning" });
