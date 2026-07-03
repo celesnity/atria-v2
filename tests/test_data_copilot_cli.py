@@ -202,3 +202,42 @@ def test_cli_audit_subcommand_prints_events(tmp_path, monkeypatch, capsys):
     rc = copilot.main(["audit", "--limit", "10"])
     assert rc == 0
     assert "q1" in capsys.readouterr().out
+
+
+def test_cli_accepts_file_and_question_flags(capsys):
+    """analyze tolerates --file/--question aliases instead of positionals."""
+    copilot = _load("copilot", "dc_cli_flags")
+    rc = copilot.main(["analyze", "--file", "/tmp/nope.csv", "-q", "hi"])
+    out = capsys.readouterr().out
+    # Parsed past argparse (no usage crash) and reached dataset resolution.
+    assert rc == 1
+    assert "dataset not found" in out
+
+
+def test_cli_persona_defaults_question(capsys):
+    """persona with a dataset but no question defaults the request, not errors."""
+    copilot = _load("copilot", "dc_cli_persona_default")
+    rc = copilot.main(["persona", "--file", "/tmp/nope.csv"])
+    out = capsys.readouterr().out
+    assert rc == 1
+    # Reaches dataset resolution rather than the old 'a question is required'.
+    assert "dataset not found" in out
+    assert "a question is required" not in out
+
+
+def test_cli_analyze_missing_question_json_error(capsys):
+    """analyze still requires a question and reports it as a clean JSON error."""
+    copilot = _load("copilot", "dc_cli_noq")
+    rc = copilot.main(["analyze", "/tmp/nope.csv"])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "a question is required" in out
+
+
+def test_cli_missing_dataset_json_error(capsys):
+    """Bare persona/analyze with no dataset yields a clean JSON error, not exit-2."""
+    copilot = _load("copilot", "dc_cli_nods")
+    rc = copilot.main(["persona"])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "a dataset is required" in out

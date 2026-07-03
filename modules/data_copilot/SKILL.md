@@ -142,6 +142,12 @@ When the user asks to **cluster / segment customers or build personas**
 
 `python <modules>/data_copilot/scripts/copilot.py persona "<absolute path>" "<the request>" [--domain telecom] [--k N]`
 
+The dataset and request are **positional**. For convenience the CLI also accepts
+`--file`/`--dataset` and `--question`/`-q` as aliases, and for `persona` the
+request is **optional** — `persona "<path>"` alone defaults to a segmentation
+request. (`analyze` still needs a question.) Prefer the positional form:
+`persona "<path>" "<request>"`.
+
 It runs the same generate → run → repair loop, but forces the generated code to
 emit a persona array (schema below) which is validated and **written to
 `persona.json`** in the run dir, plus a narrative report. Present the `report`

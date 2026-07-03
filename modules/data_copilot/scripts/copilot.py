@@ -320,8 +320,19 @@ def _cmd_profile(dataset: str) -> int:
 
 
 def _cmd_analyze(
-    dataset: str, question: Optional[str], out_dir: str, max_repair: int, max_verify: int
+    dataset: Optional[str], question: Optional[str], out_dir: str, max_repair: int, max_verify: int
 ) -> int:
+    if not dataset or not str(dataset).strip():
+        print(
+            json.dumps(
+                {
+                    "error": "a dataset is required: "
+                    'analyze "<dataset path or name>" "<your question>"'
+                },
+                indent=2,
+            )
+        )
+        return 1
     if not question or not question.strip():
         print(
             json.dumps(
@@ -358,7 +369,7 @@ def _cmd_analyze(
 
 
 def _cmd_persona(
-    dataset: str,
+    dataset: Optional[str],
     question: Optional[str],
     out_dir: str,
     max_repair: int,
@@ -366,17 +377,24 @@ def _cmd_persona(
     domain: Optional[str],
     k: Optional[int],
 ) -> int:
-    if not question or not question.strip():
+    if not dataset or not str(dataset).strip():
         print(
             json.dumps(
                 {
-                    "error": "a question is required: "
-                    'persona "<dataset path or name>" "<your question>"'
+                    "error": "a dataset is required: "
+                    'persona "<dataset path or name>" ["<your request>"]'
                 },
                 indent=2,
             )
         )
         return 1
+    # persona clustering doesn't need a bespoke question — default it when omitted
+    # so a bare `persona <dataset>` just works instead of erroring.
+    if not question or not question.strip():
+        question = (
+            "Segment the records into distinct personas (clusters) and describe "
+            "each segment's defining traits, size, and recommended actions."
+        )
     try:
         dataset = ingest_mod.resolve_dataset(dataset)
     except FileNotFoundError as exc:
@@ -430,18 +448,37 @@ def build_parser() -> argparse.ArgumentParser:
     p_prof = sub.add_parser("profile", help="Print a dataset profile as JSON.")
     p_prof.add_argument("dataset")
     p_an = sub.add_parser("analyze", help="Run the full analysis loop.")
-    p_an.add_argument("dataset")
-    # Optional at the argparse level so a missing question yields a clean JSON
-    # error (the contract callers parse) instead of an argparse exit-2 usage dump.
+    # dataset + question are positional, but we also accept --file/--dataset and
+    # --question/-q as aliases and leave them optional at the argparse level so a
+    # missing one yields a clean JSON error (the contract callers parse) rather
+    # than an argparse exit-2 usage dump. This makes the CLI tolerant of the common
+    # agent mistake of passing flags instead of positionals.
+    p_an.add_argument("dataset", nargs="?", default=None)
     p_an.add_argument("question", nargs="?", default=None)
+    p_an.add_argument(
+        "--file", "--dataset", dest="dataset_opt", default=None,
+        help="Dataset path/name (alias for the positional dataset).",
+    )
+    p_an.add_argument(
+        "--question", "-q", dest="question_opt", default=None,
+        help="Question (alias for the positional question).",
+    )
     p_an.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
     p_an.add_argument("--max-repair", type=int, default=3)
     p_an.add_argument("--max-verify", type=int, default=2)
     p_per = sub.add_parser(
         "persona", help="Cluster the dataset into personas (writes persona.json)."
     )
-    p_per.add_argument("dataset")
+    p_per.add_argument("dataset", nargs="?", default=None)
     p_per.add_argument("question", nargs="?", default=None)
+    p_per.add_argument(
+        "--file", "--dataset", dest="dataset_opt", default=None,
+        help="Dataset path/name (alias for the positional dataset).",
+    )
+    p_per.add_argument(
+        "--question", "-q", dest="question_opt", default=None,
+        help="Question/request (alias for the positional question; optional for persona).",
+    )
     p_per.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
     p_per.add_argument("--max-repair", type=int, default=3)
     p_per.add_argument("--max-verify", type=int, default=2)
@@ -477,16 +514,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _cmd_profile(args.dataset)
     if args.command == "analyze":
         return _cmd_analyze(
-            args.dataset,
-            args.question,
+            args.dataset or args.dataset_opt,
+            args.question or args.question_opt,
             args.out or _default_out_dir(),
             args.max_repair,
             args.max_verify,
         )
     if args.command == "persona":
         return _cmd_persona(
-            args.dataset,
-            args.question,
+            args.dataset or args.dataset_opt,
+            args.question or args.question_opt,
             args.out or _default_out_dir(),
             args.max_repair,
             args.max_verify,
