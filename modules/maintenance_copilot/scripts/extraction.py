@@ -10,8 +10,14 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget  # type: ignore[import-not-found]
 
 ALLOWED_ENTITY_TYPES = frozenset(
     {"ATAChapter", "Part", "MELItem", "CDLItem", "FaultCode", "Procedure",
@@ -66,6 +72,10 @@ def build_extraction_messages(chunk_text: str) -> list[dict]:
         "part number, fault code, AMM task id). Omit anything you are "
         "unsure of."
     )
+    # Keep system prompt + chunk within the model's input budget. Chunks are
+    # normally well under it; this only bites on an unusually large chunk.
+    remaining = budget.input_budget("kg_extract") - budget.estimate_tokens(system) - 16
+    chunk_text = budget.fit_text(chunk_text, remaining)
     return [
         {"role": "system", "content": system},
         {"role": "user", "content": chunk_text},

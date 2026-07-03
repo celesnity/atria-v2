@@ -36,19 +36,21 @@ RUN for req in /app/modules/*/requirements.txt; do \
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
+# UTF-8 mode so logs/file writes never crash on non-ASCII (e.g. "✓" in summaries)
+ENV PYTHONUTF8=1
 
 EXPOSE 8080
 
+# Model + endpoint come from the environment (ATRIA_MODEL / ATRIA_API_BASE_URL,
+# supplied via .env in compose). No hard-coded model default: the container
+# fails fast if either is missing so misconfiguration is obvious.
 ENTRYPOINT ["/bin/sh", "-c", "\
   mkdir -p /root/.atria && \
+  : \"${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}\" && \
+  : \"${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}\" && \
   SETTINGS=/root/.atria/settings.json && \
-  MODEL=\"${ATRIA_MODEL:-gpt-4o}\" && \
-  BASE_URL=\"${ATRIA_API_BASE_URL:-https://api.openai.com/v1/chat/completions}\" && \
   TMP=\"$SETTINGS.tmp\" && \
-  printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$MODEL\" \"$BASE_URL\" > \"$TMP\" && \
-  if [ -s \"$TMP\" ]; then mv \"$TMP\" \"$SETTINGS\"; else rm -f \"$TMP\"; fi && \
-  if [ ! -s \"$SETTINGS\" ]; then \
-    printf '{\"model\":\"gpt-4o\",\"api_base_url\":\"https://api.openai.com/v1/chat/completions\"}\\n' > \"$SETTINGS\"; \
-  fi && \
+  printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$ATRIA_MODEL\" \"$ATRIA_API_BASE_URL\" > \"$TMP\" && \
+  mv \"$TMP\" \"$SETTINGS\" && \
   exec atria --host 0.0.0.0 --port 8080\
 "]

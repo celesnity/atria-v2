@@ -1,6 +1,6 @@
 ---
 name: maintenance_copilot
-description: AI Maintenance Knowledge Copilot (P1 concept brief + brainstorm) for the Maintenance Control Center (MCC) and engineering teams. Helps retrieve, validate, and cross-reference aircraft maintenance documentation (AMM, MEL, CDL, TSM, engineering orders, historical defect records) faster and with fewer errors, with a licensed engineer in the loop for every dispatch decision. Use for defect-assessment research, reference validation, dispatch-readiness support, and brainstorming the copilot's scope.
+description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). Runs RAG via copilot.py query — do NOT grep the manual files or answer from your own knowledge.
 ---
 
 # maintenance_copilot
@@ -47,6 +47,53 @@ tasks — assessing a defect, finding the right AMM/TSM procedure, validating a
 MEL/CDL reference, preparing a dispatch-readiness view, or brainstorming/scoping
 the copilot itself. Items below marked **(Pilot)** map directly to the stated
 pilot scope; the rest are candidate extensions for later phases.
+
+## Runbook — how to answer a maintenance question
+
+When a user asks a maintenance-knowledge question in natural language, do NOT
+answer from your own knowledge. Retrieve from the indexed manuals first, then
+answer strictly from what comes back. All commands run from
+`modules/maintenance_copilot/scripts/` as `python copilot.py <command>`.
+
+Pick the command that matches the intent:
+
+- **Find a procedure / answer a "how/what/why" question** — run
+  `query "<the user's question in English>" --k 5`. To have the copilot compose a
+  short answer instead of only listing passages, add `--synthesize`. Restrict to
+  a chapter with `--ata 32` when the user names one. Add `--graph` to also pull
+  related entities from the knowledge graph.
+- **Recommend which references apply to a defect** — run
+  `recommend-refs "<defect description>" --k 5`. Returns ranked AMM/MEL/CDL/TSM
+  refs with a confidence score each.
+- **Check references a user already cited** — run
+  `validate '{"defect":"<text>","cited_refs":["MEL 32-31-01", ...]}'`. Each ref
+  comes back `pass` (found + supporting citation) or `fail` (not in approved docs).
+- **Flag inconsistencies in a defect write-up** — run
+  `check '{"defect":"<text>","cited_mel":"MEL 32-40-01","dispatch_condition":"<text>","classification":"C"}'`.
+  Surfaces classification/category mismatches and missing-requirement advisories.
+- **Explore the knowledge graph** — `graph show <key> --hops 1`; confirm a
+  machine-extracted edge with `graph confirm <src> <EDGE_TYPE> <dst>`.
+- **Show the audit trail** — `audit --limit 10`.
+
+Translate a non-English question into English for the `query`/`recommend-refs`
+text (the corpus is English), but reply to the user in their own language.
+
+How to present every answer (non-negotiable — these mirror the Guardrails below):
+
+- **Cite every claim.** Name the document, revision, and section/chunk from the
+  returned `citation` field. Never state anything about AMM/MEL/CDL/TSM content
+  without a citation from the retrieved hits.
+- **Never decide dispatch.** Present procedures, references, and inconsistencies
+  only. Do not say a defect is or is not dispatchable — the licensed engineer
+  decides and signs.
+- **Surface uncertainty.** If the tool returns `needs_review`, a low confidence,
+  a `fail`, or an inconsistency, say so plainly and route it for manual review.
+- **Always append the advisory line:** results are advisory only; a licensed
+  engineer makes and signs every dispatch decision.
+
+If retrieval returns nothing relevant, say the manuals do not cover it rather
+than answering from general knowledge. If a sidecar is down, run `health` and
+report which service failed instead of guessing.
 
 ## Brainstormed use cases
 

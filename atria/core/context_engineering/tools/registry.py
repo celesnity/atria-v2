@@ -34,6 +34,9 @@ from atria.core.context_engineering.tools.handlers.browser_handlers import Brows
 from atria.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from atria.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from atria.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
+from atria.core.context_engineering.tools.implementations.send_editable_table_tool import (
+    SendEditableTableHandler,
+)
 from atria.core.context_engineering.tools.implementations.render_component_tool import (
     RenderComponentHandler,
 )
@@ -165,6 +168,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._schedule_handler = ScheduleToolHandler()
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
+        self._send_editable_table_handler = SendEditableTableHandler()
         self._render_component_handler = RenderComponentHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
         self._memory_handler = MemoryToolHandler()
@@ -230,6 +234,8 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
+            # Editable dataset push tool (web UI)
+            "send_editable_table": self._send_editable_table_handler.send,
             # Module block render tool (web UI)
             "render_component": self._render_component_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
@@ -455,6 +461,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
                 "list_sessions",
                 "get_session_history",
                 "send_image",
+                "send_editable_table",
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",
