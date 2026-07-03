@@ -195,6 +195,51 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
+    # ===== Send Table Tool (web UI, read-only) =====
+    {
+        "type": "function",
+        "function": {
+            "name": "send_table",
+            "description": (
+                "Send a READ-ONLY result table to the web UI chat as an interactive "
+                "table + chart. Provide `file` (absolute path to a CSV the analysis "
+                "wrote — e.g. the `result_table` from data_copilot analyze — or a name "
+                "relative to the session's data_copilot data/ dir) and a `title`. "
+                "Optionally pass `suggestions` (chart specs with chart_type, x, y[], "
+                "title) so the UI renders an interactive chart; forward the "
+                "`suggestions` returned by analyze. Use this to show computed results; "
+                "it is NOT editable. Only works in the web UI."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "description": (
+                            "Absolute CSV path, or a name under the session data/ dir."
+                        ),
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title shown above the table.",
+                    },
+                    "suggestions": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": (
+                            "Optional chart specs (chart_type, x, y[], title) to render "
+                            "an interactive chart above the table."
+                        ),
+                    },
+                    "max_rows": {
+                        "type": "integer",
+                        "description": "Optional cap on rows sent to the UI.",
+                    },
+                },
+                "required": ["file", "title"],
+            },
+        },
+    },
     # Skill-owned schemas live in their skill folders and are merged in via
     # ToolSchemaBuilder(extra_schemas=...).
     {

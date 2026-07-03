@@ -28,6 +28,31 @@ export function applyTheme(theme: Theme): void {
   root.style.colorScheme = theme === 'cosmos' ? 'dark' : 'light';
 }
 
+let crossfadeTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Flip the theme with a brief color crossfade. Adds `.theme-transition` to
+ * <html> only for the flip window (see index.css), so surfaces ease between
+ * skies instead of snapping — without paying the transition cost on every paint.
+ * Skipped when the user prefers reduced motion.
+ */
+function applyThemeAnimated(theme: Theme): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    applyTheme(theme);
+    return;
+  }
+  const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) {
+    applyTheme(theme);
+    return;
+  }
+  const root = document.documentElement;
+  root.classList.add('theme-transition');
+  applyTheme(theme);
+  clearTimeout(crossfadeTimer);
+  crossfadeTimer = setTimeout(() => root.classList.remove('theme-transition'), 340);
+}
+
 interface ThemeState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -37,7 +62,7 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>((set, get) => ({
   theme: readInitial(),
   setTheme: (theme) => {
-    applyTheme(theme);
+    applyThemeAnimated(theme);
     try {
       window.localStorage.setItem(STORAGE_KEY, theme);
     } catch {

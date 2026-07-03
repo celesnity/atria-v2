@@ -32,12 +32,20 @@ from atria.core.context_engineering.tools.implementations.bash_tool.constants im
 )
 
 
-def _build_exec_env(working_dir: Union[str, Path]) -> dict[str, str]:
+def _build_exec_env(
+    working_dir: Union[str, Path],
+    overrides: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
     """Compose the subprocess environment for bash tool calls.
 
     Adds Atria-specific vars (session/conversation id, project slug,
     workspace, API base) on top of os.environ. Pre-existing values
     in os.environ take precedence so explicit overrides win.
+
+    ``overrides`` are applied last and win unconditionally. The background
+    worker uses this to inject the session id / workspace from the task payload,
+    since it has no UI callback to read them from and mutating os.environ would
+    race across concurrently-running jobs.
     """
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
@@ -60,6 +68,11 @@ def _build_exec_env(working_dir: Union[str, Path]) -> dict[str, str]:
     )
     env.setdefault("ATRIA_WORKSPACE", str(working_dir))
     env.setdefault("ATRIA_SESSION_DIR", str(working_dir))
+
+    if overrides:
+        for key, value in overrides.items():
+            if value:
+                env[key] = str(value)
     return env
 
 
@@ -106,17 +119,28 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
         """Tool description."""
         return "Execute a bash command safely"
 
-    def __init__(self, config: AppConfig, working_dir: Path, task_manager: Optional[Any] = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        working_dir: Path,
+        task_manager: Optional[Any] = None,
+        env_overrides: Optional[dict[str, str]] = None,
+    ):
         """Initialize bash tool.
 
         Args:
             config: Application configuration
             working_dir: Working directory for command execution
             task_manager: Optional BackgroundTaskManager for tracking background tasks
+            env_overrides: Optional env vars injected into every command's
+                subprocess environment (winning over os.environ). The background
+                worker uses this to pass the session id / workspace from the task
+                payload since it has no UI callback.
         """
         self.config = config
         self.working_dir = working_dir
         self._task_manager = task_manager
+        self._env_overrides = env_overrides or {}
         # Track background processes: {pid: {process, command, start_time, stdout_lines, stderr_lines}}
         self._background_processes = {}
 
@@ -267,7 +291,7 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
             background = True
 
         # Build subprocess environment with Atria-specific vars injected.
-        exec_env = _build_exec_env(work_dir)
+        exec_env = _build_exec_env(work_dir, getattr(self, "_env_overrides", None))
         if env:
             exec_env.update(env)
 

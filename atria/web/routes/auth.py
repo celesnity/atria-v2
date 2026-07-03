@@ -108,17 +108,19 @@ async def keycloak_login(request: Request, next: str = "/chat") -> Response:
     )
 
     redirect_uri = str(request.url_for("keycloak_callback"))
+    query = urlencode(
+        {
+            "response_type": "code",
+            "client_id": KC_LOGIN_CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "scope": "openid profile email",
+            "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        }
+    )
     authorize_url = (
-        f"{cfg.public_url.rstrip('/')}/realms/{cfg.realm}/protocol/openid-connect/auth"
-        f"?{urlencode({
-            'response_type': 'code',
-            'client_id': KC_LOGIN_CLIENT_ID,
-            'redirect_uri': redirect_uri,
-            'scope': 'openid profile email',
-            'state': state,
-            'code_challenge': code_challenge,
-            'code_challenge_method': 'S256',
-        })}"
+        f"{cfg.public_url.rstrip('/')}/realms/{cfg.realm}/protocol/openid-connect/auth?{query}"
     )
 
     resp = RedirectResponse(url=authorize_url, status_code=307)

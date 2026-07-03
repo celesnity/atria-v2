@@ -1,4 +1,5 @@
 import { Command, Settings, LogOut, Menu, Moon, Sun, User as UserIcon } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useThemeStore } from "../../stores/theme";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -49,6 +50,7 @@ export function TopBar() {
   const openSettingsModal = useChatStore((state) => state.openSettingsModal);
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
+  const reduce = useReducedMotion();
 
   const [me, setMe] = useState<MeInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -216,6 +218,8 @@ export function TopBar() {
           </button>
 
           <span
+            role="status"
+            aria-label={isConnected ? "Connected" : "Offline"}
             className={`${pillBase} cursor-default ${
               isConnected
                 ? "bg-semantic-success/10 text-semantic-success border-semantic-success/20"
@@ -223,6 +227,7 @@ export function TopBar() {
             }`}
           >
             <span
+              aria-hidden="true"
               className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-semantic-success" : "bg-ink/30"}`}
             />
             <span className="hidden sm:inline">
@@ -268,15 +273,28 @@ export function TopBar() {
 
         <button
           onClick={toggleTheme}
-          className={iconBtn}
+          className={`${iconBtn} relative overflow-hidden`}
           title={theme === "cosmos" ? "Switch to Daybreak (light)" : "Switch to Cosmos (dark)"}
-          aria-label="Toggle theme"
+          aria-label={
+            theme === "cosmos" ? "Switch to light theme" : "Switch to dark theme"
+          }
         >
-          {theme === "cosmos" ? (
-            <Sun className="w-[18px] h-[18px]" strokeWidth={1.5} />
-          ) : (
-            <Moon className="w-[18px] h-[18px]" strokeWidth={1.5} />
-          )}
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={theme}
+              className="flex"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, rotate: -90, scale: 0.5 }}
+              animate={reduce ? { opacity: 1 } : { opacity: 1, rotate: 0, scale: 1 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, rotate: 90, scale: 0.5 }}
+              transition={{ duration: reduce ? 0 : 0.22, ease: [0.4, 0, 0.2, 1] }}
+            >
+              {theme === "cosmos" ? (
+                <Sun className="w-[18px] h-[18px]" strokeWidth={1.5} />
+              ) : (
+                <Moon className="w-[18px] h-[18px]" strokeWidth={1.5} />
+              )}
+            </motion.span>
+          </AnimatePresence>
         </button>
 
         <button
@@ -309,9 +327,15 @@ export function TopBar() {
               </span>
             </button>
 
-            {menuOpen && (
-              <div
+            <AnimatePresence>
+              {menuOpen && (
+              <motion.div
                 role="menu"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.97 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: reduce ? 0 : 0.16, ease: [0.4, 0, 0.2, 1] }}
+                style={{ transformOrigin: "top right" }}
                 className="absolute right-0 mt-2 w-64 rounded-md border border-hairline-soft bg-canvas shadow-soft overflow-hidden z-50"
               >
                 <div className="px-3 py-2.5 border-b border-hairline-soft">
@@ -348,8 +372,9 @@ export function TopBar() {
                   <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
                   {signingOut ? "Signing out…" : "Sign out"}
                 </button>
-              </div>
-            )}
+              </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>

@@ -8,6 +8,8 @@ import { NewSessionModal } from './NewSessionModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { SessionModelModal } from './SessionModelModal';
 import { apiClient } from '../../api/client';
+import { SkeletonList } from '../ui/Skeleton';
+import { EmptyState } from '../ui/EmptyState';
 
 interface Session {
   id: string;
@@ -392,21 +394,13 @@ export function SessionsSidebar() {
           {/* Workspaces List */}
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {isLoading ? (
-              <div className="space-y-3 px-0 py-3">
-                <div className="skeleton-shimmer h-16 rounded-xl" />
-                <div className="skeleton-shimmer h-16 rounded-xl" />
-                <div className="skeleton-shimmer h-16 rounded-xl" />
-              </div>
+              <SkeletonList count={3} className="px-0 py-3" label="Loading workspaces…" />
             ) : workspaces.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-surface-soft flex items-center justify-center mb-4">
-                  <Folder className="w-8 h-8 text-text-muted" />
-                </div>
-                <h3 className="text-sm font-medium text-ink mb-1">No workspaces yet</h3>
-                <p className="text-xs text-text-muted max-w-[200px]">
-                  Start a conversation to create your first workspace
-                </p>
-              </div>
+              <EmptyState
+                Icon={Folder}
+                title="No workspaces yet"
+                description="Start a conversation to create your first workspace"
+              />
             ) : (
               <div className="space-y-3 animate-fade-in">
                 {workspaces.map((workspace) => {
