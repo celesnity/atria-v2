@@ -25,6 +25,13 @@ Run the CLI via the bash tool (``<modules>`` resolves to the active modules
 directory — see the SKILL block header in the system prompt):
 
 - Health check: `python <modules>/data_copilot/scripts/copilot.py health`
+- Ingest a dataset into the module (do this first for any user-supplied file):
+  `python <modules>/data_copilot/scripts/copilot.py ingest path/to/data.xlsx`
+  Copies/converts a CSV, Excel (.xlsx/.xls), or Parquet file into the module's
+  `data/` dir as CSV. Add `--name sales` to control the stored name. It prints
+  JSON `{"module": "data_copilot", "files": [{"file": "...", "path": "..."}]}`;
+  `file` is the `data/`-relative name for `send_editable_table`, `path` is the
+  absolute path for `profile`/`analyze`. Excel workbooks yield one CSV per sheet.
 - Profile a dataset:
   `python <modules>/data_copilot/scripts/copilot.py profile path/to/data.csv`
 - Analyze:
@@ -32,6 +39,18 @@ directory — see the SKILL block header in the system prompt):
   Flags: `--max-repair` (default 3), `--max-verify` (default 2), `--out <dir>`.
 - Recent audit events:
   `python <modules>/data_copilot/scripts/copilot.py audit --limit 20`
+
+## Review / fix the source data in chat (web UI)
+
+After ingesting, you can let the user inspect and correct the raw data before
+analysis. Call the `send_editable_table` tool with `module="data_copilot"` and
+`file="<the file field from ingest>"` (e.g. `sales.csv`) to render an editable
+grid; when the user edits cells or adds/removes rows and clicks Save, the CSV is
+rewritten in place. Then run `analyze` against the ingested `path` so the report
+reflects the corrected data. Recommended flow for a user-supplied dataset:
+**ingest → (optionally) `send_editable_table` for review/fix → `analyze` the
+ingested path.** This closes the loop so users analyze the data they actually
+approved. (Editable tables only render in the web UI.)
 
 Configure the model via `DC_<ROLE>_*` env vars (roles: `codegen`, `verify`,
 `report`). Defaults target OpenAI with `OPENAI_API_KEY`; point

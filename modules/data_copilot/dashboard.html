@@ -3,60 +3,515 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Data Copilot · Analysis Loop</title>
+  <title>Data Copilot</title>
+  <link rel="stylesheet" href="__base.css" />
   <style>
-    :root { --ink:#1f2933; --muted:#647089; --accent:#2f6feb; --line:#e3e8f0; }
-    body { font-family: system-ui, sans-serif; color: var(--ink); margin: 0;
-           padding: 2rem; line-height: 1.55; max-width: 900px; }
-    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
-    .sub { color: var(--muted); margin: 0 0 1.5rem; }
-    .loop { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
-    .step { border: 1px solid var(--line); border-radius: 8px; padding: .5rem .75rem;
-            background: #f7f9fc; font-size: .9rem; }
-    .arrow { color: var(--accent); align-self: center; }
-    code { background: #f2f4f8; padding: .1rem .35rem; border-radius: 4px; }
-    ul { padding-left: 1.2rem; }
-    section { border-top: 1px solid var(--line); padding-top: 1.25rem; margin-top: 1.5rem; }
+    /* ── Design tokens (layered on __base.css theme vars) ───────────────── */
+    :root {
+      --accent: 217 91% 60%;          /* analytic blue — headings, links */
+      --run: 142 71% 45%;             /* code-green — the "run" action */
+      --warn: 38 92% 50%;             /* amber — UNVERIFIED / needs attention */
+      --danger: 0 72% 51%;
+      --radius: 10px;
+      --gap: 10px;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    body { padding: 16px; -webkit-font-smoothing: antialiased; }
+    .mono { font-family: var(--mono); }
+    .muted { color: hsl(var(--muted)); }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+    .mark {
+      flex: none; width: 34px; height: 34px; border-radius: var(--radius);
+      display: grid; place-items: center; color: hsl(var(--accent-fg, 0 0% 100%));
+      background: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--run)));
+    }
+    .mark svg { width: 19px; height: 19px; }
+    h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
+    .sub { font-size: 12px; color: hsl(var(--muted)); margin: 1px 0 0; }
+    .status {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid hsl(var(--border)); color: hsl(var(--muted));
+      white-space: nowrap;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--muted)); flex: none; }
+    .status.ok    { color: hsl(var(--run)); border-color: hsl(var(--run) / .4); }
+    .status.ok .dot   { background: hsl(var(--run)); }
+    .status.down  { color: hsl(var(--danger)); border-color: hsl(var(--danger) / .4); }
+    .status.down .dot { background: hsl(var(--danger)); }
+
+    /* ── Tabs ───────────────────────────────────────────────────────────── */
+    .tabs { display: flex; gap: 2px; border-bottom: 1px solid hsl(var(--border));
+      margin: 16px 0 16px; overflow-x: auto; }
+    .tab {
+      cursor: pointer; font: inherit; font-size: 13px; padding: 8px 14px; border: none;
+      background: none; color: hsl(var(--muted)); border-bottom: 2px solid transparent;
+      margin-bottom: -1px; white-space: nowrap; transition: color .18s;
+    }
+    .tab:hover { color: hsl(var(--card-foreground)); }
+    .tab.active { color: hsl(var(--accent)); border-bottom-color: hsl(var(--accent)); font-weight: 600; }
+    .tab:focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: -2px; border-radius: 4px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; animation: fade .2s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+
+    /* ── Forms ──────────────────────────────────────────────────────────── */
+    .field { display: block; margin-bottom: 12px; }
+    .field > span { display: block; font-size: 11px; font-weight: 600; letter-spacing: .3px;
+      text-transform: uppercase; color: hsl(var(--muted)); margin-bottom: 5px; }
+    .row { display: flex; gap: var(--gap); align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+    input, select, textarea {
+      font: inherit; padding: 9px 11px; border-radius: 8px; width: 100%; box-sizing: border-box;
+      border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+      color: hsl(var(--card-foreground)); transition: border-color .18s, box-shadow .18s;
+    }
+    textarea { resize: vertical; min-height: 62px; line-height: 1.5; }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: hsl(var(--accent));
+      box-shadow: 0 0 0 3px hsl(var(--accent) / .15);
+    }
+    .num { width: 74px; flex: none; }
+    .grow { flex: 1 1 220px; }
+
+    button.go {
+      cursor: pointer; font: inherit; font-weight: 600; font-size: 13px;
+      padding: 9px 18px; border-radius: 8px; border: 1px solid transparent;
+      background: hsl(var(--run)); color: #fff; display: inline-flex; align-items: center; gap: 7px;
+      min-height: 40px; transition: filter .18s, opacity .18s;
+    }
+    button.go:hover { filter: brightness(1.06); }
+    button.go:focus-visible { outline: 2px solid hsl(var(--run)); outline-offset: 2px; }
+    button.go:disabled { opacity: .55; cursor: default; filter: none; }
+    button.ghost {
+      cursor: pointer; font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 8px;
+      background: hsl(var(--card)); color: hsl(var(--card-foreground));
+      border: 1px solid hsl(var(--border)); display: inline-flex; align-items: center; gap: 5px;
+      min-height: 34px; transition: background .18s, border-color .18s;
+    }
+    button.ghost:hover { border-color: hsl(var(--accent) / .5); }
+    button.ghost:focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }
+    button svg { width: 15px; height: 15px; flex: none; }
+
+    /* ── Cards / output ─────────────────────────────────────────────────── */
+    .card { border: 1px solid hsl(var(--border)); border-radius: var(--radius);
+      padding: 13px 15px; background: hsl(var(--card)); margin-bottom: 10px; }
+    .card h3 { margin: 0 0 7px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .report { border-left: 3px solid hsl(var(--run)); }
+    .report.unverified { border-left-color: hsl(var(--warn)); }
+    .report :is(h1,h2,h3,h4) { font-size: 13px; margin: 12px 0 5px; }
+    .report h1 { font-size: 15px; }
+    .report p { margin: 6px 0; }
+    .report ul, .report ol { margin: 6px 0; padding-left: 20px; }
+    .report code { font-family: var(--mono); font-size: 12px; background: hsl(var(--muted) / .14);
+      padding: 1px 5px; border-radius: 4px; }
+    .report pre { background: hsl(var(--muted) / .1); border: 1px solid hsl(var(--border));
+      border-radius: 8px; padding: 10px; overflow-x: auto; }
+    .report pre code { background: none; padding: 0; }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px;
+      font-size: 10.5px; font-weight: 600; letter-spacing: .2px; }
+    .b-ok   { background: hsl(var(--run) / .16);  color: hsl(var(--run)); }
+    .b-warn { background: hsl(var(--warn) / .18); color: hsl(38 74% 42%); }
+    .b-info { background: hsl(var(--muted) / .16); color: hsl(var(--muted-foreground)); }
+    .metrics { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 10px; }
+    .chip { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: hsl(var(--muted) / .12);
+      color: hsl(var(--muted-foreground)); font-family: var(--mono); }
+    .figs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .fig { font-size: 11px; padding: 4px 9px; border-radius: 7px; border: 1px dashed hsl(var(--border));
+      color: hsl(var(--muted)); font-family: var(--mono); display: inline-flex; align-items: center; gap: 5px; }
+
+    .empty { border: 1px dashed hsl(var(--border)); border-radius: var(--radius); padding: 30px 20px;
+      text-align: center; color: hsl(var(--muted)); font-size: 13px; }
+    .empty svg { width: 26px; height: 26px; opacity: .5; margin-bottom: 8px; }
+    .err { color: hsl(var(--danger)); font-size: 12.5px; margin: 8px 0; display: none;
+      padding: 9px 11px; border-radius: 8px; background: hsl(var(--danger) / .1);
+      border: 1px solid hsl(var(--danger) / .3); }
+    .err.show { display: block; }
+
+    .loading { display: inline-flex; align-items: center; gap: 9px; color: hsl(var(--muted));
+      font-size: 13px; padding: 6px 0; }
+    .spin { width: 15px; height: 15px; border: 2px solid hsl(var(--muted) / .3);
+      border-top-color: hsl(var(--accent)); border-radius: 999px; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 420px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid hsl(var(--border)); vertical-align: top; }
+    th { color: hsl(var(--muted)); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+    tbody tr { transition: background .15s; }
+    tbody tr:hover { background: hsl(var(--muted) / .07); }
+
+    /* ── The loop (About) ───────────────────────────────────────────────── */
+    .loop { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 14px; }
+    .step { border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 6px 10px; font-size: 12px;
+      background: hsl(var(--muted) / .06); }
+    .arrow { color: hsl(var(--accent)); font-weight: 700; }
+    .about h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+      color: hsl(var(--muted)); margin: 16px 0 6px; }
+    .about ul { margin: 4px 0; padding-left: 18px; } .about li { margin: 3px 0; }
+
+    a { color: hsl(var(--accent)); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+    @media (max-width: 460px) {
+      body { padding: 12px; }
+      .num { width: 64px; }
+    }
   </style>
 </head>
 <body>
-  <h1>Data Copilot</h1>
-  <p class="sub">Ask a question about a dataset — the copilot generates Python,
-     runs it in a bounded sandbox, self-repairs, verifies, and returns a grounded
-     report.</p>
+  <div class="head">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18" /><rect x="7" y="12" width="3" height="6" />
+        <rect x="12" y="8" width="3" height="10" /><rect x="17" y="5" width="3" height="13" />
+      </svg>
+    </div>
+    <div>
+      <h1>Data Copilot</h1>
+      <p class="sub">Generate → run in a sandbox → self-repair → verify → grounded report.</p>
+    </div>
+    <span class="status" id="health" role="status" aria-live="polite">
+      <span class="dot"></span><span id="health-text">checking…</span>
+    </span>
+  </div>
 
-  <section>
-    <h2>The loop</h2>
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab active" data-tab="analyze" role="tab" aria-selected="true">Analyze</button>
+    <button class="tab" data-tab="datasets" role="tab" aria-selected="false">Datasets</button>
+    <button class="tab" data-tab="audit" role="tab" aria-selected="false">Audit</button>
+    <button class="tab" data-tab="about" role="tab" aria-selected="false">About</button>
+  </div>
+
+  <!-- ── Analyze ────────────────────────────────────────────────────────── -->
+  <section class="panel active" id="p-analyze" role="tabpanel">
+    <label class="field" for="an-ds">
+      <span>Dataset</span>
+      <select id="an-ds" aria-describedby="an-ds-hint"></select>
+    </label>
+    <p class="sub" id="an-ds-hint" style="margin:-6px 0 12px">
+      Ingest a file from chat ("analyze my sales.xlsx") or
+      <code class="mono">copilot.py ingest &lt;file&gt;</code>, then pick it here.
+    </p>
+    <label class="field" for="an-q">
+      <span>Question</span>
+      <textarea id="an-q" placeholder="e.g. What is total revenue by region, and is the trend rising?"></textarea>
+    </label>
+    <div class="row">
+      <label class="field" for="an-repair" style="margin:0">
+        <span>Max repair</span>
+        <input type="number" id="an-repair" class="num" value="3" min="0" max="8" />
+      </label>
+      <label class="field" for="an-verify" style="margin:0">
+        <span>Max verify</span>
+        <input type="number" id="an-verify" class="num" value="2" min="0" max="5" />
+      </label>
+      <button class="go" id="an-run" style="margin-left:auto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run analysis
+      </button>
+    </div>
+    <div id="an-err" class="err" role="alert"></div>
+    <div id="an-out"></div>
+  </section>
+
+  <!-- ── Datasets ───────────────────────────────────────────────────────── -->
+  <section class="panel" id="p-datasets" role="tabpanel">
+    <div class="row" style="margin-bottom:12px">
+      <button class="ghost" id="ds-refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <span class="sub" style="margin:0">Datasets ingested into <code class="mono">data/</code></span>
+    </div>
+    <div id="ds-err" class="err" role="alert"></div>
+    <div id="ds-out"></div>
+  </section>
+
+  <!-- ── Audit ──────────────────────────────────────────────────────────── -->
+  <section class="panel" id="p-audit" role="tabpanel">
+    <div class="row" style="margin-bottom:12px">
+      <button class="ghost" id="au-refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <span class="sub" style="margin:0">Most recent analysis runs (newest first)</span>
+    </div>
+    <div id="au-err" class="err" role="alert"></div>
+    <div id="au-out"></div>
+  </section>
+
+  <!-- ── About ──────────────────────────────────────────────────────────── -->
+  <section class="panel about" id="p-about" role="tabpanel">
+    <h3>The loop</h3>
     <div class="loop">
-      <span class="step">Profile dataset</span><span class="arrow">→</span>
+      <span class="step">Profile</span><span class="arrow">→</span>
       <span class="step">Generate code</span><span class="arrow">→</span>
       <span class="step">Guardrail gate</span><span class="arrow">→</span>
-      <span class="step">Execute (sandbox)</span><span class="arrow">→</span>
+      <span class="step">Sandbox execute</span><span class="arrow">→</span>
       <span class="step">Repair on error</span><span class="arrow">→</span>
       <span class="step">Verify answer</span><span class="arrow">→</span>
       <span class="step">Grounded report</span>
     </div>
-  </section>
-
-  <section>
-    <h2>Commands</h2>
+    <h3>Guardrails</h3>
     <ul>
-      <li><code>copilot.py health</code> — check the LLM endpoint</li>
-      <li><code>copilot.py profile &lt;data&gt;</code> — dataset schema + stats</li>
-      <li><code>copilot.py analyze &lt;data&gt; "&lt;question&gt;"</code> — full loop</li>
-      <li><code>copilot.py audit --limit N</code> — recent runs</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2>Guardrails</h2>
-    <ul>
-      <li>Bounded execution: timeout, output cap, scoped run dir; no network,
-          no process spawning, no writes outside the run dir.</li>
-      <li>Reports grounded in actual computed output — no invented numbers.</li>
-      <li>Exhausted repair/verify budget ⇒ result labelled UNVERIFIED.</li>
+      <li>Bounded execution: timeout, output cap, scoped run dir; no network, no process spawning, no writes outside the run dir.</li>
+      <li>Reports are grounded in the code's actual printed output — no invented numbers.</li>
+      <li>If the repair / verify budget is exhausted, the result is labelled <strong>UNVERIFIED</strong>.</li>
       <li>Every analysis is appended to the audit trail.</li>
     </ul>
+    <h3>Working with your data</h3>
+    <ul>
+      <li><strong>Ingest</strong> a CSV, Excel, or Parquet file (via chat or <code class="mono">ingest</code>) to bring it into the module.</li>
+      <li>Ask the copilot to show an <strong>editable table</strong> to review or fix the source data before analysing.</li>
+      <li><strong>Analyze</strong> the ingested dataset here or from chat.</li>
+    </ul>
+    <h3>Commands</h3>
+    <p class="mono muted" style="font-size:11.5px">health · ingest &lt;file&gt; · datasets · profile &lt;data&gt; · analyze &lt;data&gt; "&lt;question&gt;" · audit --limit N</p>
   </section>
+
+  <script src="__bridge.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var D = window.AtriaDash;
+    function el(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function showErr(id, e) {
+      var n = el(id); n.classList.add("show");
+      var msg = (e && e.message) ? e.message : String(e);
+      if (e && e.result && e.result.stderr) msg = e.result.stderr.trim() || msg;
+      n.textContent = msg;
+    }
+    function clearErr(id) { var n = el(id); n.classList.remove("show"); n.textContent = ""; }
+    function fmtBytes(b) {
+      if (b == null) return "";
+      if (b < 1024) return b + " B";
+      if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+      return (b / 1048576).toFixed(1) + " MB";
+    }
+    function fitHeight() {
+      if (D && D.resize) D.resize(document.body.scrollHeight + 24);
+    }
+    function run(args, timeout) { return D.json("copilot.py", args, { timeout_ms: timeout || 60000 }); }
+
+    // Minimal, safe Markdown → HTML for grounded reports (escapes first).
+    function md(src) {
+      var lines = String(src || "").split("\n");
+      var out = [], inList = false, inCode = false;
+      function closeList() { if (inList) { out.push("</ul>"); inList = false; } }
+      function inline(t) {
+        return esc(t)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+      }
+      for (var i = 0; i < lines.length; i++) {
+        var ln = lines[i];
+        if (/^```/.test(ln)) {
+          if (inCode) { out.push("</code></pre>"); inCode = false; }
+          else { closeList(); out.push("<pre><code>"); inCode = true; }
+          continue;
+        }
+        if (inCode) { out.push(esc(ln)); continue; }
+        var h = ln.match(/^(#{1,4})\s+(.*)$/);
+        if (h) { closeList(); out.push("<h" + h[1].length + ">" + inline(h[2]) + "</h" + h[1].length + ">"); continue; }
+        if (/^\s*[-*]\s+/.test(ln)) {
+          if (!inList) { out.push("<ul>"); inList = true; }
+          out.push("<li>" + inline(ln.replace(/^\s*[-*]\s+/, "")) + "</li>");
+          continue;
+        }
+        closeList();
+        if (ln.trim() === "") continue;
+        out.push("<p>" + inline(ln) + "</p>");
+      }
+      if (inCode) out.push("</code></pre>");
+      closeList();
+      return out.join("");
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────
+    var loaded = {};
+    var tabs = document.querySelectorAll(".tab");
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () {
+        tabs.forEach(function (x) { x.classList.remove("active"); x.setAttribute("aria-selected", "false"); });
+        document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+        t.classList.add("active"); t.setAttribute("aria-selected", "true");
+        el("p-" + t.dataset.tab).classList.add("active");
+        if (t.dataset.tab === "datasets" && !loaded.datasets) loadDatasets();
+        if (t.dataset.tab === "audit" && !loaded.audit) loadAudit();
+        fitHeight();
+      });
+    });
+
+    // ── Health ──────────────────────────────────────────────────────────────
+    function loadHealth() {
+      var pill = el("health"), txt = el("health-text");
+      run(["health"], 20000).then(function (d) {
+        var ok = d && d.codegen === "ok";
+        pill.className = "status " + (ok ? "ok" : "down");
+        txt.textContent = ok ? "LLM ready" : "LLM error";
+      }).catch(function () {
+        pill.className = "status down"; txt.textContent = "LLM unreachable";
+      });
+    }
+
+    // ── Datasets ──────────────────────────────────────────────────────────
+    function loadDatasets() {
+      loaded.datasets = true;
+      clearErr("ds-err"); el("ds-out").innerHTML = '<div class="loading"><span class="spin"></span>Loading datasets…</div>';
+      return run(["datasets"]).then(function (d) {
+        var rows = (d && d.datasets) || [];
+        renderDatasetSelect(rows);
+        if (!rows.length) {
+          el("ds-out").innerHTML = '<div class="empty">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>' +
+            '<div>No datasets yet.</div><div class="muted" style="margin-top:4px">Ask the copilot to analyze a file, or run <code class="mono">copilot.py ingest &lt;file&gt;</code>.</div></div>';
+          fitHeight(); return;
+        }
+        var body = rows.map(function (r) {
+          var cols = (r.columns || []).slice(0, 6).map(esc).join(", ") + ((r.columns || []).length > 6 ? "…" : "");
+          return '<tr><td class="mono">' + esc(r.file) + '</td>' +
+            '<td>' + (r.columns || []).length + '</td>' +
+            '<td class="muted">' + cols + '</td>' +
+            '<td class="mono">' + fmtBytes(r.size) + '</td>' +
+            '<td><button class="ghost" data-profile="' + esc(r.path) + '">Profile</button></td></tr>';
+        }).join("");
+        el("ds-out").innerHTML = '<div class="scroll"><table><thead><tr>' +
+          '<th>File</th><th>Cols</th><th>Columns</th><th>Size</th><th></th></tr></thead><tbody>' +
+          body + '</tbody></table></div><div id="ds-profile"></div>';
+        el("ds-out").querySelectorAll("[data-profile]").forEach(function (b) {
+          b.addEventListener("click", function () { profileDataset(b.getAttribute("data-profile")); });
+        });
+        fitHeight();
+      }).catch(function (e) { el("ds-out").innerHTML = ""; showErr("ds-err", e); });
+    }
+
+    function profileDataset(path) {
+      var box = el("ds-profile");
+      box.innerHTML = '<div class="loading"><span class="spin"></span>Profiling…</div>';
+      run(["profile", path]).then(function (p) {
+        var cols = (p.columns || []).map(esc).join(", ");
+        box.innerHTML = '<div class="card"><h3>Profile <span class="chip">' + esc(path.split("/").pop()) + '</span></h3>' +
+          '<div class="metrics"><span class="chip">' + (p.n_rows != null ? p.n_rows : "?") + ' rows</span>' +
+          '<span class="chip">' + (p.n_cols != null ? p.n_cols : "?") + ' cols</span></div>' +
+          '<div class="muted" style="font-size:12px;margin-bottom:6px">' + cols + '</div>' +
+          '<pre style="max-height:260px;overflow:auto"><code>' +
+          esc(JSON.stringify(p.numeric_summary || {}, null, 2)) + '</code></pre></div>';
+        fitHeight();
+      }).catch(function (e) { box.innerHTML = ""; showErr("ds-err", e); });
+    }
+
+    function renderDatasetSelect(rows) {
+      var sel = el("an-ds"), prev = sel.value;
+      if (!rows.length) { sel.innerHTML = '<option value="">— no datasets ingested —</option>'; return; }
+      sel.innerHTML = rows.map(function (r) {
+        return '<option value="' + esc(r.path) + '">' + esc(r.file) + '</option>';
+      }).join("");
+      if (prev) sel.value = prev;
+    }
+
+    // ── Analyze ───────────────────────────────────────────────────────────
+    el("an-run").addEventListener("click", function () {
+      var path = el("an-ds").value;
+      var q = el("an-q").value.trim();
+      clearErr("an-err");
+      if (!path) { showErr("an-err", "Ingest and select a dataset first (see the Datasets tab)."); return; }
+      if (!q) { showErr("an-err", "Enter a question about the dataset."); return; }
+      var btn = el("an-run"); btn.disabled = true;
+      el("an-out").innerHTML = '<div class="loading"><span class="spin"></span>' +
+        'Generating code, running in the sandbox, verifying… this can take a moment.</div>';
+      fitHeight();
+      var args = ["analyze", path, q,
+        "--max-repair", String(el("an-repair").value || 3),
+        "--max-verify", String(el("an-verify").value || 2)];
+      run(args, 240000).then(function (d) {
+        renderReport(d);
+        D.toast({ message: d.verified ? "Analysis verified" : "Analysis complete (unverified)",
+                  severity: d.verified ? "success" : "warning" });
+      }).catch(function (e) {
+        el("an-out").innerHTML = ""; showErr("an-err", e);
+      }).then(function () { btn.disabled = false; fitHeight(); });
+    });
+
+    function renderReport(d) {
+      var verified = !!d.verified;
+      var h = '<div class="card report' + (verified ? "" : " unverified") + '">' +
+        '<h3>Report' +
+        (verified ? '<span class="badge b-ok">verified</span>'
+                  : '<span class="badge b-warn">unverified</span>') + '</h3>' +
+        '<div class="metrics">' +
+          '<span class="chip">status: ' + esc(d.status || "?") + '</span>' +
+          '<span class="chip">repairs: ' + (d.repairs != null ? d.repairs : 0) + '</span>' +
+          '<span class="chip">verify rounds: ' + (d.verify_rounds != null ? d.verify_rounds : 0) + '</span>' +
+        '</div>' +
+        '<div>' + md(d.report) + '</div>';
+      var figs = d.figures || [];
+      if (figs.length) {
+        h += '<div class="figs">' + figs.map(function (f) {
+          return '<span class="fig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
+            esc(String(f).split("/").pop()) + '</span>';
+        }).join("") + '</div>' +
+          '<div class="sub" style="margin-top:6px">Charts saved to the run directory.</div>';
+      }
+      h += '</div>';
+      el("an-out").innerHTML = h;
+    }
+
+    // ── Audit ───────────────────────────────────────────────────────────────
+    el("au-refresh").addEventListener("click", loadAudit);
+    el("ds-refresh").addEventListener("click", loadDatasets);
+    function loadAudit() {
+      loaded.audit = true;
+      clearErr("au-err"); el("au-out").innerHTML = '<div class="loading"><span class="spin"></span>Loading audit trail…</div>';
+      run(["audit", "--limit", "50"]).then(function (d) {
+        var ev = ((d && d.events) || []).slice().reverse();
+        if (!ev.length) { el("au-out").innerHTML = '<div class="empty">No analysis runs recorded yet.</div>'; fitHeight(); return; }
+        var body = ev.map(function (e) {
+          var ds = e.dataset ? String(e.dataset).split("/").pop() : "";
+          var vb = e.verified ? '<span class="badge b-ok">verified</span>'
+                              : '<span class="badge b-warn">unverified</span>';
+          return '<tr><td class="mono" style="white-space:nowrap">' + esc(e.ts || "") + '</td>' +
+            '<td>' + esc(e.type || "") + '</td>' +
+            '<td class="mono">' + esc(ds) + '</td>' +
+            '<td>' + esc(e.question || "") + '</td>' +
+            '<td>' + (e.type === "analyze" ? vb : '<span class="badge b-info">' + esc(e.type || "") + '</span>') + '</td>' +
+            '<td class="mono">' + (e.repairs != null ? e.repairs : "") + '</td></tr>';
+        }).join("");
+        el("au-out").innerHTML = '<div class="scroll"><table><thead><tr>' +
+          '<th>Time</th><th>Type</th><th>Dataset</th><th>Question</th><th>Result</th><th>Rep</th>' +
+          '</tr></thead><tbody>' + body + '</tbody></table></div>';
+        fitHeight();
+      }).catch(function (e) { el("au-out").innerHTML = ""; showErr("au-err", e); });
+    }
+
+    // ── Boot ──────────────────────────────────────────────────────────────
+    D.setTitle("Data Copilot");
+    loadHealth();
+    loadDatasets();            // populate the Analyze dropdown up front
+    D.ready();
+    fitHeight();
+    // Re-sync datasets when module files change (e.g. a new ingest from chat).
+    if (D.onChange) D.onChange(function () { loadDatasets(); });
+  })();
+  </script>
 </body>
 </html>

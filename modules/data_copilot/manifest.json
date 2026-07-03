@@ -3,13 +3,14 @@
   "tooltip": "Data-analysis copilot · generate → run → verify → grounded report",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Data Copilot · Analysis Loop",
-    "default_height": 780,
+    "title": "Data Copilot",
+    "default_height": 720,
     "badge_color": "info"
   },
   "activity": {
     "default": { "running": "Working…", "done": "Done" },
     "actions": {
+      "ingest":  { "running": "Ingesting dataset…", "done": "Dataset ready" },
       "profile": { "running": "Profiling dataset…", "done": "Profiled" },
       "analyze": { "running": "Analyzing…",         "done": "Report ready" }
     }

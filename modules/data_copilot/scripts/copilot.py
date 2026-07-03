@@ -3,6 +3,9 @@
 
 Subcommands:
   health   — check the configured LLM endpoint(s) are reachable.
+  ingest   — copy/convert a dataset into the module data/ dir (for editable
+             tables + analysis).
+  datasets — list datasets ingested into the module data/ dir.
   profile  — print a dataset profile as JSON.
   analyze  — run the full generate → execute → repair → verify → report loop.
   audit    — print recent audit-trail events.
@@ -22,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import audit  # type: ignore[import-not-found]
 import generate  # type: ignore[import-not-found]
+import ingest as ingest_mod  # type: ignore[import-not-found]
 import guardrails  # type: ignore[import-not-found]
 import profile as profile_mod  # type: ignore[import-not-found]
 import report as report_mod  # type: ignore[import-not-found]
@@ -198,6 +202,21 @@ def _cmd_health() -> int:
         return 1
 
 
+def _cmd_ingest(source: str, name: Optional[str]) -> int:
+    try:
+        result = ingest_mod.ingest(source, name)
+    except (FileNotFoundError, ValueError) as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 1
+    print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def _cmd_datasets() -> int:
+    print(json.dumps({"datasets": ingest_mod.list_datasets()}, indent=2, default=str))
+    return 0
+
+
 def _cmd_profile(dataset: str) -> int:
     print(json.dumps(profile_mod.profile_dataset(dataset), indent=2, default=str))
     return 0
@@ -238,6 +257,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="data_copilot", description="Data Copilot CLI")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("health", help="Check the configured LLM endpoint is reachable.")
+    p_ing = sub.add_parser(
+        "ingest",
+        help="Copy/convert a dataset into the module data/ dir (for editable tables + analysis).",
+    )
+    p_ing.add_argument("source", help="Path to a CSV/Excel/Parquet file.")
+    p_ing.add_argument(
+        "--name", default=None, help="Base name for the stored CSV (default: source stem)."
+    )
+    sub.add_parser("datasets", help="List datasets ingested into the module data/ dir.")
     p_prof = sub.add_parser("profile", help="Print a dataset profile as JSON.")
     p_prof.add_argument("dataset")
     p_an = sub.add_parser("analyze", help="Run the full analysis loop.")
@@ -266,6 +294,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "health":
         return _cmd_health()
+    if args.command == "ingest":
+        return _cmd_ingest(args.source, args.name)
+    if args.command == "datasets":
+        return _cmd_datasets()
     if args.command == "profile":
         return _cmd_profile(args.dataset)
     if args.command == "analyze":
