@@ -48,13 +48,17 @@ def _split_frontmatter(raw: str) -> tuple[dict[str, str], str]:
         return {}, raw
     meta: dict[str, str] = {}
     body_start = len(lines)
+    closed = False
     for i in range(1, len(lines)):
         if lines[i].strip() == "---":
             body_start = i + 1
+            closed = True
             break
         key, sep, value = lines[i].partition(":")
         if sep:
             meta[key.strip()] = value.strip().strip('"').strip("'")
+    if not closed:
+        raise ValueError("unterminated front-matter block (missing closing '---')")
     body = "\n".join(lines[body_start:]).lstrip("\n")
     return meta, body
 
@@ -66,7 +70,10 @@ def parse_document(path: str) -> Document:
         ValueError: If a required front-matter key is missing.
     """
     raw = Path(path).read_text(encoding="utf-8")
-    meta, body = _split_frontmatter(raw)
+    try:
+        meta, body = _split_frontmatter(raw)
+    except ValueError as exc:
+        raise ValueError(f"{path}: {exc}") from exc
     for key in _REQUIRED:
         if key not in meta:
             raise ValueError(f"{path}: missing front-matter key {key!r}")
