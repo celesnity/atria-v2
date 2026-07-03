@@ -1,0 +1,19 @@
+{
+  "display_name": "Enterprise Knowledge",
+  "tooltip": "Secure enterprise-knowledge RAG · permission-aware AI search (My Tasco)",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Enterprise Knowledge · Secure AI Search",
+    "default_height": 820,
+    "badge_color": "info"
+  },
+  "activity": {
+    "default": { "running": "Working…", "done": "Done" },
+    "actions": {
+      "search":   { "running": "Searching knowledge…", "done": "Retrieved" },
+      "answer":   { "running": "Composing answer…",    "done": "Answered" },
+      "access":   { "running": "Checking access…",     "done": "Checked" }
+    }
+  },
+  "subagent": { "enabled": false, "model": null, "tools": null }
+}
