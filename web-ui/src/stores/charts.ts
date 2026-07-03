@@ -40,7 +40,7 @@ interface ChartsStore {
   reset: (messageId: string) => void;
 }
 
-const DEFAULT_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+export const DEFAULT_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316'];
 
 function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx: number): ChartEditState {
   const s = suggestions[idx] ?? suggestions[0];

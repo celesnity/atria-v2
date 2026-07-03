@@ -1,6 +1,6 @@
 // Pure-function adapter: rows + edit state → Chart.js dataset shape.
 
-import type { ChartEditState } from '../../../stores/charts';
+import { DEFAULT_COLORS, type ChartEditState } from '../../../stores/charts';
 import type { DataColumn } from '../../../types';
 
 export interface ProcessedChart {
@@ -8,8 +8,10 @@ export interface ProcessedChart {
   datasets: Array<{
     label: string;
     data: any[];
-    backgroundColor?: string;
-    borderColor?: string;
+    // Circular charts (pie/doughnut) carry one color per slice → array; other
+    // chart types use a single per-series color → string.
+    backgroundColor?: string | string[];
+    borderColor?: string | string[];
     fill?: boolean;
     /** Per-series render type — set for combo (mixed bar+line) charts. */
     type?: 'bar' | 'line';
@@ -43,6 +45,9 @@ export function processChart(
     }
 
     const isCombo = state.chartType === 'combo';
+    // Pie/doughnut render one series as N slices, so each slice needs its own
+    // color; other chart types keep a single color per series.
+    const isCircular = state.chartType === 'pie' || state.chartType === 'doughnut';
     const secondary = new Set(state.secondaryAxis ?? []);
     let hasSecondaryAxis = false;
 
@@ -54,11 +59,16 @@ export function processChart(
       // For combo charts each series renders as its own type (default line);
       // other chart types leave `type` unset and use the top-level chart type.
       const seriesType = isCombo ? (state.combo?.[y] ?? 'line') : undefined;
+      // For pie/doughnut, map each row to a distinct palette color so slices are
+      // visually separable; keep white slice borders for definition.
+      const sliceColors = isCircular
+        ? safeRows.map((_, i) => DEFAULT_COLORS[i % DEFAULT_COLORS.length])
+        : undefined;
       return {
         label: state.seriesLabels[y] ?? y,
         data: safeRows.map((r) => r[y]),
-        backgroundColor: color,
-        borderColor: color,
+        backgroundColor: sliceColors ?? color,
+        borderColor: isCircular ? '#0f172a' : color,
         fill: state.chartType === 'area',
         ...(seriesType ? { type: seriesType } : {}),
         ...(onSecondary ? { yAxisID: 'y1' } : {}),
