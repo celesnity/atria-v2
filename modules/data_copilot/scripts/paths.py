@@ -44,10 +44,26 @@ def runs_dir() -> Path:
 
 
 def new_run_dir(name: str = "latest") -> Path:
-    """Create and return a run output dir under ``runs/``."""
+    """Create and return a run output dir under ``runs/`` (fixed name)."""
     d = runs_dir() / name
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def new_unique_run_dir() -> Path:
+    """Create and return a fresh, collision-free run dir under ``runs/``.
+
+    Each ``analyze``/``persona`` invocation gets its own dir so one run's
+    ``result.csv`` / figures never overwrite another's. The dir name carries a
+    human-readable timestamp plus a random suffix (via ``mkdtemp``) so concurrent
+    or same-second runs stay isolated.
+    """
+    import tempfile
+    import time
+
+    base = runs_dir()
+    prefix = time.strftime("run-%Y%m%d-%H%M%S-")
+    return Path(tempfile.mkdtemp(prefix=prefix, dir=str(base)))
 
 
 def audit_path() -> Path:

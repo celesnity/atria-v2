@@ -62,7 +62,15 @@ to stdout; parse it and act on the fields named below.
 3. **Present the result — and always push the visuals to the chat.** Show the
    `report` field to the user as the answer. If `verified` is `false` (or the
    report carries the UNVERIFIED banner), say so explicitly and do not present the
-   numbers as settled. Then, in the **same turn**, without asking first:
+   numbers as settled.
+
+   **Always write a real final message — never just "Done"/"DONE".** After the
+   analysis (and after sending the charts/tables), your reply MUST present the
+   findings: reproduce or summarize the `report` field, call out the key numbers /
+   segments / trends in prose, note anything unverified, and say which charts you
+   sent. A bare "Done", "Task completed", or one-line acknowledgement is not an
+   acceptable final answer for a data-analysis turn — the user asked a question, so
+   answer it with the results. Then, in the **same turn**, without asking first:
    - **For every file listed in `figures`** (matplotlib PNGs saved to the run
      dir), call the `send_image` tool with its absolute path and a short caption.
      This is how the chart the analysis drew reaches the user — do not just

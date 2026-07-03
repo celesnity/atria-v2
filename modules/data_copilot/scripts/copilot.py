@@ -434,7 +434,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Optional at the argparse level so a missing question yields a clean JSON
     # error (the contract callers parse) instead of an argparse exit-2 usage dump.
     p_an.add_argument("question", nargs="?", default=None)
-    p_an.add_argument("--out", default=None, help="Run output dir (default: runs/latest).")
+    p_an.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
     p_an.add_argument("--max-repair", type=int, default=3)
     p_an.add_argument("--max-verify", type=int, default=2)
     p_per = sub.add_parser(
@@ -442,7 +442,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_per.add_argument("dataset")
     p_per.add_argument("question", nargs="?", default=None)
-    p_per.add_argument("--out", default=None, help="Run output dir (default: runs/latest).")
+    p_per.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
     p_per.add_argument("--max-repair", type=int, default=3)
     p_per.add_argument("--max-verify", type=int, default=2)
     p_per.add_argument("--domain", default=None, help="Optional domain pack (e.g. telecom).")
@@ -453,7 +453,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _default_out_dir() -> str:
-    return str(paths_mod.new_run_dir())
+    # A fresh dir per run so successive analyze/persona calls never overwrite each
+    # other's result.csv / figures. Pass --out explicitly to reuse a fixed dir.
+    return str(paths_mod.new_unique_run_dir())
 
 
 def main(argv: Optional[List[str]] = None) -> int:
