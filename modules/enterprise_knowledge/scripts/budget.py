@@ -3,9 +3,8 @@
 The deployed chat model has a fixed context length that must hold *both* the
 prompt and the reserved completion. These helpers keep each request inside it:
 they cap the requested output tokens (so the server stops reserving a huge
-default completion) and trim oversized input — retrieved passages for synthesis,
-chunk text for extraction — to whatever the window leaves after that reservation
-plus a safety margin.
+default completion) and trim oversized input — retrieved passages for synthesis
+— to whatever the window leaves after that reservation plus a safety margin.
 
 Everything is env-tunable so the module adapts to whatever model is deployed:
 
@@ -23,7 +22,7 @@ import os
 _CHARS_PER_TOKEN = 3.5
 
 # Fallback reserved-completion tokens per role when no env override is set.
-_DEFAULT_OUTPUT_TOKENS = {"synthesis": 1024, "kg_extract": 1536}
+_DEFAULT_OUTPUT_TOKENS = {"synthesis": 1024}
 _DEFAULT_OUTPUT_FALLBACK = 1024
 
 # Tokens held back from the input budget for chat scaffolding (role tags,
