@@ -71,6 +71,21 @@ to stdout; parse it and act on the fields named below.
      ticks/tooltips from these fields, so passing them all is what makes the chart
      rich. You may lightly adjust them (e.g. fill in a `units` map or set a
      clearer `title`) but keep the structure intact.
+   - **Pivot / cross-tab breakdowns.** When the question compares a measure
+     across two dimensions (e.g. "sales by region and category", "revenue per
+     month by channel"), `analyze` writes the result table as a **wide pivot**
+     — one row per primary category (the first column) and one numeric column
+     per value of the secondary dimension. Send it exactly like any other
+     result: call `send_table` with `file=<result_table>` and
+     `suggestions=<summary.suggestions>`. The heuristics turn that wide pivot
+     into a **grouped multi-series chart** automatically — `x` = the first
+     column, `y[]` = the pivoted measure columns — so a "region × category"
+     pivot renders as grouped bars (with line/radar alternates in the chart's
+     type switcher). You do not build the chart yourself; just forward the
+     pivot CSV and its suggestions. If `suggestions` is unexpectedly empty for a
+     pivot (e.g. the measure columns weren't detected as numeric), add one
+     suggestion by hand: `chart_type: "bar"`, `x` = the first column, `y` = the
+     remaining numeric columns.
    - **When the user wants to edit the result** (or asked for an editable
      dataframe), use the ingest → `send_editable_table` flow below — a plain
      `analyze` result table is read-only. See "Only when the user wants to
