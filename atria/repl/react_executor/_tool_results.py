@@ -10,6 +10,7 @@ from atria.core.runtime.monitoring import TaskMonitor
 from atria.db.sync import run_sync
 from atria.core.utils.tool_display import format_tool_call
 
+from ._content import as_text as _as_text
 from ._debug import _ctx_logger
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,8 @@ class ToolResultsMixin:
 
         if result.get("success", False):
             tool_result = separate_response if separate_response else result.get("output", "")
+            # Content must be a string; some tools (get_solve_result) return a dict/list.
+            tool_result = _as_text(tool_result)
             if completion_status:
                 tool_result = f"[completion_status={completion_status}]\n{tool_result}"
         else:
