@@ -15,7 +15,13 @@ _CODE_RE = re.compile(r"```python([^\n]*)(.*?)```", re.DOTALL)
 
 _SYSTEM = (
     "You are a senior data analyst. Write a single self-contained Python script "
-    "that answers the user's question about the dataset. Rules: use pandas; load "
+    "that answers the user's question about the dataset. Rules: use ONLY libraries "
+    "already installed in the sandbox — pandas, numpy, scikit-learn, matplotlib. "
+    "NEVER pip install, import an unlisted package, or access the network (the "
+    "sandbox blocks it and the run will fail). Use only column names that appear "
+    "in the dataset profile — do NOT invent columns (e.g. an 'id'/'customer_id') "
+    "that aren't listed; to count rows per group use .size() / groupby(...).size(), "
+    "not a count of a specific id column. Load "
     "the dataset from the exact path given; PRINT the answer with clear labels; "
     "if a chart helps, use matplotlib with the 'Agg' backend and savefig into the "
     "current directory. If your analysis produces a final tabular result (a pandas "

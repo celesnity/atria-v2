@@ -28,6 +28,16 @@ These UI-callback tools only reach the chat from the main agent loop; a spawned
 subagent cannot render them and will drop the visuals. Call the CLI and the
 `send_*` tools yourself, directly, in this conversation.
 
+**Never hand-roll the analysis.** For any dataset question — including clustering,
+segmentation, and personas — run the `analyze`/`persona` CLI below. Do NOT write
+your own ad-hoc Python script into the workspace and run it with `python`, and do
+NOT `pip install` packages (scikit-learn, etc.): the runtime venv has no pip/network
+and those installs fail. The module's own sandbox already ships pandas, numpy,
+scikit-learn, and matplotlib and generates + repairs the code for you, so the
+`persona` command is how you cluster — not a manual `sklearn` script. If a run
+returns an error, re-run the CLI (the pipeline self-repairs) or surface the error;
+never fall back to writing your own analysis script.
+
 Follow these steps in order. Every command is a `python
 <modules>/data_copilot/scripts/copilot.py <subcommand> …` call run through the
 bash tool (`<modules>` resolves to the active modules directory — see the SKILL
