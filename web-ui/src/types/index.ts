@@ -49,6 +49,15 @@ export interface SearchResultItem {
   domain: string;
 }
 
+// Maintenance-copilot citation chip (from the maintenance_answer event)
+export interface MaintenanceCitation {
+  chunk_id: string;
+  doc: string;
+  revision: string;
+  ata: string;
+  citation: string;
+}
+
 // Message types
 export type DeepAnalyzePhase = 'explore' | 'load' | 'profile' | 'plan' | 'extract' | 'synthesize' | 'report';
 export type DeepAnalyzePhaseStatus = 'pending' | 'running' | 'done';
@@ -73,7 +82,7 @@ export interface Todo {
 }
 
 export interface Message {
-  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'deep_research' | 'deep_analyze' | 'image_message' | 'data_message' | 'custom_block' | 'todos';
+  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'maintenance_answer' | 'deep_research' | 'deep_analyze' | 'image_message' | 'data_message' | 'custom_block' | 'todos';
   // live todo list (role === 'todos')
   todos?: Todo[];
   // custom_block fields
@@ -110,6 +119,14 @@ export interface Message {
   search_result_count?: number;
   search_results?: SearchResultItem[];
   search_provider?: string;
+  // maintenance_answer fields (from the maintenance_copilot skill tool)
+  ma_answer?: string;
+  ma_citations?: MaintenanceCitation[];
+  ma_confidence?: number;
+  ma_confidence_band?: 'high' | 'medium' | 'low';
+  ma_review_required?: boolean;
+  ma_advisory_note?: string;
+  ma_validation_warnings?: string[];
   // deep_research fields
   dr_job_id?: string;
   dr_topic?: string;

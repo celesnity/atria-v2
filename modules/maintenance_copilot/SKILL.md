@@ -1,6 +1,7 @@
 ---
 name: maintenance_copilot
-description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). Runs RAG via copilot.py query — do NOT grep the manual files or answer from your own knowledge.
+description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). Prefer the `maintenance_copilot_query` tool — it runs grounded RAG and renders a cited, confidence-scored answer card in the UI. Do NOT grep the manual files or answer from your own knowledge.
+tools: tools.py
 ---
 
 # maintenance_copilot

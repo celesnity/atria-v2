@@ -132,10 +132,28 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             Path.cwd() / ".atria" / "skills",
             _paths.global_skills_dir,
         ]
-        self._skill_specs: dict[str, ToolSpec] = {
-            spec.name: spec
-            for spec in SkillToolLoader(_skill_dirs).discover_and_register(self.skill_ctx)
-        }
+        # Also discover code-bearing skills shipped inside modules (e.g.
+        # maintenance_copilot ships a tools.py). Modules declare `tools:` in their
+        # SKILL.md frontmatter; modules without it are silently skipped.
+        try:
+            from atria.core.modules.registry import resolve_modules_root
+
+            _modules_root = resolve_modules_root()
+            if _modules_root.is_dir():
+                _skill_dirs.append(_modules_root)
+        except Exception:  # module discovery is best-effort; never block registry init
+            pass
+        # Discovery must never take down registry construction: a broken skill
+        # tools.py (e.g. an import-time failure in a leaner deploy image) degrades
+        # to "no skill tools", not a failed startup.
+        try:
+            self._skill_specs: dict[str, ToolSpec] = {
+                spec.name: spec
+                for spec in SkillToolLoader(_skill_dirs).discover_and_register(self.skill_ctx)
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("skill-tool discovery failed; continuing without skill tools: %s", exc)
+            self._skill_specs = {}
         self._md_to_pdf_tool = MdToPdfTool()
         self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
