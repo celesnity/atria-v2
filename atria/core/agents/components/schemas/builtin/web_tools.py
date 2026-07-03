@@ -225,7 +225,19 @@ SCHEMAS: list[dict[str, Any]] = [
                     "file": {
                         "type": "string",
                         "description": (
-                            "Absolute CSV path, or a name under the session data/ dir."
+                            "CSV to display. May be: a name under the session "
+                            "data_copilot data/ dir (e.g. 'result.csv'), any path "
+                            "inside the workspace (e.g. 'modules/data_copilot/data/"
+                            "sales_data.csv'), or an absolute path within the "
+                            "workspace. Pass `module` instead for a module dataset."
+                        ),
+                    },
+                    "module": {
+                        "type": "string",
+                        "description": (
+                            "Optional module name to read the CSV from that module's "
+                            "data/ dir (modules/<module>/data/<file>). When set, `file` "
+                            "is relative to that module's data/ dir."
                         ),
                     },
                     "title": {
