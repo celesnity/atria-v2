@@ -1,7 +1,7 @@
 """Thin OpenAI-compatible client that dispatches calls by feature role.
 
 One underlying ``openai.OpenAI`` is created per distinct (base_url, api_key)
-so TEI and vLLM endpoints are reused across roles that share them.
+so hosted OpenAI-compatible endpoints are reused across roles that share them.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ class RoleClient:
         """Return embedding vectors for *texts* using the endpoint for *role*.
 
         Args:
-            role: Feature role key (e.g. ``"chunk_embed"``, ``"index_embed"``).
+            role: Feature role key (e.g. ``"index_embed"``).
             texts: One or more strings to embed.
 
         Returns:
@@ -72,7 +72,7 @@ class RoleClient:
         """Send a chat-completion request using the endpoint configured for *role*.
 
         Args:
-            role: Feature role key (e.g. ``"synthesis"``, ``"kg_extract"``).
+            role: Feature role key (e.g. ``"synthesis"``).
             messages: OpenAI-format message list (``[{"role": ..., "content": ...}, ...]``).
             **kw: Extra keyword arguments forwarded to ``completions.create``
                 (e.g. ``temperature``, ``max_tokens``).
