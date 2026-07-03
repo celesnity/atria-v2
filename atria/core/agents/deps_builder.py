@@ -58,11 +58,26 @@ def build_runtime_and_deps(
     config = config_manager.get_config()
     mode_manager = ModeManager()
 
+    # The worker has no UI callback, so the bash tool cannot discover the session
+    # id / workspace the way the main process does. Inject them from the payload so
+    # session-scoped modules (e.g. data_copilot) write into
+    # ``<working_dir>/.artifacts/…/<session_id>`` — the folder the main agent reads —
+    # instead of falling back to the module's own data dir. Per-instance (not
+    # os.environ) so concurrent worker jobs don't clobber each other's session.
+    env_overrides: dict[str, str] = {
+        "ATRIA_WORKSPACE": str(wd),
+        "ATRIA_SESSION_DIR": str(wd),
+    }
+    if payload.session_id:
+        env_overrides["ATRIA_SESSION_ID"] = payload.session_id
+        env_overrides["ATRIA_CONVERSATION_ID"] = payload.session_id
+        env_overrides["ATRIA_PROJECT_SLUG"] = f"conv-{payload.session_id}"
+
     # Construct tools — shapes match agent_executor.py:246-251.
     file_ops = FileOperations(config, wd)
     write_tool = WriteTool(config, wd)
     edit_tool = EditTool(config, wd)
-    bash_tool = BashTool(config, wd)
+    bash_tool = BashTool(config, wd, env_overrides=env_overrides)
     web_fetch_tool = WebFetchTool(config, wd)
     web_search_tool = WebSearchTool(config, wd)
     notebook_edit_tool = NotebookEditTool(wd)

@@ -37,7 +37,7 @@ class WebSocketToolBroadcaster:
     # Tools that emit their own custom UI events; skip the generic
     # tool_call / tool_result broadcasts so the UI shows only the custom event.
     _SUPPRESSED_BROADCAST_TOOLS: frozenset[str] = frozenset(
-        {"send_image", "send_editable_table"}
+        {"send_image", "send_editable_table", "send_table"}
     )
 
     _PATH_ARGS: dict[str, str] = {

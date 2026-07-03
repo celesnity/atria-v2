@@ -10,7 +10,7 @@ interface Props {
   title: string;
   columns: DataColumn[];
   rows: Record<string, any>[];
-  source: { module: string; file: string };
+  source: { module?: string; file: string; session?: string };
   warning?: string;
 }
 
@@ -74,7 +74,9 @@ export function EditableDataTable({ messageId, title, columns, rows, source, war
     setError(null);
     setNote(null);
     try {
-      const res = await apiClient.writeDataset(source.module, source.file, cols, editRows);
+      const res = source.session
+        ? await apiClient.writeSessionDataset(source.session, source.file, cols, editRows)
+        : await apiClient.writeDataset(source.module as string, source.file, cols, editRows);
       setDirty(false);
       setNote(`Saved ${res?.rows ?? editRows.length} rows to ${source.file}`);
       // Keep the stored snapshot in sync so leaving the chat (e.g. to view the
@@ -85,14 +87,16 @@ export function EditableDataTable({ messageId, title, columns, rows, source, war
     } finally {
       setSaving(false);
     }
-  }, [cols, editRows, source.module, source.file, messageId, updateDataMessageRows]);
+  }, [cols, editRows, source.module, source.session, source.file, messageId, updateDataMessageRows]);
 
   const reload = useCallback(async () => {
     setSaving(true);
     setError(null);
     setNote(null);
     try {
-      const data = await apiClient.readDataset(source.module, source.file);
+      const data = source.session
+        ? await apiClient.readSessionDataset(source.session, source.file)
+        : await apiClient.readDataset(source.module as string, source.file);
       const fresh = (data?.rows || []).map((r) => ({ ...r }));
       setEditRows(fresh);
       setDirty(false);
@@ -103,7 +107,7 @@ export function EditableDataTable({ messageId, title, columns, rows, source, war
     } finally {
       setSaving(false);
     }
-  }, [source.module, source.file, messageId, cols, updateDataMessageRows]);
+  }, [source.module, source.session, source.file, messageId, cols, updateDataMessageRows]);
 
   return (
     <div className="my-3 relative">
@@ -234,7 +238,7 @@ export function EditableDataTable({ messageId, title, columns, rows, source, war
             {overflow && ` · editing first ${MAX_EDIT_ROWS.toLocaleString()}`}
           </span>
           <span className="opacity-60 truncate">
-            {source.module}/{source.file}
+            {(source.session ? `session:${source.session}` : source.module)}/{source.file}
           </span>
         </div>
       </div>
