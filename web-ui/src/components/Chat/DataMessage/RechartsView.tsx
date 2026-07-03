@@ -34,16 +34,21 @@ function makeFormatter(fmt: NumberFormat, unit?: string) {
   };
 }
 
-const AXIS = { fontSize: 11, fill: 'var(--text-300, #94a3b8)' };
-const GRID_COLOR = 'var(--border-300, #334155)';
+// Colors are pulled from the app's real design tokens (index.css CSS vars) so
+// the chart reads on-brand in both dark and light themes.
+const AXIS = { fontSize: 11, fill: 'hsl(var(--text-muted))' };
+const GRID_COLOR = 'hsl(var(--hairline) / 0.4)';
 
 const tooltipStyle = {
   contentStyle: {
-    background: 'var(--bg-100, #1e293b)',
-    border: '1px solid var(--border-300, #334155)',
+    background: 'hsl(var(--surface-soft))',
+    border: '1px solid hsl(var(--hairline))',
     borderRadius: 8,
     fontSize: 12,
+    color: 'hsl(var(--ink))',
   },
+  labelStyle: { color: 'hsl(var(--ink))' },
+  itemStyle: { color: 'hsl(var(--text-secondary))' },
 } as const;
 
 export function RechartsView({ processed, state }: RechartsViewProps) {
@@ -68,7 +73,7 @@ export function RechartsView({ processed, state }: RechartsViewProps) {
             label
           >
             {data.map((_, i) => (
-              <Cell key={i} fill={DEFAULT_COLORS[i % DEFAULT_COLORS.length]} stroke="var(--bg-100, #0f172a)" />
+              <Cell key={i} fill={DEFAULT_COLORS[i % DEFAULT_COLORS.length]} stroke="hsl(var(--surface-soft))" />
             ))}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v) => fmt(v)} />

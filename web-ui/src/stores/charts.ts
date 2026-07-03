@@ -72,7 +72,10 @@ interface ChartsStore {
   reset: (messageId: string) => void;
 }
 
-export const DEFAULT_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+// Categorical series palette aligned with the brand accent spine
+// (cobalt → violet → magenta) plus semantic + supporting hues, tuned for
+// contrast on the dark/light surface-soft card.
+export const DEFAULT_COLORS = ['#2f5fe0','#b264d9','#4cc98a','#ee6a4f','#7b3fe4','#e0a53f','#38bdb0','#e05fa8'];
 
 function buildState(suggestions: ChartSuggestion[], _columns: DataColumn[], idx: number): ChartEditState {
   const s = suggestions[idx] ?? suggestions[0];

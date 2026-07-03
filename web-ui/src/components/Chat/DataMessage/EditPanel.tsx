@@ -43,13 +43,13 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
   };
 
   return (
-    <div className="w-72 max-w-[90vw] rounded-lg border border-border-300/15 bg-bg-100 shadow-xl text-sm">
+    <div className="w-72 max-w-[90vw] rounded-lg border border-hairline-soft bg-surface-soft shadow-xl text-sm">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border-300/15">
-        <span className="font-semibold text-text-000">Edit chart</span>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-hairline-soft">
+        <span className="font-semibold text-ink">Edit chart</span>
         <button
           onClick={onClose}
-          className="text-text-300 hover:text-text-000 text-base leading-none"
+          className="text-text-muted hover:text-ink text-base leading-none"
           aria-label="Close"
         >
           ×
@@ -60,11 +60,11 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
       <div className="px-3 py-3 space-y-3 max-h-[70vh] overflow-y-auto">
         {/* Chart type */}
         <label className="block">
-          <span className="block text-xs text-text-300 mb-1">Chart type</span>
+          <span className="block text-xs text-text-muted mb-1">Chart type</span>
           <select
             value={state.chartType}
             onChange={(e) => update(messageId, { chartType: e.target.value as ChartType })}
-            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+            className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
           >
             {CHART_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
@@ -74,35 +74,35 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
 
         {/* Title */}
         <label className="block">
-          <span className="block text-xs text-text-300 mb-1">Title</span>
+          <span className="block text-xs text-text-muted mb-1">Title</span>
           <input
             type="text"
             value={state.title}
             onChange={(e) => update(messageId, { title: e.target.value })}
-            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+            className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
           />
         </label>
 
         {/* Subtitle */}
         <label className="block">
-          <span className="block text-xs text-text-300 mb-1">Subtitle</span>
+          <span className="block text-xs text-text-muted mb-1">Subtitle</span>
           <input
             type="text"
             value={state.subtitle}
             placeholder="Optional caption"
             onChange={(e) => update(messageId, { subtitle: e.target.value })}
-            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+            className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
           />
         </label>
 
         {/* X axis */}
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="block text-xs text-text-300 mb-1">X field</span>
+            <span className="block text-xs text-text-muted mb-1">X field</span>
             <select
               value={state.xField}
               onChange={(e) => update(messageId, { xField: e.target.value })}
-              className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+              className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
             >
               {xOptions.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -110,7 +110,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
             </select>
           </label>
           <label className="block">
-            <span className="block text-xs text-text-300 mb-1">X label</span>
+            <span className="block text-xs text-text-muted mb-1">X label</span>
             <input
               type="text"
               value={state.axisLabels.x ?? ''}
@@ -118,14 +118,14 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
               onChange={(e) =>
                 update(messageId, { axisLabels: { ...state.axisLabels, x: e.target.value } })
               }
-              className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+              className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
             />
           </label>
         </div>
 
         {/* Y label */}
         <label className="block">
-          <span className="block text-xs text-text-300 mb-1">Y label (unit)</span>
+          <span className="block text-xs text-text-muted mb-1">Y label (unit)</span>
           <input
             type="text"
             value={state.axisLabels.y ?? ''}
@@ -133,17 +133,17 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
             onChange={(e) =>
               update(messageId, { axisLabels: { ...state.axisLabels, y: e.target.value } })
             }
-            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+            className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
           />
         </label>
 
         {/* Number format */}
         <label className="block">
-          <span className="block text-xs text-text-300 mb-1">Number format</span>
+          <span className="block text-xs text-text-muted mb-1">Number format</span>
           <select
             value={state.numberFormat}
             onChange={(e) => update(messageId, { numberFormat: e.target.value as NumberFormat })}
-            className="w-full px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+            className="w-full px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
           >
             {NUMBER_FORMATS.map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -153,7 +153,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
 
         {/* Series */}
         <div>
-          <span className="block text-xs text-text-300 mb-1">Series</span>
+          <span className="block text-xs text-text-muted mb-1">Series</span>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {yOptions.map((name) => {
               const active = state.yFields.includes(name);
@@ -173,7 +173,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
                         seriesColors: { ...state.seriesColors, [name]: e.target.value },
                       })
                     }
-                    className="w-6 h-6 shrink-0 rounded border border-border-300/15 bg-bg-000"
+                    className="w-6 h-6 shrink-0 rounded border border-hairline-soft bg-canvas"
                     disabled={!active}
                   />
                   <input
@@ -185,14 +185,14 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
                         seriesLabels: { ...state.seriesLabels, [name]: e.target.value },
                       })
                     }
-                    className="flex-1 min-w-0 px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+                    className="flex-1 min-w-0 px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
                     disabled={!active}
                   />
                 </div>
               );
             })}
             {yOptions.length === 0 && (
-              <div className="text-xs text-text-400 italic">No numeric columns available.</div>
+              <div className="text-xs text-text-muted italic">No numeric columns available.</div>
             )}
           </div>
         </div>
@@ -200,11 +200,11 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
         {/* X-axis value renames */}
         {xValues.length > 0 && (
           <div>
-            <span className="block text-xs text-text-300 mb-1">X-axis value labels</span>
+            <span className="block text-xs text-text-muted mb-1">X-axis value labels</span>
             <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
               {xValues.map((v) => (
                 <div key={v} className="flex items-center gap-2">
-                  <span className="w-20 shrink-0 truncate text-xs text-text-300" title={v}>{v}</span>
+                  <span className="w-20 shrink-0 truncate text-xs text-text-muted" title={v}>{v}</span>
                   <input
                     type="text"
                     value={state.valueLabels[v] ?? ''}
@@ -214,7 +214,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
                         valueLabels: { ...state.valueLabels, [v]: e.target.value },
                       })
                     }
-                    className="flex-1 min-w-0 px-2 py-1 rounded bg-bg-000 border border-border-300/15 text-text-100"
+                    className="flex-1 min-w-0 px-2 py-1 rounded bg-canvas border border-hairline-soft text-ink"
                   />
                 </div>
               ))}
@@ -224,7 +224,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
 
         {/* Toggles */}
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-1.5 text-text-100">
+          <label className="flex items-center gap-1.5 text-ink">
             <input
               type="checkbox"
               checked={state.legend}
@@ -232,7 +232,7 @@ export function EditPanel({ messageId, columns, rows, onClose }: EditPanelProps)
             />
             <span>Legend</span>
           </label>
-          <label className="flex items-center gap-1.5 text-text-100">
+          <label className="flex items-center gap-1.5 text-ink">
             <input
               type="checkbox"
               checked={state.grid}

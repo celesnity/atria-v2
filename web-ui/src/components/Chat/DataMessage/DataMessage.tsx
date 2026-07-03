@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import type { DataColumn, Message } from '../../../types';
 import { apiClient } from '../../../api/client';
@@ -23,10 +24,10 @@ function SqlDisclosure({ sql }: { sql: string }) {
   }, [sql, copyToClipboard]);
 
   return (
-    <div className="border-b border-border-300/15 bg-bg-000/20">
+    <div className="border-b border-hairline-soft bg-ink/[0.03]">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-[11px] text-text-300 hover:text-text-100"
+        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-[11px] text-text-muted hover:text-ink"
       >
         <span className={`transition-transform ${open ? 'rotate-90' : ''}`}>▶</span>
         <span className="font-mono opacity-70">SQL</span>
@@ -34,12 +35,12 @@ function SqlDisclosure({ sql }: { sql: string }) {
       </button>
       {open && (
         <div className="relative px-3 pb-3">
-          <pre className="text-[11px] font-mono text-text-200 bg-bg-000/40 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
+          <pre className="text-[11px] font-mono text-text-secondary bg-ink/[0.05] rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
             {sql}
           </pre>
           <button
             onClick={copy}
-            className="absolute top-1 right-4 px-1.5 py-0.5 text-[10px] rounded border border-border-300/15 text-text-300 hover:bg-bg-200"
+            className="absolute top-1 right-4 px-1.5 py-0.5 text-[10px] rounded border border-hairline-soft text-text-muted hover:bg-ink/5"
           >
             {copied ? 'Copied' : 'Copy'}
           </button>
@@ -144,7 +145,22 @@ export function DataMessage({ message }: { message: Message }) {
   const [view, setView] = useState<'preview' | 'table' | 'chart'>(
     hasCharts ? 'chart' : imageSrc ? 'preview' : 'table'
   );
+  const [collapsed, setCollapsed] = useState(false);
   const TABLE_PAGE = 200;
+
+  // Verbose one-line summary shown under the title: shape · chart type · source.
+  const CHART_LABELS: Record<string, string> = {
+    bar: 'Bar', line: 'Line', area: 'Area', pie: 'Pie',
+    doughnut: 'Doughnut', scatter: 'Scatter', combo: 'Combo', radar: 'Radar',
+  };
+  const metaParts: string[] = [];
+  if (hasData) metaParts.push(`${rows.length.toLocaleString()} rows × ${columns.length} cols`);
+  if (view === 'chart' && chartState) {
+    metaParts.push(`${CHART_LABELS[chartState.chartType] ?? chartState.chartType} chart`);
+  }
+  const srcInfo = message.data_source;
+  if (srcInfo?.module) metaParts.push(srcInfo.module);
+  else if (srcInfo && (srcInfo as any).session) metaParts.push('session data');
 
   // Auto-switch to preview when image arrives after initial mount
   useEffect(() => {
@@ -153,7 +169,7 @@ export function DataMessage({ message }: { message: Message }) {
 
   if (fetchError) {
     return (
-      <div className="my-3 rounded-lg border border-red-500/30 bg-bg-100 px-3 py-2 text-sm text-red-400">
+      <div className="my-3 rounded-lg border border-semantic-danger/30 bg-surface-soft px-3 py-2 text-sm text-semantic-danger">
         Failed to load chart data: {fetchError}
       </div>
     );
@@ -163,7 +179,7 @@ export function DataMessage({ message }: { message: Message }) {
   const nothingReady = !imageSrc && !hasData && !pendingImageFetch;
   if (!messageId || nothingReady) {
     return (
-      <div className="my-3 rounded-lg border border-border-300/15 bg-bg-100 px-3 py-2 text-sm text-text-300">
+      <div className="my-3 rounded-lg border border-hairline-soft bg-surface-soft px-3 py-2 text-sm text-text-muted">
         {pendingImageFetch ? (message.data_title || 'Loading chart…') : 'Loading data…'}
       </div>
     );
@@ -171,28 +187,47 @@ export function DataMessage({ message }: { message: Message }) {
 
   return (
     <div className="my-3 relative">
-      <div className="rounded-lg border border-border-300/15 bg-bg-100 overflow-hidden">
+      <div className="rounded-lg border border-hairline-soft bg-surface-soft overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-300/15">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-sm font-semibold text-text-000 truncate">
-              {message.data_title || 'Data'}
-            </span>
-            {message.data_warning && (
-              <span
-                className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                title={message.data_warning}
-              >
-                {message.data_warning}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="flex rounded border border-border-300/15 overflow-hidden text-xs">
+        <div className={`flex items-center justify-between gap-2 px-3 py-2 ${collapsed ? '' : 'border-b border-hairline-soft'}`}>
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-expanded={!collapsed}
+            className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer group focus-visible:outline-none focus-visible:shadow-focus-ring rounded"
+          >
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-text-muted shrink-0 transition-transform duration-fast ${collapsed ? '-rotate-90' : ''}`}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-semibold text-ink truncate group-hover:text-accent-cobalt transition-colors duration-fast">
+                  {message.data_title || 'Data'}
+                </span>
+                {message.data_warning && (
+                  <span
+                    className="text-[11px] px-1.5 py-0.5 rounded bg-accent-cobalt/10 text-accent-cobalt border border-accent-cobalt/20 shrink-0"
+                    title={message.data_warning}
+                  >
+                    {message.data_warning}
+                  </span>
+                )}
+              </div>
+              {metaParts.length > 0 && (
+                <span className="text-[11px] text-text-muted truncate font-mono">
+                  {metaParts.join(' · ')}
+                </span>
+              )}
+            </div>
+          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="flex rounded border border-hairline-soft overflow-hidden text-xs">
               {hasCharts && (
                 <button
                   onClick={() => setView('chart')}
-                  className={`px-2 py-1 ${view === 'chart' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                  className={`px-2 py-1 ${view === 'chart' ? 'bg-accent-cobalt/15 text-accent-cobalt' : 'text-text-muted hover:bg-ink/5'}`}
                 >
                   Chart
                 </button>
@@ -200,7 +235,7 @@ export function DataMessage({ message }: { message: Message }) {
               {imageSrc && (
                 <button
                   onClick={() => setView('preview')}
-                  className={`px-2 py-1 ${imageSrc && hasCharts ? 'border-l border-border-300/15' : ''} ${view === 'preview' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                  className={`px-2 py-1 ${imageSrc && hasCharts ? 'border-l border-hairline-soft' : ''} ${view === 'preview' ? 'bg-accent-cobalt/15 text-accent-cobalt' : 'text-text-muted hover:bg-ink/5'}`}
                 >
                   Image
                 </button>
@@ -208,7 +243,7 @@ export function DataMessage({ message }: { message: Message }) {
               {hasData && (
                 <button
                   onClick={() => setView('table')}
-                  className={`px-2 py-1 ${(imageSrc || hasCharts) ? 'border-l border-border-300/15' : ''} ${view === 'table' ? 'bg-accent-main-100/15 text-accent-main-100' : 'text-text-300 hover:bg-bg-200'}`}
+                  className={`px-2 py-1 ${(imageSrc || hasCharts) ? 'border-l border-hairline-soft' : ''} ${view === 'table' ? 'bg-accent-cobalt/15 text-accent-cobalt' : 'text-text-muted hover:bg-ink/5'}`}
                 >
                   Table <span className="opacity-60">({rows.length.toLocaleString()})</span>
                 </button>
@@ -217,8 +252,8 @@ export function DataMessage({ message }: { message: Message }) {
           </div>
         </div>
 
-        {/* Body */}
-        {view === 'chart' && hasCharts && chartState ? (
+        {/* Body (collapsible) */}
+        {!collapsed && (view === 'chart' && hasCharts && chartState ? (
           (() => {
             const res = processChartRecharts(rows, columns, chartState);
             return (
@@ -229,7 +264,7 @@ export function DataMessage({ message }: { message: Message }) {
                       <button
                         key={i}
                         onClick={() => initFromSuggestion(messageId, suggestions, columns, i)}
-                        className={`px-2 py-1 text-xs rounded border ${chartState.activeSuggestionIdx === i ? 'border-accent-main-100 text-accent-main-100' : 'border-border-300/15 text-text-300'}`}
+                        className={`px-2 py-1 text-xs rounded border ${chartState.activeSuggestionIdx === i ? 'border-accent-cobalt text-accent-cobalt' : 'border-hairline-soft text-text-muted'}`}
                       >
                         {s.title ?? s.chart_type}
                       </button>
@@ -240,18 +275,18 @@ export function DataMessage({ message }: { message: Message }) {
                   {res.ok ? (
                     <RechartsView processed={res.chart} state={chartState} />
                   ) : (
-                    <div className="text-sm text-text-300">{res.error}</div>
+                    <div className="text-sm text-text-muted">{res.error}</div>
                   )}
                 </div>
                 {(chartState.subtitle || chartState.description) && (
-                  <div className="px-3 pb-1 text-xs text-text-300">
+                  <div className="px-3 pb-1 text-xs text-text-muted">
                     {chartState.subtitle || chartState.description}
                   </div>
                 )}
                 <div className="px-3 pb-2">
                   <button
                     onClick={() => setShowEdit((v) => !v)}
-                    className="text-xs text-text-300 hover:text-text-000"
+                    className="text-xs text-text-muted hover:text-ink"
                   >
                     {showEdit ? 'Hide' : 'Edit chart'}
                   </button>
@@ -284,15 +319,15 @@ export function DataMessage({ message }: { message: Message }) {
               <SqlDisclosure sql={message.data_sql} />
             )}
             {rows.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-text-300">No data.</div>
+              <div className="px-3 py-4 text-sm text-text-muted">No data.</div>
             ) : (
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="sticky top-0 bg-bg-100 z-10">
+                  <tr className="sticky top-0 bg-surface-soft z-10">
                     {columns.map((col) => (
                       <th
                         key={col.name}
-                        className="px-3 py-2 text-left font-medium text-text-100 border-b border-border-300/15 whitespace-nowrap"
+                        className="px-3 py-2 text-left font-medium text-ink border-b border-hairline-soft whitespace-nowrap"
                       >
                         {col.name}
                       </th>
@@ -301,11 +336,11 @@ export function DataMessage({ message }: { message: Message }) {
                 </thead>
                 <tbody>
                   {rows.slice(0, TABLE_PAGE).map((row, i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-transparent' : 'bg-bg-000/30'}>
+                    <tr key={i} className={i % 2 === 0 ? 'bg-transparent' : 'bg-ink/[0.03]'}>
                       {columns.map((col) => (
                         <td
                           key={col.name}
-                          className="px-3 py-1.5 text-text-200 border-b border-border-300/10 whitespace-nowrap max-w-[200px] truncate"
+                          className="px-3 py-1.5 text-text-secondary border-b border-hairline-soft/60 whitespace-nowrap max-w-[200px] truncate"
                           title={String(row[col.name] ?? '')}
                         >
                           {row[col.name] == null ? <span className="opacity-30">—</span> : String(row[col.name])}
@@ -317,12 +352,12 @@ export function DataMessage({ message }: { message: Message }) {
               </table>
             )}
             {rows.length > TABLE_PAGE && (
-              <div className="px-3 py-2 text-xs text-text-300 border-t border-border-300/10">
+              <div className="px-3 py-2 text-xs text-text-muted border-t border-hairline-soft/60">
                 Showing first {TABLE_PAGE.toLocaleString()} of {rows.length.toLocaleString()} rows
               </div>
             )}
           </div>
-        )}
+        ))}
       </div>
 
     </div>
