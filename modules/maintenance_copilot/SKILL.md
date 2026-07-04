@@ -1,6 +1,7 @@
 ---
 name: maintenance_copilot
-description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). Runs RAG via copilot.py query — do NOT grep the manual files or answer from your own knowledge.
+description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). ALWAYS answer via the `maintenance_copilot_query` tool — it runs grounded RAG and renders a cited, confidence-scored structured answer card in the UI. The CLI runbook is for human operators only. Do NOT grep the manual files or answer from your own knowledge.
+tools: tools.py
 ---
 
 # maintenance_copilot
@@ -48,9 +49,19 @@ MEL/CDL reference, preparing a dispatch-readiness view, or brainstorming/scoping
 the copilot itself. Items below marked **(Pilot)** map directly to the stated
 pilot scope; the rest are candidate extensions for later phases.
 
+Always answer via the `maintenance_copilot_query` tool. If the tool returns a
+`service_unavailable` validation warning, report the outage to the user and
+stop — never read `sample_manuals/` files (they are access-protected) or answer
+from memory. The CLI runbook below is for human operators, not for answering
+user questions.
+
 ## Runbook — how to answer a maintenance question
 
-When a user asks a maintenance-knowledge question in natural language, do NOT
+This runbook is the human/TUI operator path. When YOU (the agent) answer a
+user's question, call the `maintenance_copilot_query` tool instead — it runs
+this same pipeline and renders the structured answer card.
+
+When a maintenance-knowledge question arrives in natural language, do NOT
 answer from your own knowledge. Retrieve from the indexed manuals first, then
 answer strictly from what comes back. All commands run from
 `modules/maintenance_copilot/scripts/` as `python copilot.py <command>`.
@@ -62,6 +73,20 @@ Pick the command that matches the intent:
   short answer instead of only listing passages, add `--synthesize`. Restrict to
   a chapter with `--ata 32` when the user names one. Add `--graph` to also pull
   related entities from the knowledge graph.
+
+  `--synthesize` returns a strict structured envelope, not prose. The `answer`
+  key holds: `structured` (the full contract: `answer_type`
+  extractive|synthesized|clarification_needed, `response.primary_answer`,
+  `response.exact_quote` — a verified verbatim substring of a retrieved chunk,
+  never OCR-corrected — `response.is_sensitive`, server-verified `citations`
+  with source/page/confidence metadata, `related_suggestions`,
+  `data_collection_requirement`), plus `answer`, `answer_type`, `confidence`,
+  `needs_review`, `disclaimer`, `citations` (chunk ids), `validation_warnings`,
+  `attempts`, and `json_mode`. JSON enforcement is layered via
+  `MC_SYNTHESIS_JSON_MODE`: `schema` (default; vLLM schema-guided decoding),
+  `json_object`, or `prompt` (instruction-only; parse + bounded retries do the
+  work). Providers that reject a mode degrade automatically, one warning per
+  downgrade.
 - **Recommend which references apply to a defect** — run
   `recommend-refs "<defect description>" --k 5`. Returns ranked AMM/MEL/CDL/TSM
   refs with a confidence score each.
@@ -92,8 +117,10 @@ How to present every answer (non-negotiable — these mirror the Guardrails belo
   engineer makes and signs every dispatch decision.
 
 If retrieval returns nothing relevant, say the manuals do not cover it rather
-than answering from general knowledge. If a sidecar is down, run `health` and
-report which service failed instead of guessing.
+than answering from general knowledge. If a sidecar is down, the
+`maintenance_copilot_query` tool reports which service failed in a
+`service_unavailable` validation warning — relay that to the user and stop
+(human operators can diagnose with `python copilot.py health`).
 
 ## Brainstormed use cases
 

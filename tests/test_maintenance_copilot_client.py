@@ -32,9 +32,12 @@ class _FakeEmbeddings:
 
 
 class _FakeChat:
+    last_kwargs: dict = {}
+
     class completions:
         @staticmethod
         def create(model, messages, **kw):
+            _FakeChat.last_kwargs = kw
             return type("R", (), {"choices": [type("C", (), {
                 "message": type("M", (), {"content": f"reply from {model}"})()})()]})()
 
@@ -98,6 +101,27 @@ def test_chat_uses_the_roles_model():
     )
     out = rc.chat("synthesis", [{"role": "user", "content": "hi"}])
     assert out == "reply from role-model-x"
+
+
+def test_chat_forwards_response_format_only_when_set():
+    config = _load("config")
+    client_mod = _load("client")
+    rc = client_mod.RoleClient(
+        config.load_config(env={}),
+        client_factory=lambda base_url, api_key: _FakeOpenAI(base_url, api_key),
+    )
+    rc.chat("synthesis", [{"role": "user", "content": "hi"}])
+    assert "response_format" not in _FakeChat.last_kwargs
+    rf = {"type": "json_object"}
+    rc.chat("synthesis", [{"role": "user", "content": "hi"}], response_format=rf)
+    assert _FakeChat.last_kwargs["response_format"] == rf
+
+
+def test_synthesis_json_mode_env_knob():
+    config = _load("config")
+    assert config.synthesis_json_mode(env={}) == "schema"
+    assert config.synthesis_json_mode(env={"MC_SYNTHESIS_JSON_MODE": "Prompt"}) == "prompt"
+    assert config.synthesis_json_mode(env={"MC_SYNTHESIS_JSON_MODE": "bogus"}) == "schema"
 
 
 def test_unknown_role_raises():

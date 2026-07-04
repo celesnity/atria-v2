@@ -86,6 +86,8 @@ dependencies = [
     "qdrant-client>=1.18.0",
     "chonkie>=1.6.8",
     "neo4j>=6.2.0",
+    # WS client for proxying streaming speech-to-text to the ASR sidecar
+    "websockets>=12",
 ]
 
 [project.optional-dependencies]

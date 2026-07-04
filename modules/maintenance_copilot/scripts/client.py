@@ -97,12 +97,21 @@ class RoleClient:
             raise EndpointUnreachable(role, rc.base_url, rc.model, exc) from exc
         return [item.embedding for item in resp.data]
 
-    def chat(self, role: str, messages: List[dict], **kw) -> str:
+    def chat(
+        self,
+        role: str,
+        messages: List[dict],
+        response_format: Optional[dict] = None,
+        **kw,
+    ) -> str:
         """Send a chat-completion request using the endpoint configured for *role*.
 
         Args:
             role: Feature role key (e.g. ``"synthesis"``, ``"kg_extract"``).
             messages: OpenAI-format message list (``[{"role": ..., "content": ...}, ...]``).
+            response_format: Optional OpenAI-style output constraint (e.g.
+                ``{"type": "json_object"}`` or a ``json_schema`` spec) — only
+                sent when set, so providers without support are unaffected.
             **kw: Extra keyword arguments forwarded to ``completions.create``
                 (e.g. ``temperature``, ``max_tokens``).
 
