@@ -68,6 +68,12 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         "complete_todo",
         "list_todos",
         "clear_todos",
+        # Parallel-solve dispatch — off by default in this deployment.
+        "solve",
+        "get_solve_result",
+        # Memory tools — off by default in this deployment.
+        "memory_search",
+        "memory_write",
     }
 )
 
