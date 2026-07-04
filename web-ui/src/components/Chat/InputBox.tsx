@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
-import { Paperclip, Square, SendHorizontal, Settings2, Lock, Brain } from 'lucide-react';
+import { Paperclip, Square, SendHorizontal, Settings2, Lock, Brain, Mic } from 'lucide-react';
 import { DocumentIcon } from '@heroicons/react/24/outline';
 import Mentions from 'rc-mentions';
 import type { MentionsRef, DataDrivenOptionProps } from 'rc-mentions/es/Mentions';
 import { useChatStore } from '../../stores/chat';
 import { useArtifactsStore } from '../../stores/artifacts';
 import { useArtifactUpload } from '../../hooks/useArtifactUpload';
+import { useSpeechToText } from '../../hooks/useSpeechToText';
 import { apiClient } from '../../api/client';
 import { PersonaSelector } from './PersonaSelector';
 
@@ -60,6 +61,17 @@ export function InputBox() {
   const cycleThinkingLevel = useChatStore(state => state.cycleThinkingLevel);
   const { upload, uploading: fileUploading } = useArtifactUpload();
   const scanArtifacts = useArtifactsStore(state => state.scanArtifacts);
+  const {
+    recording, transcribing,
+    start: startRecording, stop: stopRecording,
+    startStreaming, stopStreaming,
+  } = useSpeechToText();
+  // Live-dictation bookkeeping: the draft text present when the mic started
+  // (partials rewrite `anchor + partial`, so partial→final never duplicates),
+  // and which capture mode is active ('stream' with live partials, or the
+  // push-to-talk 'batch' fallback).
+  const dictationAnchorRef = useRef<string>('');
+  const micModeRef = useRef<'stream' | 'batch' | null>(null);
 
   const isLoading = useChatStore(state => {
     const sid = state.currentSessionId;
@@ -160,6 +172,42 @@ export function InputBox() {
     fileInputRef.current?.click();
   }, []);
 
+  // Live dictation: click to start streaming — words appear in the draft box
+  // while speaking (~1-2s behind); click again to stop and settle the final
+  // text. Falls back to push-to-talk (record → transcribe on stop) if the
+  // streaming socket or AudioWorklet isn't available. The transcript only ever
+  // lands in the draft — never auto-sent — so the engineer reviews it first.
+  const handleMicClick = useCallback(async () => {
+    if (transcribing) return;
+    if (recording) {
+      if (micModeRef.current === 'stream') {
+        await stopStreaming(); // final text already applied via the partial callback
+      } else {
+        const text = await stopRecording();
+        const anchor = dictationAnchorRef.current;
+        if (text) setInput(anchor ? `${anchor} ${text}` : text);
+      }
+      micModeRef.current = null;
+      return;
+    }
+    // Snapshot the anchor from the store (not the closed-over `input`) so
+    // partial rewrites always build on the exact pre-recording draft.
+    const sid = useChatStore.getState().currentSessionId;
+    dictationAnchorRef.current = sid
+      ? useChatStore.getState().sessionStates[sid]?.draft ?? ''
+      : '';
+    const ok = await startStreaming((text, _isFinal) => {
+      const anchor = dictationAnchorRef.current;
+      setInput(anchor ? `${anchor} ${text}` : text);
+    });
+    if (ok) {
+      micModeRef.current = 'stream';
+    } else {
+      micModeRef.current = 'batch';
+      await startRecording();
+    }
+  }, [transcribing, recording, stopStreaming, stopRecording, startStreaming, startRecording, setInput]);
+
   const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.currentTarget.files ?? []);
     e.currentTarget.value = '';
@@ -215,6 +263,24 @@ export function InputBox() {
               />
             </div>
             <div className="flex gap-1.5 self-end">
+              <button
+                onClick={handleMicClick}
+                disabled={!isConnected || !hasActiveSession || transcribing}
+                className={`min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                  recording
+                    ? 'text-red-500 bg-red-500/10 hover:bg-red-500/15 animate-pulse'
+                    : 'text-ink/30 hover:text-ink/60 hover:bg-surface-soft'
+                }`}
+                title={recording ? 'Stop & transcribe' : 'Voice input (push to talk)'}
+              >
+                {transcribing ? (
+                  <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-full animate-spin" />
+                ) : recording ? (
+                  <Square className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
               <button
                 onClick={handleFileButtonClick}
                 disabled={!isConnected || !hasActiveSession || fileUploading}

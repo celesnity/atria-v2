@@ -41,6 +41,30 @@ describe('viewerTabs store', () => {
     expect(slice.activeId).toBeNull();
   });
 
+  it('stores a reveal location when opening with one', () => {
+    useViewerTabsStore.getState().openModuleFileTab(
+      '1', 'maintenance_copilot', 'sample_manuals/amm.md',
+      { text: 'Torque the pivot', nonce: 1 },
+    );
+    const tab = useViewerTabsStore.getState().tabsByConv['1'].tabs[0];
+    expect(tab.kind === 'module-file' ? tab.location?.text : '').toBe('Torque the pivot');
+  });
+
+  it('re-opening the same tab updates the location and activates it', () => {
+    const s = useViewerTabsStore.getState();
+    s.openModuleFileTab('1', 'maintenance_copilot', 'a.md', { text: 'first', nonce: 1 });
+    s.openTab('1', 'other.txt');
+    useViewerTabsStore.getState().openModuleFileTab(
+      '1', 'maintenance_copilot', 'a.md', { text: 'second', nonce: 2 },
+    );
+    const slice = useViewerTabsStore.getState().tabsByConv['1'];
+    expect(slice.tabs).toHaveLength(2);
+    expect(slice.activeId).toBe('module:maintenance_copilot:a.md');
+    const tab = slice.tabs.find(t => t.id === 'module:maintenance_copilot:a.md')!;
+    expect(tab.kind === 'module-file' ? tab.location?.text : '').toBe('second');
+    expect(tab.kind === 'module-file' ? tab.location?.nonce : 0).toBe(2);
+  });
+
   it('marks a tab dirty and clean', () => {
     useViewerTabsStore.getState().openTab('1', 'a.txt');
     expect(useViewerTabsStore.getState().tabsByConv['1'].dirty['a.txt']).toBeUndefined();

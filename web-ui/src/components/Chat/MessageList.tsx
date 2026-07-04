@@ -14,6 +14,7 @@ import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
+import { MaintenanceAnswerBlock } from './MaintenanceAnswer/MaintenanceAnswerBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
 import { ImageMessage } from './ImageMessage';
 import { SandboxedBlock } from './SandboxedBlock';
@@ -229,6 +230,7 @@ function MessageBody({
     return <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
   }
   if (message.role === 'search_result') return <SearchResultBlock message={message} />;
+  if (message.role === 'maintenance_answer') return <MaintenanceAnswerBlock message={message} />;
   if (message.role === 'image_message') return <ImageMessage message={message} />;
   if (message.role === 'custom_block' && message.block_id && message.block_src) {
     return (

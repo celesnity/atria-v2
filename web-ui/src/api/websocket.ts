@@ -176,3 +176,11 @@ class WebSocketClient {
 }
 
 export const wsClient = new WebSocketClient();
+
+// DEV-only hook so a canned server event can be injected from the browser
+// console, e.g. to exercise the maintenance_answer card without the backend:
+//   __wsClient.simulate({ type: 'maintenance_answer', data: { ...payload, session_id } })
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (wsClient as any).simulate = (message: WSMessage) => (wsClient as any).emit(message);
+  (window as any).__wsClient = wsClient;
+}

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from pathlib import PurePath
 from typing import TYPE_CHECKING, Callable
 
 from qdrant_client import QdrantClient, models
@@ -147,6 +148,7 @@ class IndexStore:
             p = point.payload
             if should_current and p["revision"] != latest.get(p["doc_type"]):
                 continue
+            source_path = p.get("source_path", "")
             hits.append(
                 {
                     "score": point.score,
@@ -156,6 +158,14 @@ class IndexStore:
                     "revision": p["revision"],
                     "ata_chapter": p["ata_chapter"],
                     "chunk_id": p["chunk_id"],
+                    "title": p.get("title", ""),
+                    "source_path": source_path,
+                    "source_id": PurePath(source_path).stem
+                    if source_path else p["chunk_id"].split("#")[0],
+                    "source_name": PurePath(source_path).name if source_path else "",
+                    # No page concept in the md/txt corpus; populated once
+                    # page-bearing (PDF/OCR) ingestion stores it in the payload.
+                    "page_number": p.get("page_number"),
                 }
             )
             if len(hits) >= k:

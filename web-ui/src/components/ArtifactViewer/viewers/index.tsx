@@ -35,7 +35,7 @@ export function ViewerDispatcher({ convId, tab }: Props) {
     tab.kind === 'module-file'
       ? { kind: 'module', name: tab.module }
       : { kind: 'conv', id: convId };
-  const { path, name, ext } = tab;
+  const { path, name, ext, location } = tab;
   const url = apiClient.readFsUrl(scope, path);
   const editable = tab.kind === 'module-file';
   const kind = pickRenderer(ext);
@@ -55,13 +55,13 @@ export function ViewerDispatcher({ convId, tab }: Props) {
     case 'pdf':
       return <PdfViewer url={url} name={name} />;
     case 'markdown':
-      return <MarkdownViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />;
+      return <MarkdownViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} location={location} />;
     case 'html':
       return <HtmlViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />;
     case 'monaco':
       return (
         <Suspense fallback={<Fallback />}>
-          <MonacoViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} />
+          <MonacoViewer scope={scope} path={path} editable={editable} convId={convKey} tabId={tab.id} location={location} />
         </Suspense>
       );
     case 'binary':

@@ -31,6 +31,8 @@ from atria.web.routes import (
     fs_router,
     personas_router,
     modules_router,
+    transcribe_router,
+    maintenance_router,
     blocks_router,
     module_dashboard_router,
     connect_router,
@@ -40,6 +42,7 @@ from atria.web.routes import (
     admin_tenant_invites_router,
 )
 from atria.web.websocket import websocket_endpoint
+from atria.web.transcribe_ws import transcribe_ws_endpoint
 from atria.core.modules.watcher import start_global_watcher, stop_global_watcher
 from atria.web.state import init_state, get_state
 from atria.core.runtime import ConfigManager, ModeManager
@@ -282,6 +285,8 @@ def create_app() -> FastAPI:
     app.include_router(fs_router)
     app.include_router(personas_router)
     app.include_router(modules_router)
+    app.include_router(transcribe_router)
+    app.include_router(maintenance_router)
     app.include_router(blocks_router)
     app.include_router(module_dashboard_router)
     app.include_router(connect_router)
@@ -290,8 +295,9 @@ def create_app() -> FastAPI:
     app.include_router(admin_tenant_users_router)
     app.include_router(admin_tenant_invites_router)
 
-    # WebSocket endpoint
+    # WebSocket endpoints
     app.add_websocket_route("/ws", websocket_endpoint)
+    app.add_websocket_route("/ws/transcribe", transcribe_ws_endpoint)
 
     # Health check
     @app.get("/api/health")

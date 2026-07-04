@@ -86,7 +86,7 @@ def test_client_defaults_max_tokens_per_role():
         client_factory=lambda base_url, api_key: _FakeOpenAI(base_url, api_key),
     )
     rc.chat("synthesis", [{"role": "user", "content": "hi"}])
-    assert seen["max_tokens"] == 1024  # default output cap applied
+    assert seen["max_tokens"] == 1536  # default output cap (JSON envelope needs headroom)
 
 
 def test_client_respects_explicit_max_tokens():

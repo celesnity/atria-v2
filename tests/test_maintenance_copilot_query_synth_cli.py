@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -41,8 +42,24 @@ def cli(monkeypatch, tmp_path):
         return s
 
     monkeypatch.setattr(mod, "_build_store", fake_store)
-    monkeypatch.setattr(mod, "_synthesis_chat_fn",
-                        lambda: (lambda messages: "Gear removal per AMM [amm_ata32#0]."))
+
+    def fake_chat(messages, **kw):
+        # Build a schema-valid answer from the prompt itself: cite the first
+        # chunk and quote the first line of its text verbatim.
+        user = messages[-1]["content"]
+        chunk_id = re.search(r"chunk_id: (\S+)", user).group(1)
+        quote = re.search(r"text:\n([^\n]+)", user).group(1)
+        return json.dumps({
+            "answer_type": "extractive",
+            "response": {"primary_answer": "Per the AMM, see the cited step.",
+                         "exact_quote": quote, "is_sensitive": False},
+            "citations": [{"chunk_id": chunk_id}],
+            "related_suggestions": [],
+            "data_collection_requirement": {"needs_user_input": False,
+                                            "missing_fields": []},
+        })
+
+    monkeypatch.setattr(mod, "_synthesis_chat_fn", lambda: fake_chat)
     return mod, str(tmp_path / "audit.jsonl")
 
 
@@ -55,9 +72,17 @@ def test_query_synthesize_attaches_answer_and_audits(cli, capsys):
     out = json.loads(capsys.readouterr().out)
     assert "answer" in out
     assert "disclaimer" in out["answer"]
-    # An audit event was recorded.
+    answer = out["answer"]
+    assert answer["answer_type"] == "extractive"
+    assert answer["structured"]["response"]["exact_quote"]
+    assert answer["citations"]  # cited chunk survived verification
+    assert answer["validation_warnings"] == []
+    # An audit event was recorded, carrying the structured-output telemetry.
     lines = Path(audit_log).read_text(encoding="utf-8").splitlines()
-    assert any(json.loads(ln)["type"] == "query" for ln in lines)
+    events = [json.loads(ln) for ln in lines]
+    query_events = [e for e in events if e["type"] == "query"]
+    assert query_events and query_events[0]["answer_type"] == "extractive"
+    assert query_events[0]["json_mode"] == "schema"  # default mode, fake accepts **kw
 
 
 def test_query_without_synthesize_has_no_answer(cli, capsys):
@@ -67,3 +92,39 @@ def test_query_without_synthesize_has_no_answer(cli, capsys):
     mod.main(["query", "gear", "--revision", "none"])
     out = json.loads(capsys.readouterr().out)
     assert "answer" not in out
+
+
+def test_dead_sidecar_prints_clean_json_error(monkeypatch, capsys):
+    mod = _load_cli()
+
+    def dead_store(*a, **k):
+        raise ConnectionError("connection refused: qdrant :6333")
+
+    monkeypatch.setattr(mod, "_build_store", dead_store)
+    rc = mod.main(["query", "gear removal", "--synthesize"])
+    assert rc == 1
+    captured = capsys.readouterr()
+    out = json.loads(captured.out)  # single clean JSON line, no traceback
+    assert "qdrant unreachable" in out["error"]
+    assert out["hint"] == "run: python copilot.py health"
+    assert "Traceback" not in captured.err
+
+
+def test_non_connectivity_error_still_raises(monkeypatch):
+    mod = _load_cli()
+
+    def broken_store(*a, **k):
+        raise ValueError("bad config")
+
+    monkeypatch.setattr(mod, "_build_store", broken_store)
+    with pytest.raises(ValueError):
+        mod.main(["query", "gear removal"])
+
+
+def test_audit_subcommand_skips_sidecar_wrap(monkeypatch, capsys, tmp_path):
+    mod = _load_cli()
+    monkeypatch.setenv("MC_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
+    # audit must not touch any sidecar even when stores are dead
+    monkeypatch.setattr(mod, "_build_store", lambda *a, **k: 1 / 0)
+    rc = mod.main(["audit", "--limit", "5"])
+    assert rc == 0

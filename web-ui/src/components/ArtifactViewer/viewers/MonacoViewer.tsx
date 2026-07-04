@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Editor from '@monaco-editor/react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import { Save, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../api/client';
 import { monacoLanguageFor } from './extensions';
 import { useViewerTabsStore } from '../../../stores/viewerTabs';
-import { fsScopeKey, type FsScope } from '../../../types';
+import { fsScopeKey, type FsScope, type ViewerLocation } from '../../../types';
 
 interface Props {
   scope: FsScope;
@@ -14,9 +14,11 @@ interface Props {
   editable?: boolean;
   convId?: string;
   tabId?: string;
+  /** Reveal + highlight target (citation click-through). */
+  location?: ViewerLocation;
 }
 
-export function MonacoViewer({ scope, path, languageOverride, editable = false, convId, tabId }: Props) {
+export function MonacoViewer({ scope, path, languageOverride, editable = false, convId, tabId, location }: Props) {
   const markDirty = useViewerTabsStore(s => s.markDirty);
   const markClean = useViewerTabsStore(s => s.markClean);
   const flagDirty = () => { if (convId && tabId) markDirty(convId, tabId); };
@@ -45,6 +47,50 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
   dirtyRef.current = dirty;
   savingRef.current = saving;
   textRef.current = text;
+
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+  const onMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    setEditorReady(true);
+  };
+
+  // Reveal + highlight the requested location. `text` search is preferred: it
+  // survives CRLF/front-matter offset drift; char offsets are the fallback.
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco || text == null || !location) return;
+    const model = editor.getModel();
+    if (!model) return;
+
+    let range: import('monaco-editor').Range | null = null;
+    if (location.text) {
+      // Whitespace-tolerant literal search (handles \n vs \r\n and wrapping).
+      const pattern = location.text
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\s+/g, '\\s+');
+      const match = model.findMatches(pattern, false, true, false, null, false, 1)[0];
+      if (match) range = match.range;
+    }
+    if (!range && location.start != null) {
+      const s = model.getPositionAt(location.start);
+      const e = model.getPositionAt(location.end ?? location.start);
+      range = new monaco.Range(s.lineNumber, s.column, e.lineNumber, e.column);
+    }
+    if (!range && location.line != null) {
+      range = new monaco.Range(location.line, 1, location.line, 1);
+    }
+    if (!range) return;
+
+    editor.revealRangeInCenter(range);
+    const decorations = editor.createDecorationsCollection([
+      { range, options: { className: 'citation-highlight', isWholeLine: false } },
+    ]);
+    return () => decorations.clear();
+  }, [location?.nonce, text, editorReady]);
 
   const onSave = async () => {
     if (!canSave || savingRef.current || !dirtyRef.current || textRef.current == null) return;
@@ -94,7 +140,8 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
     <Editor
       value={text}
       language={language}
-      theme="vs-dark"
+      theme="vs"
+      onMount={onMount}
       onChange={canSave ? (v) => { setText(v ?? ''); setDirty(true); flagDirty(); } : undefined}
       options={{
         readOnly: !canSave,

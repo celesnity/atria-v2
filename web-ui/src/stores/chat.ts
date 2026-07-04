@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
+import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -1042,6 +1043,19 @@ wsClient.on('search_done', (message) => {
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
     return patchSession(state, sid, { messages: [...sessionState.messages, searchMsg] });
+  });
+});
+
+// ─── Maintenance Copilot Answer Card ──────────────────────────────────────────
+
+wsClient.on('maintenance_answer', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const maMsg = mapMaintenanceAnswer(message.data);
+
+  useChatStore.setState(state => {
+    const sessionState = getSessionState(state.sessionStates, sid);
+    return patchSession(state, sid, { messages: [...sessionState.messages, maMsg] });
   });
 });
 

@@ -331,6 +331,7 @@ dependencies = [
     { name = "uvicorn" },
     { name = "watchdog" },
     { name = "weasyprint" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -388,6 +389,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.38.0" },
     { name = "watchdog", specifier = ">=4.0" },
     { name = "weasyprint", specifier = ">=60.0" },
+    { name = "websockets", specifier = ">=12" },
 ]
 provides-extras = ["dev"]
 
