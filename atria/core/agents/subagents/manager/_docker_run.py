@@ -78,7 +78,7 @@ class DockerRunMixin:
             "description": description,
         }
         if ui_callback and hasattr(ui_callback, "on_tool_call"):
-            ui_callback.on_tool_call("spawn_subagent", spawn_args)
+            ui_callback.on_tool_call("subagent", spawn_args)
 
         # Create nested callback with Docker context
         nested_callback = self.create_docker_nested_callback(
@@ -104,7 +104,7 @@ class DockerRunMixin:
             if ui_callback and hasattr(ui_callback, "on_tool_result"):
                 success = isinstance(result, str) or result.get("success", True)
                 ui_callback.on_tool_result(
-                    "spawn_subagent",
+                    "subagent",
                     spawn_args,
                     {
                         "success": success,
@@ -119,7 +119,7 @@ class DockerRunMixin:
         except Exception as e:
             if ui_callback and hasattr(ui_callback, "on_tool_result"):
                 ui_callback.on_tool_result(
-                    "spawn_subagent",
+                    "subagent",
                     spawn_args,
                     {
                         "success": False,
@@ -228,7 +228,7 @@ class DockerRunMixin:
                 "description": self._extract_task_description(task),
             }
             if ui_callback and hasattr(ui_callback, "on_tool_call"):
-                ui_callback.on_tool_call("spawn_subagent", spawn_args)
+                ui_callback.on_tool_call("subagent", spawn_args)
 
         try:
             # Create Docker deployment first to get container name
@@ -328,7 +328,7 @@ class DockerRunMixin:
             # Show Spawn completion only if we showed the header
             if spawn_args and ui_callback and hasattr(ui_callback, "on_tool_result"):
                 ui_callback.on_tool_result(
-                    "spawn_subagent",
+                    "subagent",
                     spawn_args,
                     {
                         "success": result.get("success", True),
@@ -353,7 +353,7 @@ class DockerRunMixin:
             # Show Spawn failure only if we showed the header
             if spawn_args and ui_callback and hasattr(ui_callback, "on_tool_result"):
                 ui_callback.on_tool_result(
-                    "spawn_subagent",
+                    "subagent",
                     spawn_args,
                     {
                         "success": False,

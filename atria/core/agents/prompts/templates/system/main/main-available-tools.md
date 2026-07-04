@@ -15,9 +15,8 @@ Tool schemas are provided separately. Key categories:
 **User Interaction**: ask_user (ask clarifying questions when implementing technical tasks with unclear requirements. Do NOT use for greetings, social messages, or simple conversations)
 **MCP**: search_tools (keyword query) → discover MCP tools, then call them with data queries
 **Todos**: write_todos, update_todo, complete_todo, list_todos, clear_todos
-**Subagents**: spawn_subagent (for complex tasks, user questions, deep research, multi-file work)
-**Dispatch**: solve, get_solve_result (dispatch a job to background worker agents; see Tool Selection Guide)
+**Subagents**: subagent (dispatch one or more tasks to background worker agents), get_subagent_output (collect a dispatched job's status and results; see Tool Selection Guide)
 
 **MCP Workflow**: `search_tools("github repository")` finds tools like `mcp__github__search_repositories`. Then call the discovered tool with your data query (e.g., `language:java stars:>=500`).
 
-**Subagent Guidance**: Use `spawn_subagent` for tasks requiring fresh context: large features, deep research, multi-file refactoring, or asking user clarifying questions. Results aren't visible to user - summarize them. Don't spawn for single file edits or quick checks.
+**Subagent Guidance**: Use `subagent(tasks=[{subagent_type, prompt}, ...])` for tasks requiring fresh context: large features, deep research, multi-file refactoring, or asking user clarifying questions. Pass one task for a single delegation or several to run independent tasks concurrently. Results aren't visible to the user — summarize them. Don't dispatch for single file edits or quick checks.

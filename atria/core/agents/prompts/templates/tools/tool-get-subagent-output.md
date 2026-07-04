@@ -1,14 +1,15 @@
 <!--
 name: 'Tool Description: get_subagent_output'
-description: Get output from a background subagent
-version: 2.0.0
+description: Collect the results of a subagent job
+version: 3.0.0
 -->
 
-Retrieve output from a subagent that was launched with run_in_background=true.
+Collect the results of a `subagent` job by its `job_id`.
 
 ## Usage notes
 
-- ONLY use this for subagents launched with run_in_background=true. Synchronous subagents (the default) return results immediately in the tool response with [completion_status=success] — do NOT call this tool for them
-- The tool_call_id from spawn_subagent is NOT a task_id — only background subagents return task_ids that can be used here
-- By default blocks until the subagent completes. Use block=false for non-blocking status checks to see if the subagent is still running
-- Returns the subagent's final result, including any summary or output it produced
+- Pass the `job_id` returned by the `subagent` tool (not a tool_call_id).
+- Returns each task's status (pending, claimed, done, failed) plus a digest of the
+  notes the subagents wrote to the shared blackboard.
+- By default blocks until every task finishes. Use `block=false` for a
+  non-blocking status poll to see whether tasks are still running.

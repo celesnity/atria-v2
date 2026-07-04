@@ -9,7 +9,7 @@ version: 3.0.0
 For non-trivial implementation tasks, use the Planner subagent to explore
 the codebase and create a structured plan before writing code.
 
-Spawn via spawn_subagent(subagent_type="Planner"). Include in the prompt:
+Dispatch via subagent(tasks=[{"subagent_type": "Planner", "prompt": "…"}]). Include in the prompt:
 - The task description and relevant context
 - A plan file path under ~/.atria/plans/ (e.g., ~/.atria/plans/add-auth-flow.md)
 

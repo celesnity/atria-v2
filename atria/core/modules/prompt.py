@@ -122,8 +122,8 @@ def build_skill_block(registry: ModuleRegistry) -> str:
                 "",
                 f"**Dedicated subagent:** this module has a specialist subagent "
                 f'`{m.name}`. For multi-step or heavy work, delegate with '
-                f'`spawn_subagent(subagent_type="{m.name}")` — its CLI output stays '
-                f"out of this conversation. Quick lookups may run inline.",
+                f'`subagent(tasks=[{{"subagent_type": "{m.name}", "prompt": "…"}}])` — '
+                f"its CLI output stays out of this conversation. Quick lookups may run inline.",
             ]
         parts.append("\n".join(section_lines) + "\n")
     return "\n".join(parts)

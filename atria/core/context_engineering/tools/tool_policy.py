@@ -39,7 +39,7 @@ TOOL_GROUPS: dict[str, set[str]] = {
     "group:session": {
         "list_sessions",
         "get_session_history",
-        "spawn_subagent",
+        "subagent",
         "get_subagent_output",
         "list_subagents",
     },

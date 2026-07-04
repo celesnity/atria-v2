@@ -72,12 +72,11 @@ from atria.core.context_engineering.tools.symbol_tools import (
 from atria.core.context_engineering.tools.registry_mixins import (
     InlineToolsMixin,
     OrchestrationOpsMixin,
-    SubagentOpsMixin,
 )
 from atria.core.context_engineering.tools.registry_mixins.llm_wiring import _wire_llm_into_ctx
 
 
-class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
+class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
     """Dispatches tool invocations to dedicated handlers."""
 
     def __init__(
@@ -134,7 +133,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
         self._subagent_manager: Union[Any, None] = None
-        self._parallel_orchestrator: Union[Any, None] = None  # built lazily per run
+        self._subagent_orchestrator: Union[Any, None] = None  # built lazily per run
         self._hook_manager: Union["HookManager", None] = None
         self._skill_loader: Union["SkillLoader", None] = None
 
@@ -190,13 +189,9 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "insert_after_symbol": lambda args: handle_insert_after_symbol(args),
             "replace_symbol_body": lambda args: handle_replace_symbol_body(args),
             "rename_symbol": lambda args: handle_rename_symbol(args),
-            # Subagent spawning tool
-            "spawn_subagent": self._execute_spawn_subagent,
-            # Get output from background subagent
-            "get_subagent_output": self._get_subagent_output,
-            # Unified solver tools (divide + parallel behind a strategy param)
-            "solve": self._execute_solve,
-            "get_solve_result": self._execute_get_solve_result,
+            # Unified subagent delegation (blackboard task channel)
+            "subagent": self._execute_subagent_fanout,
+            "get_subagent_output": self._execute_get_subagent_output,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
             # MCP tool discovery (token-efficient)
@@ -367,8 +362,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         is_subagent: bool = False,
         tool_call_id: Union[str, None] = None,
         blackboard: Union[Any, None] = None,
-        divide_orchestrator: Union[Any, None] = None,
-        parallel_orchestrator: Union[Any, None] = None,
     ) -> dict[str, Any]:
         """Execute a tool by delegating to registered handlers."""
         if tool_name.startswith("mcp__"):
@@ -423,16 +416,11 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             is_subagent=is_subagent,
             file_time_tracker=self._file_time_tracker,
             blackboard=blackboard,
-            divide_orchestrator=divide_orchestrator,
-            parallel_orchestrator=parallel_orchestrator,
         )
 
         handler = self._handlers[tool_name]
         try:
-            if tool_name == "spawn_subagent":
-                # spawn_subagent needs tool_call_id for parent context tracking
-                result = self._execute_spawn_subagent(arguments, context, tool_call_id)
-            elif tool_name in {
+            if tool_name in {
                 "write_file",
                 "edit_file",
                 "read_file",
@@ -447,8 +435,8 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",
-                "solve",
-                "get_solve_result",
+                "subagent",
+                "get_subagent_output",
                 "write_todos",
                 "update_todo",
                 "complete_todo",

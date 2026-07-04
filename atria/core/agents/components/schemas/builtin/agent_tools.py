@@ -131,10 +131,9 @@ SCHEMAS: list[dict[str, Any]] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "task_id": {
+                    "job_id": {
                         "type": "string",
-                        "description": "The task_id returned when a background subagent was spawned (NOT the tool_call_id). "
-                        "Only subagents with run_in_background=true return a task_id.",
+                        "description": "The job_id returned by the subagent tool.",
                     },
                     "block": {
                         "type": "boolean",
@@ -148,7 +147,7 @@ SCHEMAS: list[dict[str, Any]] = [
                         "maximum": 600000,
                     },
                 },
-                "required": ["task_id"],
+                "required": ["job_id"],
             },
         },
     },

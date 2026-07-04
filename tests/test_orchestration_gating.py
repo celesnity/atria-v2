@@ -4,8 +4,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from atria.core.orchestration.gating import assess_heavy_path, model_is_strong
-from atria.core.orchestration.job_store import DIVIDE_PREFIX, PARALLEL_PREFIX, JobStore
-from atria.core.parallel.tools import execute_solve_parallel
+from atria.core.orchestration.job_store import SUBAGENT_PREFIX, JobStore
 
 
 # --------------------------------------------------------------------------- #
@@ -28,36 +27,11 @@ def test_assess_heavy_path_advises_only_for_strong():
     assert assess_heavy_path(SimpleNamespace(model=None)) == ""
 
 
-def test_advisory_surfaced_in_tool_output_when_strong():
-    class _Orch:
-        _advisory = "advisory: base model 'claude-opus-4-6' is already strong — ..."
-
-        def start(self, task, n, repo_dir, owner_id, session_id):
-            return "job123"
-
-    out = execute_solve_parallel(
-        {"task": "fix"}, _Orch(), "/repo", "owner", "sess"
-    )
-    assert out["success"] is True
-    assert "advisory:" in out["output"]
-
-
-def test_no_advisory_when_absent():
-    class _Orch:
-        def start(self, task, n, repo_dir, owner_id, session_id):
-            return "job123"
-
-    out = execute_solve_parallel({"task": "fix"}, _Orch(), "/repo", "owner", "sess")
-    assert "advisory:" not in out["output"]
-
-
 # --------------------------------------------------------------------------- #
 # S2 — shared prefix-namespaced JobStore
 # --------------------------------------------------------------------------- #
 def test_job_store_prefixes_distinct():
-    assert PARALLEL_PREFIX == "atria:pjob:"
-    assert DIVIDE_PREFIX == "atria:dw:"
-    assert PARALLEL_PREFIX != DIVIDE_PREFIX
+    assert SUBAGENT_PREFIX == "atria:sajob:"
 
 
 class _FakeRedis:
@@ -78,8 +52,8 @@ def test_job_store_namespaces_by_prefix():
     import asyncio
 
     r = _FakeRedis()
-    pjs = JobStore(r, PARALLEL_PREFIX)
-    djs = JobStore(r, DIVIDE_PREFIX)
+    pjs = JobStore(r, SUBAGENT_PREFIX)
+    djs = JobStore(r, "atria:other:")
 
     async def go():
         await pjs.save("x", {"k": "p"}, ttl=10)
@@ -87,7 +61,7 @@ def test_job_store_namespaces_by_prefix():
         # Same job_id, different namespaces -> no collision.
         assert (await pjs.load("x"))["k"] == "p"
         assert (await djs.load("x"))["k"] == "d"
-        assert set(r.kv.keys()) == {"atria:pjob:x", "atria:dw:x"}
+        assert set(r.kv.keys()) == {"atria:sajob:x", "atria:other:x"}
         await pjs.delete("x")
         assert await pjs.load("x") is None
         assert await djs.load("x") is not None

@@ -48,7 +48,7 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         "insert_before_symbol",
         "notebook_edit",
         # Subagents — this deployment does not spawn or manage subagents.
-        "spawn_subagent",
+        "subagent",
         "list_subagents",
         "list_agents",
         "get_subagent_output",
@@ -61,9 +61,6 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         "complete_todo",
         "list_todos",
         "clear_todos",
-        # Parallel-solve dispatch — off by default in this deployment.
-        "solve",
-        "get_solve_result",
         # Memory tools — off by default in this deployment.
         "memory_search",
         "memory_write",

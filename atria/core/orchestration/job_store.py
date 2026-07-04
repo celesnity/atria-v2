@@ -10,6 +10,7 @@ import json
 # Key prefixes for the two job kinds (kept stable for compatibility with live jobs).
 PARALLEL_PREFIX = "atria:pjob:"
 DIVIDE_PREFIX = "atria:dw:"
+SUBAGENT_PREFIX = "atria:sajob:"
 
 
 class JobStore:

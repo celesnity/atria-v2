@@ -39,7 +39,7 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "complete_todo": ("Complete_Todos", "todo"),
     "list_todos": ("List_Todos", "todos"),
     "clear_todos": ("Clear_Todos", "todos"),
-    "spawn_subagent": ("Spawn", "subagent"),
+    "subagent": ("Spawn", "subagent"),
     "docker_start": ("Starting", "Docker container"),
     "docker_stop": ("Stopping", "Docker container"),
     "docker_copy": ("Copying", "file to Docker"),
@@ -284,7 +284,7 @@ def format_tool_call(tool_name: str, tool_args: Mapping[str, Any]) -> str:
             return f"Search({', '.join(params)})"
 
     # Enhanced formatting for spawn_subagent tool
-    elif tool_name == "spawn_subagent" and tool_args:
+    elif tool_name == "subagent" and tool_args:
         subagent_type = tool_args.get("subagent_type", "general-purpose")
         description = tool_args.get("description", "")
         # Show full description without truncation, no [Docker] suffix
