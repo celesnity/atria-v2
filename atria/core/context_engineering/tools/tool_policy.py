@@ -19,7 +19,6 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "find_symbol",
         "find_referencing_symbols",
         "read_pdf",
-        "analyze_image",
     },
     "group:write": {
         "write_file",
@@ -36,10 +35,6 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "list_processes",
         "get_process_output",
         "kill_process",
-    },
-    "group:web": {
-        "web_search",
-        "capture_screenshot",
     },
     "group:session": {
         "list_sessions",
@@ -72,12 +67,11 @@ TOOL_GROUPS: dict[str, set[str]] = {
 # Named profiles — compose groups into permission sets
 PROFILES: dict[str, list[str]] = {
     "minimal": ["group:read", "group:meta"],
-    "review": ["group:read", "group:meta", "group:web", "group:session"],
+    "review": ["group:read", "group:meta", "group:session"],
     "coding": [
         "group:read",
         "group:write",
         "group:process",
-        "group:web",
         "group:meta",
         "group:session",
         "group:memory",
@@ -156,7 +150,7 @@ class ToolPolicy:
         """Get a human-readable description of a profile."""
         descriptions = {
             "minimal": "Read-only tools + meta tools (for planning/exploration)",
-            "review": "Read + web + git + session tools (for code review)",
+            "review": "Read + git + session tools (for code review)",
             "coding": "Full development toolset without messaging/automation",
             "full": "All available tools (default)",
         }

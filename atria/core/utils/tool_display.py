@@ -34,8 +34,6 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "get_process_output": ("Get Process Output", "process"),
     "list_processes": ("List Processes", "processes"),
     "kill_process": ("Kill Process", "process"),
-    "capture_screenshot": ("Capture_Screenshot", "screenshot"),
-    "analyze_image": ("Analyze_Image", "image"),
     "write_todos": ("Create", "todos"),
     "update_todo": ("Update_Todos", "todo"),
     "complete_todo": ("Complete_Todos", "todo"),
@@ -59,7 +57,6 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     # Other tools
     "notebook_edit": ("Edit", "notebook"),
     "ask_user": ("Ask", "user"),
-    "web_search": ("Search", "web"),
     "get_subagent_output": ("Get Output", "subagent"),
     "task_complete": ("Complete", "task"),
     "invoke_skill": ("Skill", "skill"),
@@ -77,8 +74,6 @@ _PRIMARY_ARG_MAP: dict[str, tuple[str, ...]] = {
     "run_command": ("command",),
     "get_process_output": ("pid", "command"),
     "kill_process": ("pid",),
-    "capture_screenshot": ("target", "path"),
-    "analyze_image": ("image_path", "file_path"),
 }
 
 _MAX_SUMMARY_LEN = 150

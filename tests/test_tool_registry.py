@@ -15,7 +15,6 @@ def mock_dependencies():
         "atria.core.context_engineering.tools.handlers.file_handlers": MagicMock(),
         "atria.core.context_engineering.mcp.handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.process_handlers": MagicMock(),
-        "atria.core.context_engineering.tools.handlers.screenshot_handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.todo_handler": MagicMock(),
         "atria.core.context_engineering.tools.implementations.pdf_tool": MagicMock(),
         "atria.core.context_engineering.tools.symbol_tools": MagicMock(),

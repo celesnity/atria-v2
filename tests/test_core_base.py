@@ -89,7 +89,6 @@ def test_tool_factory_create_registry():
             write_tool=MagicMock(),
             edit_tool=MagicMock(),
             bash_tool=MagicMock(),
-            web_search_tool=MagicMock(),
             notebook_edit_tool=MagicMock(),
             ask_user_tool=MagicMock(),
             vlm_tool=MagicMock(),
@@ -110,9 +109,9 @@ def test_tool_factory_create_registry():
             write_tool=deps.write_tool,
             edit_tool=deps.edit_tool,
             bash_tool=deps.bash_tool,
-            web_search_tool=deps.web_search_tool,
             notebook_edit_tool=deps.notebook_edit_tool,
             ask_user_tool=deps.ask_user_tool,
             vlm_tool=deps.vlm_tool,
             mcp_manager=mcp_manager,
+            app_config=deps.app_config,
         )

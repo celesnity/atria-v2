@@ -338,7 +338,7 @@ class TestToolPolicy:
 
         tools = ToolPolicy.resolve("review")
         assert "read_file" in tools
-        assert "web_search" in tools
+        assert "list_sessions" in tools
         assert "write_file" not in tools
 
     def test_coding_profile(self):
@@ -439,18 +439,6 @@ class TestSchemaAdapter:
         ]
         result = adapt_for_provider(schemas, "google")
         assert "format" not in result[0]["function"]["parameters"]["properties"]["x"]
-
-    def test_xai_filters_web_search(self):
-        from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
-
-        schemas = [
-            {"function": {"name": "web_search", "parameters": {}}},
-            {"function": {"name": "read_file", "parameters": {}}},
-        ]
-        result = adapt_for_provider(schemas, "xai")
-        names = [s["function"]["name"] for s in result]
-        assert "web_search" not in names
-        assert "read_file" in names
 
     def test_mistral_flattens_anyof(self):
         from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider

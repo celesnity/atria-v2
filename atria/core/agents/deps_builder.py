@@ -46,7 +46,6 @@ def build_runtime_and_deps(
     from atria.core.context_engineering.tools.implementations.write_tool import WriteTool
     from atria.core.context_engineering.tools.implementations.edit_tool.tool import EditTool
     from atria.core.context_engineering.tools.implementations.bash_tool.tool import BashTool
-    from atria.core.context_engineering.tools.implementations.web_search_tool import WebSearchTool
     from atria.core.context_engineering.tools.implementations.notebook_edit_tool import (
         NotebookEditTool,
     )
@@ -77,7 +76,6 @@ def build_runtime_and_deps(
     write_tool = WriteTool(config, wd)
     edit_tool = EditTool(config, wd)
     bash_tool = BashTool(config, wd, env_overrides=env_overrides)
-    web_search_tool = WebSearchTool(config, wd)
     notebook_edit_tool = NotebookEditTool(wd)
 
     runtime_service = RuntimeService(config_manager, mode_manager)
@@ -86,7 +84,6 @@ def build_runtime_and_deps(
         write_tool=write_tool,
         edit_tool=edit_tool,
         bash_tool=bash_tool,
-        web_search_tool=web_search_tool,
         notebook_edit_tool=notebook_edit_tool,
         ask_user_tool=None,  # headless: no interactive ask-user channel
         mcp_manager=None,    # MVP: no MCP tools in the worker

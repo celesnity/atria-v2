@@ -11,7 +11,6 @@ from typing import Any
 
 from .agent_tools import SCHEMAS as _AGENT
 from .artifact_tools import SCHEMAS as _ARTIFACT
-from .browser_media_tools import SCHEMAS as _BROWSER_MEDIA
 from .file_tools import SCHEMAS as _FILE
 from .interaction_tools import SCHEMAS as _INTERACTION
 from .knowledge_tools import SCHEMAS as _KNOWLEDGE
@@ -28,7 +27,6 @@ BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
     *_PROCESS,
     *_WEB,
     *_INTERACTION,
-    *_BROWSER_MEDIA,
     *_SYSTEM,
     *_SYMBOL,
     *_KNOWLEDGE,

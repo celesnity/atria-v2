@@ -26,7 +26,6 @@ from .implementations import (
 from .handlers import (
     FileToolHandler,
     ProcessToolHandler,
-    ScreenshotToolHandler,
     TodoHandler,
     TodoItem,
 )
@@ -47,7 +46,6 @@ __all__ = [
     # Handlers
     "FileToolHandler",
     "ProcessToolHandler",
-    "ScreenshotToolHandler",
     "TodoHandler",
     "TodoItem",
 ]

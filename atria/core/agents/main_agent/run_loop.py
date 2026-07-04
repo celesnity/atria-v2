@@ -18,8 +18,6 @@ PARALLELIZABLE_TOOLS = frozenset(
         "read_file",
         "list_files",
         "search",
-        "web_search",
-        "analyze_image",
         "list_processes",
         "get_process_output",
         "list_todos",

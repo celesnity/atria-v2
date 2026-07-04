@@ -16,7 +16,6 @@ class ToolDependencies:
     write_tool: Union[Any, None]
     edit_tool: Union[Any, None]
     bash_tool: Union[Any, None]
-    web_search_tool: Union[Any, None] = None
     notebook_edit_tool: Union[Any, None] = None
     ask_user_tool: Union[Any, None] = None
     vlm_tool: Union[Any, None] = None
@@ -36,7 +35,6 @@ class ToolFactory:
             write_tool=self._deps.write_tool,
             edit_tool=self._deps.edit_tool,
             bash_tool=self._deps.bash_tool,
-            web_search_tool=self._deps.web_search_tool,
             notebook_edit_tool=self._deps.notebook_edit_tool,
             ask_user_tool=self._deps.ask_user_tool,
             vlm_tool=self._deps.vlm_tool,

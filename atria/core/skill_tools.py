@@ -40,7 +40,6 @@ class SkillToolContext:
     """
 
     working_dir: str | None = None
-    web_search: Any | None = None
     broadcaster: Callable[[dict[str, Any]], None] | None = None
     # (job_id, request_id, event_payload) -> result. The callback must
     # register pending state BEFORE emitting `event_payload` over the

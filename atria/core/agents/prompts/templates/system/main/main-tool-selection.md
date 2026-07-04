@@ -87,4 +87,4 @@ and collect. Requires a running worker (it returns an error if unavailable).
 - **Multiple files or deep analysis** → **Subagent**
 - **You already have the file path** → **Direct** (read it yourself, don't delegate)
 - **Parallel subagents**: When the user requests multiple agents or the task has independent parts, make multiple spawn_subagent calls in a single response. They execute concurrently.
-- **Parallel read-only tools**: When you need to read multiple files, search for multiple patterns, or fetch multiple URLs, make all the calls in a single response. Independent read-only tools (read_file, list_files, search, web_search) execute concurrently when batched together.
+- **Parallel read-only tools**: When you need to read multiple files or search for multiple patterns, make all the calls in a single response. Independent read-only tools (read_file, list_files, search) execute concurrently when batched together.

@@ -11,39 +11,6 @@ from typing import Any
 from atria.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
-    # ===== Web Search Tool =====
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": load_tool_description("web_search"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The search query to use. Be specific and include relevant keywords.",
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 10)",
-                        "default": 10,
-                    },
-                    "allowed_domains": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Only include search results from these domains (e.g., ['docs.python.org', 'stackoverflow.com'])",
-                    },
-                    "blocked_domains": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Never include search results from these domains",
-                    },
-                },
-                "required": ["query"],
-            },
-        },
-    },
     # ===== Send Image Tool (web UI) =====
     {
         "type": "function",
