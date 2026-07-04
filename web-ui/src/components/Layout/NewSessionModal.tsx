@@ -133,12 +133,12 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
                 if (e.key === 'Enter') handleManualGo();
               }}
               placeholder="/path/to/directory"
-              className="flex-1 px-3 py-2 text-sm font-mono border border-hairline-soft rounded-lg"
+              className="flex-1 px-3 py-2 text-sm font-mono border border-hairline-soft rounded-md"
             />
             <button
               onClick={handleManualGo}
               disabled={!manualPath.trim()}
-              className="px-4 py-2 text-sm font-medium bg-surface-soft hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-text-secondary border border-hairline-soft"
+              className="px-4 py-2 text-sm font-medium bg-surface-soft hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-text-secondary border border-hairline-soft"
             >
               Go
             </button>
@@ -183,7 +183,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
         <div className="flex-1 overflow-y-auto border-t border-hairline-soft min-h-0">
           {isLoadingDirs ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-hairline-soft border-t-amber-500 rounded-[50%] animate-spin" />
+              <div className="w-6 h-6 border-2 border-hairline-soft border-t-amber-500 rounded-md animate-spin" />
             </div>
           ) : browseError ? (
             <div className="px-5 py-8 text-center">
@@ -272,14 +272,14 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium border border-hairline-soft bg-canvas hover:bg-surface-soft rounded-lg text-text-secondary"
+            className="px-4 py-2 text-sm font-medium border border-hairline-soft bg-canvas hover:bg-surface-soft rounded-md text-text-secondary"
           >
             Cancel
           </button>
           <button
             onClick={handleSelect}
             disabled={!currentPath || isCreating}
-            className="px-4 py-2 text-sm font-medium bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg"
+            className="px-4 py-2 text-sm font-medium bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md"
           >
             {isCreating ? 'Creating...' : 'Select This Directory'}
           </button>

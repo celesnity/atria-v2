@@ -43,7 +43,7 @@ function BrandMark({ size = "md" }: { size?: "sm" | "md" }) {
     <span
       className={`relative grid ${dim} flex-shrink-0 place-items-center rounded-md bg-gradient-brand shadow-glow-accent`}
     >
-      <span className="h-2 w-2 rounded-[50%] bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+      <span className="h-2 w-2 rounded-md bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
     </span>
   );
 }
@@ -95,7 +95,6 @@ export function ProjectSidebar() {
   const loadSession = useChatStore((s) => s.loadSession);
   const isCollapsed = useChatStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useChatStore((s) => s.toggleSidebar);
-  const runningSessions = useChatStore((s) => s.runningSessions);
 
   // Below md the sidebar becomes an off-canvas drawer instead of a static column.
   const isMobile = useMediaQuery("(max-width: 767px)");
@@ -104,7 +103,6 @@ export function ProjectSidebar() {
 
   const modulesWithDashboards = useModulesStore((s) => s.modulesWithDashboards);
   const activeModuleDashboard = useModulesStore((s) => s.activeModuleDashboard);
-  const moduleBadges = useModulesStore((s) => s.badges);
   const openModuleDashboard = useModulesStore((s) => s.openDashboard);
   const closeModuleDashboard = useModulesStore((s) => s.closeDashboard);
   const refreshModules = useModulesStore((s) => s.refresh);
@@ -233,7 +231,6 @@ export function ProjectSidebar() {
         )}
         {modulesWithDashboards.map((m) => {
           const isActive = activeModuleDashboard === m.name;
-          const badge = moduleBadges[m.name] || null;
           return (
             <button
               key={m.name}
@@ -252,17 +249,6 @@ export function ProjectSidebar() {
                 <img src={m.icon_url} className="h-4 w-4" alt="" />
               ) : (
                 <Package className="h-4 w-4" />
-              )}
-              {badge && badge.count > 0 && (
-                <span
-                  className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-[50%] ring-2 ring-bg-100 ${
-                    badge.severity === "danger"
-                      ? "bg-semantic-danger"
-                      : badge.severity === "warning"
-                        ? "bg-amber-400"
-                        : "bg-accent-violet"
-                  }`}
-                />
               )}
             </button>
           );
@@ -324,7 +310,7 @@ export function ProjectSidebar() {
                 initial={reduce ? false : { opacity: 0, y: -6, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full z-50 mt-2 max-h-72 w-60 overflow-y-auto rounded-lg border border-hairline-soft/40 bg-bg-000/95 py-1.5 shadow-modal backdrop-blur-xl"
+                className="absolute right-0 top-full z-50 mt-2 max-h-72 w-60 overflow-y-auto rounded-md border border-hairline-soft/40 bg-bg-000/95 py-1.5 shadow-modal backdrop-blur-xl"
               >
                 <div className="px-3 pb-1 pt-0.5 text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-text-muted">
                   Projects
@@ -397,7 +383,7 @@ export function ProjectSidebar() {
         <button
           onClick={handleNewChat}
           disabled={creatingChat}
-          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-lg bg-gradient-brand px-3 py-2.5 text-sm font-medium text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-0.5 hover:shadow-glow-nebula disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+          className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-md bg-gradient-brand px-3 py-2.5 text-sm font-medium text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-0.5 hover:shadow-glow-nebula disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           title="New chat in your workspace"
         >
           {/* Sheen sweep on hover. */}
@@ -419,7 +405,7 @@ export function ProjectSidebar() {
             <div className="relative mx-auto mb-4 grid h-14 w-14 place-items-center">
               <span
                 aria-hidden
-                className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-xl"
+                className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-xl"
               />
               <span className="relative grid h-12 w-12 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60">
                 <MessageSquare className="h-5 w-5 text-text-secondary" />
@@ -433,7 +419,7 @@ export function ProjectSidebar() {
               <button
                 onClick={handleNewChat}
                 disabled={creatingChat}
-                className="rounded-lg bg-gradient-brand px-3 py-2 text-xs font-medium text-white shadow-glow-accent transition-transform duration-base ease-motion-spring hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-md bg-gradient-brand px-3 py-2 text-xs font-medium text-white shadow-glow-accent transition-transform duration-base ease-motion-spring hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 New chat
               </button>
@@ -453,7 +439,6 @@ export function ProjectSidebar() {
             <div className="space-y-0.5 px-2">
               {modulesWithDashboards.map((m) => {
                 const isActive = activeModuleDashboard === m.name;
-                const badge = moduleBadges[m.name] || null;
                 return (
                   <button
                     key={m.name}
@@ -464,7 +449,7 @@ export function ProjectSidebar() {
                       closeMobileSidebar();
                     }}
                     title={m.tooltip}
-                    className={`group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-all duration-fast ${
+                    className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-all duration-fast ${
                       isActive
                         ? "bg-gradient-to-r from-accent-cobalt/15 via-accent-violet/10 to-transparent text-ink"
                         : "text-text-secondary hover:bg-surface-soft/60 hover:text-ink"
@@ -473,7 +458,7 @@ export function ProjectSidebar() {
                     {isActive && (
                       <span
                         aria-hidden
-                        className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-[50%] bg-gradient-brand"
+                        className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-md bg-gradient-brand"
                       />
                     )}
                     {m.icon_url ? (
@@ -490,18 +475,6 @@ export function ProjectSidebar() {
                     <span className="flex-1 truncate text-xs font-medium">
                       {m.display_name}
                     </span>
-                    {badge && badge.count > 0 && (
-                      <span
-                        className={`h-2 w-2 flex-shrink-0 rounded-[50%] ${
-                          badge.severity === "danger"
-                            ? "bg-semantic-danger"
-                            : badge.severity === "warning"
-                              ? "bg-amber-400"
-                              : "bg-accent-violet"
-                        }`}
-                        title={`${badge.count}`}
-                      />
-                    )}
                   </button>
                 );
               })}
@@ -535,7 +508,7 @@ export function ProjectSidebar() {
                   onClick={() =>
                     activeProject && setCreateConvFor(activeProject)
                   }
-                  className="flex w-full items-center gap-2 rounded-lg border border-dashed border-hairline-soft/40 px-2.5 py-2.5 font-mono text-xs text-text-muted transition-colors hover:border-accent-cobalt/40 hover:text-accent-cobalt focus:outline-none"
+                  className="flex w-full items-center gap-2 rounded-md border border-dashed border-hairline-soft/40 px-2.5 py-2.5 font-mono text-xs text-text-muted transition-colors hover:border-accent-cobalt/40 hover:text-accent-cobalt focus:outline-none"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   New conversation
@@ -544,7 +517,6 @@ export function ProjectSidebar() {
 
               {activeConversations.map((conv) => {
                 const isActive = currentSessionId === conv.id;
-                const isRunning = runningSessions.has(conv.id);
                 return (
                   <div
                     key={conv.id}
@@ -553,7 +525,7 @@ export function ProjectSidebar() {
                       loadSession(conv.id);
                       closeMobileSidebar();
                     }}
-                    className={`group relative flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-fast ${
+                    className={`group relative flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-fast ${
                       isActive
                         ? "bg-accent-cobalt/[0.08] text-ink ring-1 ring-inset ring-accent-cobalt/20"
                         : "text-text-secondary hover:bg-surface-soft/60 hover:text-ink"
@@ -566,16 +538,9 @@ export function ProjectSidebar() {
                       />
                     )}
                     <span className="grid h-4 w-4 flex-shrink-0 place-items-center">
-                      {isRunning ? (
-                        <span className="relative flex h-2.5 w-2.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-[50%] bg-amber-400/70" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-[50%] bg-amber-400" />
-                        </span>
-                      ) : (
-                        <MessageSquare
-                          className={`h-3.5 w-3.5 ${isActive ? "text-accent-cobalt" : "text-text-muted"}`}
-                        />
-                      )}
+                      <MessageSquare
+                        className={`h-3.5 w-3.5 ${isActive ? "text-accent-cobalt" : "text-text-muted"}`}
+                      />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div
@@ -589,7 +554,7 @@ export function ProjectSidebar() {
                     </div>
                     {conv.message_count > 0 && (
                       <span
-                        className={`flex-shrink-0 rounded-[50%] px-1.5 py-0.5 font-mono text-[10px] transition-opacity group-hover:opacity-0 ${
+                        className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-opacity group-hover:opacity-0 ${
                           isActive
                             ? "bg-accent-cobalt/15 text-accent-cobalt"
                             : "bg-surface-soft text-text-muted"
@@ -698,13 +663,13 @@ export function ProjectSidebar() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="rounded-lg px-3 py-1.5 text-sm text-text-secondary transition-colors hover:text-ink"
+                className="rounded-md px-3 py-1.5 text-sm text-text-secondary transition-colors hover:text-ink"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirmed}
-                className="rounded-lg bg-semantic-danger px-3 py-1.5 text-sm text-white transition-colors hover:bg-semantic-danger/90"
+                className="rounded-md bg-semantic-danger px-3 py-1.5 text-sm text-white transition-colors hover:bg-semantic-danger/90"
               >
                 Delete
               </button>

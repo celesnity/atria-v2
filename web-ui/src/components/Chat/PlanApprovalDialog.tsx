@@ -111,7 +111,6 @@ export function PlanApprovalDialog() {
         {/* Header */}
         <div className="border-b border-border-300/15 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-[50%] bg-accent-secondary-100 animate-pulse" />
             <h2 className="text-lg font-semibold text-text-000">Plan Ready for Review</h2>
           </div>
         </div>
@@ -139,7 +138,7 @@ export function PlanApprovalDialog() {
                     setShowFeedback(true);
                   }
                 }}
-                className={`w-full px-4 py-3 text-sm text-left rounded-lg border-2 transition-all flex items-center gap-3 ${
+                className={`w-full px-4 py-3 text-sm text-left rounded-md border-2 transition-all flex items-center gap-3 ${
                   isSelected
                     ? 'border-accent-secondary-100/50 bg-accent-secondary-900/50'
                     : 'border-border-300/15 hover:border-accent-secondary-100/30 hover:bg-bg-100'
@@ -165,13 +164,13 @@ export function PlanApprovalDialog() {
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
                 placeholder="What changes would you like? (optional)"
-                className="w-full px-4 py-2.5 border border-border-300/20 rounded-lg text-sm text-text-000 bg-bg-000 focus:border-accent-secondary-100 placeholder-text-500 resize-none"
+                className="w-full px-4 py-2.5 border border-border-300/20 rounded-md text-sm text-text-000 bg-bg-000 focus:border-accent-secondary-100 placeholder-text-500 resize-none"
                 rows={3}
                 autoFocus
               />
               <button
                 onClick={() => respondToPlanApproval(pendingPlanApproval.request_id, 'modify', feedback)}
-                className="px-4 py-2 text-sm font-medium text-white bg-accent-secondary-100 rounded-lg hover:bg-accent-secondary-100/90 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-accent-secondary-100 rounded-md hover:bg-accent-secondary-100/90 transition-colors"
               >
                 Submit Feedback
               </button>

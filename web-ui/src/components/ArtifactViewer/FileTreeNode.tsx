@@ -191,7 +191,7 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
           {isActive && (
             <span
               aria-hidden
-              className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-[50%] bg-gradient-brand"
+              className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-md bg-gradient-brand"
             />
           )}
 

@@ -195,12 +195,12 @@ function Switch({
       aria-checked={checked}
       disabled={disabled}
       onClick={onChange}
-      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-[50%] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
         checked ? 'bg-accent-main-100' : 'bg-text-muted/40'
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-[50%] bg-white shadow transition-transform ${
+        className={`inline-block h-4 w-4 transform rounded-md bg-white shadow transition-transform ${
           checked ? 'translate-x-4' : 'translate-x-0.5'
         }`}
       />

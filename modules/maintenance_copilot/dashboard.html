@@ -6,98 +6,383 @@
   <title>Maintenance Copilot</title>
   <link rel="stylesheet" href="__base.css" />
   <style>
-    body { font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; color: hsl(var(--card-foreground)); background: hsl(var(--background)); padding: 14px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    /* ── tokens ───────────────────────────────────────────────────────────── */
+    :root {
+      --acc:      211 92% 56%;
+      --acc-warn: 35 92% 52%;
+      --acc-ok:   158 64% 42%;
+      --acc-bad:  0 72% 55%;
+      --acc-vio:  262 72% 62%;
+      --g-link:   214 82% 42%;      /* result title blue */
+      --g-url:    212 10% 40%;      /* breadcrumb gray   */
+      --surface:  0 0% 100%;
+      --hairline: 214 32% 91%;
+      --pill:     0 0% 100%;
+      --shadow:   0 1px 6px hsl(222 47% 11% / .10);
+      --ease:     cubic-bezier(.22,.61,.36,1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --g-link: 214 100% 78%;
+        --g-url:  215 15% 62%;
+        --surface: 222 30% 16%;
+        --hairline: 217 19% 27%;
+        --pill: 222 28% 14%;
+        --shadow: 0 1px 8px hsl(0 0% 0% / .5);
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: hsl(var(--background)); color: hsl(var(--card-foreground));
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, arial, sans-serif;
+      -webkit-font-smoothing: antialiased; font-size: 14px;
+    }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
     .muted { color: hsl(var(--muted)); }
-    h1 { font-size: 15px; font-weight: 600; margin: 0 0 2px; letter-spacing: -0.2px; }
-    .sub { font-size: 12px; color: hsl(var(--muted)); margin-bottom: 12px; }
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid hsl(var(--border)); margin-bottom: 14px; }
-    .tab { cursor: pointer; font: inherit; padding: 7px 13px; border: none; background: none;
-      color: hsl(var(--muted)); border-bottom: 2px solid transparent; margin-bottom: -1px; }
-    .tab.active { color: hsl(var(--card-foreground)); border-bottom-color: hsl(210 90% 55%); font-weight: 600; }
-    .panel { display: none; } .panel.active { display: block; }
-    input[type=text], input[type=number] { font: inherit; padding: 7px 10px; border-radius: 8px;
-      border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--card-foreground)); }
-    input[type=text] { width: 100%; box-sizing: border-box; }
-    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-    label.chk { font-size: 12px; color: hsl(var(--muted)); display: inline-flex; align-items: center; gap: 4px; }
-    button.go { cursor: pointer; font: inherit; padding: 7px 14px; border-radius: 8px; border: 1px solid hsl(var(--border));
-      background: hsl(210 90% 55%); color: white; font-weight: 600; }
-    button.go:disabled { opacity: .5; cursor: default; }
-    .card { border: 1px solid hsl(var(--border)); border-radius: 10px; padding: 11px 13px; background: hsl(var(--card)); margin-bottom: 8px; }
-    .card h3 { margin: 0 0 5px; font-size: 13px; font-weight: 600; }
-    .cite { font-size: 11px; color: hsl(210 80% 55%); }
-    .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10px; margin-left: 6px; }
-    .b-info { background: hsl(var(--muted) / 0.15); }
-    .b-warn { background: hsl(38 92% 50% / 0.18); color: hsl(30 80% 40%); }
-    .answer { border-left: 3px solid hsl(210 90% 55%); }
-    .review { border-left: 3px solid hsl(38 92% 50%); }
-    .disclaimer { font-size: 11px; color: hsl(var(--muted)); margin-top: 6px; font-style: italic; }
-    .err { color: hsl(0 72% 51%); font-size: 12px; margin: 8px 0; }
-    .empty { border: 1px dashed hsl(var(--border)); border-radius: 10px; padding: 26px; text-align: center; color: hsl(var(--muted)); }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid hsl(var(--border)); vertical-align: top; }
-    th { color: hsl(var(--muted)); font-weight: 600; }
-    .about ul { margin: 4px 0 12px; padding-left: 18px; } .about li { margin: 2px 0; }
-    .about h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: hsl(var(--muted)); margin: 0 0 4px; }
+
+    /* ── top search header ────────────────────────────────────────────────── */
+    header {
+      position: sticky; top: 0; z-index: 30; background: hsl(var(--background));
+      border-bottom: 1px solid hsl(var(--hairline)); padding: 16px 24px 0;
+    }
+    .top { display: flex; align-items: center; gap: 22px; max-width: 1100px; }
+    .logo { font-size: 24px; font-weight: 700; letter-spacing: -1px; flex: none; user-select: none; }
+    .logo b { font-weight: 700; }
+    .logo .c1{color:hsl(211 92% 52%)} .logo .c2{color:hsl(0 72% 55%)} .logo .c3{color:hsl(42 96% 50%)}
+    .logo .c4{color:hsl(211 92% 52%)} .logo .c5{color:hsl(148 60% 42%)} .logo .c6{color:hsl(0 72% 55%)}
+    .logo .c7{color:hsl(211 92% 52%)}
+
+    .searchpill {
+      display: flex; align-items: center; gap: 12px; flex: 1; max-width: 640px;
+      background: hsl(var(--pill)); border: 1px solid hsl(var(--hairline)); border-radius: 999px;
+      padding: 9px 18px; transition: box-shadow .18s var(--ease), border-color .18s var(--ease);
+    }
+    .searchpill:focus-within { box-shadow: 0 1px 8px hsl(222 47% 11% / .18); border-color: transparent; }
+    @media (prefers-color-scheme: dark) { .searchpill:focus-within { box-shadow: 0 1px 10px hsl(0 0% 0% / .6); } }
+    .searchpill input {
+      flex: 1; min-width: 0; border: none; background: none; outline: none; font: inherit; font-size: 15px;
+      color: hsl(var(--card-foreground));
+    }
+    .searchpill input::placeholder { color: hsl(var(--muted) / .85); }
+    .sp-ic { width: 20px; height: 20px; flex: none; cursor: pointer; color: hsl(var(--muted)); transition: color .15s; }
+    .sp-ic:hover { color: hsl(var(--card-foreground)); }
+    .sp-clear { color: hsl(var(--muted)); }
+    .sp-search { color: hsl(var(--acc)); }
+    .sp-div { width: 1px; height: 22px; background: hsl(var(--hairline)); flex: none; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 999px; margin-left: auto; flex: none;
+      background: conic-gradient(from 140deg, hsl(148 60% 45%), hsl(42 96% 55%), hsl(0 72% 58%), hsl(211 92% 55%), hsl(148 60% 45%));
+      box-shadow: inset 0 0 0 2px hsl(var(--background));
+    }
+
+    /* nav tabs (google style) */
+    nav.tabs { display: flex; gap: 4px; max-width: 1100px; margin-top: 14px; overflow-x: auto; }
+    .tab {
+      cursor: pointer; font: inherit; font-size: 13.5px; color: hsl(var(--muted)); background: none; border: none;
+      padding: 10px 12px 12px; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 7px; transition: color .15s;
+    }
+    .tab svg { width: 16px; height: 16px; opacity: .85; }
+    .tab:hover { color: hsl(var(--card-foreground)); }
+    .tab.active { color: hsl(var(--acc)); border-bottom-color: hsl(var(--acc)); font-weight: 500; }
+
+    /* ── content column (google is left-aligned) ─────────────────────────── */
+    main { padding: 22px 24px 60px; }
+    .panel { display: none; }
+    .panel.active { display: block; animation: fin .3s var(--ease) both; }
+    @keyframes fin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .col { max-width: 680px; }
+    .col-wide { max-width: 960px; }
+
+    /* stats line */
+    .stat { font-size: 12px; color: hsl(var(--muted)); margin: 0 0 18px; }
+
+    /* ── AI overview ──────────────────────────────────────────────────────── */
+    .ai {
+      display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 18px; align-items: start;
+      border: 1px solid hsl(var(--hairline)); border-radius: 24px; padding: 20px 22px;
+      background: hsl(var(--surface)); margin-bottom: 30px; box-shadow: var(--shadow);
+      animation: fin .35s var(--ease) both;
+    }
+    @media (max-width: 760px) { .ai { grid-template-columns: 1fr; } }
+    .ai-head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+    .ai-spark {
+      width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 6px; color: white;
+      background: linear-gradient(135deg, hsl(var(--acc)), hsl(var(--acc-vio)));
+    }
+    .ai-spark svg { width: 14px; height: 14px; }
+    .ai-title { font-size: 14px; font-weight: 600; letter-spacing: .1px; }
+    .ai-conf { margin-left: auto; font-size: 11px; color: hsl(var(--muted)); display: inline-flex; align-items: center; gap: 8px; }
+    .ai-conf .track { width: 52px; height: 5px; border-radius: 999px; background: hsl(var(--muted) / .2); overflow: hidden; }
+    .ai-conf .fill { height: 100%; width: 0; background: hsl(var(--acc-ok)); border-radius: 999px; transition: width .8s var(--ease); }
+    .ai-conf .fill.warn { background: hsl(var(--acc-warn)); }
+    .ai-body {
+      font-size: 15px; line-height: 1.72; color: hsl(var(--card-foreground));
+      position: relative; max-height: 210px; overflow: hidden; transition: max-height .35s var(--ease);
+    }
+    .ai-body.expanded { max-height: 2000px; }
+    .ai-body:not(.expanded)::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60px;
+      background: linear-gradient(hsl(var(--surface) / 0), hsl(var(--surface)));
+    }
+    .ai-more {
+      margin-top: 12px; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 500;
+      color: hsl(var(--acc)); background: none; border: 1px solid hsl(var(--hairline)); border-radius: 999px;
+      padding: 9px 20px; display: inline-flex; align-items: center; gap: 8px; transition: background .15s, border-color .15s;
+    }
+    .ai-more:hover { background: hsl(var(--acc) / .08); border-color: hsl(var(--acc) / .4); }
+    .ai-more svg { width: 15px; height: 15px; transition: transform .25s var(--ease); }
+    .ai-more.open svg { transform: rotate(180deg); }
+    .ai-cite { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .ai-cite .lbl { font-size: 11px; color: hsl(var(--muted)); margin-right: 2px; }
+    .cchip {
+      font-size: 11px; font-family: ui-monospace, Menlo, monospace; color: hsl(var(--acc));
+      background: hsl(var(--acc) / .1); padding: 2px 9px; border-radius: 999px;
+    }
+    .ai-note {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid hsl(var(--hairline));
+      font-size: 11.5px; color: hsl(var(--muted)); font-style: italic; line-height: 1.5;
+    }
+    .needs { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600;
+      padding: 2px 9px; border-radius: 999px; background: hsl(var(--acc-warn) / .16); color: hsl(var(--acc-warn)); margin-left: 8px; }
+
+    /* sources card (right) */
+    .sources {
+      border: 1px solid hsl(var(--hairline)); border-radius: 18px; padding: 14px; background: hsl(var(--background));
+    }
+    .src-head { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; margin-bottom: 12px; }
+    .src-head .stack { display: flex; }
+    .src-head .stack span { width: 18px; height: 18px; border-radius: 999px; border: 2px solid hsl(var(--background));
+      display: grid; place-items: center; font-size: 9px; font-weight: 700; color: white; margin-left: -6px; }
+    .src-head .stack span:first-child { margin-left: 0; }
+    .src-item { padding: 10px 0; border-top: 1px solid hsl(var(--hairline)); cursor: default; }
+    .src-item:first-of-type { border-top: none; padding-top: 0; }
+    .src-item .st { font-size: 13px; font-weight: 500; color: hsl(var(--g-link)); line-height: 1.35; margin-bottom: 4px; }
+    .src-item .sd { font-size: 11.5px; color: hsl(var(--muted)); line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .src-item .sm { margin-top: 6px; font-size: 11px; color: hsl(var(--muted)); display: inline-flex; align-items: center; gap: 5px; }
+    .src-item .sm .fav { width: 14px; height: 14px; border-radius: 999px; display: grid; place-items: center;
+      font-size: 8px; font-weight: 700; color: white; }
+
+    /* ── traditional results ──────────────────────────────────────────────── */
+    .results { display: flex; flex-direction: column; gap: 26px; }
+    .result { animation: fin .4s var(--ease) both; }
+    .res-site { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .fav {
+      width: 26px; height: 26px; border-radius: 999px; flex: none; display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; color: white; box-shadow: inset 0 0 0 1px hsl(var(--hairline));
+    }
+    .f-amm { background: hsl(var(--acc)); } .f-mel { background: hsl(var(--acc-warn)); }
+    .f-cdl { background: hsl(var(--acc-vio)); } .f-tsm { background: hsl(var(--acc-ok)); }
+    .f-def { background: hsl(var(--muted)); }
+    .res-meta { min-width: 0; }
+    .res-name { font-size: 13px; color: hsl(var(--card-foreground)); line-height: 1.2; }
+    .res-url { font-size: 12px; color: hsl(var(--g-url)); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .res-title {
+      font-size: 19px; line-height: 1.35; color: hsl(var(--g-link)); margin: 2px 0 3px; font-weight: 400;
+      cursor: pointer; display: inline-block; text-decoration: none;
+    }
+    .res-title:hover { text-decoration: underline; }
+    .res-snippet { font-size: 14px; line-height: 1.6; color: hsl(var(--card-foreground) / .92); }
+    .res-chips { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .schip {
+      font-size: 12px; color: hsl(var(--g-link)); background: hsl(var(--pill));
+      border: 1px solid hsl(var(--hairline)); border-radius: 999px; padding: 6px 13px; cursor: default;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .schip .track { width: 40px; height: 4px; border-radius: 999px; background: hsl(var(--muted) / .2); overflow: hidden; }
+    .schip .fill { height: 100%; width: 0; background: hsl(var(--acc-ok)); border-radius: 999px; transition: width .8s var(--ease); }
+
+    /* related (from graph_context) */
+    .related { margin-top: 34px; }
+    .related h4 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+    .rel-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .rel-item {
+      font-size: 13px; background: hsl(var(--pill)); border: 1px solid hsl(var(--hairline)); border-radius: 999px;
+      padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .rel-item .k { font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+    .rel-item .e { font-size: 10.5px; color: hsl(var(--muted)); text-transform: uppercase; letter-spacing: .3px; }
+
+    /* status badges (graph/audit) */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 600; }
+    .b-info { background: hsl(var(--muted) / .15); color: hsl(var(--muted)); }
+    .b-warn { background: hsl(var(--acc-warn) / .16); color: hsl(var(--acc-warn)); }
+    .b-ok   { background: hsl(var(--acc-ok) / .16);   color: hsl(var(--acc-ok)); }
+
+    /* tools bar */
+    .toolsbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tools-toggle { cursor: pointer; font: inherit; font-size: 12.5px; color: hsl(var(--muted)); background: none;
+      border: none; padding: 6px 4px; display: inline-flex; align-items: center; gap: 6px; }
+    .tools-toggle svg { width: 15px; height: 15px; }
+    .tools-toggle:hover { color: hsl(var(--card-foreground)); }
+    .tools-panel { display: none; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .tools-panel.open { display: flex; }
+    .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: hsl(var(--muted));
+      background: hsl(var(--pill)); border: 1px solid hsl(var(--hairline)); border-radius: 8px; padding: 5px 10px; }
+    .field input { font: inherit; font-size: 12.5px; border: none; background: none; color: hsl(var(--card-foreground)); outline: none; -moz-appearance: textfield; }
+    .field input::-webkit-outer-spin-button, .field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .field .ata-in { width: 44px; } .field .k-in { width: 34px; text-align: center; }
+    .swtoggle { cursor: pointer; user-select: none; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 11px; border-radius: 8px; color: hsl(var(--muted)); background: hsl(var(--pill));
+      border: 1px solid hsl(var(--hairline)); transition: all .15s var(--ease); }
+    .swtoggle .dot { width: 7px; height: 7px; border-radius: 999px; background: hsl(var(--muted) / .4); transition: all .15s; }
+    .swtoggle.on { color: hsl(var(--acc)); background: hsl(var(--acc) / .1); border-color: hsl(var(--acc) / .4); }
+    .swtoggle.on .dot { background: hsl(var(--acc)); box-shadow: 0 0 0 3px hsl(var(--acc) / .2); }
+
+    /* graph / audit / about reuse compact styling */
+    .subbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .searchpill.inline { max-width: 520px; margin: 0; }
+    button.go { cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 999px;
+      border: none; color: white; background: hsl(var(--acc)); display: inline-flex; align-items: center; gap: 7px;
+      box-shadow: 0 2px 8px -2px hsl(var(--acc) / .5); transition: transform .12s var(--ease); }
+    button.go:hover { transform: translateY(-1px); }
+    button.go.ghost { background: hsl(var(--pill)); color: hsl(var(--card-foreground)); border: 1px solid hsl(var(--hairline)); box-shadow: none; }
+    button.go svg { width: 15px; height: 15px; }
+
+    .tblwrap { border: 1px solid hsl(var(--hairline)); border-radius: 14px; overflow: hidden; background: hsl(var(--surface)); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 9px 13px; vertical-align: middle; }
+    thead th { font-size: 10.5px; font-weight: 650; letter-spacing: .4px; text-transform: uppercase; color: hsl(var(--muted));
+      background: hsl(var(--muted) / .06); border-bottom: 1px solid hsl(var(--hairline)); }
+    tbody tr { border-bottom: 1px solid hsl(var(--hairline)); } tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: hsl(var(--acc) / .04); }
+    td.k { font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+    .tbl-meta { font-size: 12px; color: hsl(var(--muted)); margin-bottom: 10px; display: flex; gap: 14px; }
+    .tbl-meta b { color: hsl(var(--card-foreground)); }
+
+    .timeline { position: relative; }
+    .ev { display: flex; gap: 12px; padding: 9px 0; }
+    .ev .node { flex: none; width: 20px; display: flex; flex-direction: column; align-items: center; }
+    .ev .node .ring { width: 10px; height: 10px; border-radius: 999px; background: hsl(var(--background)); border: 2px solid hsl(var(--acc)); margin-top: 3px; }
+    .ev .node .line { flex: 1; width: 2px; background: hsl(var(--hairline)); margin-top: 2px; }
+    .ev:last-child .node .line { display: none; }
+    .ev-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .ev-type { font-size: 12.5px; font-weight: 650; }
+    .ev-ts { font-size: 10.5px; color: hsl(var(--muted)); font-family: ui-monospace, Menlo, monospace; }
+    .ev-detail { font-size: 11px; color: hsl(var(--muted)); font-family: ui-monospace, Menlo, monospace; margin-top: 3px; word-break: break-word; line-height: 1.5; }
+
+    .about .lede { font-size: 14.5px; line-height: 1.7; margin: 0 0 6px; }
+    .about .lede strong { color: hsl(var(--acc)); }
+    .about .kicker { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: hsl(var(--muted)); margin: 22px 0 12px; }
+    .guard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 11px; }
+    .guard { border: 1px solid hsl(var(--hairline)); border-radius: 14px; padding: 14px; background: hsl(var(--surface)); transition: transform .18s var(--ease); }
+    .guard:hover { transform: translateY(-2px); }
+    .guard .gi { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; margin-bottom: 10px; background: hsl(var(--acc) / .12); color: hsl(var(--acc)); }
+    .guard .gi svg { width: 16px; height: 16px; }
+    .guard h4 { margin: 0 0 4px; font-size: 12.5px; font-weight: 650; }
+    .guard p { margin: 0; font-size: 11.5px; line-height: 1.55; color: hsl(var(--muted)); }
+    .codeline { margin-top: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 1.7;
+      background: hsl(var(--muted) / .08); border: 1px solid hsl(var(--hairline)); border-radius: 10px; padding: 12px 14px; }
+    .codeline .cmd { color: hsl(var(--acc)); }
+
+    /* states */
+    .loading { display: flex; align-items: center; gap: 10px; padding: 26px 2px; color: hsl(var(--muted)); font-size: 14px; }
+    .spinner { width: 18px; height: 18px; border-radius: 999px; border: 2px solid hsl(var(--muted) / .25); border-top-color: hsl(var(--acc)); animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { border: 1px dashed hsl(var(--hairline)); border-radius: 14px; padding: 40px 24px; text-align: center; color: hsl(var(--muted)); }
+    .empty svg { width: 30px; height: 30px; opacity: .35; margin-bottom: 10px; }
+    .empty .t { font-size: 14px; font-weight: 600; color: hsl(var(--card-foreground)); margin-bottom: 3px; }
+    .err { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; margin: 14px 0; color: hsl(var(--acc-bad));
+      background: hsl(var(--acc-bad) / .08); border: 1px solid hsl(var(--acc-bad) / .3); border-radius: 10px; padding: 11px 13px; line-height: 1.5; }
+    .err svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
   </style>
 </head>
 <body>
-  <h1>AI Maintenance Knowledge Copilot</h1>
-  <div class="sub mono">Advisory only · a licensed engineer decides & signs every dispatch</div>
-
-  <div class="tabs" id="tabs">
-    <button class="tab active" data-tab="query">Query</button>
-    <button class="tab" data-tab="graph">Graph</button>
-    <button class="tab" data-tab="audit">Audit</button>
-    <button class="tab" data-tab="about">About</button>
-  </div>
-
-  <section class="panel active" id="p-query">
-    <div class="row"><input type="text" id="q-text" placeholder="Describe a defect or ask a procedure question…" /></div>
-    <div class="row">
-      <label class="chk">ATA <input type="text" id="q-ata" style="width:56px" placeholder="32" /></label>
-      <label class="chk">k <input type="number" id="q-k" value="5" min="1" max="20" style="width:56px" /></label>
-      <label class="chk"><input type="checkbox" id="q-syn" /> synthesize answer</label>
-      <label class="chk"><input type="checkbox" id="q-graph" /> graph context</label>
-      <button class="go" id="q-run">Retrieve</button>
+  <header>
+    <div class="top">
+      <div class="logo" aria-label="Maintenance Copilot">
+        <span class="c1">C</span><span class="c2">o</span><span class="c3">p</span><span class="c4">i</span><span class="c5">l</span><span class="c6">o</span><span class="c7">t</span>
+      </div>
+      <div class="searchpill" id="pill">
+        <input type="text" id="q-text" placeholder="Describe a defect or ask a procedure question…" autocomplete="off" />
+        <svg class="sp-ic sp-clear" id="q-clear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <div class="sp-div"></div>
+        <svg class="sp-ic sp-search" id="q-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      </div>
+      <div class="avatar" aria-hidden="true"></div>
     </div>
-    <div id="q-err" class="err" style="display:none"></div>
-    <div id="q-out"></div>
-  </section>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="query">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>All
+      </button>
+      <button class="tab" data-tab="graph">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="7" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.9 7.4 10.4 16M8.1 6.6 15.7 6.9M16.7 9l-3.6 6.9"/></svg>Graph
+      </button>
+      <button class="tab" data-tab="audit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>Audit
+      </button>
+      <button class="tab" data-tab="about">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>About
+      </button>
+    </nav>
+  </header>
 
-  <section class="panel" id="p-graph">
-    <div class="row">
-      <input type="text" id="g-key" placeholder="Entity key (e.g. 32, 32-30-01)" style="max-width:320px" />
-      <label class="chk">hops <input type="number" id="g-hops" value="1" min="1" max="3" style="width:56px" /></label>
-      <button class="go" id="g-run">Show</button>
-    </div>
-    <div id="g-err" class="err" style="display:none"></div>
-    <div id="g-out"></div>
-  </section>
+  <main>
+    <!-- ── ALL / Query (SERP) ───────────────────────────────────────────── -->
+    <section class="panel active" id="p-query">
+      <div class="col-wide">
+        <div class="toolsbar">
+          <button type="button" class="tools-toggle" id="tools-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+            Tools
+          </button>
+          <div class="tools-panel" id="tools-panel">
+            <label class="field">ATA <input type="text" id="q-ata" class="ata-in" placeholder="32" /></label>
+            <label class="field">Top-k <input type="number" id="q-k" class="k-in" value="5" min="1" max="20" /></label>
+            <button type="button" class="swtoggle on" id="q-syn"><span class="dot"></span>AI overview</button>
+            <button type="button" class="swtoggle" id="q-graph"><span class="dot"></span>Related graph</button>
+          </div>
+        </div>
+        <div id="q-err"></div>
+        <div id="q-out"></div>
+      </div>
+    </section>
 
-  <section class="panel" id="p-audit">
-    <div class="row"><button class="go" id="a-run">Refresh audit trail</button>
-      <span class="muted mono" style="font-size:11px">reads data/audit.log.jsonl</span></div>
-    <div id="a-err" class="err" style="display:none"></div>
-    <div id="a-out"></div>
-  </section>
+    <!-- ── Graph ────────────────────────────────────────────────────────── -->
+    <section class="panel" id="p-graph">
+      <div class="col-wide">
+        <div class="subbar">
+          <div class="searchpill inline">
+            <svg class="sp-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="7" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.9 7.4 10.4 16M8.1 6.6 15.7 6.9M16.7 9l-3.6 6.9"/></svg>
+            <input type="text" id="g-key" placeholder="Entity key — e.g. 32 or 32-30-01" autocomplete="off" />
+          </div>
+          <label class="field">Hops <input type="number" id="g-hops" class="k-in" value="1" min="1" max="3" /></label>
+          <button class="go" id="g-run"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Explore</button>
+        </div>
+        <div id="g-err"></div>
+        <div id="g-out"></div>
+      </div>
+    </section>
 
-  <section class="panel about" id="p-about">
-    <h3>What this does</h3>
-    <p class="muted">Retrieve, validate, and cross-reference maintenance documentation (AMM, MEL, CDL, TSM)
-      grounded in the approved manuals. Every recommendation is cited; every graph link starts
-      <em>unverified</em> until an engineer confirms it. <strong>Dispatch is never automated.</strong></p>
-    <h3>Guardrails</h3>
-    <ul>
-      <li>Mandatory citation — uncited sentences are dropped from synthesized answers.</li>
-      <li>Confidence threshold — low-confidence results are routed for manual review.</li>
-      <li>Version-aware retrieval — defaults to the current approved revision.</li>
-      <li>Audit trail — every query, recommendation, and confirmation is logged.</li>
-    </ul>
-    <h3>CLI (also available in chat)</h3>
-    <p class="mono muted" style="font-size:11px">copilot.py query · recommend-refs · validate · check · graph build/show/confirm · audit</p>
-  </section>
+    <!-- ── Audit ────────────────────────────────────────────────────────── -->
+    <section class="panel" id="p-audit">
+      <div class="col-wide">
+        <div class="subbar">
+          <span class="muted mono" style="font-size:11px">Reads data/audit.log.jsonl — newest first</span>
+          <button class="go ghost" id="a-run" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Refresh</button>
+        </div>
+        <div id="a-err"></div>
+        <div id="a-out"></div>
+      </div>
+    </section>
+
+    <!-- ── About ────────────────────────────────────────────────────────── -->
+    <section class="panel about" id="p-about">
+      <div class="col-wide">
+        <p class="lede">Retrieve, validate, and cross-reference maintenance documentation — AMM, MEL, CDL, TSM — grounded strictly in the approved manuals. Every recommendation is cited; every knowledge-graph link stays <em>unverified</em> until an engineer confirms it. <strong>Dispatch is never automated.</strong></p>
+        <div class="kicker">Guardrails</div>
+        <div class="guard-grid">
+          <div class="guard"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-4"/><path d="m9 15 2 2 4-4"/></svg></div><h4>Mandatory citation</h4><p>Uncited sentences are dropped from synthesized answers — no unsourced claims about manual content.</p></div>
+          <div class="guard"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div><h4>Confidence threshold</h4><p>Low-confidence retrievals are labelled and routed for mandatory manual review, never presented as settled.</p></div>
+          <div class="guard"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></div><h4>Version-aware retrieval</h4><p>Defaults to the current approved revision and flags any cited page that may be superseded.</p></div>
+          <div class="guard"><div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div><h4>Full audit trail</h4><p>Every query, recommendation, and engineer confirmation is logged for regulatory traceability.</p></div>
+        </div>
+        <div class="kicker">CLI — also available in chat</div>
+        <div class="codeline mono">copilot.py <span class="cmd">query</span> · <span class="cmd">recommend-refs</span> · <span class="cmd">validate</span> · <span class="cmd">check</span> · <span class="cmd">graph</span> build/show/confirm · <span class="cmd">audit</span></div>
+      </div>
+    </section>
+  </main>
 
   <script src="__bridge.js"></script>
   <script>
@@ -106,100 +391,186 @@
       function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
         return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
       function el(id){ return document.getElementById(id); }
-      function showErr(id, e){ var n=el(id); n.style.display="block";
-        n.textContent = (e && e.message) ? e.message : String(e); }
-      function clearErr(id){ var n=el(id); n.style.display="none"; n.textContent=""; }
+      function pct(v){ return Math.max(0, Math.min(1, Number(v)||0)) * 100; }
 
-      // Tabs
+      var ICON = {
+        alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+        spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg>',
+        chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+        emptyS:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+        graph:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="7" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7.9 7.4 10.4 16M8.1 6.6 15.7 6.9M16.7 9l-3.6 6.9"/></svg>',
+        log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>'
+      };
+
+      function showErr(id, e){ el(id).innerHTML = '<div class="err">'+ICON.alert+'<div>'+esc((e&&e.message)?e.message:String(e))+'</div></div>'; }
+      function clearErr(id){ el(id).innerHTML=""; }
+      function loading(t){ return '<div class="loading"><span class="spinner"></span>'+esc(t)+'</div>'; }
+      function emptyState(icon,title,desc){ return '<div class="empty">'+icon+'<div class="t">'+esc(title)+'</div><div>'+esc(desc)+'</div></div>'; }
+      function animateMeters(root){ requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        root.querySelectorAll("[data-w]").forEach(function(n){ n.style.width = n.getAttribute("data-w")+"%"; }); }); }); }
+      function dtClass(t){ var k=String(t||"").toLowerCase();
+        return k.indexOf("amm")>=0?"amm":k.indexOf("mel")>=0?"mel":k.indexOf("cdl")>=0?"cdl":k.indexOf("tsm")>=0?"tsm":"def"; }
+      function dtInit(t){ return String(t||"?").replace(/[^A-Za-z]/g,"").slice(0,3).toUpperCase() || "?"; }
+      function statusBadge(s){ var v=String(s||"").toLowerCase();
+        if(v==="unverified") return '<span class="badge b-warn">unverified</span>';
+        if(v==="confirmed"||v==="verified") return '<span class="badge b-ok">'+esc(s)+'</span>';
+        return '<span class="badge b-info">'+esc(s||"—")+'</span>'; }
+
+      function run(args){ return D.json("copilot.py", args, { timeout_ms: 60000 }); }
+
+      // ── tabs ──────────────────────────────────────────────────────────────
       var tabs = document.querySelectorAll(".tab");
       tabs.forEach(function(t){ t.addEventListener("click", function(){
         tabs.forEach(function(x){ x.classList.remove("active"); });
         document.querySelectorAll(".panel").forEach(function(p){ p.classList.remove("active"); });
-        t.classList.add("active");
-        el("p-" + t.dataset.tab).classList.add("active");
-        if (t.dataset.tab === "audit") runAudit();
+        t.classList.add("active"); el("p-"+t.dataset.tab).classList.add("active");
+        if (t.dataset.tab==="audit" && !el("a-out").getAttribute("data-loaded")) runAudit();
       }); });
 
-      function run(args){ return D.json("copilot.py", args, { timeout_ms: 60000 }); }
+      // tools + toggles
+      el("tools-btn").addEventListener("click", function(){ el("tools-panel").classList.toggle("open"); });
+      function bindToggle(id){ el(id).addEventListener("click", function(){ this.classList.toggle("on"); }); }
+      bindToggle("q-syn"); bindToggle("q-graph");
 
-      // ── Query ──
-      el("q-run").addEventListener("click", function(){
-        var text = el("q-text").value.trim();
-        if (!text) return;
-        clearErr("q-err"); el("q-out").innerHTML = '<div class="muted">Retrieving…</div>';
+      // clear button visibility
+      var qtext = el("q-text");
+      qtext.addEventListener("input", function(){ el("q-clear").style.display = qtext.value ? "block" : "none"; });
+      el("q-clear").addEventListener("click", function(){ qtext.value=""; el("q-clear").style.display="none"; qtext.focus(); });
+
+      // ── Query (SERP) ──────────────────────────────────────────────────────
+      function doQuery(){
+        var text = qtext.value.trim();
+        if (!text){ qtext.focus(); return; }
+        clearErr("q-err"); el("q-out").innerHTML = loading("Searching approved manuals…");
         var args = ["query", text, "--revision", "current", "--k", String(el("q-k").value || 5)];
         var ata = el("q-ata").value.trim(); if (ata) args.push("--ata", ata);
-        if (el("q-syn").checked) args.push("--synthesize");
-        if (el("q-graph").checked) args.push("--graph");
-        run(args).then(renderQuery).catch(function(e){
-          el("q-out").innerHTML=""; showErr("q-err", e); });
-      });
-      function renderQuery(d){
-        var h = "";
-        if (d.answer){
-          var a = d.answer, cls = a.needs_review ? "review" : "answer";
-          h += '<div class="card '+cls+'"><h3>Answer'
-            + (a.needs_review ? '<span class="badge b-warn">needs review</span>' : '')
-            + ' <span class="muted" style="font-weight:400">conf '+ (a.confidence||0).toFixed(2) +'</span></h3>'
-            + '<div>'+esc(a.answer)+'</div>'
-            + (a.citations && a.citations.length ? '<div class="cite">cited: '+a.citations.map(esc).join(", ")+'</div>' : '')
-            + '<div class="disclaimer">'+esc(a.disclaimer||"")+'</div></div>';
-        }
-        var hits = d.hits || [];
-        h += hits.length ? hits.map(function(x){
-          return '<div class="card"><h3>'+esc(x.doc_type)+' · '+esc(x.revision)
-            +'<span class="muted" style="font-weight:400"> score '+(x.score||0).toFixed(2)+'</span></h3>'
-            +'<div>'+esc(x.text)+'</div><div class="cite">'+esc(x.citation)+'</div></div>';
-        }).join("") : '<div class="empty">No matching passages.</div>';
-        if (d.graph_context && d.graph_context.related && d.graph_context.related.length){
-          h += '<div class="card"><h3>Related (ATA '+esc(d.graph_context.ata_chapter)+')</h3>'
-            + d.graph_context.related.map(function(r){
-              return '<div>'+esc(r.neighbor_key)+' <span class="cite">'+esc(r.edge_type)+'</span>'
-                + statusBadge(r.status)+'</div>'; }).join("") + '</div>';
-        }
-        el("q-out").innerHTML = h;
+        if (el("q-syn").classList.contains("on")) args.push("--synthesize");
+        if (el("q-graph").classList.contains("on")) args.push("--graph");
+        run(args).then(renderQuery).catch(function(e){ el("q-out").innerHTML=""; showErr("q-err", e); });
       }
-      function statusBadge(s){ return s==="unverified"
-        ? '<span class="badge b-warn">unverified</span>'
-        : '<span class="badge b-info">'+esc(s||"")+'</span>'; }
+      el("q-run").addEventListener("click", doQuery);
+      qtext.addEventListener("keydown", function(e){ if (e.key==="Enter") doQuery(); });
 
-      // ── Graph ──
-      el("g-run").addEventListener("click", function(){
-        var key = el("g-key").value.trim();
-        if (!key) return;
-        clearErr("g-err"); el("g-out").innerHTML = '<div class="muted">Loading…</div>';
-        run(["graph","show",key,"--hops",String(el("g-hops").value||1)])
-          .then(renderGraph).catch(function(e){ el("g-out").innerHTML=""; showErr("g-err", e); });
-      });
+      function renderQuery(d){
+        var hits = d.hits || [];
+        var html = '';
+        html += '<div class="stat">About '+hits.length+' result'+(hits.length===1?'':'s')+' from the approved manuals</div>';
+
+        // AI Overview + sources
+        if (d.answer){
+          var a = d.answer;
+          var conf = pct(a.confidence);
+          var top = hits.slice(0, 2);
+          var sources = top.length ? top.map(function(x){
+            var c = dtClass(x.doc_type);
+            return '<div class="src-item"><div class="st">'+esc(x.citation)+'</div>'+
+              '<div class="sd">'+esc(x.text)+'</div>'+
+              '<div class="sm"><span class="fav f-'+c+'" style="width:14px;height:14px;font-size:8px">'+dtInit(x.doc_type)+'</span>'+esc(x.doc_type)+' · rev '+esc(x.revision)+'</div></div>';
+          }).join("") : '<div class="src-item"><div class="sd muted">No source passages returned.</div></div>';
+
+          var stack = top.map(function(x){ return '<span class="f-'+dtClass(x.doc_type)+'" style="background:hsl(var(--acc))">'+dtInit(x.doc_type).slice(0,1)+'</span>'; }).join("");
+
+          html += '<div class="ai">'+
+            '<div class="ai-main">'+
+              '<div class="ai-head"><span class="ai-spark">'+ICON.spark+'</span>'+
+                '<span class="ai-title">AI overview'+(a.needs_review?'<span class="needs">'+ICON.alert+'needs review</span>':'')+'</span>'+
+                '<span class="ai-conf">confidence <span class="track"><span class="fill '+(conf<45?'warn':'')+'" data-w="'+conf.toFixed(0)+'"></span></span> '+(Number(a.confidence)||0).toFixed(2)+'</span>'+
+              '</div>'+
+              '<div class="ai-body" id="ai-body">'+esc(a.answer)+'</div>'+
+              '<button class="ai-more" id="ai-more">Show more '+ICON.chev+'</button>'+
+              (a.citations&&a.citations.length?'<div class="ai-cite"><span class="lbl">Cited</span>'+a.citations.map(function(c){return '<span class="cchip">'+esc(c)+'</span>';}).join("")+'</div>':'')+
+              (a.disclaimer?'<div class="ai-note">'+esc(a.disclaimer)+'</div>':'')+
+            '</div>'+
+            '<div class="sources"><div class="src-head"><span class="stack">'+stack+'</span>'+top.length+' source'+(top.length===1?'':'s')+'</div>'+sources+'</div>'+
+          '</div>';
+        }
+
+        // Traditional results
+        if (hits.length){
+          html += '<div class="results">'+hits.map(function(x, i){
+            var c = dtClass(x.doc_type), sc = pct(x.score);
+            return '<div class="result" style="animation-delay:'+(i*45)+'ms">'+
+              '<div class="res-site"><span class="fav f-'+c+'">'+dtInit(x.doc_type)+'</span>'+
+                '<div class="res-meta"><div class="res-name">'+esc(x.doc_type)+'</div>'+
+                '<div class="res-url mono">'+esc(x.doc_type)+' › rev '+esc(x.revision)+'</div></div></div>'+
+              '<a class="res-title">'+esc(x.citation)+'</a>'+
+              '<div class="res-snippet">'+esc(x.text)+'</div>'+
+              '<div class="res-chips"><span class="schip">score '+(Number(x.score)||0).toFixed(2)+' <span class="track"><span class="fill" data-w="'+sc.toFixed(0)+'"></span></span></span></div>'+
+            '</div>';
+          }).join("")+'</div>';
+        } else if (!d.answer){
+          html += emptyState(ICON.emptyS, "No matching passages", "The approved manuals do not cover this query. Rephrase, or widen the ATA / top-k filters under Tools.");
+        }
+
+        // Related (graph context) → "related searches" style
+        var gc = d.graph_context;
+        if (gc && gc.related && gc.related.length){
+          html += '<div class="related"><h4>Related in ATA '+esc(gc.ata_chapter)+'</h4><div class="rel-grid">'+
+            gc.related.map(function(r){ return '<span class="rel-item"><span class="k">'+esc(r.neighbor_key)+'</span><span class="e">'+esc(r.edge_type)+'</span>'+statusBadge(r.status)+'</span>'; }).join("")+
+          '</div></div>';
+        }
+
+        el("q-out").innerHTML = html;
+
+        // wire show-more
+        var body = el("ai-body"), more = el("ai-more");
+        if (body && more){
+          if (body.scrollHeight <= body.clientHeight + 4){ more.style.display = "none"; body.style.maxHeight = "none"; body.classList.add("expanded"); }
+          more.addEventListener("click", function(){
+            var open = body.classList.toggle("expanded");
+            more.classList.toggle("open", open);
+            more.childNodes[0].nodeValue = open ? "Show less " : "Show more ";
+          });
+        }
+        animateMeters(el("q-out"));
+      }
+
+      // ── Graph ─────────────────────────────────────────────────────────────
+      function doGraph(){
+        var key = el("g-key").value.trim(); if (!key){ el("g-key").focus(); return; }
+        clearErr("g-err"); el("g-out").innerHTML = loading("Loading neighbors…");
+        run(["graph","show",key,"--hops",String(el("g-hops").value||1)]).then(renderGraph)
+          .catch(function(e){ el("g-out").innerHTML=""; showErr("g-err", e); });
+      }
+      el("g-run").addEventListener("click", doGraph);
+      el("g-key").addEventListener("keydown", function(e){ if (e.key==="Enter") doGraph(); });
       function renderGraph(d){
         var rows = d.neighbors || [];
-        if (!rows.length){ el("g-out").innerHTML='<div class="empty">No neighbors for '+esc(d.key)+'.</div>'; return; }
+        if (!rows.length){ el("g-out").innerHTML = emptyState(ICON.graph, "No neighbors", 'The knowledge graph has no links from "'+esc(d.key)+'".'); return; }
         var body = rows.map(function(r){
-          return '<tr><td>'+esc(r.neighbor_key)+'</td><td>'+esc((r.neighbor_labels||[]).join(", "))
-            +'</td><td>'+esc(r.edge_type)+'</td><td>'+statusBadge(r.status)+'</td>'
-            +'<td>'+((r.confidence!=null)?Number(r.confidence).toFixed(2):"")+'</td></tr>'; }).join("");
-        el("g-out").innerHTML = '<div class="muted" style="margin-bottom:6px">'+rows.length+' neighbor(s) · '
-          + (d.unverified||0) + ' unverified</div>'
-          + '<table><thead><tr><th>Entity</th><th>Type</th><th>Edge</th><th>Status</th><th>Conf</th></tr></thead>'
-          + '<tbody>'+body+'</tbody></table>';
+          var conf = (r.confidence!=null)
+            ? '<span class="mono" style="font-size:11px">'+Number(r.confidence).toFixed(2)+'</span>' : '<span class="muted">—</span>';
+          return '<tr><td class="k">'+esc(r.neighbor_key)+'</td><td class="muted">'+esc((r.neighbor_labels||[]).join(", "))+
+            '</td><td>'+esc(r.edge_type)+'</td><td>'+statusBadge(r.status)+'</td><td>'+conf+'</td></tr>';
+        }).join("");
+        el("g-out").innerHTML = '<div class="tbl-meta"><span><b>'+rows.length+'</b> neighbor'+(rows.length===1?'':'s')+'</span><span><b>'+(d.unverified||0)+'</b> unverified</span></div>'+
+          '<div class="tblwrap"><table><thead><tr><th>Entity</th><th>Type</th><th>Edge</th><th>Status</th><th>Conf</th></tr></thead><tbody>'+body+'</tbody></table></div>';
       }
 
-      // ── Audit ──
+      // ── Audit ─────────────────────────────────────────────────────────────
       el("a-run").addEventListener("click", runAudit);
       function runAudit(){
-        clearErr("a-err"); el("a-out").innerHTML = '<div class="muted">Loading…</div>';
+        clearErr("a-err"); el("a-out").innerHTML = loading("Loading audit trail…");
         run(["audit","--limit","50"]).then(function(d){
+          el("a-out").setAttribute("data-loaded","1");
           var ev = (d.events||[]).slice().reverse();
-          if (!ev.length){ el("a-out").innerHTML='<div class="empty">No audit events yet.</div>'; return; }
-          var body = ev.map(function(e){
+          if (!ev.length){ el("a-out").innerHTML = emptyState(ICON.log, "No audit events yet", "Queries and confirmations will appear here as they are logged."); return; }
+          var items = ev.map(function(e){
             var extra = Object.keys(e).filter(function(k){return k!=="ts"&&k!=="type";})
-              .map(function(k){ return k+"="+ (typeof e[k]==="object"?JSON.stringify(e[k]):e[k]); }).join("  ");
-            return '<tr><td class="mono">'+esc(e.ts)+'</td><td>'+esc(e.type)
-              +'</td><td class="mono" style="font-size:11px">'+esc(extra)+'</td></tr>'; }).join("");
-          el("a-out").innerHTML = '<table><thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>'
-            + '<tbody>'+body+'</tbody></table>';
+              .map(function(k){ return k+"="+(typeof e[k]==="object"?JSON.stringify(e[k]):e[k]); }).join("  ·  ");
+            return '<div class="ev"><div class="node"><span class="ring"></span><span class="line"></span></div>'+
+              '<div class="ev-body"><div class="ev-head"><span class="ev-type">'+esc(e.type)+'</span><span class="ev-ts">'+esc(e.ts)+'</span></div>'+
+              (extra?'<div class="ev-detail">'+esc(extra)+'</div>':'')+'</div></div>';
+          }).join("");
+          el("a-out").innerHTML = '<div class="timeline">'+items+'</div>';
         }).catch(function(e){ el("a-out").innerHTML=""; showErr("a-err", e); });
       }
+
+      // host theme sync
+      if (D && D.onTheme) D.onTheme(function(tokens){
+        if (!tokens) return; var root = document.documentElement;
+        Object.keys(tokens).forEach(function(k){ if (typeof tokens[k]==="string") root.style.setProperty("--"+k, tokens[k]); });
+      });
 
       if (D && D.ready) D.ready();
     })();

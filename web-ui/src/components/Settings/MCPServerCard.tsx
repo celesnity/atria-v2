@@ -54,7 +54,7 @@ export function MCPServerCard({
   };
 
   return (
-    <div className="bg-canvas rounded-lg border border-hairline-soft hover:border-hairline transition-colors">
+    <div className="bg-canvas rounded-md border border-hairline-soft hover:border-hairline transition-colors">
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
@@ -120,7 +120,7 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
   if (isProcessing) {
     return (
       <div className="flex items-center justify-center w-8 h-8">
-        <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-[50%] animate-spin" />
+        <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-md animate-spin" />
       </div>
     );
   }
@@ -135,12 +135,9 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
   const config = statusConfig[status];
 
   return (
-    <div className="relative flex items-center justify-center w-8 h-8">
-      <div className={`w-2.5 h-2.5 rounded-[50%] ${config.color}`} />
-      {status === 'connected' && (
-        <div className={`absolute w-2.5 h-2.5 rounded-[50%] ${config.color} animate-ping opacity-75`} />
-      )}
-    </div>
+    <span className={`text-[10px] font-mono uppercase tracking-wide ${config.color.replace('bg-', 'text-')}`}>
+      {config.label}
+    </span>
   );
 }
 
@@ -157,7 +154,7 @@ function ConnectionButton({ status, isProcessing, onClick }: ConnectionButtonPro
     <button
       onClick={onClick}
       disabled={isProcessing}
-      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
         isConnected
           ? 'text-text-secondary bg-surface-soft hover:bg-surface-soft'
           : 'text-white bg-gradient-brand hover:brightness-110'
@@ -305,7 +302,7 @@ function ActionButton({ onClick, disabled, variant, children }: ActionButtonProp
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${variants[variant]} disabled:opacity-50 disabled:cursor-not-allowed`}
+      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${variants[variant]} disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {children}
     </button>

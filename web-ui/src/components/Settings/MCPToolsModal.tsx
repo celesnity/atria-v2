@@ -80,7 +80,7 @@ export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsMo
           <button
             aria-label="Close dialog"
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface-soft rounded-lg transition-colors"
+            className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface-soft rounded-md transition-colors"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -95,7 +95,7 @@ export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsMo
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tools by name or description..."
-              className="w-full pl-10 pr-4 py-2.5 border border-hairline-soft rounded-lg bg-canvas"
+              className="w-full pl-10 pr-4 py-2.5 border border-hairline-soft rounded-md bg-canvas"
             />
           </div>
         </div>
@@ -182,7 +182,7 @@ function ToolListItem({ tool, isSelected, onClick }: ToolListItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-lg transition-all ${
+      className={`w-full text-left p-3 rounded-md transition-all ${
         isSelected
           ? 'bg-surface-soft shadow-soft border border-hairline-soft'
           : 'hover:bg-surface-soft border border-transparent'
@@ -232,7 +232,7 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
       {/* Tool Header */}
       <div className="mb-6">
         <div className="flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-soft flex-shrink-0">
+          <div className="w-10 h-10 rounded-md bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-soft flex-shrink-0">
             <WrenchScrewdriverIcon className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
@@ -245,12 +245,12 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
         <div className="mt-4">
           <label className="block text-xs font-medium text-text-muted mb-1.5">Full Tool Name</label>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-3 py-2.5 bg-surface-soft border border-hairline-soft rounded-lg text-sm font-mono text-ink">
+            <code className="flex-1 px-3 py-2.5 bg-surface-soft border border-hairline-soft rounded-md text-sm font-mono text-ink">
               {fullName}
             </code>
             <button
               onClick={() => onCopy(fullName)}
-              className="p-2.5 text-text-secondary hover:text-ink hover:bg-surface-soft rounded-lg transition-colors border border-hairline-soft"
+              className="p-2.5 text-text-secondary hover:text-ink hover:bg-surface-soft rounded-md transition-colors border border-hairline-soft"
               title="Copy to clipboard"
             >
               {copiedText === fullName ? (
@@ -268,7 +268,7 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
         <h4 className="text-sm font-semibold text-ink mb-4">Parameters</h4>
 
         {!hasParameters ? (
-          <div className="text-center py-8 bg-surface-soft rounded-lg border border-hairline-soft">
+          <div className="text-center py-8 bg-surface-soft rounded-md border border-hairline-soft">
             <p className="text-sm text-text-muted">This tool doesn't require any parameters</p>
           </div>
         ) : (
@@ -307,7 +307,7 @@ function ParameterCard({ name, schema, isRequired }: ParameterCardProps) {
   };
 
   return (
-    <div className="bg-canvas border border-hairline-soft rounded-lg p-4 hover:border-hairline transition-colors">
+    <div className="bg-canvas border border-hairline-soft rounded-md p-4 hover:border-hairline transition-colors">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <code className="text-sm font-semibold text-ink">{name}</code>

@@ -151,7 +151,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
       return;
     }
     if (template === 'data' && picked.length === 0) {
-      addToast('Add at least one file or a folder to build a data module.', 'warning');
+      addToast('Add at least one file or a folder to create a data module.', 'warning');
       return;
     }
     setBusy(true);
@@ -188,7 +188,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
       <form
         onSubmit={onSubmit}
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-lg border border-hairline-soft bg-canvas shadow-modal"
+        className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-md border border-hairline-soft bg-canvas shadow-modal"
       >
         <div className="flex items-center gap-2 px-5 py-3 border-b border-hairline-soft/60 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-ink/55" />

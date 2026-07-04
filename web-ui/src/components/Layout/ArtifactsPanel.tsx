@@ -111,7 +111,7 @@ function ArtifactRow({
       onClick={openable && !renaming ? handleOpen : undefined}
       onKeyDown={onKey}
       aria-label={openable ? `Open ${name}` : undefined}
-      className={`group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-all duration-fast hover:bg-surface-soft/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt ${
+      className={`group flex items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-fast hover:bg-surface-soft/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt ${
         openable && !renaming ? 'cursor-pointer hover:translate-x-0.5' : ''
       }`}
     >
@@ -219,7 +219,7 @@ export function ArtifactsPanel() {
           Artifacts
         </span>
         {items.length > 0 && (
-          <span className="rounded-[50%] bg-surface-soft px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+          <span className="rounded-md bg-surface-soft px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
             {items.length}
           </span>
         )}
@@ -244,7 +244,7 @@ export function ArtifactsPanel() {
             <div className="relative mx-auto mb-3 grid h-11 w-11 place-items-center">
               <span
                 aria-hidden
-                className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-lg"
+                className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-lg"
               />
               <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60">
                 <Box className="h-4 w-4 text-text-secondary" />

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Filter, FileText, Trash2, Loader2 } from 'lucide-react';
+import { LayoutGrid, Rows3, FileText, Trash2, Loader2, Search } from 'lucide-react';
 import type { Artifact } from '../types';
 import { ArtifactThumbnail } from './ArtifactThumbnail';
 
@@ -13,6 +13,12 @@ interface ArtifactPanelProps {
   onPreview?: (artifact: Artifact) => void;
   className?: string;
 }
+
+const SCOPES: { key: ScopeFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'conversation', label: 'Conversation' },
+  { key: 'project', label: 'Project' },
+];
 
 export function ArtifactPanel({
   artifacts,
@@ -45,81 +51,78 @@ export function ArtifactPanel({
   return (
     <div className={`artifact-panel flex flex-col h-full bg-canvas ${className}`}>
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-hairline-soft p-4">
-        <h2 className="text-lg font-semibold text-ink mb-4">Artifacts</h2>
+      <div className="flex-shrink-0 border-b border-hairline-soft/60 px-3 pt-3 pb-2.5">
+        <div className="flex items-baseline gap-2 mb-3">
+          <h2 className="text-[13px] font-mono uppercase tracking-wide text-ink/70">Artifacts</h2>
+          <span className="text-[11px] font-mono text-ink/35">{artifacts.length}</span>
+        </div>
 
         {/* Search Bar */}
-        <div className="mb-4">
+        <div className="relative mb-2.5">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink/35"
+            strokeWidth={2}
+          />
           <input
             type="text"
-            placeholder="Search artifacts..."
+            placeholder="Search artifacts…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-2 border border-hairline-soft rounded-lg text-sm"
+            className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded-md bg-surface-soft/40 border border-hairline-soft/60 text-ink placeholder:text-ink/35 transition-colors duration-fast focus:outline-none focus:border-accent-cobalt/60 focus:bg-canvas focus-visible:ring-1 focus-visible:ring-accent-cobalt/40"
           />
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between">
-          {/* Scope Filter */}
-          {hasBothScopes && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setScopeFilter('all')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  scopeFilter === 'all'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-surface-soft text-text-secondary hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setScopeFilter('conversation')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  scopeFilter === 'conversation'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-surface-soft text-text-secondary hover:bg-gray-200'
-                }`}
-              >
-                Conversation
-              </button>
-              <button
-                onClick={() => setScopeFilter('project')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  scopeFilter === 'project'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-surface-soft text-text-secondary hover:bg-gray-200'
-                }`}
-              >
-                Project
-              </button>
+        <div className="flex items-center justify-between gap-2">
+          {/* Scope Filter — segmented control on the brand surface */}
+          {hasBothScopes ? (
+            <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
+              {SCOPES.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setScopeFilter(key)}
+                  className={[
+                    'px-2.5 py-1 text-[11px] font-mono rounded-[4px] transition-all duration-fast cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt',
+                    scopeFilter === key
+                      ? 'bg-canvas text-ink shadow-soft'
+                      : 'text-text-muted hover:text-ink',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+          ) : (
+            <span />
           )}
 
           {/* View Mode Toggle */}
-          <div className="flex gap-1 ml-auto">
+          <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded transition-colors ${
+              className={`p-1 rounded-[4px] transition-colors duration-fast cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'text-text-muted hover:text-text-secondary'
+                  ? 'bg-canvas text-accent-cobalt shadow-soft'
+                  : 'text-ink/40 hover:text-ink'
               }`}
               title="Grid view"
+              aria-label="Grid view"
+              aria-pressed={viewMode === 'grid'}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded transition-colors ${
+              className={`p-1 rounded-[4px] transition-colors duration-fast cursor-pointer ${
                 viewMode === 'list'
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'text-text-muted hover:text-text-secondary'
+                  ? 'bg-canvas text-accent-cobalt shadow-soft'
+                  : 'text-ink/40 hover:text-ink'
               }`}
               title="List view"
+              aria-label="List view"
+              aria-pressed={viewMode === 'list'}
             >
-              <Filter className="w-4 h-4" />
+              <Rows3 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -130,16 +133,24 @@ export function ArtifactPanel({
         {isLoading && (
           <div className="flex items-center justify-center h-full">
             <div className="text-text-muted flex flex-col items-center">
-              <Loader2 className="w-5 h-5 animate-spin" strokeWidth={2} aria-hidden="true" />
-              <p className="mt-2 text-sm">Loading artifacts...</p>
+              <Loader2 className="w-5 h-5 animate-spin text-accent-cobalt" strokeWidth={2} aria-hidden="true" />
+              <p className="mt-2 text-[12px] font-mono text-text-muted">Loading artifacts…</p>
             </div>
           </div>
         )}
 
         {!isLoading && filteredArtifacts.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-text-muted p-4">
-            <FileText className="w-12 h-12 mb-3 text-text-muted" />
-            <p className="text-center">
+          <div className="flex flex-col items-center justify-center h-full gap-3 px-4 select-none">
+            <div className="relative grid h-14 w-14 place-items-center">
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-lg"
+              />
+              <span className="relative grid h-11 w-11 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
+                <FileText className="w-4 h-4" />
+              </span>
+            </div>
+            <p className="text-[12px] font-mono text-text-muted text-center">
               {artifacts.length === 0
                 ? 'No artifacts yet'
                 : 'No artifacts match your search'}
@@ -148,7 +159,7 @@ export function ArtifactPanel({
         )}
 
         {!isLoading && filteredArtifacts.length > 0 && viewMode === 'grid' && (
-          <div className="p-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="p-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3">
             {filteredArtifacts.map((artifact) => (
               <ArtifactThumbnail
                 key={artifact.id}
@@ -161,44 +172,37 @@ export function ArtifactPanel({
         )}
 
         {!isLoading && filteredArtifacts.length > 0 && viewMode === 'list' && (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-hairline-soft/50">
             {filteredArtifacts.map((artifact) => (
               <div
                 key={artifact.id}
-                className="p-4 hover:bg-surface-soft cursor-pointer transition-colors"
+                className="group px-3 py-2.5 hover:bg-surface-soft/40 cursor-pointer transition-colors duration-fast"
                 onClick={() => onPreview?.(artifact)}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-ink truncate">
+                    <h3 className="text-[13px] font-medium text-ink truncate">
                       {artifact.title || 'Untitled'}
                     </h3>
-                    <div className="flex gap-2 mt-1">
-                      <span
-                        className={`inline-block text-xs font-medium px-2 py-1 rounded ${
-                          artifact.conversation_id
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}
-                      >
-                        {artifact.conversation_id ? 'Conversation' : 'Project'}
-                      </span>
-                      <span className="inline-block text-xs font-medium px-2 py-1 bg-surface-soft text-text-secondary rounded">
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <ScopeBadge isConversation={!!artifact.conversation_id} />
+                      <span className="inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] bg-surface-soft/60 text-text-secondary">
                         {artifact.type}
                       </span>
+                      <span className="text-[10px] font-mono text-ink/35 ml-auto">
+                        {new Date(artifact.created_at).toLocaleDateString()}
+                      </span>
                     </div>
-                    <p className="text-xs text-text-muted mt-1">
-                      {new Date(artifact.created_at).toLocaleDateString()}
-                    </p>
                   </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete?.(artifact.id);
                     }}
-                    className="ml-4 p-1.5 text-text-muted hover:text-semantic-danger rounded transition-colors"
+                    aria-label={`Delete ${artifact.title || 'artifact'}`}
+                    className="flex-shrink-0 p-1.5 rounded-md text-ink/35 opacity-0 group-hover:opacity-100 hover:text-semantic-danger hover:bg-semantic-danger/10 transition-all duration-fast cursor-pointer"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -209,10 +213,26 @@ export function ArtifactPanel({
 
       {/* Footer Stats */}
       {!isLoading && (
-        <div className="flex-shrink-0 border-t border-hairline-soft p-3 bg-surface-soft text-xs text-text-secondary">
-          Showing {filteredArtifacts.length} of {artifacts.length} artifacts
+        <div className="flex-shrink-0 border-t border-hairline-soft/60 px-3 py-2 bg-surface-soft/30 text-[11px] font-mono text-text-muted">
+          {filteredArtifacts.length} of {artifacts.length}
         </div>
       )}
     </div>
+  );
+}
+
+/** Scope pill using the brand accent spine: cobalt = conversation, violet = project. */
+function ScopeBadge({ isConversation }: { isConversation: boolean }) {
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-[3px]',
+        isConversation
+          ? 'bg-accent-cobalt/12 text-accent-cobalt'
+          : 'bg-accent-violet/12 text-accent-violet',
+      ].join(' ')}
+    >
+      {isConversation ? 'Conversation' : 'Project'}
+    </span>
   );
 }

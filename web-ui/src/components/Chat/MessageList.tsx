@@ -109,7 +109,7 @@ const MARKDOWN_COMPONENTS: Components = {
 // consistent presence in the thread.
 function AtriaAvatar() {
   return (
-    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-[50%] bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
+    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
       <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
     </div>
   );
@@ -135,7 +135,7 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
       <div className="max-w-[80%] md:max-w-[70%]">
-        <div className="rounded-[20px] rounded-tr-[7px] border border-hairline-soft bg-surface-soft px-4 py-3 shadow-soft">
+        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-4 py-3 shadow-soft">
           <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
             {content}
           </div>
@@ -177,7 +177,7 @@ function WelcomeScreen() {
             Let&rsquo;s get to work.
           </h2>
           <p className="mt-5 text-body-sm leading-[1.6] text-text-secondary">
-            Start a conversation with your AI coding assistant.
+            Start a conversation with your AI co-worker.
           </p>
         </div>
       </div>
@@ -509,7 +509,7 @@ export function MessageList() {
         <button
           onClick={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })}
           data-surface="dark"
-          className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-[50%] bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
+          className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
           aria-label="Jump to latest message"
         >
           <ChevronDown className="w-3.5 h-3.5" />

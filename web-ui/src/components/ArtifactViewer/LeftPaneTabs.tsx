@@ -13,7 +13,7 @@ export function LeftPaneTabs({ mode, onChange }: Props) {
       key={m}
       onClick={() => onChange(m)}
       className={[
-        'relative px-2.5 py-1 text-xs font-mono rounded-[7px] transition-all duration-fast cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt',
+        'relative px-2.5 py-1 text-xs font-mono rounded-[4px] transition-all duration-fast cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt',
         mode === m
           ? 'bg-canvas text-ink shadow-soft'
           : 'text-text-muted hover:text-ink',

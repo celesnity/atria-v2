@@ -137,7 +137,7 @@ export function FileUploadWidget({
 
         {/* File Input with Drag and Drop */}
         <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+          className={`border-2 border-dashed rounded-md p-6 text-center transition-all cursor-pointer ${
             isDragging
               ? 'border-blue-400 bg-blue-50 shadow-soft'
               : 'border-hairline-soft hover:border-hairline'
@@ -174,7 +174,7 @@ export function FileUploadWidget({
                     <p className="text-xs text-text-muted">{formatFileSize(file.size)}</p>
                   </div>
                   {progress[file.name] !== undefined && (
-                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-[50%] overflow-hidden">
+                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-md overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all duration-base"
                         style={{ width: `${progress[file.name]}%` }}
@@ -202,7 +202,7 @@ export function FileUploadWidget({
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-semantic-danger rounded-lg p-3 flex items-start justify-between">
+          <div className="bg-red-50 border border-semantic-danger rounded-md p-3 flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-semantic-danger">{error}</p>
             </div>
@@ -222,14 +222,14 @@ export function FileUploadWidget({
             <button
               onClick={handleUpload}
               disabled={!isValid}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {uploading ? 'Uploading...' : 'Upload'}
             </button>
             <button
               onClick={() => setSelectedFiles([])}
               disabled={uploading}
-              className="flex-1 px-4 py-2 border border-hairline-soft text-text-secondary rounded-lg font-medium hover:bg-surface-soft disabled:opacity-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-hairline-soft text-text-secondary rounded-md font-medium hover:bg-surface-soft disabled:opacity-50 transition-colors"
             >
               Clear
             </button>

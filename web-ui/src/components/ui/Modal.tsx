@@ -13,7 +13,7 @@ interface ModalProps {
 /**
  * Editorial modal: scrim fade + scale-in panel. Follows DESIGN.md
  * shadow-light rhythm — the scrim is matte black at 60% per the
- * `{colors.overlay-scrim}` spec, the panel is white canvas with `rounded-lg`.
+ * `{colors.overlay-scrim}` spec, the panel is white canvas with `rounded-md`.
  */
 export function Modal({ isOpen, onClose, title, children, className = '' }: ModalProps) {
   const reduce = useReducedMotion();
@@ -57,7 +57,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
               </h2>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-[50%] text-text-muted hover:bg-surface-soft hover:text-ink"
+                className="p-1.5 rounded-md text-text-muted hover:bg-surface-soft hover:text-ink"
                 aria-label="Close modal"
               >
                 <X className="w-[18px] h-[18px]" strokeWidth={1.5} />

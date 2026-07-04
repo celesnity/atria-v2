@@ -40,17 +40,17 @@ export function ModelSlot({
   const availableModels = currentProvider?.models || [];
 
   return (
-    <div className="border border-hairline-soft rounded-lg p-4 bg-gradient-to-br from-white to-gray-50">
+    <div className="border border-hairline-soft rounded-md p-4 bg-gradient-to-br from-white to-gray-50">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-soft flex-shrink-0">
+        <div className="w-10 h-10 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-soft flex-shrink-0">
           {icon}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-ink">{title}</h3>
             {optional && (
-              <span className="text-xs px-2 py-0.5 bg-surface-soft text-text-secondary rounded-[50%]">
+              <span className="text-xs px-2 py-0.5 bg-surface-soft text-text-secondary rounded-md">
                 Optional
               </span>
             )}
@@ -76,7 +76,7 @@ export function ModelSlot({
                 onModelChange(provider.models[0].id);
               }
             }}
-            className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-lg bg-canvas"
+            className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-md bg-canvas"
           >
             {optional && (
               <option value="">{notSetText}</option>
@@ -98,7 +98,7 @@ export function ModelSlot({
             <select
               value={selectedModel || ''}
               onChange={(e) => onModelChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-lg bg-canvas"
+              className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-md bg-canvas"
               disabled={availableModels.length === 0}
             >
               {availableModels.map(model => (

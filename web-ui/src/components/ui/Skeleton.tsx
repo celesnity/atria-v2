@@ -17,7 +17,7 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 const SHAPES: Record<NonNullable<SkeletonProps['variant']>, string> = {
   text:   'h-3.5 rounded-md',
   block:  'h-16 rounded-xl',
-  circle: 'rounded-[50%] aspect-square',
+  circle: 'rounded-md aspect-square',
 };
 
 export function Skeleton({ variant = 'block', className, ...rest }: SkeletonProps) {

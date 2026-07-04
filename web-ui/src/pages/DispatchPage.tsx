@@ -161,17 +161,14 @@ const THREAD_STATUS_CONFIG = {
 
 function Badge({
   cfg,
-  pulse,
 }: {
   cfg: { color: string; bg: string; dot: string; label: string };
-  pulse: boolean;
 }) {
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[11px] font-mono font-[500] ${cfg.color} ${cfg.bg}`}
       aria-label={cfg.label}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot} ${pulse ? 'animate-pulse-dot' : ''}`} aria-hidden="true" />
       {cfg.label}
     </span>
   );
@@ -252,7 +249,7 @@ function TaskRow({ task }: { task: DivideTaskView }) {
         <span className={`font-mono text-[11px] text-text-400 mt-0.5 w-16 flex-shrink-0 ${isSkipped ? 'line-through opacity-50' : ''}`}>
           {task.id}
         </span>
-        <Badge cfg={TASK_STATUS_CONFIG[task.status]} pulse={task.status === 'running'} />
+        <Badge cfg={TASK_STATUS_CONFIG[task.status]} />
         <div className="flex-1 min-w-0 space-y-0.5">
           <span className={`block text-xs text-text-300 truncate ${isSkipped ? 'line-through opacity-50' : ''}`} title={task.description}>
             {task.description}
@@ -283,7 +280,7 @@ function DivideCard({ job }: { job: DivideJobView }) {
   const pct = total ? Math.max((done / total) * 100, 3) : 3;
   return (
     <div
-      className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden transition-shadow duration-300 hover:shadow-hover focus-visible:outline-none focus-visible:shadow-focus-ring"
+      className="bg-bg-000 border border-border-300/15 rounded-md overflow-hidden transition-shadow duration-300 hover:shadow-hover focus-visible:outline-none focus-visible:shadow-focus-ring"
       role="region"
       tabIndex={0}
       aria-label={`Divide job ${job.jobId.slice(0, 8)}, ${done} of ${total} tasks done`}
@@ -335,7 +332,7 @@ function ThreadRow({ thread }: { thread: ThreadState }) {
         <span className="font-mono text-[11px] text-text-400 mt-0.5 w-16 flex-shrink-0">
           Thread {thread.thread}
         </span>
-        <Badge cfg={THREAD_STATUS_CONFIG[thread.status]} pulse={thread.status === 'running'} />
+        <Badge cfg={THREAD_STATUS_CONFIG[thread.status]} />
         {thread.summary && (
           <span className="flex-1 text-xs text-text-300 truncate min-w-0" title={thread.summary}>
             {thread.summary}
@@ -358,7 +355,7 @@ function ParallelCard({ job }: { job: ParallelJobView }) {
   const statusCfg = THREAD_STATUS_CONFIG[overallStatus];
   return (
     <div
-      className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden transition-shadow duration-fast hover:shadow-hover"
+      className="bg-bg-000 border border-border-300/15 rounded-md overflow-hidden transition-shadow duration-fast hover:shadow-hover"
       role="region"
       aria-label={`Parallel job ${job.jobId.slice(0, 8)}`}
     >
@@ -470,8 +467,8 @@ function SummaryCards({
   counts: { running: number; queued: number; done: number };
 }) {
   return (
-    <dl className="grid grid-cols-3 divide-x divide-hairline-soft/15 rounded-lg border border-hairline-soft/15 bg-canvas overflow-hidden mb-8">
-      {SUMMARY_CARDS.map(({ key, label, dot }) => {
+    <dl className="grid grid-cols-3 divide-x divide-hairline-soft/15 rounded-md border border-hairline-soft/15 bg-canvas overflow-hidden mb-8">
+      {SUMMARY_CARDS.map(({ key, label }) => {
         const live = key === 'running' && counts.running > 0;
         return (
           <div key={key} className="relative px-5 py-4">
@@ -489,10 +486,6 @@ function SummaryCards({
               {counts[key]}
             </dd>
             <dt className="mt-2.5 flex items-center gap-2">
-              <span
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot} ${live ? 'animate-pulse-dot' : ''}`}
-                aria-hidden="true"
-              />
               <span className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-muted">
                 {label}
               </span>
@@ -525,10 +518,6 @@ export function DispatchPage() {
                 </h1>
                 {counts.running > 0 && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-mono font-[500] text-amber-400">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/70" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    </span>
                     {counts.running} live
                   </span>
                 )}

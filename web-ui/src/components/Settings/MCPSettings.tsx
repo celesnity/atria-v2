@@ -195,7 +195,7 @@ export function MCPSettings() {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-semantic-danger rounded-lg">
+        <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-semantic-danger rounded-md">
           <div className="flex items-center gap-3">
             <CircleAlert className="w-5 h-5 text-semantic-danger" />
             <p className="text-sm text-semantic-danger">{error}</p>
@@ -269,9 +269,9 @@ export function MCPSettings() {
 
 function LoadingState() {
   return (
-    <div className="text-center py-12 bg-surface-soft rounded-lg border border-hairline-soft">
+    <div className="text-center py-12 bg-surface-soft rounded-md border border-hairline-soft">
       <div className="inline-flex items-center justify-center w-12 h-12 mb-3">
-        <div className="w-8 h-8 border-3 border-hairline-soft border-t-gray-900 rounded-[50%] animate-spin" />
+        <div className="w-8 h-8 border-3 border-hairline-soft border-t-gray-900 rounded-md animate-spin" />
       </div>
       <p className="text-sm text-text-secondary">Loading MCP servers...</p>
     </div>
@@ -280,7 +280,7 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <div className="text-center py-12 bg-surface-soft rounded-lg border-2 border-dashed border-hairline-soft">
+    <div className="text-center py-12 bg-surface-soft rounded-md border-2 border-dashed border-hairline-soft">
       <ArrowRight className="w-12 h-12 mx-auto text-text-muted mb-3" />
       <p className="text-sm text-text-secondary font-medium mb-1">No MCP servers configured</p>
       <p className="text-xs text-text-muted">
@@ -312,7 +312,7 @@ function ServerTable({
   onDelete,
 }: ServerTableProps) {
   return (
-    <div className="bg-canvas border border-hairline-soft rounded-lg overflow-x-auto">
+    <div className="bg-canvas border border-hairline-soft rounded-md overflow-x-auto">
       <table className="w-full divide-y divide-hairline-soft">
         <colgroup>
           <col style={{ width: '40%' }} /> {/* Name */}
@@ -439,15 +439,13 @@ function ServerRow({
       {/* Status */}
       <td className="px-4 py-3 text-center whitespace-nowrap">
         {isProcessing ? (
-          <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-[50%] animate-spin mx-auto" />
+          <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-md animate-spin mx-auto" />
         ) : isConnected ? (
           <div className="flex items-center justify-center gap-1.5">
-            <div className="w-2 h-2 rounded-[50%] bg-semantic-success" />
             <span className="text-sm font-medium text-green-700">On</span>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-1.5">
-            <div className="w-2 h-2 rounded-[50%] bg-gray-300" />
             <span className="text-sm text-text-muted">Off</span>
           </div>
         )}
@@ -529,7 +527,7 @@ function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuPr
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-32 bg-canvas border border-hairline-soft rounded-lg shadow-soft z-10 overflow-hidden">
+        <div className="absolute right-0 mt-1 w-32 bg-canvas border border-hairline-soft rounded-md shadow-soft z-10 overflow-hidden">
           <button
             onClick={() => {
               onEdit(server);

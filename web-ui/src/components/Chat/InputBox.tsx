@@ -29,7 +29,7 @@ const THINKING_STYLES: Record<string, string> = {
 } as const;
 
 const PILL_BASE =
-  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[50%] border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
+  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
 
 export function InputBox() {
   const [fileOptions, setFileOptions] = useState<DataDrivenOptionProps[]>([]);
@@ -218,11 +218,11 @@ export function InputBox() {
               <button
                 onClick={handleFileButtonClick}
                 disabled={!isConnected || !hasActiveSession || fileUploading}
-                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-colors text-ink/30 hover:text-ink/60 hover:bg-surface-soft disabled:opacity-30 disabled:cursor-not-allowed"
+                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-colors text-ink/30 hover:text-ink/60 hover:bg-surface-soft disabled:opacity-30 disabled:cursor-not-allowed"
                 title="Upload file as artifact"
               >
                 {fileUploading ? (
-                  <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-[50%] animate-spin" />
+                  <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-md animate-spin" />
                 ) : (
                   <Paperclip className="w-4 h-4" />
                 )}
@@ -230,7 +230,7 @@ export function InputBox() {
               {isLoading && (
                 <button
                   onClick={handleStop}
-                  className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-colors text-ink/50 hover:text-ink hover:bg-surface-soft"
+                  className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-colors text-ink/50 hover:text-ink hover:bg-surface-soft"
                   title="Stop (Esc)"
                 >
                   <Square className="w-4 h-4" />
@@ -239,7 +239,7 @@ export function InputBox() {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || !isConnected || !hasActiveSession || sendLocked}
-                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-all bg-gradient-brand text-white shadow-glow-nebula hover:brightness-110 active:scale-[0.96] disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
+                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-all bg-gradient-brand text-white shadow-glow-nebula hover:brightness-110 active:scale-[0.96] disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Send (Enter)"
               >
                 <SendHorizontal className="w-4 h-4" />

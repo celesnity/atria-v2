@@ -62,7 +62,7 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
             {isActive && (
               <span
                 aria-hidden
-                className="absolute inset-x-0 -bottom-px h-0.5 rounded-[50%] bg-gradient-brand"
+                className="absolute inset-x-0 -bottom-px h-0.5 rounded-md bg-gradient-brand"
               />
             )}
             <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-accent-cobalt' : 'text-ink/40'}`} />
@@ -71,10 +71,12 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
               <span
                 aria-label="Unsaved changes"
                 title="Unsaved changes"
-                className={`w-1.5 h-1.5 rounded-[50%] flex-shrink-0 ${
-                  isActive ? 'bg-accent-cobalt' : 'bg-ink/50'
+                className={`flex-shrink-0 text-[13px] leading-none ${
+                  isActive ? 'text-accent-cobalt' : 'text-ink/50'
                 }`}
-              />
+              >
+                *
+              </span>
             )}
             <button
               onClick={(e) => { e.stopPropagation(); closeTab(convId, tab.id); }}

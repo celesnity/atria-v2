@@ -20,7 +20,7 @@ export function BinaryFallback({ path, size, url }: Props) {
       <div className="relative grid h-16 w-16 place-items-center">
         <span
           aria-hidden
-          className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-xl"
+          className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-xl"
         />
         <span className="relative grid h-12 w-12 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
           <FileIcon className="w-5 h-5" />

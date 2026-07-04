@@ -36,7 +36,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId }: Props) 
         <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
           <button
             onClick={() => setMode('preview')}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[7px] cursor-pointer transition-all duration-fast ${
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[4px] cursor-pointer transition-all duration-fast ${
               mode === 'preview' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
             }`}
           >
@@ -44,7 +44,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId }: Props) 
           </button>
           <button
             onClick={() => setMode('source')}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[7px] cursor-pointer transition-all duration-fast ${
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[4px] cursor-pointer transition-all duration-fast ${
               mode === 'source' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
             }`}
           >

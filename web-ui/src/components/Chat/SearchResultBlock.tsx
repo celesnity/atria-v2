@@ -12,7 +12,7 @@ export function SearchResultBlock({ message }: Props) {
   const hasResults = search_results.length > 0;
 
   return (
-    <div className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden animate-slide-up">
+    <div className="bg-bg-000 border border-border-300/15 rounded-md overflow-hidden animate-slide-up">
       {/* Header row */}
       <button
         className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-100/50 transition-colors text-left"

@@ -110,7 +110,7 @@ export function ModuleGallery({ convId }: Props) {
 
         {!loading && modules.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center px-4 py-8 gap-2 select-none">
-            <div className="w-10 h-10 rounded-[50%] border border-hairline-soft flex items-center justify-center text-ink/25">
+            <div className="w-10 h-10 rounded-md border border-hairline-soft flex items-center justify-center text-ink/25">
               <Boxes className="w-4 h-4" />
             </div>
             <div className="text-[12px] text-ink/55">No modules yet</div>
@@ -140,16 +140,15 @@ export function ModuleGallery({ convId }: Props) {
               <div
                 key={m.name}
                 onClick={() => openModuleTab(convId, m.name)}
-                className="group relative rounded-md border border-hairline-soft/60 bg-surface hover:border-hairline-soft hover:bg-surface-soft/40 cursor-pointer transition-colors px-2.5 py-2"
+                className="group relative rounded-md border border-hairline-soft/60 bg-canvas hover:border-hairline-soft hover:bg-surface-soft/40 cursor-pointer transition-colors px-2.5 py-2"
               >
                 <div className="flex items-center gap-1.5">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-[50%] flex-shrink-0 ${
-                      hasBody ? 'bg-emerald-500' : 'bg-ink/25'
-                    }`}
+                  <div
+                    className={`font-medium text-[12.5px] truncate ${hasBody ? '' : 'text-ink/50'}`}
                     title={hasBody ? 'Active' : 'Draft (empty)'}
-                  />
-                  <div className="font-medium text-[12.5px] truncate">{m.name}</div>
+                  >
+                    {m.name}
+                  </div>
                   <div className="flex-1" />
                   <span className="text-[10px] text-ink/40 flex-shrink-0">
                     {relativeTime(m.mtime)}

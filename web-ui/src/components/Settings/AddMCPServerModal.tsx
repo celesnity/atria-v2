@@ -249,14 +249,14 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
                   placeholder={`{\n  "mcpServers": {\n    "server-name": {\n      "command": "npx",\n      "args": ["-y", "package-name"]\n    }\n  }\n}`}
                   disabled={isSubmitting}
                   rows={12}
-                  className="w-full px-3 py-2 border border-hairline-soft rounded-lg font-mono text-sm disabled:bg-surface-soft"
+                  className="w-full px-3 py-2 border border-hairline-soft rounded-md font-mono text-sm disabled:bg-surface-soft"
                 />
               </div>
               <button
                 type="button"
                 onClick={parseJSON}
                 disabled={isSubmitting || !jsonInput.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-gradient-brand hover:brightness-110 active:scale-[0.98] whitespace-nowrap rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-brand hover:brightness-110 active:scale-[0.98] whitespace-nowrap rounded-md transition-colors disabled:opacity-50"
               >
                 Parse and Fill Form
               </button>

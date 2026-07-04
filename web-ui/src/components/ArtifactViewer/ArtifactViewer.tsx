@@ -96,7 +96,7 @@ export function ArtifactViewer() {
           onClick={() => setCollapsed(false)}
           aria-label="Open artifact viewer"
           title="Open artifact viewer"
-          className="fixed bottom-24 right-3 z-30 p-2.5 rounded-[50%] bg-canvas border border-hairline-soft text-ink/70 hover:text-ink shadow-modal cursor-pointer transition-colors"
+          className="fixed bottom-24 right-3 z-30 p-2.5 rounded-md bg-canvas border border-hairline-soft text-ink/70 hover:text-ink shadow-modal cursor-pointer transition-colors"
         >
           <PanelRightOpen className="w-5 h-5" />
         </button>
@@ -246,7 +246,7 @@ export function ArtifactViewer() {
                 <div className="relative grid h-14 w-14 place-items-center">
                   <span
                     aria-hidden
-                    className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-lg"
+                    className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-lg"
                   />
                   <span className="relative grid h-11 w-11 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
                     <PanelRightOpen className="w-4 h-4" />
