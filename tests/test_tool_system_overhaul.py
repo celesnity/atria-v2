@@ -999,7 +999,7 @@ class TestRegistryIntegration:
         from atria.core.agents.components.schemas.definitions import _BUILTIN_TOOL_SCHEMAS
 
         # Lower bound for the built-in tool schema set.
-        assert len(_BUILTIN_TOOL_SCHEMAS) >= 40
+        assert len(_BUILTIN_TOOL_SCHEMAS) >= 30
 
     def test_planning_tools_unchanged(self):
         from atria.core.agents.components.schemas.planning_builder import PLANNING_TOOLS

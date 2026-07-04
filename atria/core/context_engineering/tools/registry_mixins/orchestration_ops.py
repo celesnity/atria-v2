@@ -30,7 +30,7 @@ class OrchestrationOpsMixin:
         if task_client is None:
             return None
 
-        from atria.core.context_engineering.tools.implementations.send_table_tool import (
+        from atria.core.context_engineering.tools.implementations.session_resolve import (
             resolve_session,
         )
         from atria.core.subagents.tools import build_subagent_orchestrator
