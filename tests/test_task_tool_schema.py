@@ -1,7 +1,7 @@
-"""Schema shape for spawn_subagent after the strategy rewire."""
+"""Schema shape for the unified ``subagent`` tool."""
 from __future__ import annotations
 
-from atria.core.agents.subagents.task_tool import create_task_tool_schema
+from atria.core.agents.subagents.task_tool import TASK_TOOL_NAME, create_task_tool_schema
 
 
 class _FakeConfig:
@@ -12,21 +12,29 @@ class _FakeConfig:
 
 class _FakeManager:
     def get_agent_configs(self) -> list[_FakeConfig]:
-        return [_FakeConfig("solver", "Race worktree solvers.")]
+        return [_FakeConfig("code_explorer", "Explore the codebase.")]
 
 
-def test_strategy_field_is_present() -> None:
+def test_tool_is_named_subagent() -> None:
+    assert TASK_TOOL_NAME == "subagent"
+    schema = create_task_tool_schema(_FakeManager())
+    assert schema["function"]["name"] == "subagent"
+
+
+def test_tasks_array_is_required_with_typed_items() -> None:
+    schema = create_task_tool_schema(_FakeManager())
+    params = schema["function"]["parameters"]
+    assert params["required"] == ["tasks"]
+
+    tasks = params["properties"]["tasks"]
+    assert tasks["type"] == "array"
+    item_props = tasks["items"]["properties"]
+    assert set(tasks["items"]["required"]) == {"subagent_type", "prompt"}
+    # subagent_type enum reflects the registered agent configs.
+    assert item_props["subagent_type"]["enum"] == ["code_explorer"]
+
+
+def test_no_strategy_field() -> None:
     schema = create_task_tool_schema(_FakeManager())
     props = schema["function"]["parameters"]["properties"]
-
-    assert "strategy" in props
-    assert props["strategy"]["type"] == "string"
-    assert set(props["strategy"]["enum"]) == {"direct", "divide", "parallel"}
-    assert props["strategy"].get("default") == "direct"
-
-
-def test_strategy_not_required() -> None:
-    schema = create_task_tool_schema(_FakeManager())
-    required = schema["function"]["parameters"]["required"]
-    assert "strategy" not in required
-    assert "subagent_type" in required  # unchanged: still required in schema
+    assert "strategy" not in props

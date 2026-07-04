@@ -79,7 +79,7 @@ class ToolSchemaBuilder:
 
         # Add task tool schema if subagent manager is configured
         # Only add if spawn_subagent is in allowed_tools or no filter
-        if self._allowed_tools is None or "spawn_subagent" in self._allowed_tools:
+        if self._allowed_tools is None or "subagent" in self._allowed_tools:
             task_schema = self._build_task_schema()
             if task_schema:
                 schemas.append(task_schema)

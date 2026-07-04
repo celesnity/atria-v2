@@ -11,7 +11,7 @@ from typing import Any
 from atria.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
-    # ===== Markdown to PDF Tool (analyze plugin) =====
+    # ===== Markdown to PDF Tool =====
     {
         "type": "function",
         "function": {

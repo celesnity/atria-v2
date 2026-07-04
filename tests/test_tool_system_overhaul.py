@@ -2,12 +2,10 @@
 
 Covers all new implementations:
 - B1: Result Sanitization Pipeline
-- A2: Memory Tools (memory_search, memory_write)
-- A1: Session Inspection Tools (list_sessions, get_session_history, list_subagents)
+- A1: Session Inspection Tools (list_subagents)
 - A6: Git Operations Tool
 - B2: Tool Profile & Group System
 - B3: Provider-Specific Schema Adaptation
-- A3: Browser Automation Tool (import only — Playwright optional)
 - A5: Cron/Scheduling Tool
 - A4: Cross-Channel Message Tool
 - B4: Parameter Normalization Layer
@@ -110,114 +108,6 @@ class TestResultSanitizer:
 
 
 # ============================================================
-# A2: Memory Tools
-# ============================================================
-
-
-class TestMemoryTools:
-    def test_import(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-        from atria.core.context_engineering.tools.handlers.memory_handlers import MemoryToolHandler
-
-        assert MemoryTools is not None
-        assert MemoryToolHandler is not None
-
-    def test_search_empty_query(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        mt = MemoryTools(working_dir="/nonexistent")
-        result = mt.search("")
-        assert not result["success"]
-        assert "empty" in result["error"].lower()
-
-    def test_search_no_files(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mt = MemoryTools(working_dir=tmpdir)
-            result = mt.search("test query")
-            assert result["success"]
-            assert "No memory files" in result["output"]
-
-    def test_search_finds_matches(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create memory directory and file
-            mem_dir = Path(tmpdir) / ".atria" / "memory"
-            mem_dir.mkdir(parents=True)
-            (mem_dir / "test.md").write_text("# Patterns\n\nAlways use pytest for testing\n")
-            mt = MemoryTools(working_dir=tmpdir)
-            result = mt.search("pytest testing")
-            assert result["success"]
-            assert len(result["matches"]) > 0
-            assert "pytest" in result["output"].lower()
-
-    def test_write_creates_file(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mt = MemoryTools(working_dir=tmpdir)
-            result = mt.write("Test Topic", "Some content here")
-            assert result["success"]
-            assert "Created" in result["output"]
-            # Verify file exists
-            mem_file = Path(tmpdir) / ".atria" / "memory" / "test-topic.md"
-            assert mem_file.exists()
-            content = mem_file.read_text()
-            assert "Test Topic" in content
-            assert "Some content here" in content
-
-    def test_write_appends_to_existing(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mt = MemoryTools(working_dir=tmpdir)
-            mt.write("Topic", "First entry")
-            result = mt.write("Topic", "Second entry")
-            assert result["success"]
-            assert "Updated" in result["output"]
-            content = (Path(tmpdir) / ".atria" / "memory" / "topic.md").read_text()
-            assert "First entry" in content
-            assert "Second entry" in content
-
-    def test_write_dedup(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            mt = MemoryTools(working_dir=tmpdir)
-            mt.write("Topic", "Exact content")
-            result = mt.write("Topic", "Exact content")
-            assert result["success"]
-            assert "already contains" in result["output"]
-
-    def test_write_empty_topic(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        mt = MemoryTools()
-        result = mt.write("", "content")
-        assert not result["success"]
-
-    def test_write_user_scope(self):
-        from atria.core.context_engineering.tools.implementations.memory_tools import MemoryTools
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with patch.object(Path, "home", return_value=Path(tmpdir)):
-                mt = MemoryTools(working_dir="/somewhere")
-                result = mt.write("Test", "Content", scope="user")
-                assert result["success"]
-                assert (Path(tmpdir) / ".atria" / "memory" / "test.md").exists()
-
-    def test_handler_delegates(self):
-        from atria.core.context_engineering.tools.handlers.memory_handlers import MemoryToolHandler
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            handler = MemoryToolHandler(working_dir=tmpdir)
-            result = handler.search({"query": "anything"})
-            assert result["success"]  # No files, but succeeds
-
-
-# ============================================================
 # A1: Session Inspection Tools
 # ============================================================
 
@@ -232,56 +122,6 @@ class TestSessionTools:
         assert SessionTools is not None
         assert SessionToolHandler is not None
 
-    def test_list_sessions_no_manager(self):
-        from atria.core.context_engineering.tools.implementations.session_tools import SessionTools
-
-        st = SessionTools()
-        result = st.list_sessions(session_manager=None)
-        assert not result["success"]
-
-    def test_list_sessions_empty(self):
-        from atria.core.context_engineering.tools.implementations.session_tools import SessionTools
-
-        st = SessionTools()
-        mock_manager = MagicMock()
-        mock_manager.list_sessions.return_value = []
-        result = st.list_sessions(session_manager=mock_manager)
-        assert result["success"]
-        assert "No past sessions" in result["output"]
-
-    def test_list_sessions_with_data(self):
-        from atria.core.context_engineering.tools.implementations.session_tools import SessionTools
-
-        st = SessionTools()
-        mock_session = MagicMock()
-        mock_session.id = "abc123"
-        mock_session.title = "Test Session"
-        mock_session.updated_at = "2024-01-01"
-        mock_session.message_count = 5
-        mock_manager = MagicMock()
-        mock_manager.list_sessions.return_value = [mock_session]
-        result = st.list_sessions(session_manager=mock_manager)
-        assert result["success"]
-        assert "abc123" in result["output"]
-
-    def test_get_session_history_no_id(self):
-        from atria.core.context_engineering.tools.implementations.session_tools import SessionTools
-
-        st = SessionTools()
-        result = st.get_session_history(session_manager=MagicMock(), session_id="")
-        assert not result["success"]
-
-    def test_get_session_history_redacts_secrets(self):
-        from atria.core.context_engineering.tools.implementations.session_tools import (
-            _redact_sensitive,
-        )
-
-        text = "My key is sk-abc123456789012345678901234567890 and token ghp_abcdefghijklmnopqrstuvwxyz0123456789"
-        redacted = _redact_sensitive(text)
-        assert "sk-abc" not in redacted
-        assert "ghp_" not in redacted
-        assert "REDACTED" in redacted
-
     def test_list_subagents_no_manager(self):
         from atria.core.context_engineering.tools.implementations.session_tools import SessionTools
 
@@ -289,18 +129,6 @@ class TestSessionTools:
         result = st.list_subagents(subagent_manager=None)
         assert result["success"]
         assert "No subagent manager" in result["output"]
-
-    def test_handler_list_sessions(self):
-        from atria.core.context_engineering.tools.handlers.session_handlers import (
-            SessionToolHandler,
-        )
-
-        handler = SessionToolHandler()
-        ctx = MagicMock()
-        ctx.session_manager = MagicMock()
-        ctx.session_manager.list_sessions.return_value = []
-        result = handler.list_sessions({}, context=ctx)
-        assert result["success"]
 
 
 # ============================================================
@@ -339,7 +167,7 @@ class TestToolPolicy:
 
         tools = ToolPolicy.resolve("review")
         assert "read_file" in tools
-        assert "web_search" in tools
+        assert "list_subagents" in tools
         assert "write_file" not in tools
 
     def test_coding_profile(self):
@@ -349,7 +177,7 @@ class TestToolPolicy:
         assert "read_file" in tools
         assert "write_file" in tools
         assert "run_command" in tools
-        assert "memory_search" in tools
+        assert "list_subagents" in tools
 
     def test_additions(self):
         from atria.core.context_engineering.tools.tool_policy import ToolPolicy
@@ -441,18 +269,6 @@ class TestSchemaAdapter:
         result = adapt_for_provider(schemas, "google")
         assert "format" not in result[0]["function"]["parameters"]["properties"]["x"]
 
-    def test_xai_filters_web_search(self):
-        from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
-
-        schemas = [
-            {"function": {"name": "web_search", "parameters": {}}},
-            {"function": {"name": "read_file", "parameters": {}}},
-        ]
-        result = adapt_for_provider(schemas, "xai")
-        names = [s["function"]["name"] for s in result]
-        assert "web_search" not in names
-        assert "read_file" in names
-
     def test_mistral_flattens_anyof(self):
         from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
 
@@ -490,38 +306,6 @@ class TestSchemaAdapter:
 
 
 # ============================================================
-# A3: Browser Automation Tool (import-only test - Playwright optional)
-# ============================================================
-
-
-class TestBrowserTool:
-    def test_import(self):
-        from atria.core.context_engineering.tools.implementations.browser_tool import BrowserTool
-        from atria.core.context_engineering.tools.handlers.browser_handlers import (
-            BrowserToolHandler,
-        )
-
-        assert BrowserTool is not None
-        assert BrowserToolHandler is not None
-
-    def test_unknown_action(self):
-        from atria.core.context_engineering.tools.implementations.browser_tool import BrowserTool
-
-        bt = BrowserTool()
-        # This will fail if playwright is not installed
-        result = bt.execute("nonexistent_action")
-        assert not result["success"]
-
-    def test_handler_delegation(self):
-        from atria.core.context_engineering.tools.handlers.browser_handlers import (
-            BrowserToolHandler,
-        )
-
-        handler = BrowserToolHandler()
-        result = handler.handle({"action": "nonexistent"})
-        assert not result["success"]
-
-
 # ============================================================
 # A5: Cron/Scheduling Tool
 # ============================================================
@@ -893,9 +677,6 @@ class TestParallelPolicy:
     def test_new_session_tools_read_only(self):
         from atria.core.context_engineering.tools.parallel_policy import READ_ONLY_TOOLS
 
-        assert "list_sessions" in READ_ONLY_TOOLS
-        assert "get_session_history" in READ_ONLY_TOOLS
-        assert "memory_search" in READ_ONLY_TOOLS
         assert "list_subagents" in READ_ONLY_TOOLS
 
 
@@ -1177,12 +958,7 @@ class TestRegistryIntegration:
 
         registry = ToolRegistry()
         expected_tools = [
-            "memory_search",
-            "memory_write",
-            "list_sessions",
-            "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",
@@ -1196,12 +972,7 @@ class TestRegistryIntegration:
 
         names = {s["function"]["name"] for s in _BUILTIN_TOOL_SCHEMAS}
         expected = {
-            "memory_search",
-            "memory_write",
-            "list_sessions",
-            "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",
@@ -1214,12 +985,7 @@ class TestRegistryIntegration:
         from atria.core.agents.prompts.loader import load_tool_description
 
         tools = [
-            "memory_search",
-            "memory_write",
-            "list_sessions",
-            "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",
@@ -1232,8 +998,8 @@ class TestRegistryIntegration:
     def test_schema_count(self):
         from atria.core.agents.components.schemas.definitions import _BUILTIN_TOOL_SCHEMAS
 
-        # We added 11 new schemas to the existing set
-        assert len(_BUILTIN_TOOL_SCHEMAS) >= 44
+        # Lower bound for the built-in tool schema set.
+        assert len(_BUILTIN_TOOL_SCHEMAS) >= 30
 
     def test_planning_tools_unchanged(self):
         from atria.core.agents.components.schemas.planning_builder import PLANNING_TOOLS
@@ -1241,7 +1007,7 @@ class TestRegistryIntegration:
         # Core planning tools should still be present
         assert "read_file" in PLANNING_TOOLS
         assert "search" in PLANNING_TOOLS
-        assert "spawn_subagent" in PLANNING_TOOLS
+        assert "subagent" in PLANNING_TOOLS
 
 
 # ============================================================

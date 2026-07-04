@@ -57,7 +57,7 @@ class TestExploreFirstEnforcement:
     def test_blocks_planner_before_exploration(self, executor, ctx):
         """Planner spawn should be blocked when has_explored is False."""
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "Planner"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "Planner"}, "c1"),
         ]
         with (
             patch.object(executor, "_display_message"),
@@ -74,7 +74,7 @@ class TestExploreFirstEnforcement:
     def test_allows_code_explorer_without_prior_exploration(self, executor, ctx):
         """Code-Explorer should always be allowed and should set has_explored."""
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "Code-Explorer"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "Code-Explorer"}, "c1"),
         ]
         with (
             patch.object(executor, "_display_message"),
@@ -92,7 +92,7 @@ class TestExploreFirstEnforcement:
     def test_allows_ask_user_without_prior_exploration(self, executor, ctx):
         """ask-user should always be allowed (exempt)."""
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "ask-user"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "ask-user"}, "c1"),
         ]
         with (
             patch.object(executor, "_display_message"),
@@ -113,7 +113,7 @@ class TestExploreFirstEnforcement:
         """Planner should proceed normally after Code-Explorer has run."""
         ctx.has_explored = True
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "Planner"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "Planner"}, "c1"),
         ]
         with (
             patch.object(executor, "_display_message"),
@@ -132,7 +132,7 @@ class TestExploreFirstEnforcement:
     def test_blocks_web_generator_before_exploration(self, executor, ctx):
         """Web-Generator should be blocked before exploration."""
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "Web-Generator"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "Web-Generator"}, "c1"),
         ]
         with (
             patch.object(executor, "_display_message"),
@@ -146,8 +146,8 @@ class TestExploreFirstEnforcement:
     def test_blocks_batch_spawn_fills_all_tool_results(self, executor, ctx):
         """When blocking a batch of spawns, all tool calls get synthetic results."""
         tool_calls = [
-            _make_tool_call("spawn_subagent", {"subagent_type": "Planner"}, "c1"),
-            _make_tool_call("spawn_subagent", {"subagent_type": "Web-Generator"}, "c2"),
+            _make_tool_call("subagent", {"subagent_type": "Planner"}, "c1"),
+            _make_tool_call("subagent", {"subagent_type": "Web-Generator"}, "c2"),
         ]
         with (
             patch.object(executor, "_display_message"),

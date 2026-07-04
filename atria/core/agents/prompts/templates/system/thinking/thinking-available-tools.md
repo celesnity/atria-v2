@@ -13,7 +13,6 @@ Use this list to reason about what actions are possible. Suggest which tools to 
 - **Search & Navigation**: `list_files`, `search` (regex/ast)
 - **Symbol Operations**: `find_symbol`, `find_referencing_symbols`, `rename_symbol`
 - **Command Execution**: `run_command`, `list_processes`, `kill_process`
-- **Web**: `fetch_url`, `capture_web_screenshot`, `open_browser`, `analyze_image`
 - **MCP**: `search_tools` (find tools by keyword then use them)
 - **Task Tracking**: `write_todos`, `update_todo`, `complete_todo`, `clear_todos`
-- **Subagents**: `spawn_subagent(subagent_type, task)` - Delegate complex tasks to specialized subagents (e.g., large features, deep research, multi-file refactoring). Don't use for single file edits.
+- **Subagents**: `subagent(tasks=[{subagent_type, prompt}])` - Delegate complex tasks to specialized subagents (e.g., large features, deep research, multi-file refactoring); pass several task elements to run independent tasks concurrently. Don't use for single file edits.

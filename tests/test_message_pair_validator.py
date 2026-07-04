@@ -53,9 +53,9 @@ class TestValidateToolResultsComplete:
     def test_all_missing_after_interrupt(self):
         """All results missing (e.g., cancelled parallel execution)."""
         tool_calls = [
-            {"id": "tc_1", "function": {"name": "spawn_subagent"}},
-            {"id": "tc_2", "function": {"name": "spawn_subagent"}},
-            {"id": "tc_3", "function": {"name": "spawn_subagent"}},
+            {"id": "tc_1", "function": {"name": "subagent"}},
+            {"id": "tc_2", "function": {"name": "subagent"}},
+            {"id": "tc_3", "function": {"name": "subagent"}},
         ]
         results = {}
         out = MessagePairValidator.validate_tool_results_complete(tool_calls, results)

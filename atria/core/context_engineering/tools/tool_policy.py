@@ -19,7 +19,6 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "find_symbol",
         "find_referencing_symbols",
         "read_pdf",
-        "analyze_image",
     },
     "group:write": {
         "write_file",
@@ -37,22 +36,11 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "get_process_output",
         "kill_process",
     },
-    "group:web": {
-        "fetch_url",
-        "web_search",
-        "capture_web_screenshot",
-        "capture_screenshot",
-        "browser",
-        "open_browser",
-    },
     "group:session": {
-        "list_sessions",
-        "get_session_history",
-        "spawn_subagent",
+        "subagent",
         "get_subagent_output",
         "list_subagents",
     },
-    "group:memory": {"memory_search", "memory_write"},
     "group:meta": {
         "task_complete",
         "ask_user",
@@ -76,15 +64,13 @@ TOOL_GROUPS: dict[str, set[str]] = {
 # Named profiles — compose groups into permission sets
 PROFILES: dict[str, list[str]] = {
     "minimal": ["group:read", "group:meta"],
-    "review": ["group:read", "group:meta", "group:web", "group:session"],
+    "review": ["group:read", "group:meta", "group:session"],
     "coding": [
         "group:read",
         "group:write",
         "group:process",
-        "group:web",
         "group:meta",
         "group:session",
-        "group:memory",
     ],
     "full": list(TOOL_GROUPS.keys()),
 }
@@ -160,7 +146,7 @@ class ToolPolicy:
         """Get a human-readable description of a profile."""
         descriptions = {
             "minimal": "Read-only tools + meta tools (for planning/exploration)",
-            "review": "Read + web + git + session tools (for code review)",
+            "review": "Read + git + session tools (for code review)",
             "coding": "Full development toolset without messaging/automation",
             "full": "All available tools (default)",
         }

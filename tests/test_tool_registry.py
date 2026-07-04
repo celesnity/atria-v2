@@ -15,8 +15,6 @@ def mock_dependencies():
         "atria.core.context_engineering.tools.handlers.file_handlers": MagicMock(),
         "atria.core.context_engineering.mcp.handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.process_handlers": MagicMock(),
-        "atria.core.context_engineering.tools.handlers.web_handlers": MagicMock(),
-        "atria.core.context_engineering.tools.handlers.screenshot_handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.todo_handler": MagicMock(),
         "atria.core.context_engineering.tools.implementations.pdf_tool": MagicMock(),
         "atria.core.context_engineering.tools.symbol_tools": MagicMock(),
@@ -59,10 +57,7 @@ def registry(tool_registry_cls):
         write_tool=MagicMock(),
         edit_tool=MagicMock(),
         bash_tool=MagicMock(),
-        web_fetch_tool=MagicMock(),
-        open_browser_tool=MagicMock(),
         vlm_tool=MagicMock(),
-        web_screenshot_tool=MagicMock(),
         mcp_manager=MagicMock(),
     )
 
@@ -140,31 +135,20 @@ def test_mcp_tool_execution(registry):
     )
 
 
-def test_subagent_spawn_no_manager(registry):
+def test_subagent_fanout_no_task_client(registry):
+    """With no subagent manager there is no task client, so delegation is unavailable."""
     registry._subagent_manager = None
-    result = registry._execute_spawn_subagent({}, None)
-
-    assert result["success"] is False
-    assert "SubAgentManager not configured" in result["error"]
-
-
-def test_subagent_spawn_missing_description(registry):
-    registry._subagent_manager = MagicMock()
-    result = registry._execute_spawn_subagent({"subagent_type": "test"}, None)
-
-    assert result["success"] is False
-    assert "Task prompt is required" in result["error"]
-
-
-def test_subagent_spawn_success(registry, tool_registry_cls):
-    registry._subagent_manager = MagicMock()
-    registry._subagent_manager.execute_subagent.return_value = {"success": True, "content": "Done"}
-
-    # SubAgentDeps should be mocked by the fixture
-    result = registry._execute_spawn_subagent(
-        {"description": "task", "subagent_type": "test"}, MagicMock()
+    result = registry._execute_subagent_fanout(
+        {"tasks": [{"subagent_type": "test", "prompt": "p"}]}, None
     )
 
-    assert result["success"] is True
-    assert result["subagent_type"] == "test"
-    registry._subagent_manager.execute_subagent.assert_called_once()
+    assert result["success"] is False
+    assert "unavailable" in result["error"].lower()
+
+
+def test_get_subagent_output_no_task_client(registry):
+    registry._subagent_manager = None
+    result = registry._execute_get_subagent_output({"job_id": "j1"}, None)
+
+    assert result["success"] is False
+    assert "unavailable" in result["error"].lower()

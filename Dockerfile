@@ -1,43 +1,82 @@
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 — builder: compile & install everything into a self-contained venv
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+
+# Pinned, reproducible uv binary (no pip bootstrap layer).
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
 
 WORKDIR /app
 
+# Build-only toolchain — never shipped in the runtime image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl build-essential \
-    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+        build-essential git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install uv --no-cache-dir
+# Build the venv against the image's own interpreter so its absolute paths
+# (/app/.venv -> /usr/local/bin/python) stay valid when copied to the runtime
+# stage, which shares the same python:3.12-slim base.
+ENV UV_PYTHON=/usr/local/bin/python3.12 \
+    UV_PYTHON_PREFERENCE=only-system \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
 
-# ── Layer 1: install deps (cached as long as lockfile doesn't change) ──────────
+# ── Layer 1: dependencies only (cached until the lockfile changes) ────────────
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
-# ── Layer 2: install playwright browsers (slow; cached separately) ─────────────
-RUN uv run playwright install --with-deps chromium 2>/dev/null || true
-
-# ── Layer 3: pre-cache tiktoken encodings so container works offline ──────────
+# ── Layer 2: pre-cache tiktoken encodings so the container works offline ──────
 RUN uv run python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
-# ── Layer 4: copy source and install the package itself ───────────────────────
+# ── Layer 3: project source + install the package itself ──────────────────────
 COPY . .
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
-# ── Layer 5: pre-install every module's requirements.txt into shared venv ─────
+# ── Layer 4: pre-install every module's requirements.txt into the shared venv ─
 # Mirrors atria.core.modules.deps.install_module_deps so the container is
 # offline-safe and the first module call doesn't trigger an install. Stamp
 # files match the runtime hash check, so registry load is a no-op.
-RUN for req in /app/modules/*/requirements.txt; do \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    for req in /app/modules/*/requirements.txt; do \
         [ -f "$req" ] || continue; \
         echo "[modules] installing $req"; \
         uv pip install --python /app/.venv/bin/python -r "$req" || exit 1; \
         sha256sum "$req" | awk '{print $1}' > "$(dirname "$req")/.deps.sha256"; \
     done
 
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-# UTF-8 mode so logs/file writes never crash on non-ASCII (e.g. "✓" in summaries)
-ENV PYTHONUTF8=1
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 — runtime: slim image, only shared libs the app needs at run time
+# ─────────────────────────────────────────────────────────────────────────────
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+# Runtime-only shared libraries:
+#   git                    -> gitpython shells out to the git binary
+#   libpango* / libharfbuzz -> weasyprint PDF rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user (best practice: don't run the server as root).
+RUN groupadd --system atria && useradd --system --gid atria --home-dir /home/atria --create-home atria
+
+# Bring over the fully-built venv + application source from the builder.
+COPY --from=builder --chown=atria:atria /app /app
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    # UTF-8 mode so logs/file writes never crash on non-ASCII (e.g. "✓").
+    PYTHONUTF8=1 \
+    HOME=/home/atria
+
+USER atria
 
 EXPOSE 8080
 
@@ -45,10 +84,10 @@ EXPOSE 8080
 # supplied via .env in compose). No hard-coded model default: the container
 # fails fast if either is missing so misconfiguration is obvious.
 ENTRYPOINT ["/bin/sh", "-c", "\
-  mkdir -p /root/.atria && \
+  mkdir -p \"$HOME/.atria\" && \
   : \"${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}\" && \
   : \"${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}\" && \
-  SETTINGS=/root/.atria/settings.json && \
+  SETTINGS=\"$HOME/.atria/settings.json\" && \
   TMP=\"$SETTINGS.tmp\" && \
   printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$ATRIA_MODEL\" \"$ATRIA_API_BASE_URL\" > \"$TMP\" && \
   mv \"$TMP\" \"$SETTINGS\" && \

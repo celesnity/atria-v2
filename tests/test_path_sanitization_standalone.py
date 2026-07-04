@@ -53,7 +53,7 @@ def _rewrite_task_for_docker(
     task: str,
     input_files: list,
     workspace_dir: str,
-    local_working_dir: str = "/Users/nghibui/codes/test_opencli",
+    local_working_dir: str = "/Users/anlnm/codes/test_opencli",
 ) -> str:
     """Copy of _rewrite_task_for_docker from SubAgentManager."""
     new_task = task
@@ -112,7 +112,7 @@ Use ONLY the filename or relative path for all file operations.
 
 def test_sanitize_users_path():
     """Test that /Users/... paths are sanitized to just filename."""
-    args = {"path": "/Users/nghibui/codes/test_opencli/pyproject.toml"}
+    args = {"path": "/Users/anlnm/codes/test_opencli/pyproject.toml"}
     result = _sanitize_local_paths(args)
     assert result["path"] == "pyproject.toml", f"Expected 'pyproject.toml', got '{result['path']}'"
     print("✓ test_sanitize_users_path")
@@ -162,7 +162,7 @@ def test_preserve_workspace_path():
 
 def test_sanitize_pdf_path():
     """Test sanitizing PDF file paths."""
-    args = {"path": "/Users/nghibui/codes/test_opencli/2303.11366v4.pdf"}
+    args = {"path": "/Users/anlnm/codes/test_opencli/2303.11366v4.pdf"}
     result = _sanitize_local_paths(args)
     assert (
         result["path"] == "2303.11366v4.pdf"
@@ -173,7 +173,7 @@ def test_sanitize_pdf_path():
 def test_sanitize_multiple_args():
     """Test sanitizing multiple path arguments."""
     args = {
-        "file_path": "/Users/nghibui/codes/test/main.py",
+        "file_path": "/Users/anlnm/codes/test/main.py",
         "content": "print('hello')",  # Non-path, should be preserved
         "output_path": "/home/user/output.txt",
     }
@@ -206,7 +206,7 @@ def test_translate_workspace_path():
 
 def test_translate_absolute_host_path():
     """Test that absolute host paths are converted to just filename."""
-    result = _translate_path("/Users/nghibui/codes/test/main.py")
+    result = _translate_path("/Users/anlnm/codes/test/main.py")
     assert result == "/workspace/main.py", f"Expected '/workspace/main.py', got '{result}'"
     print("✓ test_translate_absolute_host_path")
 
@@ -241,9 +241,9 @@ def test_rewrite_replaces_in_this_repo():
 
 def test_rewrite_replaces_local_directory_path():
     """Test that local directory paths are replaced with workspace."""
-    task = "Read the file at /Users/nghibui/codes/test_opencli/main.py"
-    result = _rewrite_task_for_docker(task, [], "/workspace", "/Users/nghibui/codes/test_opencli")
-    assert "/Users/nghibui/codes/test_opencli" not in result, "Local path should be replaced"
+    task = "Read the file at /Users/anlnm/codes/test_opencli/main.py"
+    result = _rewrite_task_for_docker(task, [], "/workspace", "/Users/anlnm/codes/test_opencli")
+    assert "/Users/anlnm/codes/test_opencli" not in result, "Local path should be replaced"
     assert "/workspace" in result, "Workspace path should be present"
     print("✓ test_rewrite_replaces_local_directory_path")
 
@@ -260,13 +260,13 @@ def test_rewrite_includes_docker_preamble():
 
 def test_rewrite_replaces_input_file_paths():
     """Test that input file paths are replaced with Docker paths."""
-    input_files = [Path("/Users/nghibui/codes/test_opencli/paper.pdf")]
-    task = "Implement the paper at /Users/nghibui/codes/test_opencli/paper.pdf"
+    input_files = [Path("/Users/anlnm/codes/test_opencli/paper.pdf")]
+    task = "Implement the paper at /Users/anlnm/codes/test_opencli/paper.pdf"
     result = _rewrite_task_for_docker(
-        task, input_files, "/workspace", "/Users/nghibui/codes/test_opencli"
+        task, input_files, "/workspace", "/Users/anlnm/codes/test_opencli"
     )
     assert "/workspace/paper.pdf" in result, "Expected '/workspace/paper.pdf' in result"
-    assert "/Users/nghibui" not in result, "Local path should not be in result"
+    assert "/Users/anlnm" not in result, "Local path should not be in result"
     print("✓ test_rewrite_replaces_input_file_paths")
 
 

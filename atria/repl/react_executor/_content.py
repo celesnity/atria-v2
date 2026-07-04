@@ -10,8 +10,8 @@ def as_text(value: object) -> str:
 
     Message ``content`` must be a string: the LLM API serializer and the
     tiktoken-based token counter both assume it. Most tools already return a
-    string, but some (e.g. ``get_solve_result`` via the parallel/divide
-    orchestrators) return a structured dict/list. Serialize those as JSON so
+    string, but some (e.g. ``get_subagent_output``) return a structured
+    dict/list. Serialize those as JSON so
     downstream code never receives a non-string.
 
     Args:

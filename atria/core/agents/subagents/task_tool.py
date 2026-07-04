@@ -7,47 +7,40 @@ from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
     from .manager import SubAgentManager
 
-TASK_TOOL_NAME = "spawn_subagent"
+TASK_TOOL_NAME = "subagent"
 
-TASK_TOOL_DESCRIPTION = """Spawn an ephemeral subagent to handle complex, multi-step tasks with isolated context.
+TASK_TOOL_DESCRIPTION = """Delegate one or more independent tasks to ephemeral subagents.
+
+Each task in `tasks` runs as its own subagent on a background worker, in an
+isolated context, and writes its findings back to a shared blackboard. All tasks
+in one call share that blackboard, so a later wave can build on what an earlier
+wave committed.
 
 ## When to Use
-- Complex tasks requiring multiple steps that can be delegated
-- Tasks that benefit from isolated context (research, analysis, code review)
-- Independent tasks that can run in parallel
-- Tasks requiring focused reasoning or heavy token usage
+- Complex, self-contained work that can be handed off: research, analysis, code
+  review, or a focused change
+- Several independent pieces of work — pass them all at once to run concurrently
+- Tasks requiring focused reasoning or heavy token usage in an isolated context
 
 ## When NOT to Use
-- Simple tasks that can be completed with a few tool calls
-- Tasks requiring intermediate feedback or clarification
-- Tasks where you need to see the reasoning process
+- Simple tasks that can be completed with a few direct tool calls
+- Tasks requiring intermediate feedback or clarification mid-run
 
 ## Available Subagent Types
 {subagent_descriptions}
 
 ## Usage Notes
-1. Provide a short `description` (3-5 words) summarizing what the agent will do
-2. Include all context in `prompt` - subagents have no access to conversation history
-3. The subagent returns a single result - you won't see intermediate steps
-4. **Parallel execution**: To run subagents concurrently, make multiple spawn_subagent calls in the SAME response. The system detects this and executes them in parallel automatically. Always prefer parallel spawning for independent tasks — it maximizes performance and is what users expect when they ask for multiple agents.
-5. Use `run_in_background` for long-running tasks you want to check on later
-6. Use `model` to select a specific model (haiku for quick tasks, opus for complex ones)
-7. Use `resume` with an agent_id to continue a previous subagent session
-
-## Strategy
-
-- `direct` (default): single subagent, current behavior. Best for quick, focused
-  delegation of a self-contained task to one of the specialized agent types.
-- `divide`: decompose the prompt into a small DAG and run the pieces via the
-  divide orchestrator. Pick this when the work has multiple dependent steps
-  that would benefit from being planned out and executed as a unit.
-- `parallel`: fan out N worktree-isolated solvers on the same prompt and let
-  the judge pick and apply the winning diff. Pick this for one well-scoped
-  task where racing a few candidate approaches is worth the overhead."""
+1. Put everything the subagent needs in `prompt` — it cannot see the conversation.
+2. Pass multiple items in `tasks` to run them concurrently on the worker pool.
+3. Tasks are independent — there is no dependency ordering. When step B needs
+   step A's result, run A first, collect it with `get_subagent_output(job_id)`,
+   then issue B in a new call.
+4. Returns a `job_id`; use `get_subagent_output(job_id)` to poll and collect.
+5. Delegation requires Redis and a running `atria-worker`."""
 
 
 def create_task_tool_schema(manager: "SubAgentManager") -> dict[str, Any]:
-    """Create the task tool schema with available subagent types.
+    """Create the unified ``subagent`` tool schema with available subagent types.
 
     Args:
         manager: The SubAgentManager with registered subagents
@@ -78,63 +71,35 @@ def create_task_tool_schema(manager: "SubAgentManager") -> dict[str, Any]:
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "description": {
-                        "type": "string",
-                        "description": "A short (3-5 word) description of the task",
-                    },
-                    "prompt": {
-                        "type": "string",
+                    "tasks": {
+                        "type": "array",
                         "description": (
-                            "The task for the agent to perform. Include all context needed "
-                            "since the subagent has no access to the conversation history."
+                            "One or more independent tasks to delegate. Each runs as "
+                            "its own subagent on a worker; all share one blackboard so "
+                            "they read each other's committed notes. A single "
+                            "delegation is just a one-element list."
                         ),
-                    },
-                    "subagent_type": {
-                        "type": "string",
-                        "description": "Type of subagent to use for this task",
-                        "enum": available_types,
-                    },
-                    "model": {
-                        "type": "string",
-                        "enum": ["sonnet", "opus", "haiku"],
-                        "description": (
-                            "Optional model to use for this subagent. If not specified, "
-                            "inherits from parent. Use 'haiku' for quick, straightforward "
-                            "tasks to minimize cost and latency."
-                        ),
-                    },
-                    "run_in_background": {
-                        "type": "boolean",
-                        "default": False,
-                        "description": (
-                            "Set to true to run this subagent in the background. The tool "
-                            "result will include a task_id - use get_subagent_output to "
-                            "check on output later."
-                        ),
-                    },
-                    "resume": {
-                        "type": "string",
-                        "description": (
-                            "Optional agent ID to resume from. If provided, the subagent "
-                            "will continue from the previous execution with full context preserved."
-                        ),
-                    },
-                    "strategy": {
-                        "type": "string",
-                        "enum": ["direct", "divide", "parallel"],
-                        "default": "direct",
-                        "description": (
-                            "How to dispatch this delegation. 'direct' (default) runs "
-                            "one subagent via SubAgentManager (current behavior). "
-                            "'divide' decomposes the prompt into a DAG and runs the "
-                            "subtasks via DivideOrchestrator. 'parallel' races N "
-                            "worktree-isolated solvers via ParallelOrchestrator and "
-                            "applies the judge-chosen winner. For 'divide' and "
-                            "'parallel', subagent_type is treated as an optional hint."
-                        ),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "subagent_type": {
+                                    "type": "string",
+                                    "description": "Which subagent type runs this task.",
+                                    "enum": available_types,
+                                },
+                                "prompt": {
+                                    "type": "string",
+                                    "description": (
+                                        "Full self-contained instructions; the subagent "
+                                        "has no access to conversation history."
+                                    ),
+                                },
+                            },
+                            "required": ["subagent_type", "prompt"],
+                        },
                     },
                 },
-                "required": ["description", "prompt", "subagent_type"],
+                "required": ["tasks"],
             },
         },
     }

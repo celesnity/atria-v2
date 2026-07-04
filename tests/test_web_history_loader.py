@@ -38,7 +38,7 @@ class TestToolCallToInfo:
         )
         parent = ToolCall(
             id="tc_2",
-            name="spawn_subagent",
+            name="subagent",
             parameters={"agent_type": "code_explorer"},
             result={"output": "Found files", "success": True},
             result_summary="Subagent completed",
@@ -60,14 +60,14 @@ class TestToolCallToInfo:
         )
         mid_nested = ToolCall(
             id="nested_0",
-            name="spawn_subagent",
+            name="subagent",
             parameters={"agent_type": "writer"},
             result={"output": "done", "success": True},
             nested_tool_calls=[deep_nested],
         )
         parent = ToolCall(
             id="tc_3",
-            name="spawn_subagent",
+            name="subagent",
             parameters={"agent_type": "orchestrator"},
             result={"output": "all done", "success": True},
             nested_tool_calls=[mid_nested],
@@ -76,7 +76,7 @@ class TestToolCallToInfo:
         assert info.nested_tool_calls is not None
         assert len(info.nested_tool_calls) == 1
         mid = info.nested_tool_calls[0]
-        assert mid.name == "spawn_subagent"
+        assert mid.name == "subagent"
         assert mid.nested_tool_calls is not None
         assert len(mid.nested_tool_calls) == 1
         assert mid.nested_tool_calls[0].name == "write_file"
@@ -132,7 +132,7 @@ class TestToolCallInfoSelfRef:
     def test_self_referential_validation(self):
         info = ToolCallInfo(
             id="outer",
-            name="spawn_subagent",
+            name="subagent",
             parameters={},
             nested_tool_calls=[
                 ToolCallInfo(
@@ -150,7 +150,7 @@ class TestToolCallInfoSelfRef:
     def test_json_roundtrip(self):
         info = ToolCallInfo(
             id="outer",
-            name="spawn_subagent",
+            name="subagent",
             parameters={"type": "explorer"},
             nested_tool_calls=[
                 ToolCallInfo(

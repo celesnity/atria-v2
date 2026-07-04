@@ -231,6 +231,20 @@ class MainAgent(HttpClientMixin, LlmCallsMixin, RunLoopMixin, BaseAgent):
             return f"{stable}\n\n{dynamic}"
         return stable
 
+    def _compose_system_content(self) -> str:
+        """Combine stable prefix + dynamic tail into one system message.
+
+        Keeps ``_system_stable`` as a byte-identical leading prefix so
+        OpenAI-compatible servers can prefix-cache it, while ensuring the
+        dynamic tail (environment, project instructions, skills, MCP,
+        shared lessons) is actually delivered to the model.
+        """
+        stable = getattr(self, "_system_stable", None) or self.system_prompt
+        dynamic = getattr(self, "_system_dynamic", "") or ""
+        if dynamic:
+            return f"{stable}\n\n{dynamic}"
+        return stable
+
     def build_tool_schemas(self, thinking_visible: bool = True) -> list[dict[str, Any]]:
         return self._schema_builder.build(thinking_visible=thinking_visible)
 

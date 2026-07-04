@@ -19,7 +19,7 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import RoleConfig, load_config  # type: ignore[import-not-found]
-from client import RoleClient  # type: ignore[import-not-found]
+from client import EndpointUnreachable, RoleClient  # type: ignore[import-not-found]
 from corpus import load_corpus  # type: ignore[import-not-found]
 from chunking import chunk_document  # type: ignore[import-not-found]
 from index_store import IndexStore  # type: ignore[import-not-found]
@@ -517,9 +517,28 @@ def main(argv: list[str] | None = None) -> int:
 
     Returns:
         Exit code: ``0`` on success, ``1`` when a health probe fails,
-        ``2`` for an unrecognized subcommand.
+        ``2`` for an unrecognized subcommand, ``3`` when a configured model
+        endpoint is unreachable.
     """
     args = build_parser().parse_args(argv)
+    try:
+        return _dispatch(args)
+    except EndpointUnreachable as exc:
+        # A configured model endpoint is down/unroutable. Emit a clean, machine-
+        # readable error (the copilot's callers parse stdout as JSON) instead of
+        # letting a raw openai.APIConnectionError traceback escape.
+        print(json.dumps({
+            "error": "endpoint_unreachable",
+            "role": exc.role,
+            "base_url": exc.base_url,
+            "model": exc.model,
+            "message": str(exc),
+        }, indent=2))
+        return 3
+
+
+def _dispatch(args: argparse.Namespace) -> int:
+    """Route a parsed ``args`` namespace to its command handler."""
     if args.command == "health":
         result = check_health(_build_probes())
         print(json.dumps(result, indent=2))

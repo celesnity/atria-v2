@@ -154,12 +154,7 @@ class BasePromptBuilder:
         composer = create_composer(templates_dir, self._core_template)
 
         # Build context for conditional sections
-        context = {
-            "in_git_repo": self._env_context and self._env_context.is_git_repo,
-            "has_subagents": True,  # Subagents always available
-            "todo_tracking_enabled": True,  # Todo tracking always available
-            "model": self._env_context.model if self._env_context else "",
-        }
+        context = self._gating_context()
 
         modular_sections = composer.compose(context)
 
@@ -203,12 +198,7 @@ class BasePromptBuilder:
             return "", ""
 
         composer = create_composer(templates_dir, self._core_template)
-        context = {
-            "in_git_repo": self._env_context and self._env_context.is_git_repo,
-            "has_subagents": True,
-            "todo_tracking_enabled": True,
-            "model": self._env_context.model if self._env_context else "",
-        }
+        context = self._gating_context()
 
         stable_sections, dynamic_sections = composer.compose_two_part(context)
 
@@ -242,6 +232,32 @@ class BasePromptBuilder:
             stable = core_prompt
 
         return stable, dynamic_sections
+
+    def _gating_context(self) -> dict[str, Any]:
+        """Compute conditional-section flags from real availability.
+
+        Subagent/todo availability is driven by the tool registry's registered
+        handlers (``spawn_subagent`` / ``list_todos``) rather than by a manager
+        object, because the main agent exposes subagents as tools, not via a
+        ``subagent_manager``. When the registry is not introspectable, both
+        flags fall back to prior always-on behavior so no guidance is dropped.
+        """
+        reg = self._tool_registry
+        handlers = getattr(reg, "_handlers", None) if reg is not None else None
+        if isinstance(handlers, dict):
+            has_subagents = "subagent" in handlers
+            todo_enabled = "list_todos" in handlers or "write_todos" in handlers
+        else:
+            # No introspectable registry: preserve prior always-on behavior
+            # (also honor an explicit subagent_manager if one was injected).
+            has_subagents = self._subagent_manager is not None or reg is not None
+            todo_enabled = reg is not None
+        return {
+            "in_git_repo": bool(self._env_context and self._env_context.is_git_repo),
+            "has_subagents": has_subagents,
+            "todo_tracking_enabled": todo_enabled,
+            "model": self._env_context.model if self._env_context else "",
+        }
 
     def _build_core_identity(self) -> str:
         """Load and return core identity from template.
@@ -328,10 +344,8 @@ When processing file paths without explicit directories (like `app.py` or `READM
             "You can help users set up MCP (Model Context Protocol) servers "
             "for external integrations.\n\n",
             "When users ask about setting up an MCP server:\n",
-            "1. Use `web_search` to find the MCP server package and docs\n",
-            "2. Use `fetch_url` to read the server's README/documentation\n",
-            "3. Read `~/.atria/mcp.json` and add the server configuration\n",
-            "4. Tell the user to connect with `/mcp connect <name>`\n",
+            "1. Read `~/.atria/mcp.json` and add the server configuration\n",
+            "2. Tell the user to connect with `/mcp connect <name>`\n",
         ]
         return "".join(lines)
 
