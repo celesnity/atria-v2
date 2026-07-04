@@ -61,9 +61,6 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         "complete_todo",
         "list_todos",
         "clear_todos",
-        # Memory tools — off by default in this deployment.
-        "memory_search",
-        "memory_write",
     }
 )
 

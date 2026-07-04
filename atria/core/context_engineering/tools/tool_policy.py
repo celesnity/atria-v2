@@ -37,13 +37,10 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "kill_process",
     },
     "group:session": {
-        "list_sessions",
-        "get_session_history",
         "subagent",
         "get_subagent_output",
         "list_subagents",
     },
-    "group:memory": {"memory_search", "memory_write"},
     "group:meta": {
         "task_complete",
         "ask_user",
@@ -74,7 +71,6 @@ PROFILES: dict[str, list[str]] = {
         "group:process",
         "group:meta",
         "group:session",
-        "group:memory",
     ],
     "full": list(TOOL_GROUPS.keys()),
 }

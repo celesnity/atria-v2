@@ -76,10 +76,7 @@ class IterationMixin:
             "list_processes",
             "get_process_output",
             "read_pdf",
-            "list_sessions",
-            "get_session_history",
             "list_subagents",
-            "memory_search",
             "list_agents",
         }
     )
