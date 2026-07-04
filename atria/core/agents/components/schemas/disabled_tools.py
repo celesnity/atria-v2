@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 # with the groups below when adding new always-off-by-default tools.
 DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
     {
-        # NOTE: send_image is intentionally NOT disabled — the data_copilot
-        # analytics flow pushes images to the web chat with it.
+        # NOTE: send_image is intentionally NOT disabled — it pushes images to
+        # the web chat.
         # Code symbol tools + notebook
         "find_symbol",
         "rename_symbol",

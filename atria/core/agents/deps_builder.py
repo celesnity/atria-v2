@@ -58,7 +58,7 @@ def build_runtime_and_deps(
 
     # The worker has no UI callback, so the bash tool cannot discover the session
     # id / workspace the way the main process does. Inject them from the payload so
-    # session-scoped modules (e.g. data_copilot) write into
+    # session-scoped modules write into
     # ``<working_dir>/.artifacts/…/<session_id>`` — the folder the main agent reads —
     # instead of falling back to the module's own data dir. Per-instance (not
     # os.environ) so concurrent worker jobs don't clobber each other's session.
