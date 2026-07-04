@@ -9,6 +9,7 @@ interactive chart + table without any save-back.
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -63,20 +64,40 @@ class SendTableHandler:
         if ui_callback is None or not hasattr(ui_callback, "on_data"):
             return _err("UI callback unavailable; send_table only works in the web UI")
 
-        session_id, working_dir = self._resolve_session(context)
-        if not session_id or not working_dir:
-            return _err("no active session/working_dir to resolve the table path")
+        module = (args.get("module") or "").strip()
 
-        try:
-            from atria.core.modules import data_copilot_paths as dcp
+        # Module-scoped read: a named module's data/ dir (modules/<module>/data/).
+        if module:
+            try:
+                from atria.core.modules.registry import get_registry
+                from atria.core.modules import store
 
-            data = dcp.read_session_csv(session_id, working_dir, file)
-        except FileNotFoundError:
-            return _err(f"table not found: {file!r}")
-        except ValueError as exc:
-            return _err(str(exc))
-        except Exception as exc:  # noqa: BLE001 — surface as a tool error, never crash
-            return _err(f"failed to read table: {exc}")
+                reg = get_registry()
+                data = store.read_dataset(reg.root, module, file)
+            except FileNotFoundError:
+                return _err(f"dataset not found: {file!r} in module {module!r}")
+            except Exception as exc:  # noqa: BLE001 — surface as a tool error
+                return _err(f"failed to read dataset: {exc}")
+        else:
+            session_id, working_dir = self._resolve_session(context)
+            if not session_id or not working_dir:
+                return _err("no active session/working_dir to resolve the table path")
+
+            # Read from the session data_copilot dir first, then anywhere in the
+            # workspace (module data dirs, project data/, analysis outputs).
+            try:
+                from atria.core.modules import data_copilot_paths as dcp
+
+                data = dcp.read_csv_flexible(session_id, working_dir, file)
+            except FileNotFoundError:
+                return _err(
+                    f"table not found: {file!r} (looked in the session data_copilot "
+                    "dir and the workspace; pass module= for a module dataset)"
+                )
+            except ValueError as exc:
+                return _err(str(exc))
+            except Exception as exc:  # noqa: BLE001 — surface as a tool error, never crash
+                return _err(f"failed to read table: {exc}")
 
         columns = data.get("columns") or []
         rows = data.get("rows") or []
@@ -85,6 +106,9 @@ class SendTableHandler:
             rows = rows[:max_rows]
 
         payload: dict[str, Any] = {
+            # Stable id so the web UI can key persisted chart overrides to this
+            # chart across both the live WS event and a later session reload.
+            "chart_id": uuid.uuid4().hex,
             "title": title,
             "columns": columns,
             "rows": rows,

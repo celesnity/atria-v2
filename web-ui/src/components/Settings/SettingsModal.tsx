@@ -12,20 +12,22 @@ import {
   ServerIcon,
   Cog6ToothIcon,
   SparklesIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  WrenchScrewdriverIcon
 } from '@heroicons/react/24/outline';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ModelSettings } from './ModelSettings';
 import { MCPSettings } from './MCPSettings';
 import { PersonasSettings } from './PersonasSettings';
 import { ChannelSettings } from './ChannelSettings';
+import { ToolsSettings } from './ToolsSettings';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type TabId = 'model' | 'mcp' | 'connect' | 'personas' | 'general';
+type TabId = 'model' | 'mcp' | 'tools' | 'connect' | 'personas' | 'general';
 
 interface TabConfig {
   id: TabId;
@@ -46,6 +48,12 @@ const tabs: TabConfig[] = [
     label: 'MCP Servers',
     icon: ServerIcon,
     description: 'Manage Model Context Protocol servers'
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    icon: WrenchScrewdriverIcon,
+    description: 'Enable or disable individual agent tools to trim context'
   },
   {
     id: 'connect',
@@ -159,6 +167,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             <div className="p-4 sm:p-6">
               {activeTab === 'model' && <ModelSettings />}
               {activeTab === 'mcp' && <MCPSettings />}
+              {activeTab === 'tools' && <ToolsSettings />}
               {activeTab === 'connect' && <ChannelSettings />}
               {activeTab === 'personas' && <PersonasSettings />}
               {activeTab === 'general' && (

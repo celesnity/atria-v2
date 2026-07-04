@@ -22,6 +22,7 @@ from atria.web.routes import (
     chat_router,
     sessions_router,
     config_router,
+    tools_router,
     commands_router,
     mcp_router,
     auth_router,
@@ -33,6 +34,7 @@ from atria.web.routes import (
     transcribe_router,
     maintenance_router,
     data_copilot_router,
+    charts_router,
     modules_router,
     blocks_router,
     module_dashboard_router,
@@ -278,6 +280,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(sessions_router)
     app.include_router(config_router)
+    app.include_router(tools_router)
     app.include_router(commands_router)
     app.include_router(mcp_router)
     app.include_router(projects_router)
@@ -288,6 +291,7 @@ def create_app() -> FastAPI:
     app.include_router(transcribe_router)
     app.include_router(maintenance_router)
     app.include_router(data_copilot_router)
+    app.include_router(charts_router)
     app.include_router(modules_router)
     app.include_router(blocks_router)
     app.include_router(module_dashboard_router)

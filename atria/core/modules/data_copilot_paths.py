@@ -28,21 +28,40 @@ def _resolve_confined(session_id: str, working_dir: str, rel_or_abs: str) -> Pat
     root = data_copilot_root(session_id, working_dir).resolve()
     candidate = Path(rel_or_abs)
     if not candidate.is_absolute():
-        candidate = root / "data" / rel_or_abs
+        # Relative names live under the root's ``data/`` dir. Tolerate a redundant
+        # leading ``data/`` (or ``./``) so ``data/foo.csv`` and ``foo.csv`` both
+        # resolve to ``<root>/data/foo.csv`` instead of double-nesting.
+        rel = rel_or_abs.lstrip("/")
+        if rel.startswith("./"):
+            rel = rel[2:]
+        if rel == "data" or rel.startswith("data/"):
+            rel = rel[len("data") :].lstrip("/")
+        candidate = root / "data" / rel
     resolved = candidate.resolve()
     if root != resolved and root not in resolved.parents:
         raise ValueError("path escapes the session data_copilot root")
     return resolved
 
 
-def read_session_csv(session_id: str, working_dir: str, rel_file: str) -> Dict[str, Any]:
-    """Read a CSV → ``{file, columns, rows, warning?}``.
+def _resolve_in_workspace(working_dir: str, rel_or_abs: str) -> Path:
+    """Resolve a path confined to the session working directory (the workspace).
 
-    ``rel_file`` may be a ``data/``-relative name or an absolute path inside the
-    session root (e.g. a run dir's ``result.csv``).
+    Broader than :func:`_resolve_confined`: allows any file inside the project
+    workspace (module data dirs, project ``data/``, analysis outputs), while still
+    blocking traversal outside it. Used as a fallback for the read-only table tool.
     """
-    path = _resolve_confined(session_id, working_dir, rel_file)
-    raw = path.read_bytes()  # FileNotFoundError propagates to the caller
+    root = Path(working_dir).resolve()
+    candidate = Path(rel_or_abs)
+    if not candidate.is_absolute():
+        candidate = root / rel_or_abs
+    resolved = candidate.resolve()
+    if root != resolved and root not in resolved.parents:
+        raise ValueError("path escapes the session working directory")
+    return resolved
+
+
+def _parse_csv(raw: bytes, rel_file: str) -> Dict[str, Any]:
+    """Parse CSV bytes into ``{file, columns, rows, warning?}`` with store caps."""
     reader = csv.reader(io.StringIO(store._decode_csv_bytes(raw)))
     all_rows = list(reader)
     if not all_rows:
@@ -69,6 +88,37 @@ def read_session_csv(session_id: str, working_dir: str, rel_file: str) -> Dict[s
     if warning:
         out["warning"] = warning
     return out
+
+
+def read_workspace_csv(working_dir: str, rel_file: str) -> Dict[str, Any]:
+    """Read any CSV inside the session working directory → ``{file, columns, rows}``."""
+    path = _resolve_in_workspace(working_dir, rel_file)
+    return _parse_csv(path.read_bytes(), rel_file)
+
+
+def read_csv_flexible(session_id: str, working_dir: str, rel_file: str) -> Dict[str, Any]:
+    """Read a CSV for the read-only table tool from anywhere in the workspace.
+
+    Resolution order: the session's data_copilot ``data/`` dir first (where the
+    analysis writes result tables), then anywhere under the working directory
+    (module data dirs, project ``data/``, etc.). Raises ``FileNotFoundError`` only
+    if the file is absent from both.
+    """
+    try:
+        return read_session_csv(session_id, working_dir, rel_file)
+    except FileNotFoundError:
+        return read_workspace_csv(working_dir, rel_file)
+
+
+def read_session_csv(session_id: str, working_dir: str, rel_file: str) -> Dict[str, Any]:
+    """Read a CSV → ``{file, columns, rows, warning?}``.
+
+    ``rel_file`` may be a ``data/``-relative name or an absolute path inside the
+    session root (e.g. a run dir's ``result.csv``).
+    """
+    path = _resolve_confined(session_id, working_dir, rel_file)
+    raw = path.read_bytes()  # FileNotFoundError propagates to the caller
+    return _parse_csv(raw, rel_file)
 
 
 def write_session_csv(

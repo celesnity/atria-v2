@@ -42,7 +42,7 @@ export default defineConfig({
         // Split heavy deps into their own chunks so they're fetched on-demand,
         // not blocking the editorial Login/Landing hero on cold start.
         manualChunks: {
-          'chart-vendor': ['chart.js', 'react-chartjs-2'],
+          'chart-vendor': ['recharts'],
           'markdown-vendor': ['react-markdown'],
           'motion-vendor': ['motion', 'animejs'],
           'monaco-vendor': ['@monaco-editor/react', 'monaco-editor'],

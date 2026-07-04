@@ -74,6 +74,21 @@ class APIClient {
     return request<{ status: string; message: string }>('/chat/clear', { method: 'DELETE' });
   }
 
+  /** Fetch the `{chart_id: overrides}` map of persisted chart edits for a session. */
+  getChartOverrides(sessionId: string) {
+    return request<Record<string, Record<string, unknown>>>('/charts/overrides', {
+      query: { session_id: sessionId },
+    });
+  }
+
+  /** Persist one chart's display overrides for a session. */
+  saveChartOverrides(sessionId: string, chartId: string, overrides: Record<string, unknown>) {
+    return request<{ success: boolean }>('/charts/overrides', {
+      method: 'PUT',
+      body: { session_id: sessionId, chart_id: chartId, overrides },
+    });
+  }
+
   async fetchChartImage(pngPath: string): Promise<string> {
     const { src } = await request<{ src: string }>('/analyze/chart-image', {
       query: { path: pngPath },
@@ -431,8 +446,18 @@ class APIClient {
     return request<Artifact>(`/artifacts/${artifactId}`, { method: 'PATCH', body: data });
   }
 
-  deleteArtifact(artifactId: number) {
-    return request<void>(`/artifacts/${artifactId}`, { method: 'DELETE' });
+  renameArtifact(artifactId: number, newName: string) {
+    return request<Artifact>(`/artifacts/${artifactId}/rename`, {
+      method: 'POST',
+      body: { new_name: newName },
+    });
+  }
+
+  deleteArtifact(artifactId: number, hardDelete = false) {
+    return request<void>(`/artifacts/${artifactId}`, {
+      method: 'DELETE',
+      query: { hard_delete: hardDelete },
+    });
   }
 
   scanArtifacts(conversationId: number) {
@@ -473,6 +498,17 @@ class APIClient {
     return `${fsBase(scope)}/read?${qs.toString()}`;
   }
 
+  /** Trigger a browser download of a file via the read endpoint. */
+  downloadFsFile(scope: FsScope, path: string, filename?: string): void {
+    const a = document.createElement('a');
+    a.href = this.readFsUrl(scope, path);
+    a.download = filename ?? path.split('/').pop() ?? 'download';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   writeFsText(scope: FsScope, path: string, content: string): Promise<void> {
     return request<void>(`${fsPath(scope)}/write`, {
       method: 'PUT',
@@ -508,9 +544,6 @@ class APIClient {
   }
 
   deleteFsFile(scope: FsScope, path: string): Promise<void> {
-    if (scope.kind !== 'module') {
-      throw new Error('deleteFsFile only supported for module scope');
-    }
     return request<void>(`${fsPath(scope)}/file`, {
       method: 'DELETE',
       query: { path },
@@ -534,7 +567,6 @@ class APIClient {
   }
 
   renameFs(scope: FsScope, from: string, to: string): Promise<void> {
-    if (scope.kind !== 'module') throw new Error('renameFs only supported for module scope');
     return request<void>(`${fsPath(scope)}/rename`, {
       method: 'POST',
       body: { from, to },
