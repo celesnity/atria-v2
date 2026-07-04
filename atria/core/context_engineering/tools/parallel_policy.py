@@ -24,9 +24,7 @@ READ_ONLY_TOOLS: frozenset[str] = frozenset(
         "list_processes",
         "get_process_output",
         # Web (read-only)
-        "fetch_url",
         "web_search",
-        "capture_web_screenshot",
         "capture_screenshot",
         # Session/memory (read-only)
         "list_sessions",

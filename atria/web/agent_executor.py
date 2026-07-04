@@ -219,9 +219,6 @@ class AgentExecutor:
             WriteTool,
             EditTool,
             BashTool,
-            WebFetchTool,
-            OpenBrowserTool,
-            WebScreenshotTool,
         )
         from atria.core.context_engineering.tools.implementations.web_search_tool import (
             WebSearchTool,
@@ -247,14 +244,11 @@ class AgentExecutor:
         write_tool = WriteTool(config, working_dir)
         edit_tool = EditTool(config, working_dir)
         bash_tool = BashTool(config, working_dir)
-        web_fetch_tool = WebFetchTool(config, working_dir)
         web_search_tool = WebSearchTool(config, working_dir)
         notebook_edit_tool = NotebookEditTool(working_dir)
         # Create web-based ask-user manager with session_id
         web_ask_user_manager = WebAskUserManager(ws_manager, loop, session_id=session_id)
         ask_user_tool = AskUserTool(ui_prompt_callback=web_ask_user_manager.prompt_user)
-        open_browser_tool = OpenBrowserTool(config, working_dir)
-        web_screenshot_tool = WebScreenshotTool(config, working_dir)
 
         # Create web-based approval manager with session_id
         web_approval_manager = WebApprovalManager(ws_manager, loop, session_id=session_id)
@@ -275,12 +269,9 @@ class AgentExecutor:
             write_tool=write_tool,
             edit_tool=edit_tool,
             bash_tool=bash_tool,
-            web_fetch_tool=web_fetch_tool,
             web_search_tool=web_search_tool,
             notebook_edit_tool=notebook_edit_tool,
             ask_user_tool=ask_user_tool,
-            open_browser_tool=open_browser_tool,
-            web_screenshot_tool=web_screenshot_tool,
             mcp_manager=self.state.mcp_manager,
         )
 

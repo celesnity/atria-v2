@@ -61,7 +61,6 @@ class TestDefaultSubAgents:
         names = [spec["name"] for spec in ALL_SUBAGENTS]
         assert "ask-user" in names
         assert "Code-Explorer" in names
-        assert "Web-clone" in names
         assert "Web-Generator" in names
         assert "Planner" in names
 
@@ -166,7 +165,6 @@ class TestSubAgentManager:
         available = manager.get_available_types()
         assert "ask-user" in available
         assert "Code-Explorer" in available
-        assert "Web-clone" in available
         assert "Web-Generator" in available
         assert "Planner" in available
 
@@ -379,8 +377,8 @@ class TestSpawnSubagentToolSchema:
         config1.name = "Code-Explorer"
         config1.description = "Codebase exploration agent"
         config2 = MagicMock()
-        config2.name = "Web-clone"
-        config2.description = "Website cloning agent"
+        config2.name = "Web-Generator"
+        config2.description = "Website generation agent"
         manager.get_agent_configs.return_value = [config1, config2]
         return manager
 
@@ -416,7 +414,7 @@ class TestSpawnSubagentToolSchema:
 
         assert "enum" in subagent_type
         assert "Code-Explorer" in subagent_type["enum"]
-        assert "Web-clone" in subagent_type["enum"]
+        assert "Web-Generator" in subagent_type["enum"]
 
     def test_tool_schema_description_includes_subagents(self, mock_manager):
         """Test that tool description lists available subagents."""
@@ -424,7 +422,7 @@ class TestSpawnSubagentToolSchema:
         description = schema["function"]["description"]
 
         assert "Code-Explorer" in description
-        assert "Web-clone" in description
+        assert "Web-Generator" in description
 
 
 class TestToolRegistryIntegration:

@@ -13,17 +13,14 @@ RUN pip install uv --no-cache-dir
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-# ── Layer 2: install playwright browsers (slow; cached separately) ─────────────
-RUN uv run playwright install --with-deps chromium 2>/dev/null || true
-
-# ── Layer 3: pre-cache tiktoken encodings so container works offline ──────────
+# ── Layer 2: pre-cache tiktoken encodings so container works offline ──────────
 RUN uv run python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
-# ── Layer 4: copy source and install the package itself ───────────────────────
+# ── Layer 3: copy source and install the package itself ───────────────────────
 COPY . .
 RUN uv sync --frozen --no-dev
 
-# ── Layer 5: pre-install every module's requirements.txt into shared venv ─────
+# ── Layer 4: pre-install every module's requirements.txt into shared venv ─────
 # Mirrors atria.core.modules.deps.install_module_deps so the container is
 # offline-safe and the first module call doesn't trigger an install. Stamp
 # files match the runtime hash check, so registry load is a no-op.

@@ -20,7 +20,7 @@ Subagents are specialized agents with focused capabilities. Each has a specific 
 - Any multi-step implementation (writing or editing across files, refactors, feature builds) — dispatch
 - Any codebase research beyond one known-path file read or one grep — dispatch Code-Explorer
 - Any code review, PR review, or security audit — dispatch the matching reviewer subagent
-- Any UI or web artifact generation — dispatch web-clone / web-generator
+- Any UI or web artifact generation — dispatch web-generator
 - Any planning or spec work for a non-trivial change — dispatch Planner
 - Any task where two or more candidate approaches would produce meaningfully different results — dispatch with `strategy="parallel"`
 - Any task that decomposes into dependent subtasks — dispatch with `strategy="divide"`
@@ -48,10 +48,6 @@ Subagents are specialized agents with focused capabilities. Each has a specific 
 ## Project-Init
 **Purpose**: Analyze a codebase and generate an ATRIA.md project instruction file.
 **When to use**: Setting up a new project, generating build/test/lint commands, documenting project structure.
-
-## Web-clone
-**Purpose**: Analyze websites and generate code to replicate their UI/design.
-**When to use**: Cloning landing pages, dashboards, or any web UI.
 
 ## Web-Generator
 **Purpose**: Create beautiful, responsive web applications from scratch.
@@ -101,7 +97,7 @@ Every `spawn_subagent` call takes a `strategy` field. Pick per the task shape �
 
 **Prefer `parallel`** when the task is one well-scoped problem and racing a few candidate approaches is worth the overhead — refactors, bug fixes, tricky edits where a judge picking the best diff produces higher-quality output. N solvers work in isolated worktrees; the judge picks and applies the winner. Keep the prompt tight — loose instructions cause solvers to diverge.
 
-**Use `direct`** only for a single focused delegation to a specialized agent type where decomposition and racing add no value: ask-user, code-explorer on a known scope, one-shot planner, project-init, pr-reviewer, security-reviewer, web-clone, web-generator.
+**Use `direct`** only for a single focused delegation to a specialized agent type where decomposition and racing add no value: ask-user, code-explorer on a known scope, one-shot planner, project-init, pr-reviewer, security-reviewer, web-generator.
 
 If `divide` or `parallel` returns an error mentioning the orchestrator is not configured (Redis or Docker unavailable), fall back to `direct` for that call and note it — do not treat the fallback as the norm.
 

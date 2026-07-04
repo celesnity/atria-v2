@@ -34,10 +34,7 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "get_process_output": ("Get Process Output", "process"),
     "list_processes": ("List Processes", "processes"),
     "kill_process": ("Kill Process", "process"),
-    "fetch_url": ("Fetch", "url"),
-    "open_browser": ("Open", "browser"),
     "capture_screenshot": ("Capture_Screenshot", "screenshot"),
-    "capture_web_screenshot": ("Capture_Web_Screenshot", "page"),
     "analyze_image": ("Analyze_Image", "image"),
     "write_todos": ("Create", "todos"),
     "update_todo": ("Update_Todos", "todo"),
@@ -80,10 +77,7 @@ _PRIMARY_ARG_MAP: dict[str, tuple[str, ...]] = {
     "run_command": ("command",),
     "get_process_output": ("pid", "command"),
     "kill_process": ("pid",),
-    "fetch_url": ("url",),
-    "open_browser": ("url",),
     "capture_screenshot": ("target", "path"),
-    "capture_web_screenshot": ("url",),
     "analyze_image": ("image_path", "file_path"),
 }
 
@@ -293,27 +287,6 @@ def format_tool_call(tool_name: str, tool_args: Mapping[str, Any]) -> str:
 
         if params:
             return f"Search({', '.join(params)})"
-
-    # Enhanced formatting for Web Fetch tool
-    elif tool_name == "fetch_url" and tool_args:
-        params = []
-        if "url" in tool_args and tool_args["url"]:
-            params.append(f'url: "{tool_args["url"]}"')
-        if "deep_crawl" in tool_args and tool_args["deep_crawl"]:
-            params.append(f'deep_crawl: {tool_args["deep_crawl"]}')
-            if "max_depth" in tool_args and tool_args["max_depth"] != 1:
-                params.append(f'max_depth: {tool_args["max_depth"]}')
-            if "max_pages" in tool_args and tool_args["max_pages"]:
-                params.append(f'max_pages: {tool_args["max_pages"]}')
-            if "crawl_strategy" in tool_args and tool_args["crawl_strategy"] != "best_first":
-                params.append(f'crawl_strategy: "{tool_args["crawl_strategy"]}"')
-        if "extract_text" in tool_args and not tool_args["extract_text"]:
-            params.append(f'extract_text: {tool_args["extract_text"]}')
-        if "include_external" in tool_args and tool_args["include_external"]:
-            params.append(f'include_external: {tool_args["include_external"]}')
-
-        if params:
-            return f"Fetch({', '.join(params)})"
 
     # Enhanced formatting for spawn_subagent tool
     elif tool_name == "spawn_subagent" and tool_args:

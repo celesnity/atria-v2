@@ -13,7 +13,7 @@ Tool schemas are provided separately. Key categories:
 **Symbols**: find_symbol, find_referencing_symbols, rename_symbol, replace_symbol_body
 **Commands**: run_command, list_processes, get_process_output, kill_process
 **User Interaction**: ask_user (ask clarifying questions when implementing technical tasks with unclear requirements. Do NOT use for greetings, social messages, or simple conversations)
-**Web**: fetch_url (use `deep_crawl=true` for crawling), capture_web_screenshot, capture_screenshot, analyze_image, open_browser
+**Web**: web_search, capture_screenshot, analyze_image
 **MCP**: search_tools (keyword query) → discover MCP tools, then call them with data queries
 **Todos**: write_todos, update_todo, complete_todo, list_todos, clear_todos
 **Subagents**: spawn_subagent (for complex tasks, user questions, deep research, multi-file work)

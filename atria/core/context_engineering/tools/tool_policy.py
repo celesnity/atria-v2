@@ -38,12 +38,8 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "kill_process",
     },
     "group:web": {
-        "fetch_url",
         "web_search",
-        "capture_web_screenshot",
         "capture_screenshot",
-        "browser",
-        "open_browser",
     },
     "group:session": {
         "list_sessions",

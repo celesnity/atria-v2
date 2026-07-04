@@ -15,7 +15,6 @@ def mock_dependencies():
         "atria.core.context_engineering.tools.handlers.file_handlers": MagicMock(),
         "atria.core.context_engineering.mcp.handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.process_handlers": MagicMock(),
-        "atria.core.context_engineering.tools.handlers.web_handlers": MagicMock(),
         "atria.core.context_engineering.tools.handlers.screenshot_handler": MagicMock(),
         "atria.core.context_engineering.tools.handlers.todo_handler": MagicMock(),
         "atria.core.context_engineering.tools.implementations.pdf_tool": MagicMock(),
@@ -59,10 +58,7 @@ def registry(tool_registry_cls):
         write_tool=MagicMock(),
         edit_tool=MagicMock(),
         bash_tool=MagicMock(),
-        web_fetch_tool=MagicMock(),
-        open_browser_tool=MagicMock(),
         vlm_tool=MagicMock(),
-        web_screenshot_tool=MagicMock(),
         mcp_manager=MagicMock(),
     )
 

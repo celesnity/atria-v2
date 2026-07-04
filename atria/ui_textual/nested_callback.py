@@ -291,10 +291,10 @@ def create_subagent_nested_callback(
             subagent_name="Code-Explorer",
         )
 
-        # Docker subagent (e.g., Web-clone)
+        # Docker subagent (e.g., Web-Generator)
         nested = create_subagent_nested_callback(
             ui_callback=self.ui_callback,
-            subagent_name="Web-clone",
+            subagent_name="Web-Generator",
             docker_context=DockerContext(
                 workspace_dir="/workspace",
                 image_name="ghcr.io/astral-sh/uv:python3.11",
