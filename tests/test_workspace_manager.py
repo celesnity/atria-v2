@@ -14,7 +14,7 @@ def test_slugify_basic():
 
 
 def test_slugify_special_chars():
-    assert slugify("Đề tài nghiên cứu!") == "e-tai-nghien-cuu"
+    assert slugify("Đề tài anlnmên cứu!") == "e-tai-anlnmen-cuu"
 
 
 def test_slugify_strips_multiple_hyphens():
