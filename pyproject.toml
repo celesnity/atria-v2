@@ -74,12 +74,9 @@ dependencies = [
     "pypdf>=4.0.0",
     # SWE-bench dataset loading
     "datasets>=2.0.0",
-    # Excel parsing for send_data tool
+    # Excel / CSV parsing
     "openpyxl>=3.1.0",
-    # Analyze plugin tools
     "pandas>=2.0.0",
-    "matplotlib>=3.8.0",
-    "seaborn>=0.13",
     "markdown>=3.5.0",
     "weasyprint>=60.0",
     # Filesystem watcher for modules
@@ -149,6 +146,5 @@ warn_unused_configs = true
 testpaths = [
     "tests",
     "atria/skills/builtin/deep_research/tests",
-    "atria/skills/builtin/deep_analyze/tests",
 ]
 asyncio_mode = "auto"

@@ -1,6 +1,8 @@
-/* Atria admin console theme — light + Figma editorial accent on PatternFly v5. */
+/* Atria admin console theme — light editorial on PatternFly v5, lit by the
+   Celesnity cobalt -> violet accent in navigation and focus moments. Kin to the
+   Cosmos login: same brand, different sky. */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@320;330;340;400;480;540;700&family=JetBrains+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
 
 /* ── Tokens ──────────────────────────────────────────────────────────────── */
 
@@ -17,6 +19,14 @@
   --atria-ink-muted: rgba(10, 10, 10, 0.45);
   --atria-danger: #c64a3d;
   --atria-success: #2e7d52;
+
+  /* Celesnity accent — the brand's cobalt -> violet, used sparingly so the
+     console stays calm: active nav rail, current tab, focus rings, links. */
+  --atria-accent: #4b5cf0;
+  --atria-accent-2: #6e1fc6;
+  --atria-accent-grad: linear-gradient(112deg, #2d44e0 0%, #6e1fc6 55%, #b14fd0 100%);
+  --atria-accent-soft: rgba(75, 92, 240, 0.12);
+  --atria-accent-ring: rgba(75, 92, 240, 0.22);
 
   /* Force light scheme across the whole app */
   color-scheme: light;
@@ -69,9 +79,9 @@
   --pf-v5-global--icon--Color--dark: var(--atria-ink);
 
   /* Font */
-  --pf-v5-global--FontFamily--text: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
-  --pf-v5-global--FontFamily--heading: 'Inter', 'SF Pro Display', system-ui, sans-serif;
-  --pf-v5-global--FontFamily--monospace: 'JetBrains Mono', 'SF Mono', menlo, monospace;
+  --pf-v5-global--FontFamily--text: 'Geist', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  --pf-v5-global--FontFamily--heading: 'Geist', 'SF Pro Display', system-ui, sans-serif;
+  --pf-v5-global--FontFamily--monospace: 'Geist Mono', 'SF Mono', menlo, monospace;
   --pf-v5-global--FontFamily--redhat-text--sans-serif: var(--pf-v5-global--FontFamily--text);
   --pf-v5-global--FontFamily--redhat-display--sans-serif: var(--pf-v5-global--FontFamily--heading);
 
@@ -168,13 +178,32 @@ header.pf-v5-c-masthead * {
   padding: 0 !important;
 }
 
+.pf-v5-c-brand,
+.pf-v5-c-masthead__brand {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+/* Gradient orb — the same brand mark the login pill carries */
+.pf-v5-c-brand::before,
+.pf-v5-c-masthead__brand::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--atria-accent-grad);
+  box-shadow: 0 0 10px 1px rgba(110, 31, 198, 0.4);
+  flex: 0 0 auto;
+}
+
 .pf-v5-c-brand::after,
 .pf-v5-c-masthead__brand::after {
   content: 'ATRIA';
-  font-family: var(--pf-v5-global--FontFamily--heading);
-  font-size: 18px;
-  font-weight: 540;
-  letter-spacing: -0.2px;
+  font-family: var(--pf-v5-global--FontFamily--monospace);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
   color: var(--atria-ink);
 }
 
@@ -279,10 +308,11 @@ nav.pf-v5-c-nav {
 .pf-v5-c-nav__link.pf-m-current,
 .pf-v5-c-nav__link[aria-current],
 .pf-v5-c-nav__item.pf-m-current > a {
-  background: var(--atria-surface-soft) !important;
+  background: linear-gradient(90deg, var(--atria-accent-soft), transparent 70%), var(--atria-surface-soft) !important;
   color: var(--atria-ink) !important;
-  border-left-color: var(--atria-ink) !important;
-  font-weight: 480 !important;
+  border-left: 3px solid transparent !important;
+  border-image: var(--atria-accent-grad) 1 !important;
+  font-weight: 500 !important;
 }
 
 /* Realm selector + generic dropdown toggles (outside masthead) */
@@ -306,8 +336,8 @@ button.pf-v5-c-menu-toggle {
 }
 
 .pf-v5-c-menu-toggle:focus-visible {
-  border-color: var(--atria-ink) !important;
-  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08) !important;
+  border-color: var(--atria-accent) !important;
+  box-shadow: 0 0 0 3px var(--atria-accent-ring) !important;
   outline: none !important;
 }
 
@@ -481,7 +511,8 @@ button.pf-v5-c-tabs__link {
 
 .pf-v5-c-tabs__item.pf-m-current .pf-v5-c-tabs__item-text,
 .pf-v5-c-tabs__link[aria-selected='true'] .pf-v5-c-tabs__item-text {
-  border-bottom-color: var(--atria-ink) !important;
+  border-bottom: 2px solid transparent !important;
+  border-image: var(--atria-accent-grad) 1 !important;
   color: var(--atria-ink) !important;
 }
 
@@ -508,7 +539,7 @@ button.pf-v5-c-tabs__link {
   border: none !important;
   outline: none !important;
   background: transparent !important;
-  box-shadow: inset 0 -2px 0 var(--atria-ink) !important;
+  box-shadow: inset 0 -2px 0 var(--atria-accent) !important;
 }
 
 .pf-v5-c-tabs.pf-m-secondary .pf-v5-c-tabs__link {
@@ -672,15 +703,23 @@ section.pf-v5-c-form__section {
   border: none !important;
   border-radius: 9999px !important;
   font-family: var(--pf-v5-global--FontFamily--text) !important;
-  font-weight: 480 !important;
+  font-weight: 500 !important;
   letter-spacing: -0.1px !important;
   padding: 8px 18px !important;
-  transition: opacity 160ms;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1),
+    transform 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .pf-v5-c-button.pf-m-primary:hover {
-  background: var(--atria-ink) !important;
-  opacity: 0.92;
+  background: var(--atria-accent-grad) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(110, 31, 198, 0.28) !important;
+  transform: translateY(-1px);
+}
+
+.pf-v5-c-button.pf-m-primary:active {
+  transform: translateY(0);
 }
 
 .pf-v5-c-button.pf-m-secondary {
@@ -952,8 +991,8 @@ span.pf-v5-c-label {
 }
 
 .pf-v5-c-text-input-group__text:focus-within {
-  border-color: var(--atria-ink) !important;
-  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08) !important;
+  border-color: var(--atria-accent) !important;
+  box-shadow: 0 0 0 3px var(--atria-accent-ring) !important;
 }
 
 /* ── Typeahead / combobox menu-toggle ───────────────────────────────────────
@@ -977,8 +1016,8 @@ span.pf-v5-c-label {
 
 .pf-v5-c-menu-toggle.pf-m-typeahead:focus-within,
 .pf-v5-c-menu-toggle.pf-m-full-width:focus-within {
-  border-color: var(--atria-ink) !important;
-  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08) !important;
+  border-color: var(--atria-accent) !important;
+  box-shadow: 0 0 0 3px var(--atria-accent-ring) !important;
 }
 
 .pf-v5-c-menu-toggle.pf-m-typeahead .pf-v5-c-text-input-group,
@@ -1101,7 +1140,9 @@ input[type='search']:focus {
 }
 
 .pf-v5-c-table a:hover {
+  color: var(--atria-accent) !important;
   text-decoration: underline !important;
+  text-decoration-color: var(--atria-accent) !important;
   text-underline-offset: 3px !important;
 }
 
@@ -1172,8 +1213,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--atria-ink) !important;
-  box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.08) !important;
+  border-color: var(--atria-accent) !important;
+  box-shadow: 0 0 0 3px var(--atria-accent-ring) !important;
   outline: none !important;
 }
 
