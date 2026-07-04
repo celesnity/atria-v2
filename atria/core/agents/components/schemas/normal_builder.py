@@ -10,52 +10,14 @@ from copy import deepcopy
 from typing import Any, Sequence, Union
 
 from .definitions import NOTE_SCHEMA, _BUILTIN_TOOL_SCHEMAS
+from .disabled_tools import DEFAULT_DISABLED_TOOLS, load_disabled_tools
 from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
 
 
-# Tools whose schemas are never advertised to the model. Each tool schema costs
-# tokens on EVERY request (the full `tools` array is resent per call), so on a
-# small-context deployment we drop groups this deployment does not use. The
-# handlers still exist — the tools are simply not offered to the LLM. To
-# re-enable a tool, remove its name from this set. Token cost (cl100k) noted for
-# reference; dropping all 17 reclaims ~5,978 tokens per call.
-_DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
-    {
-        # Web / browser / media. NOTE: send_image / send_editable_table /
-        # send_table are intentionally NOT disabled — the data_copilot analytics
-        # flow pushes charts and result/editable tables to the web chat with them.
-        "fetch_url",
-        "browser",
-        "capture_web_screenshot",
-        "web_search",
-        "analyze_image",
-        "render_component",
-        "capture_screenshot",
-        "open_browser",
-        # Code symbol tools + notebook (~2,231 tokens)
-        "find_symbol",
-        "rename_symbol",
-        "find_referencing_symbols",
-        "replace_symbol_body",
-        "insert_after_symbol",
-        "insert_before_symbol",
-        "notebook_edit",
-        # Subagents — this deployment does not spawn or manage subagents.
-        "spawn_subagent",
-        "list_subagents",
-        "list_agents",
-        "get_subagent_output",
-        # Uploaded-image artifacts — users don't upload images here.
-        "list_artifact_images",
-        "read_artifact_image",
-        # Todo tracking — not used in this deployment.
-        "write_todos",
-        "update_todo",
-        "complete_todo",
-        "list_todos",
-        "clear_todos",
-    }
-)
+# Backwards-compatible alias. The disabled set is now dynamic (read per build via
+# load_disabled_tools()) so the web UI can toggle tools without a restart; this
+# frozenset is only the seed default used until the UI writes an explicit list.
+_DISABLED_TOOL_NAMES: frozenset[str] = DEFAULT_DISABLED_TOOLS
 
 
 class ToolSchemaBuilder:
@@ -137,14 +99,15 @@ class ToolSchemaBuilder:
         if self._provider:
             schemas = adapt_for_provider(schemas, self._provider)
 
-        # Drop deployment-disabled tools last, so it also strips any MCP/task/
-        # extra schemas that happen to share a disabled name. Saves per-call
-        # tokens on small-context models.
-        if _DISABLED_TOOL_NAMES:
+        # Drop disabled tools last, so it also strips any MCP/task/extra schemas
+        # that happen to share a disabled name. Read fresh each build so web-UI
+        # toggles take effect on the next LLM call without a restart.
+        disabled = load_disabled_tools()
+        if disabled:
             schemas = [
                 schema
                 for schema in schemas
-                if schema.get("function", {}).get("name") not in _DISABLED_TOOL_NAMES
+                if schema.get("function", {}).get("name") not in disabled
             ]
 
         return schemas

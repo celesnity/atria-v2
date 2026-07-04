@@ -222,6 +222,8 @@ class FileContentInjector:
 
         Supports:
         - Unquoted paths: @main.py, @src/utils.py
+        - Unquoted paths with spaces/parens that end in a file extension, e.g.
+          an uploaded artifact ``@.artifacts/conversations/239/data (1).csv``
         - Quoted paths: @"path with spaces/file.py"
 
         Excludes email addresses like user@example.com.
@@ -235,23 +237,42 @@ class FileContentInjector:
         refs: list[str] = []
         seen: set[str] = set()
 
-        # Pattern 1: Quoted paths @"path with spaces/file.py"
-        for match in re.finditer(r'@"([^"]+)"', query):
-            ref = match.group(1)
+        def _add(ref: str) -> None:
             if ref not in seen:
                 refs.append(ref)
                 seen.add(ref)
 
-        # Pattern 2: Unquoted paths
-        # Match @ followed by path-like characters, but only if @ is:
-        # - At start of string, or
-        # - Preceded by whitespace or punctuation (not alphanumeric)
-        # This avoids matching emails like user@example.com
-        for match in re.finditer(r"(?:^|(?<=\s)|(?<=[^\w]))@([a-zA-Z0-9_./\-]+)", query):
+        # The @ must be at the start, or preceded by whitespace/punctuation (not an
+        # alphanumeric) so we don't match emails like user@example.com.
+        _at = r"(?:^|(?<=\s)|(?<=[^\w]))@"
+
+        # Pattern 1: Quoted paths @"path with spaces/file.py"
+        for match in re.finditer(r'@"([^"]+)"', query):
+            _add(match.group(1))
+
+        # Pattern 2: Unquoted paths that contain spaces/parentheses and end in a
+        # file extension — e.g. a browser-deduped upload "telecom_churn (1).csv".
+        # The body is lazy and the whole thing is bounded to the extension +
+        # a following separator, so trailing prose isn't swallowed. Without this
+        # the space-free Pattern 3 truncates such names at the first space, the
+        # file "isn't found", and a fallback search can grab the wrong file.
+        for match in re.finditer(
+            _at + r"([A-Za-z0-9_./\-][A-Za-z0-9_./\-() ]*?\.[A-Za-z0-9]{1,12})(?=$|[\s,;:])",
+            query,
+        ):
+            _add(match.group(1))
+
+        # Pattern 3: Plain unquoted paths (no spaces). Skip a match that is only
+        # the truncated prefix of a longer ref already captured by Pattern 2
+        # (truncation happens right before a space or "(") — it's the same file,
+        # not a second one.
+        for match in re.finditer(_at + r"([A-Za-z0-9_./\-]+)", query):
             ref = match.group(1)
-            if ref not in seen:
-                refs.append(ref)
-                seen.add(ref)
+            if ref in seen:
+                continue
+            if any(o.startswith(ref + " ") or o.startswith(ref + "(") for o in seen):
+                continue
+            _add(ref)
 
         return [(r, self._resolve_path(r)) for r in refs]
 
