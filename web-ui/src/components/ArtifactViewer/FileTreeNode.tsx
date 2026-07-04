@@ -175,9 +175,9 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
           onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY }); }}
           onKeyDown={onKeyDown}
           style={{ paddingLeft: 6 + depth * 14 }}
-          className={`group flex items-center gap-1.5 pr-1 py-[3px] cursor-pointer transition-colors text-[12.5px] font-mono select-none ${
+          className={`group relative flex items-center gap-1.5 pr-1 py-[3px] cursor-pointer transition-colors text-[12.5px] font-mono select-none ${
             isActive
-              ? 'bg-sky-500/15 text-ink'
+              ? 'bg-gradient-to-r from-accent-cobalt/15 via-accent-violet/10 to-transparent text-ink'
               : isSelected
                 ? 'bg-ink/10 text-ink/90'
                 : 'text-ink/75 hover:bg-ink/5 hover:text-ink/90'
@@ -187,6 +187,14 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
           aria-expanded={entry.kind === 'dir' ? isExpanded : undefined}
           tabIndex={0}
         >
+          {/* Active-row indicator — gradient-brand spine, matches sidebar rows. */}
+          {isActive && (
+            <span
+              aria-hidden
+              className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-[50%] bg-gradient-brand"
+            />
+          )}
+
           {entry.kind === 'dir' ? (
             <Chevron className="w-3 h-3 flex-shrink-0 text-ink/35" />
           ) : (
@@ -194,7 +202,7 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
           )}
 
           {entry.kind === 'dir' ? (
-            <FolderGlyph className={`w-3.5 h-3.5 flex-shrink-0 ${isExpanded ? 'text-sky-400/90' : 'text-sky-400/70'}`} />
+            <FolderGlyph className={`w-3.5 h-3.5 flex-shrink-0 ${isExpanded ? 'text-accent-cobalt' : 'text-accent-cobalt/70'}`} />
           ) : (
             <FileGlyph className={`w-3.5 h-3.5 flex-shrink-0 ${fileColor}`} />
           )}

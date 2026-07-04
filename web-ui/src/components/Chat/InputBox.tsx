@@ -29,7 +29,7 @@ const THINKING_STYLES: Record<string, string> = {
 } as const;
 
 const PILL_BASE =
-  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
+  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[50%] border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
 
 export function InputBox() {
   const [fileOptions, setFileOptions] = useState<DataDrivenOptionProps[]>([]);
@@ -222,7 +222,7 @@ export function InputBox() {
                 title="Upload file as artifact"
               >
                 {fileUploading ? (
-                  <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-[50%] animate-spin" />
                 ) : (
                   <Paperclip className="w-4 h-4" />
                 )}

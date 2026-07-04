@@ -183,7 +183,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
         <div className="flex-1 overflow-y-auto border-t border-hairline-soft min-h-0">
           {isLoadingDirs ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-hairline-soft border-t-amber-500 rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-hairline-soft border-t-amber-500 rounded-[50%] animate-spin" />
             </div>
           ) : browseError ? (
             <div className="px-5 py-8 text-center">

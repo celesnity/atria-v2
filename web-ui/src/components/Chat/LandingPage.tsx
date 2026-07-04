@@ -199,7 +199,7 @@ export function LandingPage() {
             <div className="relative" ref={plusMenuRef}>
               <button
                 onClick={() => setShowPlusMenu(!showPlusMenu)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-[50%] bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
                 title="Attach files"
                 aria-label="Attach files"
               >

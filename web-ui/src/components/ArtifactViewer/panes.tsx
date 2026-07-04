@@ -73,13 +73,19 @@ export function EditorPane() {
 
 function PaneEmpty({ label, icon }: { label: string; icon?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-2 select-none">
+    <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
       {icon && (
-        <div className="w-10 h-10 rounded-full border border-hairline flex items-center justify-center text-ink/20">
-          <PanelRightOpen className="w-4 h-4" />
+        <div className="relative grid h-14 w-14 place-items-center">
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-lg"
+          />
+          <span className="relative grid h-11 w-11 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
+            <PanelRightOpen className="w-4 h-4" />
+          </span>
         </div>
       )}
-      <p className="text-[12px] font-mono text-ink/35">{label}</p>
+      <p className="text-[12px] font-mono text-text-muted">{label}</p>
     </div>
   );
 }

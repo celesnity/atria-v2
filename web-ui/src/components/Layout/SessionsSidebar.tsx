@@ -323,7 +323,7 @@ export function SessionsSidebar() {
                     <Folder className={`w-5 h-5 ${hasActiveSession ? 'text-amber-600' : 'text-text-muted'}`} />
                   </button>
                   {hasRunningSession && (
-                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-[1.5px] border-amber-200 border-t-amber-500 animate-spin" />
+                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-[50%] border-[1.5px] border-amber-200 border-t-amber-500 animate-spin" />
                   )}
 
                   {/* Tooltip */}
@@ -441,7 +441,7 @@ export function SessionsSidebar() {
                               <span className="text-text-muted truncate" title={workspace.path}>
                                 {formatDate(workspace.mostRecent.updated_at)}
                               </span>
-                              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs flex-shrink-0 ${
+                              <span className={`ml-2 px-1.5 py-0.5 rounded-[50%] text-xs flex-shrink-0 ${
                                 hasActiveSession
                                   ? 'bg-amber-100 text-amber-700 font-medium'
                                   : 'bg-gray-200 text-text-secondary'
@@ -509,10 +509,10 @@ export function SessionsSidebar() {
                                 >
                                   <div className="flex items-center gap-1.5">
                                     {isRunning && (
-                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-200 border-t-amber-500 animate-spin flex-shrink-0" />
+                                      <div className="w-3.5 h-3.5 rounded-[50%] border-2 border-amber-200 border-t-amber-500 animate-spin flex-shrink-0" />
                                     )}
                                     {needsAttention && !isRunning && (
-                                      <div className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
+                                      <div className="w-4 h-4 rounded-[50%] bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
                                     )}
                                     <div className={`text-xs font-medium truncate ${
                                       isActiveSession ? 'text-amber-900' : 'text-ink'
@@ -520,10 +520,10 @@ export function SessionsSidebar() {
                                       {sessionLabel}
                                     </div>
                                     {needsAttention && isRunning && (
-                                      <div className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
+                                      <div className="w-4 h-4 rounded-[50%] bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
                                     )}
                                     {session.has_session_model && (
-                                      <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" title="Custom model" />
+                                      <span className="w-2 h-2 rounded-[50%] bg-purple-400 flex-shrink-0" title="Custom model" />
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between text-xs mt-1">

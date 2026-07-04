@@ -34,7 +34,7 @@ export function ModuleEditor({ convId, name }: Props) {
   return (
     <div className="flex flex-col h-full min-h-0 bg-canvas">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-hairline-soft/60 flex-shrink-0">
-        <Boxes className="w-4 h-4 text-sky-400/80" />
+        <Boxes className="w-4 h-4 text-accent-cobalt" />
         <span className="font-medium text-[13px]">{name}</span>
         <span className="text-[10.5px] font-mono text-ink/40">
           {found.files.length} file{found.files.length === 1 ? '' : 's'}

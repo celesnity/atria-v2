@@ -79,13 +79,13 @@ export function PersonaForm({ persona, onSave, onCancel }: PersonaFormProps) {
       <div className="border-t border-hairline bg-surface-soft px-6 py-3 flex gap-3 rounded-b-lg">
         <button
           onClick={handleSave}
-          className="flex-1 px-4 py-2 bg-ink text-inverse-ink rounded-full hover:bg-ink/90 active:scale-[0.98] font-medium text-sm transition-all whitespace-nowrap"
+          className="flex-1 px-4 py-2 bg-ink text-inverse-ink rounded-[50%] hover:bg-ink/90 active:scale-[0.98] font-medium text-sm transition-all whitespace-nowrap"
         >
           Save
         </button>
         <button
           onClick={onCancel}
-          className="flex-1 px-4 py-2 border border-hairline text-ink rounded-full hover:bg-canvas active:scale-[0.98] font-medium text-sm transition-all whitespace-nowrap"
+          className="flex-1 px-4 py-2 border border-hairline text-ink rounded-[50%] hover:bg-canvas active:scale-[0.98] font-medium text-sm transition-all whitespace-nowrap"
         >
           Cancel
         </button>

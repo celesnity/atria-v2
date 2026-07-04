@@ -15,9 +15,7 @@ import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/act
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
-import { DeepAnalyzeBlock } from './DeepAnalyzeBlock';
 import { ImageMessage } from './ImageMessage';
-import { DataMessage } from './DataMessage/DataMessage';
 import { SandboxedBlock } from './SandboxedBlock';
 import { THINKING_VERBS } from '../../constants/spinner';
 import { computeTurns, type TurnInfo } from '../../lib/turns';
@@ -111,7 +109,7 @@ const MARKDOWN_COMPONENTS: Components = {
 // consistent presence in the thread.
 function AtriaAvatar() {
   return (
-    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
+    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-[50%] bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
       <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
     </div>
   );
@@ -231,7 +229,6 @@ function MessageBody({
     return <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
   }
   if (message.role === 'search_result') return <SearchResultBlock message={message} />;
-  if (message.role === 'data_message') return <DataMessage message={message} />;
   if (message.role === 'image_message') return <ImageMessage message={message} />;
   if (message.role === 'custom_block' && message.block_id && message.block_src) {
     return (
@@ -245,7 +242,6 @@ function MessageBody({
     );
   }
   if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
-  if (message.role === 'deep_analyze') return <DeepAnalyzeBlock message={message} />;
   return message.role === 'user'
     ? <UserTurn content={message.content} />
     : <AssistantMarkdown content={message.content} />;
@@ -487,7 +483,7 @@ export function MessageList() {
         computeItemKey={(_index, item) =>
           item.kind === 'activity'
             ? item.key
-            : (item.message.tool_call_id ?? item.message.data_message_id ?? `${item.message.role}:${item.index}`)
+            : (item.message.tool_call_id ?? `${item.message.role}:${item.index}`)
         }
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
         itemContent={(itemIndex, item, ctx) => (
@@ -513,7 +509,7 @@ export function MessageList() {
         <button
           onClick={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })}
           data-surface="dark"
-          className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
+          className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-[50%] bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
           aria-label="Jump to latest message"
         >
           <ChevronDown className="w-3.5 h-3.5" />

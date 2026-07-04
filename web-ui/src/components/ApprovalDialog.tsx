@@ -79,7 +79,7 @@ export function ApprovalDialog() {
               Tool
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-accent-main-100" />
+              <div className="w-2 h-2 rounded-[50%] bg-accent-main-100" />
               <code className="text-sm font-mono bg-bg-100 px-2 py-1 rounded border border-border-300/15">
                 {pendingApproval.tool_name}
               </code>
@@ -146,7 +146,7 @@ export function ApprovalDialog() {
               onClick={handleApprove}
               className="w-full px-4 py-3.5 text-body-sm text-left bg-block-mint rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-[50%] bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 1
               </div>
               <span className="text-ink">Yes, run this command</span>
@@ -157,7 +157,7 @@ export function ApprovalDialog() {
               onClick={handleApproveAll}
               className="w-full px-4 py-3.5 text-body-sm text-left bg-block-lilac rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-[50%] bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 2
               </div>
               <div className="flex-1">
@@ -171,7 +171,7 @@ export function ApprovalDialog() {
               onClick={handleDeny}
               className="w-full px-4 py-3.5 text-body-sm text-left bg-block-coral rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-[50%] bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 3
               </div>
               <span className="text-ink">No, cancel and provide feedback</span>

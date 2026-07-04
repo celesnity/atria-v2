@@ -96,7 +96,7 @@ export function SolveDispatchCard({ message }: Props) {
               aria-label={`status ${statusMeta.label}`}
             >
               <span
-                className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} ${statusMeta.pulse ? 'animate-pulse-dot' : ''}`}
+                className={`w-1.5 h-1.5 rounded-[50%] ${statusMeta.dot} ${statusMeta.pulse ? 'animate-pulse-dot' : ''}`}
                 aria-hidden
               />
               {statusMeta.label}

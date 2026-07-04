@@ -110,7 +110,7 @@ export function ModuleGallery({ convId }: Props) {
 
         {!loading && modules.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center px-4 py-8 gap-2 select-none">
-            <div className="w-10 h-10 rounded-full border border-hairline-soft flex items-center justify-center text-ink/25">
+            <div className="w-10 h-10 rounded-[50%] border border-hairline-soft flex items-center justify-center text-ink/25">
               <Boxes className="w-4 h-4" />
             </div>
             <div className="text-[12px] text-ink/55">No modules yet</div>
@@ -119,7 +119,7 @@ export function ModuleGallery({ convId }: Props) {
             </div>
             <button
               onClick={() => setSheetOpen(true)}
-              className="mt-1 inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded bg-sky-500/90 text-white hover:bg-sky-500 active:scale-[0.98] whitespace-nowrap cursor-pointer transition-colors duration-fast"
+              className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md bg-gradient-brand text-white shadow-glow-accent hover:-translate-y-px active:scale-[0.98] whitespace-nowrap cursor-pointer transition-all duration-base ease-motion-spring"
             >
               <Plus className="w-3 h-3" /> Create one
             </button>
@@ -144,7 +144,7 @@ export function ModuleGallery({ convId }: Props) {
               >
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    className={`w-1.5 h-1.5 rounded-[50%] flex-shrink-0 ${
                       hasBody ? 'bg-emerald-500' : 'bg-ink/25'
                     }`}
                     title={hasBody ? 'Active' : 'Draft (empty)'}

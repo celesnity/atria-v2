@@ -111,7 +111,7 @@ export function PlanApprovalDialog() {
         {/* Header */}
         <div className="border-b border-border-300/15 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-accent-secondary-100 animate-pulse" />
+            <div className="w-2 h-2 rounded-[50%] bg-accent-secondary-100 animate-pulse" />
             <h2 className="text-lg font-semibold text-text-000">Plan Ready for Review</h2>
           </div>
         </div>

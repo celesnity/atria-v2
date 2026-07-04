@@ -162,7 +162,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-2 text-text-secondary">
-                <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-600 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-600 rounded-[50%] animate-spin" />
                 <span className="text-sm">Loading...</span>
               </div>
             </div>
@@ -197,7 +197,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
               >
                 {saving ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-[50%] animate-spin" />
                     Saving...
                   </span>
                 ) : 'Save'}

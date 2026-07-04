@@ -29,7 +29,7 @@ export function TodoListCard({ message }: Props) {
         <span className="text-[13px] font-[500] text-ink/70">Tasks</span>
         <span className="text-[12px] text-ink/40 font-mono ml-0.5">{done}/{total} done</span>
         <div
-          className="ml-auto h-1 w-20 rounded-full bg-hairline-soft/50 overflow-hidden"
+          className="ml-auto h-1 w-20 rounded-[50%] bg-hairline-soft/50 overflow-hidden"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}

@@ -41,7 +41,7 @@ export function DeleteConfirmModal({ isOpen, workspacePath, onConfirm, onCancel 
           >
             {/* Header: coral block accent matches the destructive intent */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-block-coral flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-[50%] bg-block-coral flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-6 h-6 text-ink" strokeWidth={1.5} />
               </div>
               <div>

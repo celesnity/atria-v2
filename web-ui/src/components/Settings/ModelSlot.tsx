@@ -50,7 +50,7 @@ export function ModelSlot({
           <div className="flex items-center gap-2">
             <h3 className="text-base font-semibold text-ink">{title}</h3>
             {optional && (
-              <span className="text-xs px-2 py-0.5 bg-surface-soft text-text-secondary rounded-full">
+              <span className="text-xs px-2 py-0.5 bg-surface-soft text-text-secondary rounded-[50%]">
                 Optional
               </span>
             )}

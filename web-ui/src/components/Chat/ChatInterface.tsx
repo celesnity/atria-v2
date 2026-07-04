@@ -81,7 +81,7 @@ export function ChatInterface() {
     >
       {error && (
         <div className="mx-6 mt-4 flex items-start gap-3 rounded-md border border-semantic-danger/25 bg-semantic-danger/10 px-4 py-3 text-semantic-danger">
-          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-semantic-danger" />
+          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-[50%] bg-semantic-danger" />
           <p className="text-body-sm leading-[1.5]">
             <strong className="font-[600]">Something went wrong.</strong> {error}
           </p>
@@ -106,7 +106,7 @@ export function ChatInterface() {
       {/* Upload progress indicator */}
       {uploading && (
         <div className="animate-slide-up absolute bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-pill border border-hairline-soft bg-canvas px-4 py-2 text-body-sm text-ink shadow-hover">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-accent-magenta border-t-transparent" />
+          <div className="h-3 w-3 animate-spin rounded-[50%] border-2 border-accent-magenta border-t-transparent" />
           Uploading…
         </div>
       )}

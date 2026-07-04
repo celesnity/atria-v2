@@ -14,9 +14,9 @@ import type {
 // ─── Notes stream ─────────────────────────────────────────────────────────────
 
 const NOTE_COLOR: Record<string, string> = {
-  fact: 'text-slate-300',
+  fact: 'text-text-secondary',
   question: 'text-amber-400',
-  decision: 'text-emerald-400',
+  decision: 'text-semantic-success',
   blocker: 'text-semantic-danger',
 };
 
@@ -141,21 +141,21 @@ function IconStar() {
 
 const JOB_STATUS_CONFIG = {
   running: { color: 'text-amber-400', bg: 'bg-amber-400/10', dot: 'bg-amber-400', label: 'Running' },
-  done:    { color: 'text-emerald-400', bg: 'bg-emerald-400/10', dot: 'bg-emerald-500', label: 'Done' },
+  done:    { color: 'text-semantic-success', bg: 'bg-semantic-success/10', dot: 'bg-semantic-success', label: 'Done' },
   failed:  { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', dot: 'bg-semantic-danger', label: 'Failed' },
 } as const;
 
 const TASK_STATUS_CONFIG = {
-  pending: { color: 'text-text-500', bg: 'bg-text-500/10', dot: 'bg-text-500', label: 'Pending', strike: false },
+  pending: { color: 'text-text-muted', bg: 'bg-text-muted/10', dot: 'bg-text-muted', label: 'Pending', strike: false },
   running: { color: 'text-amber-400', bg: 'bg-amber-400/10', dot: 'bg-amber-400', label: 'Running', strike: false },
-  done:    { color: 'text-emerald-400', bg: 'bg-emerald-400/10', dot: 'bg-emerald-500', label: 'Done', strike: false },
+  done:    { color: 'text-semantic-success', bg: 'bg-semantic-success/10', dot: 'bg-semantic-success', label: 'Done', strike: false },
   failed:  { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', dot: 'bg-semantic-danger', label: 'Failed', strike: false },
-  skipped: { color: 'text-text-500', bg: 'bg-text-500/10', dot: 'bg-text-500', label: 'Skipped', strike: true },
+  skipped: { color: 'text-text-muted', bg: 'bg-text-muted/10', dot: 'bg-text-muted', label: 'Skipped', strike: true },
 } as const;
 
 const THREAD_STATUS_CONFIG = {
   running: { color: 'text-amber-400', bg: 'bg-amber-400/10', dot: 'bg-amber-400', label: 'Running' },
-  done:    { color: 'text-emerald-400', bg: 'bg-emerald-400/10', dot: 'bg-emerald-500', label: 'Done' },
+  done:    { color: 'text-semantic-success', bg: 'bg-semantic-success/10', dot: 'bg-semantic-success', label: 'Done' },
   dropped: { color: 'text-semantic-danger', bg: 'bg-semantic-danger/10', dot: 'bg-semantic-danger', label: 'Dropped' },
 } as const;
 
@@ -189,7 +189,7 @@ function fmtDuration(fromMs: number, toMs: number): string {
 function StatusChip({ cfg }: { cfg: { color: string; bg: string; label: string } }) {
   return (
     <span
-      className={`inline-flex items-center flex-shrink-0 text-[10px] font-mono font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg}`}
+      className={`inline-flex items-center flex-shrink-0 text-[10px] font-mono font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full ${cfg.color} ${cfg.bg}`}
     >
       {cfg.label}
     </span>
@@ -199,7 +199,7 @@ function StatusChip({ cfg }: { cfg: { color: string; bg: string; label: string }
 /** Bordered mono pill for the module / strategy label on a task row. */
 function MetaPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex-shrink-0 max-w-[150px] truncate text-[11px] font-mono text-text-400 px-2 py-0.5 rounded-full border border-border-300/20 whitespace-nowrap">
+    <span className="flex-shrink-0 max-w-[150px] truncate text-[11px] font-mono text-text-secondary px-2 py-0.5 rounded-full border border-hairline-soft/25 whitespace-nowrap">
       {children}
     </span>
   );
@@ -224,18 +224,18 @@ function ProgressRow({
     <div className="flex items-center gap-3">
       {pill}
       <div
-        className="flex-1 h-2 bg-bg-200 rounded-full overflow-hidden"
+        className="flex-1 h-1.5 bg-surface-soft rounded-full overflow-hidden"
         role="progressbar"
         aria-valuenow={ariaNow}
         aria-valuemin={0}
         aria-valuemax={ariaMax}
       >
         <div
-          className={`h-full rounded-full transition-all duration-slow ${fill}`}
+          className={`h-full rounded-full transition-[width] duration-slow ease-motion-out ${fill}`}
           style={{ width: `${Math.max(clamped, 2)}%` }}
         />
       </div>
-      <span className="w-10 flex-shrink-0 text-right text-[13px] font-mono tabular-nums text-text-400">
+      <span className="w-10 flex-shrink-0 text-right text-[13px] font-mono tabular-nums text-text-secondary">
         {Math.round(clamped)}%
       </span>
     </div>
@@ -392,7 +392,7 @@ function ParallelCard({ job }: { job: ParallelJobView }) {
         <div className="px-4 py-3 border-t border-border-300/10 space-y-2 bg-bg-100/20">
           <div className="flex items-center gap-2">
             {job.applied ? (
-              <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-mono">
+              <span className="flex items-center gap-1.5 text-semantic-success text-xs font-mono">
                 <IconCheck />
                 <span>Applied</span>
               </span>
@@ -460,8 +460,8 @@ function EmptyState() {
 
 const SUMMARY_CARDS = [
   { key: 'running', label: 'Running', dot: 'bg-amber-400' },
-  { key: 'queued', label: 'Queued', dot: 'bg-text-500' },
-  { key: 'done', label: 'Done', dot: 'bg-emerald-500' },
+  { key: 'queued', label: 'Queued', dot: 'bg-text-muted' },
+  { key: 'done', label: 'Done', dot: 'bg-semantic-success' },
 ] as const;
 
 function SummaryCards({
@@ -470,26 +470,36 @@ function SummaryCards({
   counts: { running: number; queued: number; done: number };
 }) {
   return (
-    <dl className="grid grid-cols-3 gap-4 mb-6">
-      {SUMMARY_CARDS.map(({ key, label, dot }) => (
-        <div
-          key={key}
-          className="flex items-center gap-3 bg-bg-000 border border-border-300/15 rounded-lg px-4 py-3.5"
-        >
-          <span
-            className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dot} ${
-              key === 'running' && counts.running > 0 ? 'animate-pulse-dot' : ''
-            }`}
-            aria-hidden="true"
-          />
-          <div className="min-w-0">
-            <dd className="text-[26px] leading-none font-[330] text-text-100 tabular-nums">
+    <dl className="grid grid-cols-3 divide-x divide-hairline-soft/15 rounded-lg border border-hairline-soft/15 bg-canvas overflow-hidden mb-8">
+      {SUMMARY_CARDS.map(({ key, label, dot }) => {
+        const live = key === 'running' && counts.running > 0;
+        return (
+          <div key={key} className="relative px-5 py-4">
+            {live && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-px bg-amber-400/60"
+              />
+            )}
+            <dd
+              className={`text-[34px] leading-none font-[340] tabular-nums tracking-[-0.02em] ${
+                counts[key] > 0 ? 'text-ink' : 'text-text-muted'
+              }`}
+            >
               {counts[key]}
             </dd>
-            <dt className="text-[12px] text-text-400 mt-1">{label}</dt>
+            <dt className="mt-2.5 flex items-center gap-2">
+              <span
+                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot} ${live ? 'animate-pulse-dot' : ''}`}
+                aria-hidden="true"
+              />
+              <span className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-muted">
+                {label}
+              </span>
+            </dt>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </dl>
   );
 }
@@ -506,11 +516,24 @@ export function DispatchPage() {
     <div className="flex-1 min-h-0 overflow-y-auto bg-canvas">
       <main>
         <div className="max-w-content mx-auto px-6 py-8">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <Eyebrow as="p" className="mb-2 text-ink/50">Dispatch · background tasks</Eyebrow>
-              <h1 className="text-[28px] font-[600] leading-tight text-ink tracking-[-0.5px]">Dispatch</h1>
-              <p className="text-body-sm text-ink/60 mt-1.5">
+          <div className="flex items-start justify-between gap-4 mb-8">
+            <div className="min-w-0">
+              <Eyebrow as="p" className="mb-2.5 text-ink/45">Dispatch · background tasks</Eyebrow>
+              <div className="flex items-center gap-3">
+                <h1 className="text-[32px] font-[600] leading-none text-ink tracking-[-0.6px]">
+                  Dispatch
+                </h1>
+                {counts.running > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-2.5 py-1 text-[11px] font-mono font-[500] text-amber-400">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/70" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    </span>
+                    {counts.running} live
+                  </span>
+                )}
+              </div>
+              <p className="text-body-sm text-ink/60 mt-2 max-w-[62ch]">
                 Live task dispatch — divide (DAG decomposition) and parallel
                 (worktree-isolated solvers, judged and applied) in one view.
               </p>
@@ -519,7 +542,7 @@ export function DispatchPage() {
             {order.length > 0 && (
               <button
                 onClick={clear}
-                className="px-3 py-1.5 text-[13px] font-mono text-ink/60 hover:text-ink hover:bg-surface-soft rounded-md transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring"
+                className="flex-shrink-0 px-3 py-1.5 text-[13px] font-mono text-ink/55 hover:text-ink hover:bg-surface-soft rounded-md transition-colors duration-fast cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring"
                 aria-label="Clear all jobs"
               >
                 Clear
@@ -533,10 +556,18 @@ export function DispatchPage() {
             <EmptyState />
           ) : (
             <div className="space-y-4">
-              {order.map((jobId) => {
+              {order.map((jobId, i) => {
                 const job = jobs[jobId];
                 if (!job) return null;
-                return <JobCard key={jobId} job={job} />;
+                return (
+                  <div
+                    key={jobId}
+                    className="animate-reveal motion-reduce:animate-none"
+                    style={{ animationDelay: `${Math.min(i, 6) * 50}ms` }}
+                  >
+                    <JobCard job={job} />
+                  </div>
+                );
               })}
             </div>
           )}

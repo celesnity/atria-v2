@@ -174,7 +174,7 @@ export function FileUploadWidget({
                     <p className="text-xs text-text-muted">{formatFileSize(file.size)}</p>
                   </div>
                   {progress[file.name] !== undefined && (
-                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-[50%] overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all duration-base"
                         style={{ width: `${progress[file.name]}%` }}

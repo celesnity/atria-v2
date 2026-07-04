@@ -175,7 +175,7 @@ export function AskUserDialog() {
                 {questions.map((_, i) => (
                   <div
                     key={i}
-                    className={`w-2 h-2 rounded-full transition-colors ${
+                    className={`w-2 h-2 rounded-[50%] transition-colors ${
                       i === currentIdx ? 'bg-accent-secondary-100' : i < currentIdx ? 'bg-accent-secondary-100/50' : 'bg-bg-400'
                     }`}
                   />

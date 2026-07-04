@@ -198,7 +198,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded text-ink/45 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
+            className="p-1 rounded text-ink/45 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
           >
             <X className="w-4 h-4" />
           </button>
@@ -224,7 +224,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                     ? 'border-semantic-danger focus-visible:ring-semantic-danger/60'
                     : nameCheck.ok && name
                       ? 'border-emerald-500/60 focus-visible:ring-emerald-500/60'
-                      : 'border-hairline-soft focus-visible:ring-sky-400/60'
+                      : 'border-hairline-soft focus-visible:ring-accent-cobalt/60'
                 }`}
               />
               {name && (
@@ -259,7 +259,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
               className={`w-full px-3 py-2 text-sm rounded-md border bg-canvas transition-colors focus:outline-none focus-visible:ring-1 ${
                 showSummaryError
                   ? 'border-semantic-danger focus-visible:ring-semantic-danger/60'
-                  : 'border-hairline-soft focus-visible:ring-sky-400/60'
+                  : 'border-hairline-soft focus-visible:ring-accent-cobalt/60'
               }`}
             />
             <div id="summary-help" className="mt-1 flex items-start justify-between gap-3 min-h-[16px]">
@@ -283,13 +283,13 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                     type="button"
                     onClick={() => setTemplate(k)}
                     aria-pressed={active}
-                    className={`text-left rounded-md border px-3 py-2.5 h-full cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 ${
+                    className={`text-left rounded-md border px-3 py-2.5 h-full cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60 ${
                       active
-                        ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500/40'
+                        ? 'border-accent-cobalt/60 bg-accent-cobalt/10 ring-1 ring-accent-cobalt/40'
                         : 'border-hairline-soft bg-canvas hover:bg-surface-soft/60'
                     }`}
                   >
-                    <div className={`text-[13px] font-medium leading-tight ${active ? 'text-sky-600' : 'text-ink'}`}>{TEMPLATES[k].label}</div>
+                    <div className={`text-[13px] font-medium leading-tight ${active ? 'text-accent-cobalt' : 'text-ink'}`}>{TEMPLATES[k].label}</div>
                     <div className={`text-[11px] leading-snug mt-1 ${active ? 'text-ink/70' : 'text-ink/55'}`}>{TEMPLATES[k].hint}</div>
                   </button>
                 );
@@ -317,14 +317,14 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                 <button
                   type="button"
                   onClick={() => filesInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
                 >
                   <FilePlus2 className="w-4 h-4" /> Add files
                 </button>
                 <button
                   type="button"
                   onClick={() => folderInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
                 >
                   <FolderPlus className="w-4 h-4" /> Add folder
                 </button>
@@ -374,10 +374,10 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
             type="submit"
             disabled={busy}
             aria-disabled={!formOk || busy}
-            className={`px-4 py-1.5 text-[13px] rounded text-white whitespace-nowrap cursor-pointer transition-colors duration-fast focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${
+            className={`px-4 py-1.5 text-[13px] rounded-md text-white whitespace-nowrap cursor-pointer transition-all duration-base ease-motion-spring focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt ${
               formOk
-                ? 'bg-sky-500/90 hover:bg-sky-500 active:scale-[0.98]'
-                : 'bg-sky-500/40 hover:bg-sky-500/50'
+                ? 'bg-gradient-brand shadow-glow-accent hover:-translate-y-px active:scale-[0.98]'
+                : 'bg-gradient-brand opacity-50'
             } disabled:opacity-60 disabled:cursor-not-allowed`}
           >
             {busy ? 'Creating…' : (

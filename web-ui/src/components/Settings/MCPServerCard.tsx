@@ -120,7 +120,7 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
   if (isProcessing) {
     return (
       <div className="flex items-center justify-center w-8 h-8">
-        <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-[50%] animate-spin" />
       </div>
     );
   }
@@ -136,9 +136,9 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
 
   return (
     <div className="relative flex items-center justify-center w-8 h-8">
-      <div className={`w-2.5 h-2.5 rounded-full ${config.color}`} />
+      <div className={`w-2.5 h-2.5 rounded-[50%] ${config.color}`} />
       {status === 'connected' && (
-        <div className={`absolute w-2.5 h-2.5 rounded-full ${config.color} animate-ping opacity-75`} />
+        <div className={`absolute w-2.5 h-2.5 rounded-[50%] ${config.color} animate-ping opacity-75`} />
       )}
     </div>
   );

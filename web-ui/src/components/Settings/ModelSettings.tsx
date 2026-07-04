@@ -40,7 +40,7 @@ export function ModelSettings() {
 
             <button
               onClick={() => window.open('/.env.example', '_blank')}
-              className="text-xs font-medium px-4 py-2 bg-surface-soft text-ink hover:bg-surface-soft rounded-full transition-colors active:scale-[0.98] whitespace-nowrap"
+              className="text-xs font-medium px-4 py-2 bg-surface-soft text-ink hover:bg-surface-soft rounded-[50%] transition-colors active:scale-[0.98] whitespace-nowrap"
             >
               View .env.example
             </button>

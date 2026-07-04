@@ -96,7 +96,7 @@ export function ArtifactViewer() {
           onClick={() => setCollapsed(false)}
           aria-label="Open artifact viewer"
           title="Open artifact viewer"
-          className="fixed bottom-24 right-3 z-30 p-2.5 rounded-full bg-canvas border border-hairline-soft text-ink/70 hover:text-ink shadow-modal cursor-pointer transition-colors"
+          className="fixed bottom-24 right-3 z-30 p-2.5 rounded-[50%] bg-canvas border border-hairline-soft text-ink/70 hover:text-ink shadow-modal cursor-pointer transition-colors"
         >
           <PanelRightOpen className="w-5 h-5" />
         </button>
@@ -124,8 +124,8 @@ export function ArtifactViewer() {
             onClick={() => setMobileShowTree(v => !v)}
             aria-label={showTree ? 'Show viewer' : 'Show files'}
             title={showTree ? 'Show viewer' : 'Show files'}
-            className={`flex-shrink-0 p-2 rounded transition-colors ${
-              showTree ? 'text-accent-main-100 bg-accent-main-100/10' : 'text-ink/50 hover:text-ink hover:bg-ink/6'
+            className={`flex-shrink-0 p-2 rounded-md transition-colors ${
+              showTree ? 'text-accent-cobalt bg-accent-cobalt/12' : 'text-ink/50 hover:text-ink hover:bg-ink/6'
             }`}
           >
             <FolderTree className="w-4 h-4" />
@@ -177,7 +177,7 @@ export function ArtifactViewer() {
       handle={(_, ref) => (
         <div
           ref={ref as React.RefObject<HTMLDivElement>}
-          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-sky-400/25 transition-colors z-10"
+          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent-cobalt/30 transition-colors z-10"
         />
       )}
       onResize={onPanelResize}
@@ -196,7 +196,7 @@ export function ArtifactViewer() {
           handle={(_, ref) => (
             <div
               ref={ref as React.RefObject<HTMLDivElement>}
-              className="absolute left-0 right-0 bottom-0 h-1 cursor-row-resize hover:bg-sky-400/25 transition-colors z-10"
+              className="absolute left-0 right-0 bottom-0 h-1 cursor-row-resize hover:bg-accent-cobalt/30 transition-colors z-10"
             />
           )}
           onResize={onTopResize}
@@ -242,11 +242,17 @@ export function ArtifactViewer() {
                 tab={activeTab}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-2 select-none">
-                <div className="w-10 h-10 rounded-full border border-hairline flex items-center justify-center text-ink/20">
-                  <PanelRightOpen className="w-4 h-4" />
+              <div className="flex flex-col items-center justify-center h-full gap-3 select-none">
+                <div className="relative grid h-14 w-14 place-items-center">
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-[50%] bg-gradient-brand opacity-20 blur-lg"
+                  />
+                  <span className="relative grid h-11 w-11 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
+                    <PanelRightOpen className="w-4 h-4" />
+                  </span>
                 </div>
-                <p className="text-[12px] font-mono text-ink/35">Select a file to preview</p>
+                <p className="text-[12px] font-mono text-text-muted">Select a file to preview</p>
               </div>
             )}
           </div>

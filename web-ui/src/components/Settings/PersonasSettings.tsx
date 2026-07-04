@@ -69,7 +69,7 @@ export function PersonasSettings() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-2 text-ink/50">
-          <div className="w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-ink/20 border-t-ink rounded-[50%] animate-spin" />
           <span className="text-sm">Loading personas...</span>
         </div>
       </div>
@@ -100,7 +100,7 @@ export function PersonasSettings() {
                 setSelectedPersona(null);
                 setIsEditing(true);
               }}
-              className="px-3 py-1.5 bg-ink text-inverse-ink text-xs rounded-full hover:bg-ink/90 font-medium transition-colors active:scale-[0.98] whitespace-nowrap"
+              className="px-3 py-1.5 bg-ink text-inverse-ink text-xs rounded-[50%] hover:bg-ink/90 font-medium transition-colors active:scale-[0.98] whitespace-nowrap"
             >
               + New
             </button>
@@ -148,7 +148,7 @@ export function PersonasSettings() {
               {!isEditing && selectedPersona && (
                 <button
                   onClick={() => handleDeletePersona(selectedPersona.name)}
-                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-full hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
+                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-[50%] hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
                 >
                   Delete
                 </button>
@@ -178,7 +178,7 @@ export function PersonasSettings() {
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="w-full px-4 py-2 bg-ink text-inverse-ink rounded-full hover:bg-ink/90 font-medium text-sm transition-colors active:scale-[0.98] whitespace-nowrap"
+                    className="w-full px-4 py-2 bg-ink text-inverse-ink rounded-[50%] hover:bg-ink/90 font-medium text-sm transition-colors active:scale-[0.98] whitespace-nowrap"
                   >
                     Edit Persona
                   </button>

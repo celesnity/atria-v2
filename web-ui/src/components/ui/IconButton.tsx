@@ -33,7 +33,7 @@ export function IconButton({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center rounded-full transition-all duration-fast ease-out active:scale-[0.95]',
+        'inline-flex items-center justify-center rounded-[50%] transition-all duration-fast ease-out active:scale-[0.95]',
         sizes,
         variants,
         className,
