@@ -344,9 +344,8 @@ When processing file paths without explicit directories (like `app.py` or `READM
             "You can help users set up MCP (Model Context Protocol) servers "
             "for external integrations.\n\n",
             "When users ask about setting up an MCP server:\n",
-            "1. Use `web_search` to find the MCP server package and docs\n",
-            "2. Read `~/.atria/mcp.json` and add the server configuration\n",
-            "3. Tell the user to connect with `/mcp connect <name>`\n",
+            "1. Read `~/.atria/mcp.json` and add the server configuration\n",
+            "2. Tell the user to connect with `/mcp connect <name>`\n",
         ]
         return "".join(lines)
 

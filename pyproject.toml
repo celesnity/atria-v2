@@ -74,8 +74,6 @@ dependencies = [
     "pypdf>=4.0.0",
     # SWE-bench dataset loading
     "datasets>=2.0.0",
-    # Web search via DuckDuckGo
-    "ddgs>=0.1.0",
     # Excel parsing for send_data tool
     "openpyxl>=3.1.0",
     # Analyze plugin tools

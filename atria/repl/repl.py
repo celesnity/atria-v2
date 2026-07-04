@@ -119,9 +119,6 @@ class REPL:
         from atria.core.context_engineering.tools.implementations import (
             VLMTool,
         )
-        from atria.core.context_engineering.tools.implementations.web_search_tool import (
-            WebSearchTool,
-        )
         from atria.core.context_engineering.tools.implementations.notebook_edit_tool import (
             NotebookEditTool,
         )
@@ -138,7 +135,6 @@ class REPL:
         self.bash_tool = BashTool(
             self.config, self.config_manager.working_dir, task_manager=self.task_manager
         )
-        self.web_search_tool = WebSearchTool(self.config, self.config_manager.working_dir)
         self.notebook_edit_tool = NotebookEditTool(self.config_manager.working_dir)
         self.ask_user_tool = AskUserTool()  # Uses console fallback
         self.vlm_tool = VLMTool(self.config, self.config_manager.working_dir)
@@ -162,7 +158,6 @@ class REPL:
             write_tool=self.write_tool,
             edit_tool=self.edit_tool,
             bash_tool=self.bash_tool,
-            web_search_tool=self.web_search_tool,
             notebook_edit_tool=self.notebook_edit_tool,
             ask_user_tool=self.ask_user_tool,
             vlm_tool=self.vlm_tool,

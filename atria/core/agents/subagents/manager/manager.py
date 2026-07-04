@@ -131,8 +131,5 @@ class SubAgentManager(RegistrationMixin, DockerMixin, ExecutionMixin, Background
             "list_processes",
             "get_process_output",
             "kill_process",
-            "analyze_image",
-            "capture_screenshot",
-            "list_screenshots",
             "read_pdf",
         ]

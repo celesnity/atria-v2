@@ -64,10 +64,6 @@ def summarize_tool_result(tool_name: str, result: Any, error: str | None = None)
         else:
             return "✓ Command executed successfully"
 
-    # Image operations
-    if tool_name in ("analyze_image", "Analyze", "capture_screenshot"):
-        return "✓ Image processed successfully"
-
     # Thinking tool - return directive, not content (content would contaminate LLM response)
     # The actual thinking is displayed in UI via _thinking_content key
     if tool_name == "think":

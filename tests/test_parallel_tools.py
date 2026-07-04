@@ -17,7 +17,6 @@ class TestParallelizableToolsSet:
             "read_file",
             "list_files",
             "search",
-            "web_search",
             "list_todos",
             "search_tools",
             "find_symbol",

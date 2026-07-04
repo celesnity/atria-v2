@@ -16,12 +16,10 @@ if TYPE_CHECKING:
 from atria.core.context_engineering.tools.handlers.file_handlers import FileToolHandler
 from atria.core.context_engineering.mcp.handler import McpToolHandler
 from atria.core.context_engineering.tools.handlers.process_handlers import ProcessToolHandler
-from atria.core.context_engineering.tools.handlers.web_search_handler import WebSearchHandler
 from atria.core.context_engineering.tools.handlers.notebook_edit_handler import (
     NotebookEditHandler,
 )
 from atria.core.context_engineering.tools.handlers.ask_user_handler import AskUserHandler
-from atria.core.context_engineering.tools.handlers.screenshot_handler import ScreenshotToolHandler
 from atria.core.context_engineering.tools.handlers.todo_handler import TodoHandler
 from atria.core.context_engineering.tools.handlers.thinking_handler import ThinkingHandler
 from atria.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
@@ -88,7 +86,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         write_tool: Union[Any, None] = None,
         edit_tool: Union[Any, None] = None,
         bash_tool: Union[Any, None] = None,
-        web_search_tool: Union[Any, None] = None,
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
         vlm_tool: Union[Any, None] = None,
@@ -100,14 +97,12 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self.write_tool = write_tool
         self.edit_tool = edit_tool
         self.bash_tool = bash_tool
-        self.web_search_tool = web_search_tool
         self.notebook_edit_tool = notebook_edit_tool
         self.ask_user_tool = ask_user_tool
         self.vlm_tool = vlm_tool
 
         self._file_handler = FileToolHandler(file_ops, write_tool, edit_tool)
         self._process_handler = ProcessToolHandler(bash_tool)
-        self._web_search_handler = WebSearchHandler(web_search_tool)
         _skill_working_dir = (
             str(file_ops.working_dir)
             if file_ops and hasattr(file_ops, "working_dir") and file_ops.working_dir
@@ -115,7 +110,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         )
         self.skill_ctx = SkillToolContext(
             working_dir=_skill_working_dir,
-            web_search=web_search_tool,
         )
         _wire_llm_into_ctx(self.skill_ctx, app_config)
         _paths = get_paths()
@@ -132,7 +126,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
         self._ask_user_handler = AskUserHandler(ask_user_tool)
         self._mcp_handler = McpToolHandler(mcp_manager)
-        self._screenshot_handler = ScreenshotToolHandler()
         self.todo_handler = TodoHandler()
         self.thinking_handler = ThinkingHandler()
         self._pdf_tool = PDFTool()
@@ -182,12 +175,9 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "list_processes": lambda args, ctx: self._process_handler.list_processes(),
             "get_process_output": self._process_handler.get_process_output,
             "kill_process": self._process_handler.kill_process,
-            "web_search": self._web_search_handler.search,
             "md_to_pdf": self._md_to_pdf_handler_new.md_to_pdf,
             "notebook_edit": self._notebook_edit_handler.edit_cell,
             "ask_user": self._ask_user_handler.ask_questions,
-            "capture_screenshot": self._screenshot_handler.capture_screenshot,
-            "analyze_image": self._analyze_image,
             "write_todos": self._write_todos,
             "update_todo": self._update_todo,
             "complete_todo": self._complete_todo,

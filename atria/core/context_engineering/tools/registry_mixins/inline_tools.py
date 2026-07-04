@@ -6,34 +6,7 @@ from typing import Any
 
 
 class InlineToolsMixin:
-    """Image, PDF, todo, plan, batch, skill and patch tool handlers."""
-
-    def _analyze_image(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        """Execute the analyze_image tool (VLM)."""
-        if not self.vlm_tool:
-            return {
-                "success": False,
-                "error": "VLM tool not available",
-                "output": None,
-            }
-        # Handle max_completion_tokens -> max_tokens conversion (OpenAI models use different param)
-        if "max_completion_tokens" in arguments:
-            arguments["max_tokens"] = arguments.pop("max_completion_tokens")
-        result = self.vlm_tool.analyze_image(**arguments)
-        # Format output for consistency with other tools
-        if result.get("success"):
-            return {
-                "success": True,
-                "output": result.get("content", ""),
-                "model": result.get("model"),
-                "provider": result.get("provider"),
-            }
-        else:
-            return {
-                "success": False,
-                "error": result.get("error", "Unknown error"),
-                "output": None,
-            }
+    """PDF, todo, plan, batch, skill and patch tool handlers."""
 
     def _emit_todos(self, context: Any) -> None:
         """Broadcast the current structured todo list to the UI, if supported.

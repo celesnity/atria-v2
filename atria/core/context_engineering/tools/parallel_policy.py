@@ -19,13 +19,9 @@ READ_ONLY_TOOLS: frozenset[str] = frozenset(
         "find_symbol",
         "find_referencing_symbols",
         "read_pdf",
-        "analyze_image",
         # Process inspection
         "list_processes",
         "get_process_output",
-        # Web (read-only)
-        "web_search",
-        "capture_screenshot",
         # Session/memory (read-only)
         "list_sessions",
         "get_session_history",
