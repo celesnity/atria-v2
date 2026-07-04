@@ -39,7 +39,7 @@ class ToolResultsMixin:
 
         if result.get("success", False):
             tool_result = separate_response if separate_response else result.get("output", "")
-            # Content must be a string; some tools (get_solve_result) return a dict/list.
+            # Content must be a string; some tools (get_subagent_output) return a dict/list.
             tool_result = _as_text(tool_result)
             if completion_status:
                 tool_result = f"[completion_status={completion_status}]\n{tool_result}"

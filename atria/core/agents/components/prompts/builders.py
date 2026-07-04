@@ -245,7 +245,7 @@ class BasePromptBuilder:
         reg = self._tool_registry
         handlers = getattr(reg, "_handlers", None) if reg is not None else None
         if isinstance(handlers, dict):
-            has_subagents = "spawn_subagent" in handlers
+            has_subagents = "subagent" in handlers
             todo_enabled = "list_todos" in handlers or "write_todos" in handlers
         else:
             # No introspectable registry: preserve prior always-on behavior

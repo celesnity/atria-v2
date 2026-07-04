@@ -1193,7 +1193,7 @@ class TestRegistryIntegration:
         # Core planning tools should still be present
         assert "read_file" in PLANNING_TOOLS
         assert "search" in PLANNING_TOOLS
-        assert "spawn_subagent" in PLANNING_TOOLS
+        assert "subagent" in PLANNING_TOOLS
 
 
 # ============================================================
