@@ -35,10 +35,8 @@ logger = logging.getLogger(__name__)
 # with the groups below when adding new always-off-by-default tools.
 DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
     {
-        # Media. NOTE: send_image / send_editable_table /
-        # send_table are intentionally NOT disabled — the data_copilot analytics
-        # flow pushes charts and result/editable tables to the web chat with them.
-        "render_component",
+        # NOTE: send_image is intentionally NOT disabled — the data_copilot
+        # analytics flow pushes images to the web chat with it.
         # Code symbol tools + notebook
         "find_symbol",
         "rename_symbol",
@@ -102,7 +100,6 @@ def _build_category_map() -> dict[str, str]:
     from atria.core.agents.components.schemas.builtin import (
         agent_tools,
         artifact_tools,
-        component_tools,
         file_tools,
         interaction_tools,
         knowledge_tools,
@@ -124,7 +121,6 @@ def _build_category_map() -> dict[str, str]:
         ("Agents", agent_tools),
         ("Orchestration", orchestration_tools),
         ("Artifacts", artifact_tools),
-        ("Components", component_tools),
     ]
     mapping: dict[str, str] = {}
     for label, module in groups:
