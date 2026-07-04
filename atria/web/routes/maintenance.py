@@ -23,21 +23,38 @@ router = APIRouter(
 )
 
 _audit_mod: Any | None = None
+_copilot_mod: Any | None = None
+
+
+def _scripts_on_path() -> None:
+    """Put the module's flat scripts dir on sys.path (idempotent)."""
+    from atria.core.modules.registry import resolve_modules_root
+
+    scripts = resolve_modules_root() / "maintenance_copilot" / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
 
 
 def _audit() -> Any:
     """Lazily import the maintenance_copilot module's audit helper."""
     global _audit_mod
     if _audit_mod is None:
-        from atria.core.modules.registry import resolve_modules_root
-
-        scripts = resolve_modules_root() / "maintenance_copilot" / "scripts"
-        if str(scripts) not in sys.path:
-            sys.path.insert(0, str(scripts))
+        _scripts_on_path()
         import audit  # noqa: E402 — flat scripts dir put on sys.path above
 
         _audit_mod = audit
     return _audit_mod
+
+
+def _copilot() -> Any:
+    """Lazily import the maintenance_copilot CLI module (health probes)."""
+    global _copilot_mod
+    if _copilot_mod is None:
+        _scripts_on_path()
+        import copilot  # noqa: E402 — flat scripts dir put on sys.path above
+
+        _copilot_mod = copilot
+    return _copilot_mod
 
 
 class SignoffBody(BaseModel):
@@ -46,6 +63,9 @@ class SignoffBody(BaseModel):
     decision: str = "acknowledged"
     note: str | None = None
     citations: list[dict] | None = None
+    answer_type: str | None = None
+    is_sensitive: bool | None = None
+    exact_quote: str | None = None
 
 
 def _engineer_of(user: Any) -> str:
@@ -56,6 +76,20 @@ def _engineer_of(user: Any) -> str:
     if isinstance(user, dict):
         return str(user.get("username") or user.get("email") or "unknown")
     return "unknown"
+
+
+@router.get("/health")
+def maintenance_health() -> dict:
+    """Probe the copilot sidecars (tei/llm/qdrant/neo4j) → 'ok' or 'error: …'.
+
+    Sync on purpose: FastAPI runs it in the threadpool and the probes are
+    blocking clients with short timeouts (``MC_HEALTH_TIMEOUT``, default 3s).
+    """
+    try:
+        copilot = _copilot()
+        return copilot.check_health(copilot._build_probes())
+    except Exception as exc:  # noqa: BLE001 — health must answer, not raise
+        raise HTTPException(status_code=500, detail=f"health check failed: {exc}") from exc
 
 
 @router.post("/signoff")
@@ -71,6 +105,9 @@ async def signoff(body: SignoffBody, user=Depends(require_authenticated_user)) -
                 "decision": body.decision,
                 "note": body.note,
                 "citations": body.citations or [],
+                "answer_type": body.answer_type,
+                "is_sensitive": body.is_sensitive,
+                "exact_quote": body.exact_quote,
             }
         )
     except Exception as exc:  # noqa: BLE001 — surface audit-write failure to the client

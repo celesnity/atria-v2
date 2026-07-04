@@ -147,7 +147,6 @@ def test_subagent_spawn_no_manager(registry):
     assert result["success"] is False
     assert "SubAgentManager not configured" in result["error"]
 
-
 def test_subagent_spawn_missing_description(registry):
     registry._subagent_manager = MagicMock()
     result = registry._execute_spawn_subagent({"subagent_type": "test"}, None)

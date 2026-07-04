@@ -135,6 +135,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         # Also discover code-bearing skills shipped inside modules (e.g.
         # maintenance_copilot ships a tools.py). Modules declare `tools:` in their
         # SKILL.md frontmatter; modules without it are silently skipped.
+        _modules_root = None
         try:
             from atria.core.modules.registry import resolve_modules_root
 
@@ -154,6 +155,28 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         except Exception as exc:  # noqa: BLE001
             logger.warning("skill-tool discovery failed; continuing without skill tools: %s", exc)
             self._skill_specs = {}
+        # Protected-path guard: denies tool access to configured corpus roots
+        # (defaults protect modules/*/sample_manuals even without a settings
+        # file — ProtectedPathGuard falls back to defaults on a missing or
+        # mocked config).
+        from atria.core.context_engineering.tools.protected_paths import ProtectedPathGuard
+
+        _protected_entries = None
+        try:
+            _protected_entries = app_config.permissions.protected_paths  # type: ignore[union-attr]
+        except AttributeError:
+            pass
+        self._protected_guard = ProtectedPathGuard(
+            _protected_entries, _skill_working_dir, _modules_root
+        )
+        # Let broad searches skip protected roots instead of surfacing their
+        # content (registry guard denies direct targeting; this closes the
+        # traversal side).
+        if file_ops is not None and hasattr(file_ops, "protected_roots"):
+            try:
+                file_ops.protected_roots = self._protected_guard.roots
+            except Exception:  # noqa: BLE001 — guard wiring must never block init
+                pass
         self._md_to_pdf_tool = MdToPdfTool()
         self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
@@ -455,6 +478,11 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         if hasattr(self, "file_ops") and self.file_ops and hasattr(self.file_ops, "working_dir"):
             working_dir = str(self.file_ops.working_dir) if self.file_ops.working_dir else None
         arguments = normalize_params(tool_name, arguments, working_dir)
+
+        # --- Protected-path guard (RAG corpora etc.) ---
+        denial = self._protected_guard.check_tool_call(tool_name, arguments)
+        if denial:
+            return {"success": False, "error": denial, "output": None, "denied": True}
 
         context = ToolExecutionContext(
             mode_manager=mode_manager,

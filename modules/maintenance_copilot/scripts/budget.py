@@ -23,7 +23,10 @@ import os
 _CHARS_PER_TOKEN = 3.5
 
 # Fallback reserved-completion tokens per role when no env override is set.
-_DEFAULT_OUTPUT_TOKENS = {"synthesis": 1024, "kg_extract": 1536}
+# Synthesis returns structured JSON (framing + quote + metadata), which runs
+# ~1.5x the old prose answers; a truncated response is unparseable, so the
+# reservation errs high.
+_DEFAULT_OUTPUT_TOKENS = {"synthesis": 1536, "kg_extract": 1536}
 _DEFAULT_OUTPUT_FALLBACK = 1024
 
 # Tokens held back from the input budget for chat scaffolding (role tags,
