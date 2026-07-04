@@ -6,17 +6,7 @@ from typing import Any
 
 
 class InlineToolsMixin:
-    """Browser, image, PDF, todo, plan, batch, skill and patch tool handlers."""
-
-    def _open_browser(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        """Execute the open_browser tool."""
-        if not self.open_browser_tool:
-            return {
-                "success": False,
-                "error": "open_browser tool not available",
-                "output": None,
-            }
-        return self.open_browser_tool.execute(**arguments)
+    """Image, PDF, todo, plan, batch, skill and patch tool handlers."""
 
     def _analyze_image(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Execute the analyze_image tool (VLM)."""
@@ -38,43 +28,6 @@ class InlineToolsMixin:
                 "model": result.get("model"),
                 "provider": result.get("provider"),
             }
-        else:
-            return {
-                "success": False,
-                "error": result.get("error", "Unknown error"),
-                "output": None,
-            }
-
-    def _capture_web_screenshot(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        """Execute the capture_web_screenshot tool."""
-        if not self.web_screenshot_tool:
-            return {
-                "success": False,
-                "error": "Web screenshot tool not available",
-                "output": None,
-            }
-        result = self.web_screenshot_tool.capture_web_screenshot(**arguments)
-        # Format output for consistency
-        if result.get("success"):
-            output_lines = [
-                f"Screenshot captured: {result.get('screenshot_path')}",
-                f"URL: {result.get('url')}",
-            ]
-            if result.get("pdf_path"):
-                output_lines.append(f"PDF captured: {result.get('pdf_path')}")
-            if result.get("warning"):
-                output_lines.append(f"Warning: {result['warning']}")
-            if result.get("pdf_warning"):
-                output_lines.append(f"PDF Warning: {result['pdf_warning']}")
-
-            response = {
-                "success": True,
-                "output": "\n".join(output_lines),
-                "screenshot_path": result.get("screenshot_path"),
-            }
-            if result.get("pdf_path"):
-                response["pdf_path"] = result.get("pdf_path")
-            return response
         else:
             return {
                 "success": False,

@@ -51,7 +51,7 @@ class DockerRunMixin:
         - Consistent result display
 
         Args:
-            name: Subagent name (e.g., "Code-Explorer", "Web-clone")
+            name: Subagent name (e.g., "Code-Explorer", "Web-Generator")
             task: Task prompt for subagent
             deps: SubAgentDeps with mode_manager, approval_manager, undo_manager
             docker_handler: Pre-configured DockerToolHandler

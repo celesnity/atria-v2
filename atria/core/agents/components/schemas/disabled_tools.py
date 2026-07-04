@@ -35,17 +35,13 @@ logger = logging.getLogger(__name__)
 # with the groups below when adding new always-off-by-default tools.
 DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
     {
-        # Web / browser / media. NOTE: send_image / send_editable_table /
+        # Web / media. NOTE: send_image / send_editable_table /
         # send_table are intentionally NOT disabled — the data_copilot analytics
         # flow pushes charts and result/editable tables to the web chat with them.
-        "fetch_url",
-        "browser",
-        "capture_web_screenshot",
         "web_search",
         "analyze_image",
         "render_component",
         "capture_screenshot",
-        "open_browser",
         # Code symbol tools + notebook
         "find_symbol",
         "rename_symbol",

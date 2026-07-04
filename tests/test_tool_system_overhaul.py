@@ -7,7 +7,6 @@ Covers all new implementations:
 - A6: Git Operations Tool
 - B2: Tool Profile & Group System
 - B3: Provider-Specific Schema Adaptation
-- A3: Browser Automation Tool (import only — Playwright optional)
 - A5: Cron/Scheduling Tool
 - A4: Cross-Channel Message Tool
 - B4: Parameter Normalization Layer
@@ -490,38 +489,6 @@ class TestSchemaAdapter:
 
 
 # ============================================================
-# A3: Browser Automation Tool (import-only test - Playwright optional)
-# ============================================================
-
-
-class TestBrowserTool:
-    def test_import(self):
-        from atria.core.context_engineering.tools.implementations.browser_tool import BrowserTool
-        from atria.core.context_engineering.tools.handlers.browser_handlers import (
-            BrowserToolHandler,
-        )
-
-        assert BrowserTool is not None
-        assert BrowserToolHandler is not None
-
-    def test_unknown_action(self):
-        from atria.core.context_engineering.tools.implementations.browser_tool import BrowserTool
-
-        bt = BrowserTool()
-        # This will fail if playwright is not installed
-        result = bt.execute("nonexistent_action")
-        assert not result["success"]
-
-    def test_handler_delegation(self):
-        from atria.core.context_engineering.tools.handlers.browser_handlers import (
-            BrowserToolHandler,
-        )
-
-        handler = BrowserToolHandler()
-        result = handler.handle({"action": "nonexistent"})
-        assert not result["success"]
-
-
 # ============================================================
 # A5: Cron/Scheduling Tool
 # ============================================================
@@ -1182,7 +1149,6 @@ class TestRegistryIntegration:
             "list_sessions",
             "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",
@@ -1201,7 +1167,6 @@ class TestRegistryIntegration:
             "list_sessions",
             "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",
@@ -1219,7 +1184,6 @@ class TestRegistryIntegration:
             "list_sessions",
             "get_session_history",
             "list_subagents",
-            "browser",
             "schedule",
             "send_message",
             "list_agents",

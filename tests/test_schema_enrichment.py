@@ -46,7 +46,6 @@ class TestToolSchemaQuality:
             "search",
             "run_command",
             "list_files",
-            "fetch_url",
         ],
     )
     def test_schema_descriptions_exceed_min_length(self, tool_name: str) -> None:
@@ -63,7 +62,6 @@ class TestToolSchemaQuality:
             "search",
             "run_command",
             "list_files",
-            "fetch_url",
         ],
     )
     def test_all_schemas_have_usage_notes(self, tool_name: str) -> None:
@@ -87,11 +85,6 @@ class TestToolSchemaQuality:
         """run_command should mention preferring dedicated tools."""
         desc = _get_description("run_command")
         assert "prefer" in desc.lower() or "dedicated" in desc.lower()
-
-    def test_fetch_url_warns_about_guessing(self) -> None:
-        """fetch_url should warn against generating or guessing URLs."""
-        desc = _get_description("fetch_url")
-        assert "never" in desc.lower() or "guess" in desc.lower()
 
 
 class TestSystemPromptQuality:

@@ -334,7 +334,7 @@ class DockerPrepMixin:
 
         Args:
             ui_callback: Parent UI callback to wrap
-            subagent_name: Name of the subagent (e.g., "Code-Explorer", "Web-clone")
+            subagent_name: Name of the subagent (e.g., "Code-Explorer", "Web-Generator")
             workspace_dir: Docker workspace path (e.g., "/workspace", "/testbed")
             image_name: Full Docker image name (e.g., "ghcr.io/astral-sh/uv:python3.11")
             container_id: Short container ID (e.g., "a1b2c3d4")
@@ -346,7 +346,7 @@ class DockerPrepMixin:
         Usage:
             nested_callback = manager.create_docker_nested_callback(
                 ui_callback=self.ui_callback,
-                subagent_name="Web-clone",
+                subagent_name="Web-Generator",
                 workspace_dir="/workspace",
                 image_name=docker_image,
                 container_id=container_id,

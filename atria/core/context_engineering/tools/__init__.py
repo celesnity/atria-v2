@@ -18,10 +18,7 @@ from .implementations import (
     DiffPreview,
     EditTool,
     FileOperations,
-    OpenBrowserTool,
     VLMTool,
-    WebFetchTool,
-    WebScreenshotTool,
     WriteTool,
 )
 
@@ -32,7 +29,6 @@ from .handlers import (
     ScreenshotToolHandler,
     TodoHandler,
     TodoItem,
-    WebToolHandler,
 )
 
 __all__ = [
@@ -46,10 +42,7 @@ __all__ = [
     "DiffPreview",
     "EditTool",
     "FileOperations",
-    "OpenBrowserTool",
     "VLMTool",
-    "WebFetchTool",
-    "WebScreenshotTool",
     "WriteTool",
     # Handlers
     "FileToolHandler",
@@ -57,5 +50,4 @@ __all__ = [
     "ScreenshotToolHandler",
     "TodoHandler",
     "TodoItem",
-    "WebToolHandler",
 ]

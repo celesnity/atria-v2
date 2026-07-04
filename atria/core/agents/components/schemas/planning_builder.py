@@ -9,7 +9,6 @@ PLANNING_TOOLS = {
     "read_file",
     "list_files",
     "search",  # Unified: type="text" (ripgrep) or "ast" (ast-grep)
-    "fetch_url",
     "web_search",  # Web search is read-only
     "list_processes",
     "get_process_output",
