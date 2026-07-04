@@ -24,8 +24,6 @@ _DEFAULT_RULES: dict[str, TruncationRule] = {
     "read_file": TruncationRule(max_chars=15000, strategy="head"),
     "search": TruncationRule(max_chars=10000, strategy="head"),
     "list_files": TruncationRule(max_chars=10000, strategy="head"),
-    "get_session_history": TruncationRule(max_chars=15000, strategy="tail"),
-    "memory_search": TruncationRule(max_chars=10000, strategy="head"),
 }
 
 # MCP tools get a default rule

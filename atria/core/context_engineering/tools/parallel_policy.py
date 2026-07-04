@@ -22,11 +22,8 @@ READ_ONLY_TOOLS: frozenset[str] = frozenset(
         # Process inspection
         "list_processes",
         "get_process_output",
-        # Session/memory (read-only)
-        "list_sessions",
-        "get_session_history",
+        # Session (read-only)
         "list_subagents",
-        "memory_search",
         # Meta (read-only)
         "list_todos",
         "search_tools",
@@ -48,7 +45,6 @@ WRITE_TOOLS: frozenset[str] = frozenset(
         "rename_symbol",
         "notebook_edit",
         "apply_patch",
-        "memory_write",
         "kill_process",
         "write_todos",
         "update_todo",

@@ -25,7 +25,6 @@ from atria.core.context_engineering.tools.handlers.thinking_handler import Think
 from atria.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
 from atria.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
 from atria.core.context_engineering.tools.implementations.note_tool import execute_note
-from atria.core.context_engineering.tools.handlers.memory_handlers import MemoryToolHandler
 from atria.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
 from atria.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from atria.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
@@ -157,7 +156,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         self._send_table_handler = SendTableHandler()
         self._render_component_handler = RenderComponentHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
-        self._memory_handler = MemoryToolHandler()
         self._session_handler = SessionToolHandler()
         self._artifacts_handler = ArtifactsToolHandler()
         self._batch_handler: Union[BatchToolHandler, None] = None  # Lazy init after registry ready
@@ -215,12 +213,7 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             # Module block render tool (web UI)
             "render_component": self._render_component_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
-            # Memory tools
-            "memory_search": self._memory_handler.search,
-            "memory_write": self._memory_handler.write,
             # Session inspection tools
-            "list_sessions": self._session_handler.list_sessions,
-            "get_session_history": self._session_handler.get_session_history,
             "list_subagents": self._session_handler.list_subagents,
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
@@ -427,8 +420,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 "run_command",
                 "batch_tool",
                 "present_plan",
-                "list_sessions",
-                "get_session_history",
                 "send_image",
                 "send_editable_table",
                 "send_table",
