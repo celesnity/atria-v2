@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ViewerTab } from '../types';
+import type { ViewerLocation, ViewerTab } from '../types';
 
 interface TabSlice {
   tabs: ViewerTab[];
@@ -9,9 +9,9 @@ interface TabSlice {
 
 interface ViewerTabsState {
   tabsByConv: Record<string, TabSlice>;
-  openTab: (convId: string, path: string) => void;
+  openTab: (convId: string, path: string, location?: ViewerLocation) => void;
   openModuleTab: (convId: string, name: string) => void;
-  openModuleFileTab: (convId: string, module: string, path: string) => void;
+  openModuleFileTab: (convId: string, module: string, path: string, location?: ViewerLocation) => void;
   closeTab: (convId: string, id: string) => void;
   setActive: (convId: string, id: string) => void;
   markDirty: (convId: string, id: string) => void;
@@ -26,16 +26,16 @@ function extOf(path: string): { name: string; ext: string } {
   return { name, ext };
 }
 
-function tabFromPath(path: string): ViewerTab {
+function tabFromPath(path: string, location?: ViewerLocation): ViewerTab {
   const { name, ext } = extOf(path);
-  return { kind: 'file', id: path, path, name, ext };
+  return { kind: 'file', id: path, path, name, ext, location };
 }
 
 function tabFromModule(name: string): ViewerTab {
   return { kind: 'module', id: `module:${name}`, name };
 }
 
-function tabFromModuleFile(module: string, path: string): ViewerTab {
+function tabFromModuleFile(module: string, path: string, location?: ViewerLocation): ViewerTab {
   const { name, ext } = extOf(path);
   return {
     kind: 'module-file',
@@ -44,21 +44,35 @@ function tabFromModuleFile(module: string, path: string): ViewerTab {
     path,
     name,
     ext,
+    location,
   };
 }
 
 function openTabIn(slice: TabSlice, tab: ViewerTab): TabSlice {
   const existing = slice.tabs.find(t => t.id === tab.id);
-  if (existing) return { ...slice, activeId: tab.id };
+  if (existing) {
+    // Re-opening an existing tab replaces its reveal location (the caller's
+    // fresh nonce re-triggers the scroll/highlight) and activates it.
+    const location = tab.kind !== 'module' ? tab.location : undefined;
+    return {
+      ...slice,
+      tabs: slice.tabs.map(t =>
+        t.id === tab.id && t.kind !== 'module' ? { ...t, location } : t
+      ),
+      activeId: tab.id,
+    };
+  }
   return { tabs: [...slice.tabs, tab], activeId: tab.id, dirty: slice.dirty };
 }
 
 export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
   tabsByConv: {},
 
-  openTab: (convId, path) => {
+  openTab: (convId, path, location) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
-    set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromPath(path)) } });
+    set({
+      tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromPath(path, location)) },
+    });
   },
 
   openModuleTab: (convId, name) => {
@@ -66,12 +80,12 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
     set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) } });
   },
 
-  openModuleFileTab: (convId, module, path) => {
+  openModuleFileTab: (convId, module, path, location) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
     set({
       tabsByConv: {
         ...get().tabsByConv,
-        [convId]: openTabIn(slice, tabFromModuleFile(module, path)),
+        [convId]: openTabIn(slice, tabFromModuleFile(module, path, location)),
       },
     });
   },

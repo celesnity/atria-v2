@@ -3,19 +3,34 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Eye, FileCode2 } from 'lucide-react';
 import { apiClient } from '../../../api/client';
-import { fsScopeKey, type FsScope } from '../../../types';
+import { fsScopeKey, type FsScope, type ViewerLocation } from '../../../types';
 
 const MonacoViewer = lazy(() =>
   import('./MonacoViewer').then(m => ({ default: m.MonacoViewer })),
 );
 
-interface Props { scope: FsScope; path: string; editable?: boolean; convId?: string; tabId?: string }
+interface Props {
+  scope: FsScope;
+  path: string;
+  editable?: boolean;
+  convId?: string;
+  tabId?: string;
+  /** Reveal target — forces source mode, where Monaco highlights it. */
+  location?: ViewerLocation;
+}
 
-export function MarkdownViewer({ scope, path, editable, convId, tabId }: Props) {
+export function MarkdownViewer({ scope, path, editable, convId, tabId, location }: Props) {
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'preview' | 'source'>('preview');
+  const [mode, setMode] = useState<'preview' | 'source'>(
+    location?.text || location?.start != null ? 'source' : 'preview',
+  );
   const scopeKey = useMemo(() => fsScopeKey(scope), [scope]);
+
+  // A fresh citation click (new nonce) switches to source so the highlight shows.
+  useEffect(() => {
+    if (location?.nonce != null && (location.text || location.start != null)) setMode('source');
+  }, [location?.nonce]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +72,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId }: Props) 
           </div>
         ) : (
           <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading editor…</div>}>
-            <MonacoViewer scope={scope} path={path} languageOverride="markdown" editable={editable} convId={convId} tabId={tabId} />
+            <MonacoViewer scope={scope} path={path} languageOverride="markdown" editable={editable} convId={convId} tabId={tabId} location={location} />
           </Suspense>
         )}
       </div>

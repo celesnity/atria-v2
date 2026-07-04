@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo, DataColumn, ChartSuggestion } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
+import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -1203,21 +1204,7 @@ wsClient.on('search_done', (message) => {
 wsClient.on('maintenance_answer', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
-  const d = message.data;
-
-  const maMsg: Message = {
-    role: 'maintenance_answer',
-    content: d.answer || '',
-    ma_answer: d.answer || '',
-    ma_citations: d.citations || [],
-    ma_confidence: d.confidence,
-    ma_confidence_band: d.confidence_band,
-    ma_review_required: !!d.review_required,
-    ma_advisory_note: d.advisory_note || '',
-    ma_validation_warnings: d.validation_warnings || [],
-    search_query: d.query,
-    timestamp: new Date().toISOString(),
-  };
+  const maMsg = mapMaintenanceAnswer(message.data);
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);

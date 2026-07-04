@@ -222,3 +222,4 @@ modules/item_flow_tracking/data/flow.db-*
 # (Tasks/ is already ignored above.)
 plans/
 report/
+tests/

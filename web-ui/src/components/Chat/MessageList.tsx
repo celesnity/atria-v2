@@ -14,7 +14,7 @@ import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
-import { MaintenanceAnswerBlock } from './MaintenanceAnswerBlock';
+import { MaintenanceAnswerBlock } from './MaintenanceAnswer/MaintenanceAnswerBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
 import { DeepAnalyzeBlock } from './DeepAnalyzeBlock';
 import { ImageMessage } from './ImageMessage';

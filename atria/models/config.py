@@ -30,6 +30,37 @@ class ToolPermission(BaseModel):
         return not any(pattern.match(target) for pattern in self.compiled_patterns)
 
 
+_MAINTENANCE_CORPUS_MESSAGE = (
+    "Access denied: this path is part of the maintenance_copilot RAG corpus and "
+    "must not be read, listed, or searched directly. Reading corpus files bypasses "
+    "retrieval, citations, revision-awareness, and guardrails. To answer a "
+    "maintenance question, call the maintenance_copilot_query tool. If that tool "
+    "reports its service unavailable, report the outage to the user — do not fall "
+    "back to reading these files."
+)
+
+
+class ProtectedPath(BaseModel):
+    """A directory tools may never touch, with a redirect message for the agent.
+
+    ``pattern`` is a glob, resolved against the working directory and the
+    modules root. Entries come from ``permissions.protected_paths`` in
+    settings.json; a plain string entry is coerced to a pattern with the
+    generic message. Module-declared protected folders could be appended to
+    the same list at registry init in the future.
+    """
+
+    pattern: str
+    message: str = ""
+
+
+def _default_protected_paths() -> "list[ProtectedPath]":
+    """Built-in protected roots that apply even with no settings file."""
+    return [
+        ProtectedPath(pattern="modules/*/sample_manuals", message=_MAINTENANCE_CORPUS_MESSAGE),
+    ]
+
+
 class PermissionConfig(BaseModel):
     """Global permission configuration."""
 
@@ -44,6 +75,15 @@ class PermissionConfig(BaseModel):
     )
     git: ToolPermission = Field(default_factory=ToolPermission)
     web_fetch: ToolPermission = Field(default_factory=ToolPermission)
+    protected_paths: list[ProtectedPath] = Field(default_factory=_default_protected_paths)
+
+    @field_validator("protected_paths", mode="before")
+    @classmethod
+    def _coerce_protected_paths(cls, v: Any) -> Any:
+        """Allow settings.json to list plain glob strings."""
+        if isinstance(v, list):
+            return [{"pattern": item} if isinstance(item, str) else item for item in v]
+        return v
 
 
 class AutoModeConfig(BaseModel):

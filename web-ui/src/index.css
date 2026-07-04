@@ -634,3 +634,9 @@ code {
 .daybreak .glow-accent,
 .daybreak .glow-nebula,
 .daybreak .glow-magenta { box-shadow: 0 8px 24px hsl(var(--ink) / 0.10), 0 24px 48px hsl(var(--ink) / 0.10); }
+
+/* Citation click-through highlight in Monaco (see MonacoViewer location prop). */
+.citation-highlight {
+  background: rgba(250, 204, 21, 0.28);
+  border-radius: 2px;
+}

@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { ShieldCheck, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
-import type { Message } from '../../types';
-import { useToastStore } from '../../stores/toast';
+import { AlertTriangle, CheckCircle2, ShieldAlert, ShieldCheck } from 'lucide-react';
+import type { MaintenanceAnswerType, Message } from '../../../types';
+import { useToastStore } from '../../../stores/toast';
+import { CitationChips } from './CitationChips';
+import { ClarificationCard } from './ClarificationCard';
+import { ExactQuoteCard } from './ExactQuoteCard';
+import { SuggestionChips } from './SuggestionChips';
 
 interface Props {
   message: Message;
@@ -13,16 +17,29 @@ const BAND_STYLES: Record<string, { dot: string; text: string; label: string }> 
   low:    { dot: 'bg-red-500',    text: 'text-red-500',    label: 'Low confidence' },
 };
 
+const ANSWER_TYPE_LABELS: Record<MaintenanceAnswerType, string> = {
+  extractive: 'Verbatim extract',
+  synthesized: 'Synthesized',
+  clarification_needed: 'Needs clarification',
+};
+
 /**
- * Renders a maintenance_copilot answer as a native card: the grounded answer,
- * a color-coded confidence chip, a mandatory-manual-review banner when the
- * confidence floor is not met, clickable citation chips (doc + revision +
- * section), the advisory-only note, and a licensed-engineer sign-off button.
+ * Renders a maintenance_copilot structured answer: the synthesized summary and
+ * the verbatim quote as distinct blocks, answer-type + sensitivity + confidence
+ * chips, a mandatory-review banner, clickable citations into the source viewer,
+ * follow-up suggestion chips, inline clarification prompts, and the
+ * licensed-engineer sign-off.
  */
 export function MaintenanceAnswerBlock({ message }: Props) {
   const {
     ma_answer = '',
+    ma_answer_type = 'synthesized',
+    ma_exact_quote,
+    ma_is_sensitive = false,
     ma_citations = [],
+    ma_related_suggestions = [],
+    ma_needs_user_input = false,
+    ma_missing_fields = [],
     ma_confidence,
     ma_confidence_band = 'low',
     ma_review_required = false,
@@ -32,6 +49,7 @@ export function MaintenanceAnswerBlock({ message }: Props) {
   } = message;
 
   const band = BAND_STYLES[ma_confidence_band] ?? BAND_STYLES.low;
+  const isClarification = ma_answer_type === 'clarification_needed';
   const [signing, setSigning] = useState(false);
   const [signedOff, setSignedOff] = useState(false);
 
@@ -47,6 +65,9 @@ export function MaintenanceAnswerBlock({ message }: Props) {
           answer_summary: ma_answer.slice(0, 500),
           decision: 'acknowledged',
           citations: ma_citations,
+          answer_type: ma_answer_type,
+          is_sensitive: ma_is_sensitive,
+          exact_quote: ma_exact_quote ? ma_exact_quote.slice(0, 500) : null,
         }),
       });
       if (!resp.ok) throw new Error(`status ${resp.status}`);
@@ -61,7 +82,7 @@ export function MaintenanceAnswerBlock({ message }: Props) {
 
   return (
     <div className="bg-bg-000 border border-border-300/15 rounded-lg overflow-hidden animate-slide-up">
-      {/* Header: label + confidence chip */}
+      {/* Header: label + answer-type + sensitivity + confidence chips */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border-300/10">
         <ShieldCheck className="w-4 h-4 text-accent-secondary-100 flex-shrink-0" />
         <div className="flex-1 min-w-0">
@@ -70,12 +91,23 @@ export function MaintenanceAnswerBlock({ message }: Props) {
             <span className="text-sm text-text-100 font-medium truncate">{search_query}</span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0" title={
-          ma_confidence !== undefined ? `retrieval score ${ma_confidence}` : undefined
-        }>
-          <span className={`w-2 h-2 rounded-full ${band.dot}`} />
-          <span className={`text-xs font-medium ${band.text}`}>{band.label}</span>
-        </div>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-bg-200 text-text-300 flex-shrink-0">
+          {ANSWER_TYPE_LABELS[ma_answer_type] ?? ma_answer_type}
+        </span>
+        {ma_is_sensitive && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-600 flex-shrink-0"
+                title="Contains PII, financial, medical, or legal content">
+            <ShieldAlert className="w-3 h-3" /> Sensitive
+          </span>
+        )}
+        {!isClarification && (
+          <div className="flex items-center gap-1.5 flex-shrink-0" title={
+            ma_confidence !== undefined ? `retrieval score ${ma_confidence}` : undefined
+          }>
+            <span className={`w-2 h-2 rounded-full ${band.dot}`} />
+            <span className={`text-xs font-medium ${band.text}`}>{band.label}</span>
+          </div>
+        )}
       </div>
 
       {/* Mandatory manual review gate */}
@@ -101,31 +133,21 @@ export function MaintenanceAnswerBlock({ message }: Props) {
         </div>
       )}
 
-      {/* Answer */}
-      <div className="px-4 py-3">
-        <p className="text-sm text-text-100 whitespace-pre-wrap leading-relaxed">{ma_answer}</p>
-      </div>
-
-      {/* Citation chips */}
-      {ma_citations.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="text-[11px] font-mono text-text-400 mb-1.5">Sources</div>
-          <div className="flex flex-wrap gap-1.5">
-            {ma_citations.map((c, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-200 border border-border-300/20 text-[11px] text-text-200"
-                title={c.citation}
-              >
-                <FileText className="w-3 h-3 text-accent-secondary-100 flex-shrink-0" />
-                <span className="font-medium">{c.doc || 'DOC'}</span>
-                {c.revision && <span className="text-text-400">{c.revision}</span>}
-                {c.ata && <span className="text-text-400">ATA {c.ata}</span>}
-                <span className="text-text-400 font-mono">{c.chunk_id}</span>
-              </span>
-            ))}
+      {/* Body */}
+      {isClarification ? (
+        <ClarificationCard ask={ma_answer} missingFields={ma_missing_fields} variant="full" />
+      ) : (
+        <>
+          <div className="px-4 py-3">
+            <p className="text-sm text-text-100 whitespace-pre-wrap leading-relaxed">{ma_answer}</p>
           </div>
-        </div>
+          {!!ma_exact_quote && <ExactQuoteCard quote={ma_exact_quote} />}
+          {ma_needs_user_input && (
+            <ClarificationCard missingFields={ma_missing_fields} variant="compact" />
+          )}
+          <CitationChips citations={ma_citations} exactQuote={ma_exact_quote} />
+          <SuggestionChips suggestions={ma_related_suggestions} />
+        </>
       )}
 
       {/* Footer: advisory note + sign-off */}

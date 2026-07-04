@@ -64,6 +64,12 @@ def test_upsert_then_query_ranks_relevant_chunk_first(store):
     assert len(hits) == 1
     assert hits[0]["chunk_id"] == "amm_ata32#0"
     assert hits[0]["citation"].startswith("AMM T (Rev-42)")
+    # Source metadata surfaced for structured citations.
+    assert hits[0]["title"] == "T"
+    assert hits[0]["source_path"] == "/x/amm_ata32#0.md"
+    assert hits[0]["source_id"] == "amm_ata32#0"
+    assert hits[0]["source_name"] == "amm_ata32#0.md"
+    assert hits[0]["page_number"] is None
 
 
 def test_query_filters_by_ata_chapter(store):

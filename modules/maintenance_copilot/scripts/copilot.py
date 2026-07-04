@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import RoleConfig, load_config  # type: ignore[import-not-found]
 from client import RoleClient  # type: ignore[import-not-found]
+import conn_errors  # type: ignore[import-not-found]
 from corpus import load_corpus  # type: ignore[import-not-found]
 from chunking import chunk_document  # type: ignore[import-not-found]
 from index_store import IndexStore  # type: ignore[import-not-found]
@@ -82,6 +83,15 @@ def check_health(probes: dict[str, Callable[[], None]]) -> dict[str, str]:
     return out
 
 
+def _health_timeout() -> int:
+    """Health-probe timeout in seconds (``MC_HEALTH_TIMEOUT``, default 3)."""
+    try:
+        value = int(_env("MC_HEALTH_TIMEOUT", "3"))
+    except ValueError:
+        return 3
+    return value if value > 0 else 3
+
+
 def _build_probes() -> dict[str, Callable[[], None]]:
     """Build live probes against the configured sidecars."""
     cfg: dict[str, RoleConfig] = load_config()
@@ -97,7 +107,10 @@ def _build_probes() -> dict[str, Callable[[], None]]:
         from qdrant_client import QdrantClient  # local import: optional dep
 
         url = _env("MC_QDRANT_URL", "http://localhost:6333")
-        QdrantClient(url=url).get_collections()
+        # Short timeout so a dead sidecar answers health checks quickly
+        # (MC_HEALTH_TIMEOUT seconds; TEI/LLM probes use client defaults —
+        # the OpenAI-compatible client has no per-call timeout knob here).
+        QdrantClient(url=url, timeout=_health_timeout()).get_collections()
 
     def neo4j_probe() -> None:
         from neo4j import GraphDatabase  # local import: optional dep
@@ -125,10 +138,14 @@ def _kg_chat_fn() -> Callable[[list], str]:
     return lambda messages: rc.chat("kg_extract", messages)
 
 
-def _synthesis_chat_fn() -> Callable[[list], str]:
-    """Return a chat callable bound to the synthesis role."""
+def _synthesis_chat_fn() -> Callable[..., str]:
+    """Return a chat callable bound to the synthesis role.
+
+    Forwards keyword arguments so synthesis can request ``response_format``
+    (schema-guided / JSON-object decoding) per MC_SYNTHESIS_JSON_MODE.
+    """
     rc = RoleClient(load_config())
-    return lambda messages: rc.chat("synthesis", messages)
+    return lambda messages, **kw: rc.chat("synthesis", messages, **kw)
 
 
 def _build_graph_store(run_fn: Callable | None = None) -> GraphStore:
@@ -285,7 +302,11 @@ def _cmd_query(text: str, k: int, ata: str | None, revision: str,
         payload["answer"] = answer
         audit.append_event({"type": "query", "query": text,
                             "citations": answer["citations"],
-                            "needs_review": answer["needs_review"]})
+                            "needs_review": answer["needs_review"],
+                            "answer_type": answer["answer_type"],
+                            "validation_warnings": answer["validation_warnings"],
+                            "attempts": answer["attempts"],
+                            "json_mode": answer["json_mode"]})
     print(json.dumps(payload, indent=2))
     return 0
 
@@ -516,14 +537,39 @@ def main(argv: list[str] | None = None) -> int:
         argv: Argument list (defaults to ``sys.argv[1:]`` when ``None``).
 
     Returns:
-        Exit code: ``0`` on success, ``1`` when a health probe fails,
-        ``2`` for an unrecognized subcommand.
+        Exit code: ``0`` on success, ``1`` when a health probe fails or a
+        sidecar is unreachable, ``2`` for an unrecognized subcommand.
     """
     args = build_parser().parse_args(argv)
     if args.command == "health":
         result = check_health(_build_probes())
         print(json.dumps(result, indent=2))
         return 0 if all(v == "ok" for v in result.values()) else 1
+    if args.command == "audit":
+        return _cmd_audit(args.limit)
+    # Every other subcommand talks to a sidecar: a dead service must yield a
+    # clean one-line JSON error (agents and scripts parse stdout), never a
+    # traceback.
+    try:
+        return _dispatch(args)
+    except Exception as exc:
+        if not conn_errors.is_connectivity(exc):
+            raise
+        print(json.dumps({"error": _connectivity_error_line(exc),
+                          "hint": "run: python copilot.py health"}))
+        return 1
+
+
+def _connectivity_error_line(exc: Exception) -> str:
+    """One-line description of which service looks dead."""
+    text = f"{type(exc).__module__}.{type(exc).__name__}: {exc}".lower()
+    if "qdrant" in text or "6333" in text:
+        return f"qdrant unreachable at {_env('MC_QDRANT_URL', 'http://localhost:6333')}"
+    return f"service unreachable: {exc}"
+
+
+def _dispatch(args) -> int:
+    """Route parsed args to the subcommand implementations."""
     if args.command in ("ingest", "index"):
         return _cmd_ingest(args.samples if getattr(args, "samples", None) else _samples_dir())
     if args.command == "query":
@@ -535,8 +581,6 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_validate(args.payload)
     if args.command == "check":
         return _cmd_check(args.payload)
-    if args.command == "audit":
-        return _cmd_audit(args.limit)
     if args.command == "list":
         return _cmd_list()
     if args.command == "reset":
