@@ -30,9 +30,6 @@ from atria.web.routes import (
     artifacts_router,
     fs_router,
     personas_router,
-    analyze_router,
-    data_copilot_router,
-    charts_router,
     modules_router,
     blocks_router,
     module_dashboard_router,
@@ -284,9 +281,6 @@ def create_app() -> FastAPI:
     app.include_router(artifacts_router)
     app.include_router(fs_router)
     app.include_router(personas_router)
-    app.include_router(analyze_router)
-    app.include_router(data_copilot_router)
-    app.include_router(charts_router)
     app.include_router(modules_router)
     app.include_router(blocks_router)
     app.include_router(module_dashboard_router)

@@ -18,28 +18,28 @@ import { CosmicField } from "../ui/CosmicField";
 import { Eyebrow } from "../ui/Eyebrow";
 import { transitions } from "../ui/motion";
 
-// Prompt starters — a gapless 2x2 bento. Concrete, buildable asks (no cliches).
+// Prompt starters — a gapless 2x2 bento. Concrete brainstorming asks (no cliches).
 // Each fills the composer so the first keystroke is optional, not required.
 const STARTERS: { kind: string; title: string; prompt: string }[] = [
   {
-    kind: "Explore",
-    title: "Map this codebase",
-    prompt: "Give me a tour of this repository — the architecture, entry points, and where the important logic lives.",
+    kind: "Brainstorm",
+    title: "Explore ideas",
+    prompt: "Help me brainstorm ideas. Ask me about the goal and any constraints first, then lay out a few directions worth exploring.",
   },
   {
-    kind: "Build",
-    title: "Scaffold a feature",
-    prompt: "Plan and scaffold a new feature. Ask me what it should do first, then propose the files you'll touch.",
+    kind: "Plan",
+    title: "Think through a plan",
+    prompt: "Help me plan this out. Ask what I'm trying to achieve first, then break it into clear steps and milestones.",
   },
   {
-    kind: "Debug",
-    title: "Track down a failure",
-    prompt: "A test is failing and I can't see why. Walk through it systematically and find the root cause before proposing a fix.",
+    kind: "Draft",
+    title: "Write something",
+    prompt: "Help me draft this. Ask about the audience and tone first, then propose an outline before we write.",
   },
   {
     kind: "Research",
-    title: "Compare approaches",
-    prompt: "Research two or three ways to solve this and lay out the tradeoffs with sources before recommending one.",
+    title: "Compare options",
+    prompt: "Research two or three ways to approach this and lay out the tradeoffs with sources before recommending one.",
   },
 ];
 
@@ -147,7 +147,7 @@ export function LandingPage() {
           </motion.div>
           <AnimatedHeadline
             as="h2"
-            text={"What are we building?"}
+            text={"What should we think through?"}
             className="mx-auto mt-4 max-w-4xl text-[44px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand"
           />
         </div>
@@ -157,7 +157,7 @@ export function LandingPage() {
           initial={reduce ? false : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...transitions.editorial, delay: 0.4 }}
-          className="rounded-lg border border-hairline-soft bg-canvas shadow-soft focus-within:border-ink/20 focus-within:shadow-hover transition-all duration-base"
+          className="rounded-md border border-hairline-soft bg-canvas shadow-soft focus-within:border-ink/20 focus-within:shadow-hover transition-all duration-base"
         >
           <div className="rounded-t-lg px-5 pb-2 pt-5">
             <TextareaAutosize
@@ -165,7 +165,7 @@ export function LandingPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe what you want to build, or pick a starting point below."
+              placeholder="Describe what's on your mind, or pick a starting point below."
               disabled={isLoading || !isConnected}
               className="w-full resize-none border-0 bg-transparent text-base leading-relaxed text-ink placeholder-text-muted outline-none disabled:cursor-not-allowed disabled:opacity-50"
               minRows={3}
@@ -177,7 +177,7 @@ export function LandingPage() {
                 {attachedFiles.map((file, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-soft bg-surface-soft px-2.5 py-1 text-xs text-ink"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-hairline-soft bg-surface-soft px-2.5 py-1 text-xs text-ink"
                   >
                     <Paperclip className="h-3.5 w-3.5 text-text-muted" />
                     {file.name}
@@ -199,7 +199,7 @@ export function LandingPage() {
             <div className="relative" ref={plusMenuRef}>
               <button
                 onClick={() => setShowPlusMenu(!showPlusMenu)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
                 title="Attach files"
                 aria-label="Attach files"
               >

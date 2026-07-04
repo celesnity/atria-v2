@@ -104,13 +104,13 @@ export default {
         },
       },
       borderRadius: {
-        // Celesnity radii — roomy, unhurried. 6px inputs → fully-round pills.
-        xs: '6px',
-        sm: '10px',
-        md: '16px',
-        lg: '20px',
-        xl: '28px',
-        '2xl': '36px',
+        // Celesnity radii — tightened. Crisper corners; pills stay fully round.
+        xs: '3px',
+        sm: '5px',
+        md: '8px',
+        lg: '10px',
+        xl: '14px',
+        '2xl': '18px',
         pill: '999px',
       },
       backgroundImage: {

@@ -72,7 +72,7 @@ export function LoginPage() {
       <div className="relative z-10 flex items-center justify-between px-8 md:px-14 lg:px-20 pt-8">
         <div className="flex items-baseline gap-3">
           <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">Atria</span>
-          <span className="eyebrow-mono text-white/40 hidden sm:inline">Build mode</span>
+          <span className="eyebrow-mono text-white/40 hidden sm:inline">Co-worker mode</span>
         </div>
         <Eyebrow className="!text-white/40">v1 · 2026</Eyebrow>
       </div>
@@ -96,8 +96,8 @@ export function LoginPage() {
             transition={{ ...transitions.editorial, delay: 0.5 }}
             className="mt-8 max-w-md text-body-lg leading-[1.6] text-white/65"
           >
-            A canvas, a console, and a collaborator. Reason across your codebase,
-            dispatch work in parallel, and keep every artifact within reach.
+            A canvas, a console, and a collaborator. Reason across your work,
+            dispatch tasks in parallel, and keep every artifact within reach.
           </motion.p>
 
           {/* Interest: quiet proof row — real capabilities, no fake stats. */}
@@ -167,7 +167,7 @@ export function LoginPage() {
                 >
                   {loading ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
                       <span>Redirecting</span>
                     </>
                   ) : (
@@ -218,7 +218,7 @@ export function LoginPage() {
                   >
                     {loading ? (
                       <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                        <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
                         <span>Signing in</span>
                       </>
                     ) : (

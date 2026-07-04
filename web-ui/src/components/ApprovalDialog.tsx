@@ -79,7 +79,6 @@ export function ApprovalDialog() {
               Tool
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-accent-main-100" />
               <code className="text-sm font-mono bg-bg-100 px-2 py-1 rounded border border-border-300/15">
                 {pendingApproval.tool_name}
               </code>
@@ -102,7 +101,7 @@ export function ApprovalDialog() {
               <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-2">
                 Preview
               </div>
-              <div className="bg-bg-100 rounded-lg border border-border-300/15 p-4 max-h-48 overflow-y-auto">
+              <div className="bg-bg-100 rounded-md border border-border-300/15 p-4 max-h-48 overflow-y-auto">
                 <pre className="text-xs text-text-000 font-mono whitespace-pre-wrap">
                   {pendingApproval.preview}
                 </pre>
@@ -116,7 +115,7 @@ export function ApprovalDialog() {
               <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-2">
                 Arguments
               </div>
-              <div className="bg-bg-100 rounded-lg border border-border-300/15 p-4 max-h-64 overflow-y-auto">
+              <div className="bg-bg-100 rounded-md border border-border-300/15 p-4 max-h-64 overflow-y-auto">
                 <pre className="text-xs text-text-000 font-mono whitespace-pre-wrap">
                   {JSON.stringify(pendingApproval.arguments, null, 2)}
                 </pre>
@@ -125,7 +124,7 @@ export function ApprovalDialog() {
           )}
 
           {/* Warning */}
-          <div className="bg-warning-100/10 border border-warning-100/20 rounded-lg p-4">
+          <div className="bg-warning-100/10 border border-warning-100/20 rounded-md p-4">
             <div className="flex gap-3">
               <TriangleAlert className="w-5 h-5 text-warning-100 flex-shrink-0 mt-0.5" />
               <div>
@@ -144,9 +143,9 @@ export function ApprovalDialog() {
             {/* Option 1: Yes, run this command — mint color block */}
             <button
               onClick={handleApprove}
-              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-mint rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
+              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-mint rounded-md hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-md bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 1
               </div>
               <span className="text-ink">Yes, run this command</span>
@@ -155,9 +154,9 @@ export function ApprovalDialog() {
             {/* Option 2: Yes, and auto-approve — lilac color block */}
             <button
               onClick={handleApproveAll}
-              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-lilac rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group"
+              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-lilac rounded-md hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-md bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 2
               </div>
               <div className="flex-1">
@@ -169,9 +168,9 @@ export function ApprovalDialog() {
             {/* Option 3: No, cancel — coral color block */}
             <button
               onClick={handleDeny}
-              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-coral rounded-lg hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
+              className="w-full px-4 py-3.5 text-body-sm text-left bg-block-coral rounded-md hover:brightness-95 active:scale-[0.98] transition-all flex items-center gap-3 group whitespace-nowrap"
             >
-              <div className="w-7 h-7 rounded-full bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
+              <div className="w-7 h-7 rounded-md bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 3
               </div>
               <span className="text-ink">No, cancel and provide feedback</span>

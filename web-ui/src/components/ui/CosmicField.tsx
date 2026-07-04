@@ -65,15 +65,15 @@ export function CosmicField({ count = 46, className = '', wash = false }: Cosmic
       {wash && <div className="absolute inset-0 bg-hero-wash" />}
 
       {/* Two nebula blooms — the brand gradient, blurred off-canvas. */}
-      <div className="absolute -top-32 -left-24 w-[34rem] h-[34rem] rounded-full bg-gradient-brand opacity-30 blur-[120px]" />
-      <div className="absolute -bottom-40 -right-24 w-[30rem] h-[30rem] rounded-full bg-gradient-brand opacity-20 blur-[120px]" />
+      <div className="absolute -top-32 -left-24 w-[34rem] h-[34rem] rounded-md bg-gradient-brand opacity-30 blur-[120px]" />
+      <div className="absolute -bottom-40 -right-24 w-[30rem] h-[30rem] rounded-md bg-gradient-brand opacity-20 blur-[120px]" />
 
       {/* Parallax star layer. */}
       <motion.div className="absolute inset-0" style={reduce ? undefined : { x: driftX, y: driftY }}>
         {stars.map((s, i) => (
           <motion.span
             key={i}
-            className="absolute rounded-full bg-ink"
+            className="absolute rounded-md bg-ink"
             style={{ left: s.left, top: s.top, width: s.size, height: s.size }}
             initial={{ opacity: s.base }}
             animate={reduce ? { opacity: s.base } : { opacity: [s.base, Math.min(1, s.base + 0.45), s.base] }}

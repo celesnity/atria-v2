@@ -94,7 +94,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
     <Editor
       value={text}
       language={language}
-      theme="vs"
+      theme="vs-dark"
       onChange={canSave ? (v) => { setText(v ?? ''); setDirty(true); flagDirty(); } : undefined}
       options={{
         readOnly: !canSave,
@@ -111,20 +111,20 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-2 py-1 border-b border-hairline-soft/60 bg-surface-soft/20 flex-shrink-0">
-        <span className="text-[11px] font-mono text-ink/55 truncate">{path}</span>
+      <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-hairline-soft/60 bg-surface-soft/30 flex-shrink-0">
+        <span className="text-[11px] font-mono text-text-secondary truncate">{path}</span>
         {dirty ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> unsaved · ⌘S
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-amber-400/15 text-amber-400 text-[10px] font-mono">
+            unsaved · ⌘S
           </span>
         ) : (
-          <span className="text-[10px] text-ink/35 font-mono">saved</span>
+          <span className="text-[10px] text-text-muted font-mono">saved</span>
         )}
         <div className="flex-1" />
         <button
           onClick={onSave}
           disabled={!dirty || saving}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded bg-sky-500/90 text-white hover:bg-sky-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-gradient-brand text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none cursor-pointer"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
           Save

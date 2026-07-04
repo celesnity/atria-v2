@@ -1,6 +1,6 @@
 """Regression: tool-result message content must always be a string.
 
-get_solve_result (parallel/divide orchestrators) returns its `output` as a dict.
+get_subagent_output returns its `output` as a dict.
 Before the fix that dict flowed unchanged into a message's `content`, and the
 compaction token counter crashed with `TypeError: expected string or buffer`
 when it later called tiktoken's encode() on the dict.

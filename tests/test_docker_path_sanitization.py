@@ -30,7 +30,7 @@ class TestSanitizeLocalPaths:
     def test_sanitize_users_path(self):
         """Test that /Users/... paths are sanitized to just filename."""
         registry = self._create_registry()
-        args = {"path": "/Users/nghibui/codes/test_opencli/pyproject.toml"}
+        args = {"path": "/Users/anlnm/codes/test_opencli/pyproject.toml"}
         result = registry._sanitize_local_paths(args)
         assert result["path"] == "pyproject.toml"
 
@@ -81,7 +81,7 @@ class TestSanitizeLocalPaths:
         """Test sanitizing multiple path arguments."""
         registry = self._create_registry()
         args = {
-            "file_path": "/Users/nghibui/codes/test/main.py",
+            "file_path": "/Users/anlnm/codes/test/main.py",
             "content": "print('hello')",  # Non-path, should be preserved
             "output_path": "/home/user/output.txt",
         }
@@ -93,7 +93,7 @@ class TestSanitizeLocalPaths:
     def test_sanitize_pdf_path(self):
         """Test sanitizing PDF file paths."""
         registry = self._create_registry()
-        args = {"path": "/Users/nghibui/codes/test_opencli/2303.11366v4.pdf"}
+        args = {"path": "/Users/anlnm/codes/test_opencli/2303.11366v4.pdf"}
         result = registry._sanitize_local_paths(args)
         assert result["path"] == "2303.11366v4.pdf"
 
@@ -101,7 +101,7 @@ class TestSanitizeLocalPaths:
 class TestRewriteTaskForDocker:
     """Test the _rewrite_task_for_docker method in SubAgentManager."""
 
-    def _create_manager(self, working_dir: str = "/Users/nghibui/codes/test_opencli"):
+    def _create_manager(self, working_dir: str = "/Users/anlnm/codes/test_opencli"):
         """Create a minimal SubAgentManager for testing."""
         from atria.core.agents.subagents.manager import SubAgentManager
 
@@ -145,25 +145,25 @@ class TestRewriteTaskForDocker:
 
     def test_replaces_local_directory_path(self):
         """Test that local directory paths are replaced with workspace."""
-        manager = self._create_manager("/Users/nghibui/codes/test_opencli")
-        task = "Read the file at /Users/nghibui/codes/test_opencli/main.py"
+        manager = self._create_manager("/Users/anlnm/codes/test_opencli")
+        task = "Read the file at /Users/anlnm/codes/test_opencli/main.py"
         result = manager._rewrite_task_for_docker(task, [], "/workspace")
-        assert "/Users/nghibui/codes/test_opencli" not in result
+        assert "/Users/anlnm/codes/test_opencli" not in result
         assert "/workspace" in result
 
     def test_replaces_input_file_paths(self):
         """Test that input file paths are replaced with Docker paths."""
-        manager = self._create_manager("/Users/nghibui/codes/test_opencli")
-        input_files = [Path("/Users/nghibui/codes/test_opencli/paper.pdf")]
-        task = "Implement the paper at /Users/nghibui/codes/test_opencli/paper.pdf"
+        manager = self._create_manager("/Users/anlnm/codes/test_opencli")
+        input_files = [Path("/Users/anlnm/codes/test_opencli/paper.pdf")]
+        task = "Implement the paper at /Users/anlnm/codes/test_opencli/paper.pdf"
         result = manager._rewrite_task_for_docker(task, input_files, "/workspace")
         assert "/workspace/paper.pdf" in result
-        assert "/Users/nghibui" not in result
+        assert "/Users/anlnm" not in result
 
     def test_replaces_at_filename_reference(self):
         """Test that @filename references are replaced with Docker paths."""
         manager = self._create_manager()
-        input_files = [Path("/Users/nghibui/codes/test_opencli/paper.pdf")]
+        input_files = [Path("/Users/anlnm/codes/test_opencli/paper.pdf")]
         task = "Implement the paper @paper.pdf"
         result = manager._rewrite_task_for_docker(task, input_files, "/workspace")
         assert "/workspace/paper.pdf" in result
@@ -180,16 +180,16 @@ class TestRewriteTaskForDocker:
 
     def test_complex_task_rewriting(self):
         """Test a complex task with multiple replacements."""
-        manager = self._create_manager("/Users/nghibui/codes/test_opencli")
-        input_files = [Path("/Users/nghibui/codes/test_opencli/2303.11366v4.pdf")]
+        manager = self._create_manager("/Users/anlnm/codes/test_opencli")
+        input_files = [Path("/Users/anlnm/codes/test_opencli/2303.11366v4.pdf")]
         task = (
-            "Implement the local PDF paper at /Users/nghibui/codes/test_opencli/2303.11366v4.pdf "
+            "Implement the local PDF paper at /Users/anlnm/codes/test_opencli/2303.11366v4.pdf "
             "in this repo. Create the code structure."
         )
         result = manager._rewrite_task_for_docker(task, input_files, "/workspace")
 
         # Local paths should be removed/replaced
-        assert "/Users/nghibui" not in result
+        assert "/Users/anlnm" not in result
         # Should have Docker context
         assert "/workspace" in result
         # Should not have "local" as a word (may appear in preamble warnings)
@@ -233,7 +233,7 @@ class TestTranslatePath:
     def test_translate_absolute_host_path(self):
         """Test that absolute host paths are converted to just filename."""
         handler = self._create_handler()
-        result = handler._translate_path("/Users/nghibui/codes/test/main.py")
+        result = handler._translate_path("/Users/anlnm/codes/test/main.py")
         # Should extract just the filename
         assert result == "/workspace/main.py"
 

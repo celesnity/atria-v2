@@ -12,8 +12,6 @@ You can explore and analyze the codebase using:
 - **read_file**: Read file contents to understand implementation
 - **list_files**: Explore directory structure and discover files
 - **search**: Search code with ripgrep (text) or ast-grep (structural patterns)
-- **fetch_url**: Fetch web documentation and references
-- **web_search**: Search the web for information
 - **read_pdf**: Extract content from PDF documentation
 - **find_symbol**: Find symbols (functions, classes) by name using LSP
 - **find_referencing_symbols**: Find all references to a symbol

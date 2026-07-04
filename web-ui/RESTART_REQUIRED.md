@@ -54,7 +54,7 @@ swecli run ui
 pkill -f swecli
 
 # Start fresh
-cd /Users/quocnghi/codes/swe-cli
+cd /Users/anlnm/codes/swe-cli
 swecli run ui
 ```
 

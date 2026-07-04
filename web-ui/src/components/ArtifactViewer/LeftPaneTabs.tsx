@@ -13,19 +13,21 @@ export function LeftPaneTabs({ mode, onChange }: Props) {
       key={m}
       onClick={() => onChange(m)}
       className={[
-        'px-2 py-1 text-xs rounded transition-colors cursor-pointer',
+        'relative px-2.5 py-1 text-xs font-mono rounded-[4px] transition-all duration-fast cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt',
         mode === m
-          ? 'bg-surface-soft text-ink'
-          : 'text-ink/55 hover:text-ink hover:bg-surface-soft/60',
+          ? 'bg-canvas text-ink shadow-soft'
+          : 'text-text-muted hover:text-ink',
       ].join(' ')}
     >
       {label}
     </button>
   );
   return (
-    <div className="flex items-center gap-1 px-2 py-1 border-b border-hairline-soft/60 flex-shrink-0">
-      {btn('files', 'Files')}
-      {btn('modules', 'Modules')}
+    <div className="flex items-center border-b border-hairline-soft/60 px-2 py-1.5 flex-shrink-0">
+      <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
+        {btn('files', 'Files')}
+        {btn('modules', 'Modules')}
+      </div>
     </div>
   );
 }

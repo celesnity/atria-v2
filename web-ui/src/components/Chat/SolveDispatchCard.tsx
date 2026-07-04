@@ -69,7 +69,7 @@ export function SolveDispatchCard({ message }: Props) {
   const summary = job?.strategy === 'divide' ? job.summary : undefined;
 
   return (
-    <div className="mx-3 my-2 rounded-lg border border-border-300/20 bg-bg-000 overflow-hidden">
+    <div className="mx-3 my-2 rounded-md border border-border-300/20 bg-bg-000 overflow-hidden">
       <div className="flex items-start gap-2 px-3 py-2 border-b border-border-300/10">
         <Rocket aria-hidden className="w-3.5 h-3.5 mt-0.5 text-accent-magenta flex-shrink-0" strokeWidth={1.5} />
         <div className="flex-1 min-w-0">
@@ -95,10 +95,6 @@ export function SolveDispatchCard({ message }: Props) {
               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-mono ${statusMeta.color}`}
               aria-label={`status ${statusMeta.label}`}
             >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot} ${statusMeta.pulse ? 'animate-pulse-dot' : ''}`}
-                aria-hidden
-              />
               {statusMeta.label}
             </span>
             {progressLine && (

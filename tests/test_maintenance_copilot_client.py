@@ -109,3 +109,54 @@ def test_unknown_role_raises():
     )
     with pytest.raises(ValueError):
         rc.embed("nope", ["x"])
+
+
+class _UnreachableOpenAI:
+    """Fake client whose embed/chat calls raise a connection error."""
+
+    def __init__(self, base_url, api_key):
+        self.base_url = base_url
+        import httpx  # transitive dep via openai
+
+        exc = client_mod_ref[0]._APIConnectionError(
+            request=httpx.Request("POST", base_url)
+        )
+
+        class _Raiser:
+            def create(self_inner, **kw):
+                raise exc
+
+        self.embeddings = _Raiser()
+        self.chat = type("C", (), {"completions": _Raiser()})()
+
+
+client_mod_ref: list = []
+
+
+def test_embed_connection_error_becomes_endpoint_unreachable():
+    config = _load("config")
+    client_mod = _load("client")
+    client_mod_ref[:] = [client_mod]
+    rc = client_mod.RoleClient(
+        config.load_config(env={"MC_INDEX_EMBED_BASE_URL": "http://localhost:9/v1"}),
+        client_factory=lambda base_url, api_key: _UnreachableOpenAI(base_url, api_key),
+    )
+    with pytest.raises(client_mod.EndpointUnreachable) as ei:
+        rc.embed("index_embed", ["x"])
+    # The actionable message names the role, endpoint, and how to fix it.
+    assert ei.value.role == "index_embed"
+    assert ei.value.base_url == "http://localhost:9/v1"
+    assert "host.docker.internal" in str(ei.value)
+
+
+def test_chat_connection_error_becomes_endpoint_unreachable():
+    config = _load("config")
+    client_mod = _load("client")
+    client_mod_ref[:] = [client_mod]
+    rc = client_mod.RoleClient(
+        config.load_config(env={"MC_SYNTHESIS_BASE_URL": "http://localhost:9/v1"}),
+        client_factory=lambda base_url, api_key: _UnreachableOpenAI(base_url, api_key),
+    )
+    with pytest.raises(client_mod.EndpointUnreachable) as ei:
+        rc.chat("synthesis", [{"role": "user", "content": "hi"}])
+    assert ei.value.role == "synthesis"

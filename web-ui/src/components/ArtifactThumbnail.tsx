@@ -20,8 +20,12 @@ export function ArtifactThumbnail({
   const [imageError, setImageError] = useState(false);
 
   const isImage = isImageFile(artifact.title || artifact.payload_ref || '');
-  const scopeColor = artifact.conversation_id ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
-  const scopeLabel = artifact.conversation_id ? 'Conversation' : 'Project';
+  const isConversation = !!artifact.conversation_id;
+  // Brand accent spine: cobalt = conversation, violet = project.
+  const scopeColor = isConversation
+    ? 'bg-accent-cobalt/12 text-accent-cobalt'
+    : 'bg-accent-violet/12 text-accent-violet';
+  const scopeLabel = isConversation ? 'Conversation' : 'Project';
 
   const handleDelete = () => {
     onDelete?.(artifact.id);
@@ -30,12 +34,12 @@ export function ArtifactThumbnail({
 
   return (
     <div
-      className={`artifact-thumbnail relative group border border-hairline-soft rounded-lg overflow-hidden bg-canvas transition-all hover:shadow-hover hover:border-hairline ${className}`}
+      className={`artifact-thumbnail relative group border border-hairline-soft/60 rounded-md overflow-hidden bg-canvas transition-all duration-fast hover:shadow-hover hover:border-accent-cobalt/40 ${className}`}
       onMouseLeave={() => setShowDeleteConfirm(false)}
     >
       {/* Preview Area */}
       <div
-        className="w-full aspect-square bg-surface-soft overflow-hidden cursor-pointer"
+        className="w-full aspect-square bg-surface-soft/50 overflow-hidden cursor-pointer"
         onClick={() => onPreview?.(artifact)}
       >
         {isImage && artifact.preview && !imageError ? (
@@ -46,59 +50,58 @@ export function ArtifactThumbnail({
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <FileText className="w-8 h-8 text-text-muted" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-surface-soft/60 to-hairline-soft/40">
+            <FileText className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
           </div>
         )}
       </div>
 
       {/* Info Section */}
-      <div className="p-3 border-t border-hairline-soft">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-ink truncate">
-              {artifact.title || 'Untitled'}
-            </h3>
-            <p className="text-xs text-text-muted mt-0.5">
-              {artifact.size ? formatFileSize(artifact.size) : 'Unknown size'}
-            </p>
-          </div>
+      <div className="p-2.5 border-t border-hairline-soft/60">
+        <div className="min-w-0 mb-2">
+          <h3 className="text-[13px] font-medium text-ink truncate">
+            {artifact.title || 'Untitled'}
+          </h3>
+          <p className="text-[10px] font-mono text-text-muted mt-0.5">
+            {artifact.size ? formatFileSize(artifact.size) : 'Unknown size'}
+          </p>
         </div>
 
-        {/* Scope Badge */}
-        <div className={`inline-block text-xs font-medium px-2 py-1 rounded ${scopeColor}`}>
-          {scopeLabel}
-        </div>
-
-        {/* Type Badge */}
-        <div className="inline-block ml-2 text-xs font-medium px-2 py-1 bg-surface-soft text-text-secondary rounded">
-          {artifact.type}
+        {/* Badges */}
+        <div className="flex items-center gap-1.5">
+          <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] ${scopeColor}`}>
+            {scopeLabel}
+          </span>
+          <span className="inline-flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] bg-surface-soft/60 text-text-secondary truncate">
+            {artifact.type}
+          </span>
         </div>
       </div>
 
       {/* Hover Delete Button */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-fast">
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="p-1.5 bg-red-50 hover:bg-red-100 text-semantic-danger rounded-lg transition-colors"
+            className="p-1.5 bg-canvas/90 backdrop-blur-sm border border-hairline-soft/60 text-ink/50 hover:text-semantic-danger hover:border-semantic-danger/40 rounded-md shadow-soft transition-colors duration-fast cursor-pointer"
             title="Delete artifact"
+            aria-label="Delete artifact"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         ) : (
-          <div className="absolute top-0 right-0 bg-surface-soft border border-semantic-danger rounded-lg shadow-modal p-2 whitespace-nowrap">
-            <p className="text-xs text-text-secondary mb-2">Delete?</p>
+          <div className="absolute top-0 right-0 bg-canvas border border-semantic-danger/50 rounded-md shadow-modal p-2 whitespace-nowrap">
+            <p className="text-[11px] font-mono text-text-secondary mb-2">Delete?</p>
             <div className="flex gap-1">
               <button
                 onClick={handleDelete}
-                className="px-2 py-1 text-xs bg-semantic-danger text-white rounded hover:opacity-90"
+                className="px-2 py-1 text-[11px] font-mono bg-semantic-danger text-white rounded hover:opacity-90 cursor-pointer transition-opacity"
               >
                 Yes
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-2 py-1 text-xs border border-hairline-soft text-text-secondary rounded hover:bg-surface-soft"
+                className="px-2 py-1 text-[11px] font-mono border border-hairline-soft text-text-secondary rounded hover:bg-surface-soft cursor-pointer transition-colors"
               >
                 No
               </button>
@@ -108,8 +111,8 @@ export function ArtifactThumbnail({
       </div>
 
       {/* Created Date Tooltip */}
-      <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="text-xs text-text-secondary bg-surface-soft px-2 py-1 rounded">
+      <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-fast pointer-events-none">
+        <div className="text-[10px] font-mono text-text-secondary bg-canvas/90 backdrop-blur-sm border border-hairline-soft/50 px-1.5 py-0.5 rounded">
           {new Date(artifact.created_at).toLocaleDateString()}
         </div>
       </div>

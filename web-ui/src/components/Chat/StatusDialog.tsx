@@ -113,9 +113,6 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
               <div className="space-y-1.5">
                 {mcpServers.map(server => (
                   <div key={server.name} className="flex items-center gap-2 text-sm">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      server.status === 'connected' ? 'bg-emerald-500' : 'bg-gray-400'
-                    }`} />
                     <span className="text-text-200 font-mono">{server.name}</span>
                     <span className="text-text-400 text-xs">
                       {server.status === 'connected' ? `connected (${server.tools_count} tools)` : 'disconnected'}

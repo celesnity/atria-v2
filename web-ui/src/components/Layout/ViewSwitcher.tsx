@@ -80,7 +80,7 @@ export function ViewSwitcher({ className }: { className?: string }) {
             {active && (
               <motion.span
                 layoutId="viewswitcher-active"
-                className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-ink"
+                className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-md bg-ink"
                 transition={
                   reduce
                     ? { duration: 0 }
@@ -91,10 +91,9 @@ export function ViewSwitcher({ className }: { className?: string }) {
             )}
             {showBadge && (
               <span
-                className="ml-0.5 inline-flex items-center gap-1 pl-1.5 pr-1.5 h-4 rounded-full bg-amber-400/15 text-amber-500 text-[10px] font-mono font-[600] leading-none"
+                className="ml-0.5 inline-flex items-center gap-1 pl-1.5 pr-1.5 h-4 rounded-md bg-amber-400/15 text-amber-500 text-[10px] font-mono font-[600] leading-none"
                 aria-hidden="true"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse-dot" />
                 {runningJobs}
               </span>
             )}

@@ -37,11 +37,11 @@ export function DeleteConfirmModal({ isOpen, workspacePath, onConfirm, onCancel 
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-canvas rounded-lg border border-hairline-soft shadow-modal w-full max-w-md p-6 m-4"
+            className="bg-canvas rounded-md border border-hairline-soft shadow-modal w-full max-w-md p-6 m-4"
           >
             {/* Header: coral block accent matches the destructive intent */}
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-block-coral flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-md bg-block-coral flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-6 h-6 text-ink" strokeWidth={1.5} />
               </div>
               <div>

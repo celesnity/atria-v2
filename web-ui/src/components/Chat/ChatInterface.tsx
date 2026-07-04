@@ -81,7 +81,6 @@ export function ChatInterface() {
     >
       {error && (
         <div className="mx-6 mt-4 flex items-start gap-3 rounded-md border border-semantic-danger/25 bg-semantic-danger/10 px-4 py-3 text-semantic-danger">
-          <span aria-hidden className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-semantic-danger" />
           <p className="text-body-sm leading-[1.5]">
             <strong className="font-[600]">Something went wrong.</strong> {error}
           </p>
@@ -95,7 +94,7 @@ export function ChatInterface() {
       {/* Drag-and-drop overlay */}
       {isDragActive && (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-2 rounded-lg border-2 border-dashed border-accent-magenta bg-accent-magenta/[0.06]" />
+          <div className="absolute inset-2 rounded-md border-2 border-dashed border-accent-magenta bg-accent-magenta/[0.06]" />
           <div className="animate-scale-in relative flex items-center gap-3 rounded-md border border-hairline-soft bg-canvas px-6 py-4 shadow-modal">
             <Upload className="h-5 w-5 text-accent-magenta" strokeWidth={1.75} />
             <span className="text-body-sm font-[540] text-ink">Drop files to add them as artifacts</span>
@@ -106,7 +105,7 @@ export function ChatInterface() {
       {/* Upload progress indicator */}
       {uploading && (
         <div className="animate-slide-up absolute bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-pill border border-hairline-soft bg-canvas px-4 py-2 text-body-sm text-ink shadow-hover">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-accent-magenta border-t-transparent" />
+          <div className="h-3 w-3 animate-spin rounded-md border-2 border-accent-magenta border-t-transparent" />
           Uploading…
         </div>
       )}

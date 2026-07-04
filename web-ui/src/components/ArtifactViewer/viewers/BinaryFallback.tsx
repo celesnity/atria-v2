@@ -16,14 +16,22 @@ function formatSize(n?: number): string {
 export function BinaryFallback({ path, size, url }: Props) {
   const name = path.split('/').pop() ?? path;
   return (
-    <div className="flex flex-col items-center justify-center h-full text-ink/65 gap-3 p-6">
-      <FileIcon className="w-10 h-10 text-ink/45" />
-      <p className="font-mono text-sm">{name}</p>
-      {size !== undefined && <p className="font-mono text-xs text-ink/45">{formatSize(size)}</p>}
+    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 select-none">
+      <div className="relative grid h-16 w-16 place-items-center">
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-xl"
+        />
+        <span className="relative grid h-12 w-12 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60 text-text-secondary">
+          <FileIcon className="w-5 h-5" />
+        </span>
+      </div>
+      <p className="font-mono text-sm text-ink">{name}</p>
+      {size !== undefined && <p className="font-mono text-xs text-text-muted">{formatSize(size)}</p>}
       <a
         href={url}
         download={name}
-        className="inline-flex items-center gap-1.5 text-xs font-mono text-ink hover:underline cursor-pointer"
+        className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-gradient-brand px-3 py-1.5 text-xs font-medium text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-px cursor-pointer"
       >
         <Download className="w-3.5 h-3.5" /> Download
       </a>

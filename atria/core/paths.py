@@ -145,14 +145,14 @@ class Paths:
         Can be overridden with ATRIA_DIR environment variable.
         Default: ~/.atria/
 
-        On first access, migrates legacy ~/.opendev/ to ~/.atria/ if present
+        On first access, migrates legacy ~/.atria/ to ~/.atria/ if present
         and the new path does not yet exist.
         """
         env_override = os.environ.get(ENV_ATRIA_DIR)
         if env_override:
             return Path(env_override)
         target = Path.home() / APP_DIR_NAME
-        legacy = Path.home() / ".opendev"
+        legacy = Path.home() / ".atria"
         if not target.exists() and legacy.exists() and legacy.is_dir():
             try:
                 legacy.rename(target)

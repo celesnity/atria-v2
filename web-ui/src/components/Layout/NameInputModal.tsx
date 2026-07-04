@@ -77,7 +77,7 @@ export function NameInputModal({
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={placeholder}
-              className="w-full bg-bg-100 border border-border-300/20 rounded-lg px-3 py-2 text-sm text-text-000 placeholder-text-400"
+              className="w-full bg-bg-100 border border-border-300/20 rounded-md px-3 py-2 text-sm text-text-000 placeholder-text-400"
             />
             {error && <p className="text-xs text-semantic-danger mt-1">{error}</p>}
           </div>
@@ -87,7 +87,7 @@ export function NameInputModal({
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="px-4 py-1.5 text-sm bg-accent-main-100 text-white rounded-lg hover:bg-accent-main-100/80 disabled:opacity-40 transition-colors"
+              className="px-4 py-1.5 text-sm bg-accent-main-100 text-white rounded-md hover:bg-accent-main-100/80 disabled:opacity-40 transition-colors"
             >
               {isSubmitting ? submittingLabel : submitLabel}
             </button>

@@ -61,7 +61,6 @@ class TestDefaultSubAgents:
         names = [spec["name"] for spec in ALL_SUBAGENTS]
         assert "ask-user" in names
         assert "Code-Explorer" in names
-        assert "Web-clone" in names
         assert "Web-Generator" in names
         assert "Planner" in names
 
@@ -166,7 +165,6 @@ class TestSubAgentManager:
         available = manager.get_available_types()
         assert "ask-user" in available
         assert "Code-Explorer" in available
-        assert "Web-clone" in available
         assert "Web-Generator" in available
         assert "Planner" in available
 
@@ -368,8 +366,8 @@ class TestSubAgentManagerAsync:
         assert all(r["success"] for r in results)
 
 
-class TestSpawnSubagentToolSchema:
-    """Tests for spawn_subagent tool schema generation."""
+class TestSubagentToolSchema:
+    """Tests for the unified ``subagent`` tool schema generation."""
 
     @pytest.fixture
     def mock_manager(self):
@@ -379,44 +377,48 @@ class TestSpawnSubagentToolSchema:
         config1.name = "Code-Explorer"
         config1.description = "Codebase exploration agent"
         config2 = MagicMock()
-        config2.name = "Web-clone"
-        config2.description = "Website cloning agent"
+        config2.name = "Web-Generator"
+        config2.description = "Website generation agent"
         manager.get_agent_configs.return_value = [config1, config2]
         return manager
 
-    def test_spawn_subagent_tool_name(self):
-        """Test that spawn_subagent tool name is correct."""
-        assert TASK_TOOL_NAME == "spawn_subagent"
+    def test_subagent_tool_name(self):
+        """Test that the unified tool name is correct."""
+        assert TASK_TOOL_NAME == "subagent"
 
     def test_create_tool_schema_structure(self, mock_manager):
-        """Test that spawn_subagent tool schema has correct structure."""
+        """Test that the subagent tool schema has correct structure."""
         schema = create_task_tool_schema(mock_manager)
 
         assert schema["type"] == "function"
         assert "function" in schema
-        assert schema["function"]["name"] == "spawn_subagent"
+        assert schema["function"]["name"] == "subagent"
         assert "description" in schema["function"]
         assert "parameters" in schema["function"]
 
     def test_tool_schema_parameters(self, mock_manager):
-        """Test that spawn_subagent tool has required parameters."""
+        """Test that the subagent tool requires a ``tasks`` array."""
         schema = create_task_tool_schema(mock_manager)
         params = schema["function"]["parameters"]
 
         assert params["type"] == "object"
-        assert "description" in params["properties"]
-        assert "subagent_type" in params["properties"]
-        assert "description" in params["required"]
-        assert "subagent_type" in params["required"]
+        assert "tasks" in params["properties"]
+        assert params["properties"]["tasks"]["type"] == "array"
+        assert params["required"] == ["tasks"]
+        item_required = params["properties"]["tasks"]["items"]["required"]
+        assert set(item_required) == {"subagent_type", "prompt"}
 
     def test_tool_schema_subagent_enum(self, mock_manager):
-        """Test that subagent_type has correct enum values."""
+        """Test that a task's subagent_type has correct enum values."""
         schema = create_task_tool_schema(mock_manager)
-        subagent_type = schema["function"]["parameters"]["properties"]["subagent_type"]
+        item_props = schema["function"]["parameters"]["properties"]["tasks"]["items"][
+            "properties"
+        ]
+        subagent_type = item_props["subagent_type"]
 
         assert "enum" in subagent_type
         assert "Code-Explorer" in subagent_type["enum"]
-        assert "Web-clone" in subagent_type["enum"]
+        assert "Web-Generator" in subagent_type["enum"]
 
     def test_tool_schema_description_includes_subagents(self, mock_manager):
         """Test that tool description lists available subagents."""
@@ -424,11 +426,11 @@ class TestSpawnSubagentToolSchema:
         description = schema["function"]["description"]
 
         assert "Code-Explorer" in description
-        assert "Web-clone" in description
+        assert "Web-Generator" in description
 
 
 class TestToolRegistryIntegration:
-    """Tests for spawn_subagent tool integration with ToolRegistry.
+    """Tests for the ``subagent`` tool integration with ToolRegistry.
 
     These tests require full ToolRegistry import which depends on LSP modules.
     Skip if LSP modules are not available.
@@ -463,43 +465,28 @@ class TestToolRegistryIntegration:
 
         assert registry.get_subagent_manager() == mock_manager
 
-    def test_tool_registry_spawn_subagent_handler_exists(self):
-        """Test that spawn_subagent handler is registered."""
+    def test_tool_registry_subagent_handler_exists(self):
+        """Test that the unified subagent handler is registered."""
         from atria.core.context_engineering.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
-        assert "spawn_subagent" in registry._handlers
+        assert "subagent" in registry._handlers
+        assert "get_subagent_output" in registry._handlers
 
-    def test_execute_spawn_subagent_without_manager(self):
-        """Test executing spawn_subagent tool without manager returns error."""
+    def test_execute_subagent_without_task_client(self):
+        """Test executing the subagent tool without a task client returns error."""
         from atria.core.context_engineering.tools.registry import ToolRegistry
 
         registry = ToolRegistry()
-        # Don't set subagent manager
+        # No subagent manager -> no task client -> delegation unavailable.
 
         result = registry.execute_tool(
-            "spawn_subagent",
-            {"description": "Test task", "subagent_type": "Code-Explorer"},
+            "subagent",
+            {"tasks": [{"subagent_type": "Code-Explorer", "prompt": "explore"}]},
         )
 
         assert result["success"] is False
-        assert "not configured" in result["error"]
-
-    def test_execute_spawn_subagent_without_description(self):
-        """Test executing spawn_subagent tool without description returns error."""
-        from atria.core.context_engineering.tools.registry import ToolRegistry
-
-        registry = ToolRegistry()
-        mock_manager = MagicMock()
-        registry.set_subagent_manager(mock_manager)
-
-        result = registry.execute_tool(
-            "spawn_subagent",
-            {"subagent_type": "Code-Explorer"},
-        )
-
-        assert result["success"] is False
-        assert "prompt" in result["error"].lower()
+        assert "unavailable" in result["error"].lower()
 
 
 def _can_import_agent_factory():

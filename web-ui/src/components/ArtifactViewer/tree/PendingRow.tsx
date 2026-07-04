@@ -50,7 +50,7 @@ export function PendingRow({ depth, kind, placeholder, initial = '', selectExten
   };
 
   const Glyph = kind === 'dir' ? Folder : FileIcon;
-  const glyphColor = kind === 'dir' ? 'text-sky-400/70' : 'text-ink/45';
+  const glyphColor = kind === 'dir' ? 'text-accent-cobalt/70' : 'text-ink/45';
 
   return (
     <div style={{ paddingLeft: 6 + depth * 14 }} className="flex flex-col">
@@ -69,7 +69,7 @@ export function PendingRow({ depth, kind, placeholder, initial = '', selectExten
           placeholder={placeholder}
           aria-label={kind === 'file' ? 'New file name' : 'New folder name'}
           disabled={busy}
-          className="flex-1 min-w-0 bg-ink/5 text-ink placeholder:text-ink/35 outline-none rounded px-1 py-0 leading-tight focus:ring-1 focus:ring-sky-400/60"
+          className="flex-1 min-w-0 bg-surface-soft/60 text-ink placeholder:text-ink/35 outline-none rounded px-1 py-0 leading-tight focus:ring-1 focus:ring-accent-cobalt/60"
         />
       </div>
       {err && (

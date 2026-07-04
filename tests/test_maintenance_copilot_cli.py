@@ -63,3 +63,21 @@ def test_main_health_fails_when_a_probe_errors(monkeypatch, capsys):
     })
     rc = mod.main(["health"])
     assert rc == 1
+
+
+def test_main_reports_unreachable_endpoint_as_json(monkeypatch, capsys):
+    """An unreachable model endpoint yields clean JSON + exit 3, not a traceback."""
+    mod = _load_cli()
+
+    def boom(*_a, **_k):
+        raise mod.EndpointUnreachable(
+            "index_embed", "http://host.docker.internal:1234/v1", "nomic", RuntimeError("down")
+        )
+
+    monkeypatch.setattr(mod, "_build_store", boom)
+    rc = mod.main(["query", "gear removal", "--revision", "none"])
+    assert rc == 3
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error"] == "endpoint_unreachable"
+    assert payload["role"] == "index_embed"
+    assert payload["base_url"] == "http://host.docker.internal:1234/v1"

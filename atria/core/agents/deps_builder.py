@@ -46,8 +46,6 @@ def build_runtime_and_deps(
     from atria.core.context_engineering.tools.implementations.write_tool import WriteTool
     from atria.core.context_engineering.tools.implementations.edit_tool.tool import EditTool
     from atria.core.context_engineering.tools.implementations.bash_tool.tool import BashTool
-    from atria.core.context_engineering.tools.implementations.web_fetch_tool import WebFetchTool
-    from atria.core.context_engineering.tools.implementations.web_search_tool import WebSearchTool
     from atria.core.context_engineering.tools.implementations.notebook_edit_tool import (
         NotebookEditTool,
     )
@@ -60,7 +58,7 @@ def build_runtime_and_deps(
 
     # The worker has no UI callback, so the bash tool cannot discover the session
     # id / workspace the way the main process does. Inject them from the payload so
-    # session-scoped modules (e.g. data_copilot) write into
+    # session-scoped modules write into
     # ``<working_dir>/.artifacts/…/<session_id>`` — the folder the main agent reads —
     # instead of falling back to the module's own data dir. Per-instance (not
     # os.environ) so concurrent worker jobs don't clobber each other's session.
@@ -78,8 +76,6 @@ def build_runtime_and_deps(
     write_tool = WriteTool(config, wd)
     edit_tool = EditTool(config, wd)
     bash_tool = BashTool(config, wd, env_overrides=env_overrides)
-    web_fetch_tool = WebFetchTool(config, wd)
-    web_search_tool = WebSearchTool(config, wd)
     notebook_edit_tool = NotebookEditTool(wd)
 
     runtime_service = RuntimeService(config_manager, mode_manager)
@@ -88,8 +84,6 @@ def build_runtime_and_deps(
         write_tool=write_tool,
         edit_tool=edit_tool,
         bash_tool=bash_tool,
-        web_fetch_tool=web_fetch_tool,
-        web_search_tool=web_search_tool,
         notebook_edit_tool=notebook_edit_tool,
         ask_user_tool=None,  # headless: no interactive ask-user channel
         mcp_manager=None,    # MVP: no MCP tools in the worker

@@ -225,14 +225,14 @@ class TestFixCParallelToolsGuard:
             {
                 "id": "call_1",
                 "function": {
-                    "name": "spawn_subagent",
+                    "name": "subagent",
                     "arguments": '{"subagent_type": "Explore", "description": "test1"}',
                 },
             },
             {
                 "id": "call_2",
                 "function": {
-                    "name": "spawn_subagent",
+                    "name": "subagent",
                     "arguments": '{"subagent_type": "Explore", "description": "test2"}',
                 },
             },
@@ -269,14 +269,14 @@ class TestFixCParallelToolsGuard:
             {
                 "id": "call_1",
                 "function": {
-                    "name": "spawn_subagent",
+                    "name": "subagent",
                     "arguments": '{"subagent_type": "Explore", "description": "test1"}',
                 },
             },
             {
                 "id": "call_2",
                 "function": {
-                    "name": "spawn_subagent",
+                    "name": "subagent",
                     "arguments": '{"subagent_type": "Explore", "description": "test2"}',
                 },
             },

@@ -151,7 +151,7 @@ export function TopBar() {
   const initial = (displayName || displayEmail || "?").slice(0, 1).toUpperCase();
 
   const pillBase =
-    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium cursor-pointer transition-colors select-none hover-scale-pill";
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer transition-colors select-none hover-scale-pill";
   const iconBtn =
     "p-2 cursor-pointer text-ink/60 hover:text-ink hover:bg-surface-soft rounded-md transition-colors";
 
@@ -174,9 +174,9 @@ export function TopBar() {
         <div className="flex items-center gap-2.5">
           {/* Signature orbit glyph — nebula-gradient ring with an off-center core. */}
           <span aria-hidden className="relative grid h-6 w-6 place-items-center">
-            <span className="absolute inset-0 rounded-full bg-gradient-brand opacity-90" />
-            <span className="absolute inset-[3px] rounded-full bg-canvas" />
-            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-full bg-gradient-brand" />
+            <span className="absolute inset-0 rounded-md bg-gradient-brand opacity-90" />
+            <span className="absolute inset-[3px] rounded-md bg-canvas" />
+            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-md bg-gradient-brand" />
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
@@ -234,10 +234,6 @@ export function TopBar() {
                 : "bg-surface-soft text-ink/50 border-hairline-soft"
             }`}
           >
-            <span
-              aria-hidden="true"
-              className={`w-1.5 h-1.5 rounded-full ${isConnected ? "bg-semantic-success" : "bg-ink/30"}`}
-            />
             <span className="hidden sm:inline">
               {isConnected ? "Connected" : "Offline"}
             </span>
@@ -325,7 +321,7 @@ export function TopBar() {
               className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md cursor-pointer text-ink/80 hover:bg-surface-soft transition-colors"
             >
               <span
-                className="w-6 h-6 rounded-full bg-ink text-inverse-ink text-[11px] font-[600] flex items-center justify-center"
+                className="w-6 h-6 rounded-md bg-ink text-inverse-ink text-[11px] font-[600] flex items-center justify-center"
                 aria-hidden
               >
                 {initial}
