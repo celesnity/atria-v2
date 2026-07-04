@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   FileText,
   Image,
   Loader2,
@@ -13,7 +14,34 @@ import TextareaAutosize from "react-textarea-autosize";
 import { useChatStore } from "../../stores/chat";
 import { useProjectsStore } from "../../stores/projects";
 import { AnimatedHeadline } from "../ui/AnimatedHeadline";
+import { CosmicField } from "../ui/CosmicField";
+import { Eyebrow } from "../ui/Eyebrow";
 import { transitions } from "../ui/motion";
+
+// Prompt starters — a gapless 2x2 bento. Concrete, buildable asks (no cliches).
+// Each fills the composer so the first keystroke is optional, not required.
+const STARTERS: { kind: string; title: string; prompt: string }[] = [
+  {
+    kind: "Explore",
+    title: "Map this codebase",
+    prompt: "Give me a tour of this repository — the architecture, entry points, and where the important logic lives.",
+  },
+  {
+    kind: "Build",
+    title: "Scaffold a feature",
+    prompt: "Plan and scaffold a new feature. Ask me what it should do first, then propose the files you'll touch.",
+  },
+  {
+    kind: "Debug",
+    title: "Track down a failure",
+    prompt: "A test is failing and I can't see why. Walk through it systematically and find the root cause before proposing a fix.",
+  },
+  {
+    kind: "Research",
+    title: "Compare approaches",
+    prompt: "Research two or three ways to solve this and lay out the tradeoffs with sources before recommending one.",
+  },
+];
 
 export function LandingPage() {
   const [input, setInput] = useState("");
@@ -22,7 +50,7 @@ export function LandingPage() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null); // kept for focus()
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileAcceptRef = useRef<string>("");
@@ -69,6 +97,18 @@ export function LandingPage() {
     }
   };
 
+  const applyStarter = (prompt: string) => {
+    setInput(prompt);
+    // Focus the composer and drop the cursor at the end so the user can edit.
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(prompt.length, prompt.length);
+      }
+    });
+  };
+
   const handleFileUpload = (accept: string) => {
     fileAcceptRef.current = accept;
     setShowPlusMenu(false);
@@ -90,102 +130,63 @@ export function LandingPage() {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-
   return (
-    <div className="relative flex flex-col items-center justify-center h-full px-6 bg-canvas overflow-hidden">
-      {/* Background watermark — oversized editorial wordmark */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span
-          className="font-sans select-none animate-breathe"
-          style={{
-            fontSize: "clamp(160px, 22vw, 320px)",
-            fontWeight: 340,
-            letterSpacing: "-0.06em",
-            color: "hsl(var(--surface-soft))",
-            lineHeight: 1,
-          }}
-        >
-          Atria
-        </span>
-        <div
-          className="absolute animate-spin-slow"
-          style={{ width: 360, height: 360 }}
-        >
-          {Array.from({ length: 24 }).map((_, i) => {
-            const angle = (i / 24) * 360;
-            return (
-              <span
-                key={i}
-                className="absolute text-lg font-mono text-bg-300 braille-ring-char"
-                style={
-                  {
-                    left: "50%",
-                    top: "50%",
-                    transform: `rotate(${angle}deg) translateX(180px) rotate(-${angle}deg)`,
-                    "--braille-delay": `${-(i / 24).toFixed(3)}s`,
-                  } as React.CSSProperties
-                }
-                aria-hidden="true"
-              />
-            );
-          })}
-        </div>
-      </div>
+    <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-canvas px-6">
+      {/* Ambient cosmic backdrop — subtle starfield + nebula bloom. */}
+      <CosmicField count={38} className="opacity-70" />
 
-      {/* Centered input card */}
-      <div className="relative z-10 w-full max-w-2xl animate-fade-in">
-        <div className="mb-8 text-center">
-          <motion.span
+      <div className="relative z-10 w-full max-w-3xl">
+        {/* ── Attention: wide editorial headline ── */}
+        <div className="mb-9 text-center">
+          <motion.div
             initial={reduce ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={transitions.chrome}
-            className="font-sans uppercase tracking-[0.24em] text-[13px] font-[500] text-text-secondary block"
           >
-            New conversation
-          </motion.span>
+            <Eyebrow className="text-text-secondary">New conversation</Eyebrow>
+          </motion.div>
           <AnimatedHeadline
             as="h2"
             text={"What are we building?"}
-            className="mt-3 text-[40px] md:text-display-lg font-sans font-[600] tracking-[-0.03em] leading-[1.02] text-gradient-brand"
-            step={20}
-            startDelay={140}
+            className="mx-auto mt-4 max-w-4xl text-[44px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand"
           />
         </div>
+
+        {/* ── Action: the composer card ── */}
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transitions.editorial, delay: 0.45 }}
-          className="rounded-lg border border-hairline-soft bg-canvas shadow-soft"
+          transition={{ ...transitions.editorial, delay: 0.4 }}
+          className="rounded-lg border border-hairline-soft bg-canvas shadow-soft focus-within:border-ink/20 focus-within:shadow-hover transition-all duration-base"
         >
-          {/* Textarea */}
-          <div className="px-5 pt-5 pb-2 rounded-t-2xl">
+          <div className="rounded-t-lg px-5 pb-2 pt-5">
             <TextareaAutosize
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="How can I help you today?"
+              placeholder="Describe what you want to build, or pick a starting point below."
               disabled={isLoading || !isConnected}
-              className="w-full bg-transparent text-text-000 placeholder-text-400 resize-none border-0 text-base leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full resize-none border-0 bg-transparent text-base leading-relaxed text-ink placeholder-text-muted outline-none disabled:cursor-not-allowed disabled:opacity-50"
               minRows={3}
               maxRows={8}
             />
 
-            {/* Attached file chips */}
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {attachedFiles.map((file, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-200 text-text-200 text-xs border border-border-300/15"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-hairline-soft bg-surface-soft px-2.5 py-1 text-xs text-ink"
                   >
-                    <Paperclip className="w-3.5 h-3.5 text-text-400" />
+                    <Paperclip className="h-3.5 w-3.5 text-text-muted" />
                     {file.name}
                     <button
                       onClick={() => removeFile(i)}
-                      className="ml-0.5 text-text-400 hover:text-danger-100"
+                      className="ml-0.5 text-text-muted hover:text-block-coral"
+                      aria-label={`Remove ${file.name}`}
                     >
-                      <X className="w-3 h-3" strokeWidth={2.5} />
+                      <X className="h-3 w-3" strokeWidth={2.5} />
                     </button>
                   </span>
                 ))}
@@ -194,73 +195,93 @@ export function LandingPage() {
           </div>
 
           {/* Bottom utility bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border-300/10 rounded-b-2xl">
-            {/* Left: + button */}
+          <div className="flex items-center justify-between rounded-b-lg border-t border-hairline-soft/60 px-4 py-3">
             <div className="relative" ref={plusMenuRef}>
               <button
                 onClick={() => setShowPlusMenu(!showPlusMenu)}
-                className="w-8 h-8 rounded-full flex items-center justify-center bg-bg-200 hover:bg-bg-300 text-text-300 hover:text-text-100 transition-colors"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
                 title="Attach files"
+                aria-label="Attach files"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
               </button>
 
               {showPlusMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-48 bg-bg-000 border border-border-300/20 rounded-xl shadow-soft overflow-hidden z-50 animate-fade-in">
+                <div className="animate-fade-in absolute bottom-full left-0 z-50 mb-2 w-48 overflow-hidden rounded-md border border-hairline-soft bg-canvas shadow-modal">
                   <button
-                    onClick={() =>
-                      handleFileUpload(".png,.jpg,.jpeg,.gif,.webp")
-                    }
-                    className="w-full px-4 py-2.5 text-left text-sm text-text-100 hover:bg-bg-200 flex items-center gap-2.5"
+                    onClick={() => handleFileUpload(".png,.jpg,.jpeg,.gif,.webp")}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-soft"
                   >
-                    <Image className="w-4 h-4 text-text-400" />
+                    <Image className="h-4 w-4 text-text-muted" />
                     Upload image
                   </button>
                   <button
                     onClick={() => handleFileUpload(".pdf,.docx")}
-                    className="w-full px-4 py-2.5 text-left text-sm text-text-100 hover:bg-bg-200 flex items-center gap-2.5"
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-soft"
                   >
-                    <FileText className="w-4 h-4 text-text-400" />
+                    <FileText className="h-4 w-4 text-text-muted" />
                     Upload document
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Right: conversation picker + send */}
-            <div className="flex items-center gap-2">
-              {/* Send button */}
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading || !isConnected}
-                className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent-main-100 hover:bg-accent-main-200 text-white disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-bg-300 disabled:text-text-500 transition-colors"
-                title="Send (Enter)"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <SendHorizontal className="w-4 h-4" />
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading || !isConnected}
+              className="flex h-9 items-center gap-2 rounded-pill bg-gradient-brand px-4 text-btn text-[15px] text-white shadow-glow-nebula transition-all hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:opacity-60 disabled:shadow-none"
+              title="Send (Enter)"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Send</span>
+                  <SendHorizontal className="h-4 w-4" />
+                </>
+              )}
+            </button>
           </div>
         </motion.div>
 
         {error && (
-          <p className="mt-3 text-sm text-danger-100 text-center animate-fade-in">
+          <p className="animate-fade-in mt-3 text-center text-sm font-[540] text-block-coral">
             {error}
           </p>
         )}
 
-        <p className="mt-4 text-xs text-text-400 text-center">
-          <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs">
+        {/* ── Interest: gapless prompt-starter bento (grid-flow-dense, no voids) ── */}
+        <div className="mt-6 grid grid-flow-dense grid-cols-1 gap-2 sm:grid-cols-2">
+          {STARTERS.map((s, i) => (
+            <motion.button
+              key={s.title}
+              type="button"
+              onClick={() => applyStarter(s.prompt)}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...transitions.editorial, delay: 0.5 + i * 0.06 }}
+              className="group flex flex-col items-start gap-1.5 rounded-md border border-hairline-soft bg-surface-soft/50 p-4 text-left transition-all duration-base hover:border-ink/20 hover:bg-surface-soft hover:-translate-y-0.5"
+            >
+              <div className="flex w-full items-center justify-between">
+                <span className="eyebrow-mono text-text-muted">{s.kind}</span>
+                <ArrowUpRight className="h-4 w-4 text-text-muted opacity-0 transition-all duration-base group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+              </div>
+              <span className="text-[15px] font-[540] tracking-[-0.01em] text-ink">
+                {s.title}
+              </span>
+            </motion.button>
+          ))}
+        </div>
+
+        <p className="mt-6 text-center text-xs text-text-muted">
+          <kbd className="rounded border border-hairline-soft bg-surface-soft px-1.5 py-0.5 text-xs">
             Enter
           </kbd>{" "}
           to send &middot;{" "}
-          <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs">
+          <kbd className="rounded border border-hairline-soft bg-surface-soft px-1.5 py-0.5 text-xs">
             Shift + Enter
           </kbd>{" "}
-          for new line
+          for a new line
         </p>
       </div>
 
@@ -271,7 +292,6 @@ export function LandingPage() {
         className="hidden"
         onChange={handleFileChange}
       />
-
     </div>
   );
 }

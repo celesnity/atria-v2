@@ -171,13 +171,21 @@ export function TopBar() {
 
       {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-4 flex-shrink-0">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
-            Atria
+        <div className="flex items-center gap-2.5">
+          {/* Signature orbit glyph — nebula-gradient ring with an off-center core. */}
+          <span aria-hidden className="relative grid h-6 w-6 place-items-center">
+            <span className="absolute inset-0 rounded-full bg-gradient-brand opacity-90" />
+            <span className="absolute inset-[3px] rounded-full bg-canvas" />
+            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-full bg-gradient-brand" />
           </span>
-          <span className="eyebrow-mono text-ink/40 hidden lg:inline">
-            AI Assistant
-          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
+              Atria
+            </span>
+            <span className="eyebrow-mono text-ink/40 hidden lg:inline">
+              AI Assistant
+            </span>
+          </div>
         </div>
 
         {/* Primary navigation: Chat ⇄ Dispatch */}

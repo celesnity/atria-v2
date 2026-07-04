@@ -239,7 +239,7 @@ export function InputBox() {
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || !isConnected || !hasActiveSession || sendLocked}
-                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-colors bg-ink text-canvas hover:bg-ink/80 disabled:opacity-25 disabled:cursor-not-allowed"
+                className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-all bg-gradient-brand text-white shadow-glow-nebula hover:brightness-110 active:scale-[0.96] disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Send (Enter)"
               >
                 <SendHorizontal className="w-4 h-4" />
