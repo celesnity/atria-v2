@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Rocket } from 'lucide-react';
+import { Rocket, ArrowRight } from 'lucide-react';
 import type { Message } from '../../types';
 import { useSolverJobsStore } from '../../stores/solverJobs';
 
@@ -141,10 +141,10 @@ export function SolveDispatchCard({ message }: Props) {
         </span>
         <Link
           to="/dispatch"
-          className="font-mono text-text-400 hover:text-text-200 transition-colors"
+          className="inline-flex items-center gap-1 font-mono text-text-400 hover:text-text-200 transition-colors"
           aria-label="Xem trên Dispatch"
         >
-          Xem chi tiết →
+          Xem chi tiết <ArrowRight className="w-3 h-3" strokeWidth={2} aria-hidden="true" />
         </Link>
       </div>
     </div>

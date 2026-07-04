@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Network } from 'lucide-react';
+import { ChevronDown, Network, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Message } from '../../types';
 
@@ -589,7 +589,8 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
               className="inline-flex items-center gap-1.5 text-[12px] font-[450] text-semantic-success hover:underline cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring rounded"
             >
               <Network className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-              Mở Dispatch để theo dõi →
+              Mở Dispatch để theo dõi
+              <ArrowRight className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
             </Link>
           </div>
         )}

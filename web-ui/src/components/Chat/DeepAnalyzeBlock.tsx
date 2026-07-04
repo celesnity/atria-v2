@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, X, BarChart2, FileText, ArrowRight } from 'lucide-react';
+import { Check, X, BarChart2, FileText, ArrowRight, ArrowUpRight, ChevronDown } from 'lucide-react';
 import type { Message, DeepAnalyzePhase, DeepAnalyzePhaseStatus } from '../../types';
 import { wsClient } from '../../api/websocket';
 
@@ -283,8 +283,9 @@ function PlanReviewPanel({ message }: { message: Message }) {
                         <span className="text-text-400 text-xs font-mono ml-2 truncate">{sec.key_question}</span>
                       )}
                     </span>
-                    <span className="text-text-500 font-mono text-xs flex-shrink-0">
-                      {sectionCharts.length} chart{sectionCharts.length !== 1 ? 's' : ''} {open ? '▲' : '▼'}
+                    <span className="text-text-500 font-mono text-xs flex-shrink-0 inline-flex items-center gap-1">
+                      {sectionCharts.length} chart{sectionCharts.length !== 1 ? 's' : ''}
+                      <ChevronDown className={`w-3 h-3 transition-transform duration-fast ${open ? 'rotate-180' : ''}`} strokeWidth={2} aria-hidden="true" />
                     </span>
                   </button>
 
@@ -341,7 +342,7 @@ function PlanReviewPanel({ message }: { message: Message }) {
             <span className="text-xs font-mono text-text-400 flex-1">
               SQL sub-tables ({subTables.length})
             </span>
-            <span className="text-text-500 font-mono text-xs">{sqlOpen ? '▲' : '▼'}</span>
+            <ChevronDown className={`w-3 h-3 text-text-500 transition-transform duration-fast ${sqlOpen ? 'rotate-180' : ''}`} strokeWidth={2} aria-hidden="true" />
           </button>
           {sqlOpen && (
             <div className="border-t border-border-300/10 divide-y divide-border-300/10">
@@ -417,7 +418,11 @@ function PlanReviewPanel({ message }: { message: Message }) {
               <span className="inline-block w-2.5 h-2.5 border-2 border-bg-000/60 border-t-transparent rounded-full animate-spin" />
               Starting…
             </span>
-          ) : 'Run Analysis ↗'}
+          ) : (
+            <span className="inline-flex items-center justify-center gap-1">
+              Run Analysis <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+            </span>
+          )}
         </button>
       </div>
     </div>

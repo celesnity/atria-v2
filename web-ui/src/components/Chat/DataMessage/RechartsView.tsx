@@ -59,6 +59,7 @@ export function RechartsView({ processed, state }: RechartsViewProps) {
   if (isCircular) {
     const s0 = series[0];
     const innerRadius = state.chartType === 'doughnut' ? 55 : 0;
+    const total = data.reduce((sum, row) => sum + (Number(row[s0.key]) || 0), 0) || 1;
     return (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
@@ -66,18 +67,28 @@ export function RechartsView({ processed, state }: RechartsViewProps) {
             data={data}
             dataKey={s0.key}
             nameKey={xKey}
-            cx="50%"
+            cx="45%"
             cy="50%"
-            outerRadius={100}
-            innerRadius={innerRadius}
-            label
+            outerRadius="80%"
+            innerRadius={innerRadius ? '44%' : 0}
+            paddingAngle={data.length > 1 ? 1 : 0}
+            label={({ value }) => `${(((Number(value) || 0) / total) * 100).toFixed(0)}%`}
+            labelLine={false}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={DEFAULT_COLORS[i % DEFAULT_COLORS.length]} stroke="hsl(var(--surface-soft))" />
             ))}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v) => fmt(v)} />
-          {state.legend && <Legend iconType="circle" iconSize={8} />}
+          {state.legend && (
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              layout="vertical"
+              align="right"
+              verticalAlign="middle"
+            />
+          )}
         </PieChart>
       </ResponsiveContainer>
     );
@@ -107,7 +118,7 @@ export function RechartsView({ processed, state }: RechartsViewProps) {
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           {state.grid && <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />}
-          <XAxis dataKey={xKey} name={state.axisLabels.x ?? xKey} tick={AXIS} tickLine={false} />
+          <XAxis type="number" dataKey={xKey} name={state.axisLabels.x ?? xKey} tick={AXIS} tickLine={false} tickFormatter={fmt} />
           <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmt} width={52} />
           <Tooltip {...tooltipStyle} formatter={(v) => fmt(v)} cursor={{ strokeDasharray: '3 3' }} />
           {state.legend && <Legend iconType="circle" iconSize={8} />}
