@@ -17,7 +17,7 @@ def test_config_prefers_openrouter_key_and_defaults():
     cfg = load_brain_config({"OPENROUTER_API_KEY": "sk-or-abc"})
     assert cfg.api_key == "sk-or-abc"
     assert cfg.base_url == "https://openrouter.ai/api/v1"
-    assert cfg.model == "openai/gpt-oss-120b:free"
+    assert cfg.model == "openai/gpt-4o-mini"
     assert cfg.provider == "openrouter"
 
 
