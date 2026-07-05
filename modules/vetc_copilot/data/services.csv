@@ -1,0 +1,9 @@
+service_id,service_name,category,description,context_to_recommend,mock_integration
+SVC001,Civil Liability Insurance Renewal,Insurance,Gia hạn bảo hiểm TNDS,Bảo hiểm sắp hết hạn hoặc thiếu bản upload,Insurance API
+SVC002,Roadside Assistance,Safety,Cứu hộ giao thông,"Xe trên 7 năm, đi xa nhiều, chưa kích hoạt cứu hộ",Service Activation API
+SVC003,Inspection Reminder,Reminder,Nhắc đăng kiểm,Đăng kiểm còn dưới 30 ngày,Reminder API
+SVC004,Document Wallet,Document,Lưu trữ giấy tờ xe số hóa,Thiếu bản upload hoặc người dùng muốn quản lý giấy tờ,Document API
+SVC005,EV Charging Partner,EV,Tìm/đặt lịch trạm sạc EV,Người dùng sở hữu xe điện,Partner API
+SVC006,Vehicle Maintenance Partner,Maintenance,Gợi ý bảo dưỡng xe,Xe cũ hoặc đi nhiều,Partner API
+SVC007,Notification Service,Platform,Gửi nhắc nhở cá nhân hóa,Có deadline quan trọng,Notification API
+SVC008,VETC Wallet,Payment,Thanh toán dịch vụ trong hệ sinh thái,"Gia hạn, kích hoạt dịch vụ, đặt lịch",Wallet API
