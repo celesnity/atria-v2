@@ -42,10 +42,44 @@ class Dataset:
         return [d for d in self.documents if d.get("vehicle_id") == vid]
 
 
+def apply_renewals(ds: Dataset, renewals: list[dict]) -> None:
+    """Overlay finalized renewals onto vehicles/documents (dedup by policy_id).
+
+    Bumps the vehicle's expiry column and appends the policy document. The
+    committed CSVs are untouched; this reflects runtime IPN-confirmed renewals.
+    """
+    existing = {d.get("document_id") for d in ds.documents}
+    for r in renewals:
+        pid = r.get("policy_id")
+        vehicle = ds.vehicle(r.get("vehicle_id", ""))
+        col, new_expiry = r.get("col"), r.get("new_expiry")
+        if vehicle and col and new_expiry:
+            vehicle[col] = new_expiry
+        if pid and pid not in existing:
+            existing.add(pid)
+            ds.documents.append(
+                {
+                    "document_id": pid,
+                    "vehicle_id": r.get("vehicle_id"),
+                    "document_type": "Insurance",
+                    "document_name": r.get("document_name") or pid,
+                    "status": "Valid",
+                    "issue_date": "",
+                    "expiry_date": new_expiry or "",
+                    "uploaded": "Yes",
+                    "notes": "Gia hạn qua cổng VETC (đã xác nhận IPN)",
+                }
+            )
+
+
 def load_dataset(data_dir: str | Path | None = None) -> Dataset:
-    """Load all CSVs from ``data_dir`` (default: module ``data/``) into a Dataset."""
+    """Load all CSVs from ``data_dir`` (default: module ``data/``) into a Dataset.
+
+    Also overlays IPN-confirmed renewals from ``renewals.jsonl`` so every reader
+    reflects completed payments without mutating the committed CSVs.
+    """
     base = Path(data_dir) if data_dir else Path(__file__).resolve().parent.parent / "data"
-    return Dataset(
+    ds = Dataset(
         users=_read_csv(base / "users.csv"),
         vehicles=_read_csv(base / "vehicles.csv"),
         documents=_read_csv(base / "documents.csv"),
@@ -53,3 +87,7 @@ def load_dataset(data_dir: str | Path | None = None) -> Dataset:
         knowledge=_read_csv(base / "knowledge.csv"),
         eval_scenarios=_read_csv(base / "eval_scenarios.csv"),
     )
+    from renewals import load_renewals  # local import: optional runtime overlay
+
+    apply_renewals(ds, load_renewals(base / "renewals.jsonl"))
+    return ds
