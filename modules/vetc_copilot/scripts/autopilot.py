@@ -125,6 +125,26 @@ def _cmd_serve(ds, today: date, port: int) -> int:
                 return
             self._send(404, b"not found", "text/plain")
 
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/ipn":
+                length = int(self.headers.get("Content-Length", "0") or "0")
+                raw = self.rfile.read(length) if length else b"{}"
+                try:
+                    payload = json.loads(raw)
+                except ValueError:
+                    payload = {}
+                import os as _os
+
+                code, out = handle_ipn(payload, _os.environ.get("VETC_IPN_SECRET", ""))
+                self._send(
+                    code,
+                    json.dumps(out, ensure_ascii=False).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+                return
+            self._send(404, b"not found", "text/plain")
+
         def log_message(self, *a) -> None:  # silence stdout noise
             return
 
@@ -237,6 +257,27 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "serve":
         return _cmd_serve(ds, today, args.port)
     return 0
+
+
+def handle_ipn(
+    payload: dict, secret: str, pending_path=None, renewals_path=None
+) -> "tuple[int, dict]":
+    """Verify an IPN and finalize the matching pending renewal (idempotent)."""
+    from ipn_sig import ipn_verify  # type: ignore[import-not-found]
+    import renewals  # type: ignore[import-not-found]
+
+    order_id = str(payload.get("order_id", ""))
+    payment_id = str(payload.get("payment_id", ""))
+    status = str(payload.get("status", ""))
+    if not ipn_verify(order_id, payment_id, status, str(payload.get("signature", "")), secret):
+        return 401, {"code": "UNAUTHORIZED", "message": "bad signature"}
+    if status != "SUCCESS":
+        return 200, {"code": "00", "message": "ignored (non-success)"}
+    pending = renewals.find_pending(order_id, pending_path)
+    if not pending:
+        return 200, {"code": "00", "message": "no matching pending (ignored)"}
+    renewals.finalize(order_id, pending, renewals_path)
+    return 200, {"code": "00", "message": "finalized"}
 
 
 def _vetc_check() -> dict:
