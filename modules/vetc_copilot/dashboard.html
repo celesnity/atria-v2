@@ -229,27 +229,45 @@
     callApi('wallet', { vehicle: vehicleId }).then(renderWallet).catch(function () {});
   }
 
-  // Each bridge call is a fresh subprocess, so we render the renewed policy from
-  // the receipt itself (client-side) rather than re-fetching the wallet.
+  function pollWallet(vehicleId, policyId, btn, tries) {
+    if (tries <= 0) {
+      btn.disabled = false;
+      btn.textContent = 'Gia hạn — 1 chạm';
+      chatNote.textContent = 'Chưa nhận được xác nhận từ VETC — thử lại sau.';
+      return;
+    }
+    callApi('wallet', { vehicle: vehicleId }).then(function (w) {
+      var found = (w.documents || []).some(function (d) { return d.document_id === policyId; });
+      if (found) {
+        loadWallet(vehicleId);
+        btn.textContent = 'Đã gia hạn ✓';
+      } else {
+        setTimeout(function () { pollWallet(vehicleId, policyId, btn, tries - 1); }, 1500);
+      }
+    });
+  }
+
   function doRenew(vehicleId, btn) {
     btn.disabled = true;
     btn.textContent = 'Đang xử lý...';
     callApi('renew', { user: userSel.value, vehicle: vehicleId, service: 'SVC001' })
       .then(function (receipt) {
-        if (receipt && receipt.ok) {
-          prependPolicy({
-            document_name: receipt.service_name,
-            document_type: 'Insurance',
-            status: 'Đã gia hạn (mô phỏng)',
-            expiry_date: receipt.new_expiry
-          });
-          btn.textContent = 'Đã gia hạn ✓ ' + receipt.new_expiry;
-          var dline = btn.parentElement.querySelector('.d');
-          if (dline) dline.innerHTML += ' → <b>gia hạn đến ' + receipt.new_expiry + '</b>';
-        } else {
+        if (!receipt || !receipt.ok) {
           btn.disabled = false;
           btn.textContent = 'Gia hạn — 1 chạm';
           chatNote.textContent = (receipt && receipt.reason) || 'Không thể gia hạn.';
+          return;
+        }
+        if (receipt.pending_user_confirmation) {
+          btn.textContent = 'Đang chờ cổng VETC…';
+          chatNote.textContent = 'Đã tạo đơn thanh toán, đang chờ xác nhận từ VETC…';
+          pollWallet(vehicleId, receipt.policy_id, btn, 10);
+        } else {
+          prependPolicy({
+            document_name: receipt.service_name, document_type: 'Insurance',
+            status: 'Đã gia hạn (mô phỏng)', expiry_date: receipt.new_expiry
+          });
+          btn.textContent = 'Đã gia hạn ✓ ' + receipt.new_expiry;
         }
       })
       .catch(function () {
