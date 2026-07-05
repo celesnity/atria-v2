@@ -19,7 +19,10 @@ from dataclasses import dataclass
 from typing import Mapping, Optional
 
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
-_OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
+# Low-cost, reliable, good at tool-calling. Free models (e.g. gpt-oss-120b:free)
+# are heavily rate-limited upstream, which breaks the agent's multi-call loop.
+# Override with VA_BRAIN_MODEL to use a different model.
+_OPENROUTER_MODEL = "openai/gpt-4o-mini"
 _OPENAI_BASE = "https://api.openai.com/v1"
 _OPENAI_MODEL = "gpt-4o-mini"
 
