@@ -35,6 +35,8 @@ _TOOLS_DOC = (
     "lookup_regulation(question): tra cứu quy định/thủ tục sở hữu xe (kết quả có trích dẫn [Kxxx]).\n"
     "get_wallet(vehicle_id): xem ví giấy tờ số của một xe.\n"
     "renew_service(vehicle_id, service_id): GIA HẠN dịch vụ (thao tác chạm tiền, mô phỏng). "
+    'service_id phải là mã trong danh mục (vd "SVC001" = gia hạn bảo hiểm TNDS bắt buộc); '
+    "nếu người dùng chỉ nói 'gia hạn bảo hiểm' thì dùng SVC001. "
     "CHỈ gọi sau khi người dùng đã xác nhận đồng ý gia hạn."
 )
 
@@ -84,7 +86,12 @@ def run_tool(name: str, args: dict, ds, user_id: str, today: date, client) -> di
         return {"vehicle_id": vid, "documents": ds.documents_for_vehicle(vid)}
     if name == "renew_service":
         vid = str(args.get("vehicle_id") or _primary_vehicle_id(ds, user_id))
-        sid = str(args.get("service_id") or "SVC001")
+        # Weak models guess a service name instead of the catalog id; fall back
+        # to SVC001 (compulsory insurance renewal) when it's missing or unknown.
+        valid = {s.get("service_id") for s in ds.services}
+        sid = str(args.get("service_id") or "")
+        if sid not in valid:
+            sid = "SVC001"
         return hands_renew(ds, user_id, vid, sid, today, consent=True)
     return {"error": f"unknown tool: {name}"}
 

@@ -102,6 +102,23 @@ def test_agent_renew_tool_executes_hands():
     assert step["result"]["policy_id"].startswith("POL-")
 
 
+def test_agent_renew_bad_service_id_falls_back_to_svc001():
+    # The model often passes a service NAME instead of the catalog id; the tool
+    # must fall back to SVC001 (compulsory insurance) instead of failing.
+    client = ScriptedClient(
+        [
+            '{"tool": "renew_service", "args": {"vehicle_id": "VEH001", "service_id": "TNDS"}}',
+            "Đã gia hạn.",
+        ]
+    )
+    out = run_agent(
+        _ds(), "U001", [{"role": "user", "content": "gia hạn bảo hiểm"}], date(2026, 7, 5), client
+    )
+    step = out["steps"][0]
+    assert step["result"]["ok"] is True
+    assert step["result"]["service_id"] == "SVC001"
+
+
 def test_agent_without_client_returns_notice():
     out = run_agent(
         _ds(), "U001", [{"role": "user", "content": "chào"}], date(2026, 7, 5), client=None
