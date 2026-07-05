@@ -672,6 +672,71 @@ wsClient.on('message_start', (message) => {
   }));
 });
 
+// ── Streaming token coalescing ────────────────────────────────────────────
+// Applying every streamed token straight to the store rebuilds the message
+// array and re-parses the whole markdown per token, so the virtuoso list keeps
+// re-measuring the growing last item and its followOutput jitters. Instead we
+// buffer incoming text per session and flush at most once per animation frame.
+const _chunkBuffers = new Map<string, { turnId: string; text: string }>();
+let _flushRaf: number | null = null;
+
+function _applyBufferedChunks() {
+  _flushRaf = null;
+  if (_chunkBuffers.size === 0) return;
+  const entries = Array.from(_chunkBuffers.entries());
+  _chunkBuffers.clear();
+  useChatStore.setState(state => {
+    const sessionStates = { ...state.sessionStates };
+    for (const [sid, buf] of entries) {
+      const sessionState = getSessionState(sessionStates, sid);
+      const msgs = sessionState.messages;
+      // Find the assistant bubble for this turn (may sit above interleaved
+      // tool_call/tool_result messages), searching from the end.
+      let idx = -1;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant' && msgs[i].turnId === buf.turnId) {
+          idx = i;
+          break;
+        }
+      }
+      let newMessages: Message[];
+      if (idx !== -1) {
+        const target = msgs[idx];
+        newMessages = [
+          ...msgs.slice(0, idx),
+          { ...target, content: target.content + buf.text },
+          ...msgs.slice(idx + 1),
+        ];
+      } else {
+        newMessages = [
+          ...msgs,
+          { role: 'assistant' as const, content: buf.text, turnId: buf.turnId },
+        ];
+      }
+      sessionStates[sid] = { ...sessionState, messages: newMessages };
+    }
+    return { sessionStates };
+  });
+}
+
+function _scheduleChunkFlush() {
+  if (_flushRaf !== null) return;
+  if (typeof requestAnimationFrame === 'undefined') {
+    _applyBufferedChunks();
+    return;
+  }
+  _flushRaf = requestAnimationFrame(_applyBufferedChunks);
+}
+
+/** Flush buffered streaming text immediately (called on turn end). */
+export function flushStreamingChunks() {
+  if (_flushRaf !== null) {
+    if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(_flushRaf);
+    _flushRaf = null;
+  }
+  _applyBufferedChunks();
+}
+
 wsClient.on('message_chunk', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
@@ -684,43 +749,24 @@ wsClient.on('message_chunk', (message) => {
     activeTurnBySession.set(sid, turnId);
   }
 
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    const msgs = sessionState.messages;
-
-    // Find the assistant bubble for the current turn (may sit above interleaved
-    // tool_call/tool_result messages), searching from the end for the latest turn.
-    let idx = -1;
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role === 'assistant' && msgs[i].turnId === turnId) {
-        idx = i;
-        break;
-      }
-    }
-
-    let newMessages: Message[];
-    if (idx !== -1) {
-      const target = msgs[idx];
-      newMessages = [
-        ...msgs.slice(0, idx),
-        { ...target, content: target.content + message.data.content },
-        ...msgs.slice(idx + 1),
-      ];
-    } else {
-      newMessages = [
-        ...msgs,
-        { role: 'assistant' as const, content: message.data.content, turnId },
-      ];
-    }
-
-    return patchSession(state, sid, { messages: newMessages });
-  });
+  const buf = _chunkBuffers.get(sid);
+  if (buf && buf.turnId === turnId) {
+    buf.text += message.data.content;
+  } else {
+    // A new turn started before the previous buffer flushed — apply it first.
+    if (buf) flushStreamingChunks();
+    _chunkBuffers.set(sid, { turnId, text: message.data.content });
+  }
+  _scheduleChunkFlush();
 });
 
 wsClient.on('message_complete', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
   console.log('[Frontend] Received message_complete');
+  // Apply any buffered streaming text before closing the turn so no trailing
+  // tokens are dropped.
+  flushStreamingChunks();
   // End the turn: next agent turn starts a fresh bubble.
   activeTurnBySession.delete(sid);
   useChatStore.setState(state => ({

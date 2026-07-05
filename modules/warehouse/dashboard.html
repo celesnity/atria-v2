@@ -31,6 +31,11 @@
       --motion-fast: 160ms;
       --motion-base: 240ms;
       --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+      /* Minder assistant identity accent (Celesnity blue, per design) */
+      --acc-hi: #7B8FFF;
+      --acc: #4A6CF7;
+      --acc-lo: #3B55C4;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -47,6 +52,9 @@
         --semantic-danger: 0 80% 62%;
         --semantic-warn:   38 92% 58%;
         --semantic-success: 142 55% 55%;
+        --acc-hi: #8B9CFF;
+        --acc: #6C86FF;
+        --acc-lo: #4A5FD0;
       }
     }
 
@@ -483,6 +491,131 @@
     }
     .toast .x { background: transparent; border: 0; color: hsl(var(--canvas) / 0.7); font-size: 16px; padding: 2px 4px; }
 
+    /* ── Minder AI assistant ─────────────────────────────────────── */
+    .cols { display: flex; align-items: flex-start; }
+    .main-col { flex: 1; min-width: 0; }
+    #chat-panel {
+      width: 400px; flex-shrink: 0;
+      position: sticky; top: 64px; align-self: flex-start;
+      height: calc(100vh - 64px); max-height: calc(100vh - 64px);
+      background: hsl(var(--surface-soft) / 0.6);
+      border-left: 1px solid hsl(var(--hairline-soft));
+      display: flex; flex-direction: column; box-sizing: border-box;
+      margin-right: -24px;
+    }
+    #chat-panel[hidden] { display: none; }
+    .chat-head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; border-bottom: 1px solid hsl(var(--hairline-soft));
+    }
+    .chat-avatar {
+      width: 36px; height: 36px; flex-shrink: 0; border-radius: 99px;
+      background: linear-gradient(180deg, var(--acc-hi), var(--acc) 50%, var(--acc-lo));
+      color: #fff; display: flex; align-items: center; justify-content: center;
+    }
+    .chat-head .who { min-width: 0; }
+    .chat-head .who .nm { font-weight: 600; font-size: 15px; }
+    .chat-head .who .sub { font-size: 11.5px; color: hsl(var(--muted-ink)); }
+    .chat-head .close { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+    #chat-body {
+      flex: 1; overflow: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .bub-user {
+      align-self: flex-end; max-width: 85%;
+      background: linear-gradient(180deg, var(--acc-hi), var(--acc) 60%, var(--acc-lo));
+      color: #fff; border-radius: 16px 16px 4px 16px;
+      padding: 11px 15px; font-size: 14.5px;
+    }
+    .bub-ai {
+      align-self: flex-start; max-width: 95%;
+      background: hsl(var(--canvas)); border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 16px 16px 16px 4px;
+      padding: 12px 15px; font-size: 14.5px;
+    }
+    .bub-ai .vi-sub { display: block; font-size: 12.5px; color: hsl(var(--muted-ink)); margin-top: 5px; }
+    .bub-ai .act {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
+      background: hsl(var(--surface-soft)); border: 1px solid var(--acc); color: var(--acc);
+      border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+    }
+    .bub-typing {
+      align-self: flex-start;
+      background: hsl(var(--canvas)); border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 16px; padding: 11px 16px;
+      color: hsl(var(--muted-ink)); font-size: 13px;
+    }
+    .chart-card {
+      margin-top: 12px; background: hsl(var(--surface-soft));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 12px;
+      padding: 12px 10px 6px;
+    }
+    .chart-card svg { display: block; width: 100%; height: auto; }
+    .chat-foot {
+      padding: 12px 14px 14px; border-top: 1px solid hsl(var(--hairline-soft));
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .chat-chips {
+      display: flex; gap: 6px; flex-wrap: nowrap;
+      overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px;
+    }
+    .chat-chip {
+      background: hsl(var(--canvas)); border: 1px solid hsl(var(--hairline-soft));
+      border-radius: 999px; padding: 4px 9px; font-size: 10.5px;
+      color: hsl(var(--muted-ink)); white-space: nowrap; flex: 0 0 auto;
+    }
+    .chat-chip:hover:not(:disabled) { border-color: var(--acc); color: var(--acc); opacity: 1; }
+    .chat-inrow { display: flex; gap: 8px; align-items: center; }
+    .chat-inrow input { flex: 1; min-width: 0; font-size: 14px; padding: 12px 16px; }
+    .chat-iconbtn {
+      width: 36px; height: 36px; flex: 0 0 auto; padding: 0; border-radius: 50%;
+      background: transparent; color: hsl(var(--muted-ink));
+      border: 1px solid hsl(var(--hairline-soft));
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .chat-iconbtn:hover:not(:disabled) { border-color: var(--acc); color: var(--acc); opacity: 1; }
+    .chat-send {
+      width: 40px; height: 40px; flex: 0 0 auto; padding: 0; border-radius: 50%;
+      background: linear-gradient(180deg, var(--acc-hi), var(--acc) 60%, var(--acc-lo));
+      border-color: var(--acc); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    #assist-toggle {
+      background: transparent; color: hsl(var(--ink));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      padding: 9px 14px; font-size: 12.5px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; flex: 0 0 auto;
+    }
+    #assist-toggle.open {
+      background: color-mix(in srgb, var(--acc) 10%, transparent);
+      border: 1.5px solid var(--acc); color: var(--acc);
+    }
+    #chat-float {
+      position: fixed; right: 24px; bottom: 24px; z-index: 35;
+      background: hsl(var(--canvas) / 0.55); backdrop-filter: blur(8px);
+      color: var(--acc); border: 1.5px solid var(--acc);
+      border-radius: 999px; padding: 14px 20px; font-size: 14.5px; font-weight: 600;
+      display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+      box-shadow: 0 10px 30px -8px hsl(var(--ink) / 0.3);
+    }
+    #chat-float.pos-lift { bottom: 116px; }
+    #chat-float[hidden] { display: none; }
+    /* Panel open: collapse wide grids sooner — media queries see the iframe
+       viewport, not the 400px-narrower content column. */
+    @media (max-width: 1260px) {
+      body.chat-open .item-row { grid-template-columns: minmax(140px, 2fr) 90px auto; }
+      body.chat-open .item-row .photo,
+      body.chat-open .item-row .st-wrap,
+      body.chat-open .item-row .cell.price-cell { display: none; }
+      body.chat-open .res-row { grid-template-columns: 1fr; }
+      body.chat-open .hist-headrow, body.chat-open .hist-row {
+        grid-template-columns: minmax(90px, 120px) minmax(70px, 90px) minmax(0, 1fr) minmax(80px, 100px);
+      }
+    }
+    @media (max-width: 900px) {
+      body.chat-open #chat-panel { width: min(400px, 86vw); }
+    }
+
     section[hidden] { display: none !important; }
     @media (max-width: 860px) {
       .item-row { grid-template-columns: minmax(140px, 2fr) 90px auto; }
@@ -506,6 +639,10 @@
         </div>
       </div>
       <nav class="tabs" id="tabs"></nav>
+      <button type="button" id="assist-toggle" aria-label="Toggle AI assistant">
+        <svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2Z" fill="currentColor"/></svg>
+        AI assistant <span class="vi">· Trợ lý AI</span>
+      </button>
       <button type="button" class="bell" id="bell" aria-label="Restock alerts">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="dot" id="bell-dot" hidden></span>
@@ -513,6 +650,8 @@
     </div>
   </header>
 
+  <div class="cols">
+  <div class="main-col">
   <div class="wrap" id="root">
 
     <!-- ═════════ Inventory ═════════ -->
@@ -573,6 +712,42 @@
       </div>
     </section>
   </div>
+  </div><!-- /.main-col -->
+
+  <!-- ═════════ Minder — AI assistant panel ═════════ -->
+  <aside id="chat-panel" hidden aria-label="AI assistant">
+    <div class="chat-head">
+      <span class="chat-avatar">
+        <svg width="17" height="17" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2Z" fill="currentColor"/></svg>
+      </span>
+      <div class="who">
+        <div class="nm">Minder — AI assistant</div>
+        <div class="sub">Trợ lý AI · answers from your live stock data</div>
+      </div>
+      <button type="button" class="secondary close" id="chat-close">✕ Close · Đóng</button>
+    </div>
+    <div id="chat-body"></div>
+    <div class="chat-foot">
+      <div class="chat-chips" id="chat-chips"></div>
+      <div class="chat-inrow">
+        <button type="button" class="chat-iconbtn" id="chat-save"
+                aria-label="Save chat to history &amp; start new · Lưu vào lịch sử &amp; tạo mới"
+                title="Save chat to history &amp; start new · Lưu vào lịch sử &amp; tạo mới">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+        </button>
+        <input type="text" id="chat-input" placeholder="Ask or tell me anything… · Hỏi hoặc nhắn gì cũng được…" />
+        <button type="button" class="chat-send" id="chat-send" aria-label="Send · Gửi" title="Send · Gửi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+  </div><!-- /.cols -->
+
+  <button type="button" id="chat-float" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2Z" fill="currentColor"/></svg>
+    Ask AI assistant · Hỏi trợ lý AI
+  </button>
 
   <!-- ═════════ Add-item dialog ═════════ -->
   <div class="modal-backdrop" id="dlg-backdrop" hidden>
@@ -697,6 +872,28 @@
         { key: "location",      en: "Location",             vi: "Vị trí" }
       ];
 
+      // Minder assistant (design: "Minder — AI assistant")
+      var MINDER_WELCOME = {
+        role: "ai",
+        text: "Hello! I'm Minder, your stock assistant. Tap a question below, or ask in your own words — I can also update stock for you. " +
+              "Typed questions go to the live AI assistant and this conversation is saved to your chat history.",
+        vi: "Xin chào! Tôi là Minder, trợ lý kho của bạn. Bấm câu gợi ý bên dưới hoặc tự gõ — tôi cũng có thể cập nhật kho giúp bạn. " +
+            "Câu hỏi tự gõ sẽ do trợ lý AI thật trả lời và cuộc trò chuyện được lưu vào lịch sử."
+      };
+      // local:true chips answer instantly from the snapshot (with charts);
+      // everything else goes to the real main-chat agent via minder_chat.py.
+      var MINDER_CHIPS = [
+        { label: "What needs restocking? · Cần nhập gì?", q: "What needs restocking?", local: true },
+        { label: "Sales this week · Doanh thu tuần",      q: "Sales this week",        local: true },
+        { label: "Best sellers · Bán chạy nhất",          q: "Best sellers",           local: true },
+        { label: "Stock by category · Tồn theo loại",     q: "Stock by category",      local: true },
+        { label: "Add 10 gear oil · Nhập 10 dầu hộp số",  q: "Add 10 gear oil" }
+      ];
+      var CAT_SHORT = { Engine: "Eng", Gearbox: "Gear", Drivetrain: "Drv", Brakes: "Brake",
+                        Fluids: "Fluid", Filters: "Filter", Electrical: "Elec" };
+      var PIE_PALETTE = ["#4A6CF7", "#0D9488", "#7C3AED", "#D97706", "#16A34A", "#7B8FFF"];
+      var WEEKDAYS_VI = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
       // Header auto-match synonyms (diacritics-folded, lowercase).
       var SYNONYMS = {
         sku:           ["sku", "code", "ma", "mahang", "ma hang", "item code", "part no", "partno"],
@@ -724,7 +921,8 @@
         cart: {},            // sku -> qty
         receiveFor: null,    // item being received
         wizard: null,        // { step, fileName, headers, rows, mapping, edits, result }
-        toast: null
+        toast: null,
+        chat: { open: false, typing: false, msgs: [MINDER_WELCOME], sessionId: null }
       };
 
       /* ═════════ 3. Utilities ═════════ */
@@ -1422,6 +1620,453 @@
         host.appendChild(f);
       }
 
+      /* ═════════ 11b. Minder — AI assistant ═════════ */
+
+      var _chatKey = "";
+
+      function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+      function fmtShort(n) {
+        return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "tr"
+             : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(n);
+      }
+
+      // Fuzzy item lookup by word overlap on name + name_vi (diacritics-folded).
+      function matchItem(q) {
+        var ql = norm(q);
+        var best = null, score = 0;
+        items().forEach(function (it) {
+          var words = norm(it.name + " " + (it.name_vi || ""))
+            .split(/[\s—·(),/\-]+/)
+            .filter(function (w) { return w.length >= 3; });
+          var sc = words.filter(function (w) { return ql.indexOf(w) !== -1; }).length;
+          if (sc > score) { score = sc; best = it; }
+        });
+        return best;
+      }
+
+      /* ── SVG chart builder (bar / line / pie, per design geometry) ── */
+
+      function svgEl(tag, attrs) {
+        var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+        return n;
+      }
+      var MUTED = "hsl(var(--muted-ink))";
+
+      function buildChart(c) {
+        var card = h("div", "chart-card");
+        var rows = c.rows || [];
+        var max = Math.max.apply(null, rows.map(function (r) { return r.value; }).concat([1]));
+        var lab = function (v) { return c.money ? fmtShort(v) : String(v); };
+
+        if (c.type === "bar") {
+          var svg = svgEl("svg", { viewBox: "0 0 300 156" });
+          var n = rows.length || 1;
+          var slot = (300 - 36) / n;
+          rows.forEach(function (r, i) {
+            var w = Math.min(slot - 12, 44);
+            var x = 18 + i * slot + (slot - w) / 2;
+            var bh = Math.max(2, (r.value / max) * 92);
+            svg.appendChild(svgEl("rect", { x: x, y: 128 - bh, width: w, height: bh,
+              rx: 4, fill: r.color || "#4A6CF7" }));
+            var vt = svgEl("text", { x: x + w / 2, y: 122 - bh, "text-anchor": "middle",
+              "font-size": "10", fill: "currentColor" });
+            vt.textContent = lab(r.value);
+            svg.appendChild(vt);
+            var lt = svgEl("text", { x: x + w / 2, y: 144, "text-anchor": "middle",
+              "font-size": "9.5" });
+            lt.setAttribute("style", "fill:" + MUTED);
+            lt.textContent = r.label;
+            svg.appendChild(lt);
+          });
+          card.appendChild(svg);
+        }
+
+        if (c.type === "line") {
+          var svg2 = svgEl("svg", { viewBox: "0 0 300 154" });
+          var n2 = Math.max(rows.length, 2);
+          var xs = function (i) { return 18 + i * 264 / (n2 - 1); };
+          var ys = function (v) { return 126 - (v / max) * 88; };
+          svg2.appendChild(svgEl("polyline", {
+            points: rows.map(function (r, i) { return xs(i) + "," + ys(r.value); }).join(" "),
+            fill: "none", stroke: "#4A6CF7", "stroke-width": "2.5",
+            "stroke-linecap": "round", "stroke-linejoin": "round"
+          }));
+          rows.forEach(function (r, i) {
+            svg2.appendChild(svgEl("circle", { cx: xs(i), cy: ys(r.value), r: 4,
+              fill: "#4A6CF7", stroke: "#fff", "stroke-width": "1.5" }));
+            var vt = svgEl("text", { x: xs(i), y: ys(r.value) - 9, "text-anchor": "middle",
+              "font-size": "9.5", fill: "currentColor" });
+            vt.textContent = lab(r.value);
+            svg2.appendChild(vt);
+            var lt = svgEl("text", { x: xs(i), y: 146, "text-anchor": "middle", "font-size": "9.5" });
+            lt.setAttribute("style", "fill:" + MUTED);
+            lt.textContent = r.label;
+            svg2.appendChild(lt);
+          });
+          card.appendChild(svg2);
+        }
+
+        if (c.type === "pie") {
+          var wrapEl = h("div");
+          wrapEl.style.cssText = "display:flex;align-items:center;gap:12px";
+          var svg3 = svgEl("svg", { viewBox: "0 0 140 140" });
+          svg3.style.cssText = "flex:0 0 128px;width:128px";
+          var total = rows.reduce(function (a, r) { return a + r.value; }, 0) || 1;
+          var ang = -Math.PI / 2;
+          rows.forEach(function (r, i) {
+            var frac = r.value / total;
+            var a2 = ang + frac * 2 * Math.PI;
+            var x1 = 70 + 62 * Math.cos(ang), y1 = 70 + 62 * Math.sin(ang);
+            var x2 = 70 + 62 * Math.cos(a2), y2 = 70 + 62 * Math.sin(a2);
+            var large = frac > 0.5 ? 1 : 0;
+            var d = frac >= 0.999
+              ? "M70 8 A62 62 0 1 1 69.99 8 Z"
+              : "M70 70 L" + x1 + " " + y1 + " A62 62 0 " + large + " 1 " + x2 + " " + y2 + " Z";
+            svg3.appendChild(svgEl("path", { d: d,
+              fill: PIE_PALETTE[i % PIE_PALETTE.length], stroke: "#fff", "stroke-width": "2" }));
+            ang = a2;
+          });
+          wrapEl.appendChild(svg3);
+          var legend = h("div");
+          legend.style.cssText = "display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11.5px";
+          rows.forEach(function (r, i) {
+            var li = h("div");
+            li.style.cssText = "display:flex;align-items:center;gap:6px;min-width:0";
+            var sw = h("span");
+            sw.style.cssText = "width:10px;height:10px;border-radius:3px;flex-shrink:0;background:"
+              + PIE_PALETTE[i % PIE_PALETTE.length];
+            li.appendChild(sw);
+            li.appendChild(h("span", null,
+              r.label + " · " + Math.round((r.value / total) * 100) + "%"));
+            legend.appendChild(li);
+          });
+          wrapEl.appendChild(legend);
+          card.appendChild(wrapEl);
+        }
+        return card;
+      }
+
+      /* ── The bot brain: deterministic, bilingual, over live snapshot ── */
+
+      function replyTo(qRaw) {
+        var q = norm(qRaw);
+        var nm = qRaw.match(/\d+/);
+        var n = nm ? parseInt(nm[0], 10) : 0;
+
+        // 1) "Add 10 gear oil" → real receive (undoable via revert)
+        if (n > 0 && /(add|receive|restock|nhap|nhap kho|nhan|them|mua|dat hang|bo sung)/.test(q)) {
+          var it = matchItem(qRaw);
+          if (!it) {
+            return Promise.resolve({ role: "ai",
+              text: 'I could not find that item. Try the exact name, e.g. "Add 10 gear oil".',
+              vi: 'Tôi không tìm thấy mặt hàng đó. Hãy thử tên chính xác, vd. "Nhập 10 dầu hộp số".' });
+          }
+          var ref = "RCV-" + Date.now().toString(36).toUpperCase();
+          return mutate(["receive", "--sku", it.sku, "--qty", String(n),
+                         "--reference", ref, "--json"], {
+            toast: function () {
+              return { en: "Received " + n + " × " + it.name + " (via assistant)",
+                       vi: "Đã nhập " + n + " " + (it.name_vi || it.name), reference: ref };
+            }
+          }).then(function (res) {
+            if (!res) return { role: "ai",
+              text: "Sorry — that didn't go through. Please try again.",
+              vi: "Xin lỗi — thao tác chưa thành công. Vui lòng thử lại." };
+            return { role: "ai",
+              text: "Done — I added " + n + " × " + it.name + ". Stock is now " + res.balance +
+                    ". If this was a mistake, press Undo in the toast.",
+              vi: "Xong — đã nhập " + n + " " + (it.name_vi || it.name) + ". Tồn kho hiện là " +
+                  res.balance + ". Nếu nhầm, bấm Hoàn tác trên thông báo." };
+          });
+        }
+
+        // 2) "Sold 2 spark plugs" → real sale, clamped to stock
+        if (n > 0 && /(sold|sell|ban|da ban|xuat|xuat kho)/.test(q)) {
+          var it2 = matchItem(qRaw);
+          if (!it2) {
+            return Promise.resolve({ role: "ai",
+              text: 'Which item was sold? Try e.g. "Sold 2 spark plugs".',
+              vi: 'Bán món nào vậy? Thử vd. "Bán 2 bugi".' });
+          }
+          var k = Math.min(n, it2.quantity);
+          if (k === 0) {
+            return Promise.resolve({ role: "ai",
+              text: it2.name + " is out of stock — I did not record a sale.",
+              vi: (it2.name_vi || it2.name) + " đã hết hàng — tôi chưa ghi bán." });
+          }
+          return mutate(["sell", "--line", it2.sku + "=" + k, "--json"], {
+            toast: function (res) {
+              return { en: "Sold " + k + " × " + it2.name + " (via assistant)",
+                       vi: "Đã bán " + k + " " + (it2.name_vi || it2.name),
+                       reference: res && res.reference };
+            }
+          }).then(function (res) {
+            if (!res) return { role: "ai",
+              text: "Sorry — that didn't go through. Please try again.",
+              vi: "Xin lỗi — thao tác chưa thành công. Vui lòng thử lại." };
+            var line = res.lines && res.lines[0];
+            return { role: "ai",
+              text: "Recorded — sold " + k + " × " + it2.name + " for " +
+                    fmtVND(res.total_value) + ". Stock is now " + (line ? line.balance : "?") + ".",
+              vi: "Đã ghi bán " + k + " " + (it2.name_vi || it2.name) + ", tổng " +
+                  fmtVND(res.total_value) + ". Tồn kho còn " + (line ? line.balance : "?") + "." };
+          });
+        }
+
+        // 3) What needs restocking?
+        if (/(restock|low|out of stock|running|het|het hang|sap het|thieu|thieu hang|can nhap|ton thap|canh bao)/.test(q)) {
+          var low = items().filter(attention);
+          if (!low.length) {
+            return Promise.resolve({ role: "ai",
+              text: "Good news — nothing is below minimum right now.",
+              vi: "Tin tốt — không có mặt hàng nào dưới mức tối thiểu." });
+          }
+          return Promise.resolve({ role: "ai",
+            text: "These need restocking: " + low.map(function (x) {
+              return x.name + " (" + x.quantity + " left, min " + x.reorder_level + ")";
+            }).join(", ") + ".",
+            vi: "Cần nhập: " + low.map(function (x) {
+              return (x.name_vi || x.name) + " (còn " + x.quantity + ", tối thiểu " + x.reorder_level + ")";
+            }).join(", ") + ".",
+            chart: { type: "bar", rows: low.slice(0, 8).map(function (x) {
+              return { label: x.sku, value: x.quantity,
+                       color: x.quantity === 0 ? "#DC2626" : "#D97706" };
+            }) },
+            action: "goRes", actionLabel: "Open restock list · Mở danh sách nhập hàng" });
+        }
+
+        // 4) Sales this week
+        if (/(week|revenue|sales|trend|doanh thu|doanh so|tuan|7 ngay|ban duoc)/.test(q)) {
+          var week = (state.snap && state.snap.week) || [];
+          var rows = week.map(function (w) {
+            var d = new Date(w.date + "T00:00:00");
+            return { label: WEEKDAYS_VI[d.getDay()], value: w.value, units: w.units };
+          });
+          var totQ = week.reduce(function (a, w) { return a + w.units; }, 0);
+          var totV = week.reduce(function (a, w) { return a + w.value; }, 0);
+          var best = rows.reduce(function (a, r) { return r.value > a.value ? r : a; },
+                                 rows[0] || { label: "—", value: 0 });
+          return Promise.resolve({ role: "ai",
+            text: "Last 7 days: " + totQ + " items sold for " + fmtVND(totV) +
+                  ". Best day was " + best.label + " (" + fmtVND(best.value) + ").",
+            vi: "7 ngày qua: bán " + totQ + " món, tổng " + fmtVND(totV) +
+                ". Ngày cao nhất: " + best.label + ".",
+            chart: { type: "line", money: true, rows: rows },
+            action: "goHist", actionLabel: "Open sales history · Mở lịch sử bán" });
+        }
+
+        // 5) Best sellers
+        if (/(best|top|most|chay|ban chay|hot nhat|nhieu nhat)/.test(q)) {
+          var sorted = items().slice().sort(function (a, b) { return (b.spw || 0) - (a.spw || 0); });
+          if (!sorted.length || (sorted[0].spw || 0) === 0) {
+            return Promise.resolve({ role: "ai",
+              text: "I need some sales history first — record a few sales and ask again.",
+              vi: "Tôi cần thêm dữ liệu bán hàng — hãy ghi vài đơn rồi hỏi lại nhé." });
+          }
+          var top = sorted.slice(0, 5).filter(function (x) { return (x.spw || 0) > 0; });
+          var rest = sorted.slice(5).reduce(function (a, x) { return a + (x.spw || 0); }, 0);
+          var rows5 = top.map(function (x) { return { label: x.name, value: x.spw }; });
+          if (rest > 0) rows5.push({ label: "All others · Còn lại", value: Math.round(rest * 100) / 100 });
+          return Promise.resolve({ role: "ai",
+            text: "Your best seller is " + top[0].name + " (~" + top[0].spw + "/week)" +
+                  (top[1] ? ", then " + top[1].name + (top[2] ? " and " + top[2].name : "") : "") + ".",
+            vi: "Bán chạy nhất là " + (top[0].name_vi || top[0].name) + " (~" + top[0].spw + "/tuần)" +
+                (top[1] ? ", sau đó là " + (top[1].name_vi || top[1].name) : "") + ".",
+            chart: { type: "pie", rows: rows5 } });
+        }
+
+        // 6) Stock by category
+        if (/(categor|loai|nhom|phan loai|danh muc)/.test(q)) {
+          var byCat = {};
+          items().forEach(function (x) {
+            var c2 = x.category || "Other";
+            byCat[c2] = (byCat[c2] || 0) + x.quantity;
+          });
+          var rows6 = Object.keys(byCat).map(function (c2) {
+            return { label: CAT_SHORT[c2] || c2.slice(0, 5), value: byCat[c2] };
+          });
+          var biggest = Object.keys(byCat).reduce(function (a, c2) {
+            return byCat[c2] > (byCat[a] || 0) ? c2 : a; }, Object.keys(byCat)[0] || "—");
+          return Promise.resolve({ role: "ai",
+            text: "You track " + items().length + " items across " + rows6.length +
+                  " categories. " + biggest + " holds the most stock (" + (byCat[biggest] || 0) + " units).",
+            vi: "Bạn đang theo dõi " + items().length + " mặt hàng trong " + rows6.length +
+                " nhóm. Nhóm " + biggest + " có tồn kho nhiều nhất (" + (byCat[biggest] || 0) + ").",
+            chart: { type: "bar", rows: rows6 } });
+        }
+
+        // 7) Fallback help
+        return Promise.resolve({ role: "ai",
+          text: 'I can answer questions like "What needs restocking?", "Sales this week", ' +
+                '"Best sellers" — or update stock for you: "Add 10 gear oil", "Sold 2 spark plugs".',
+          vi: 'Tôi có thể trả lời: "Cần nhập gì?", "Doanh thu tuần", "Bán chạy nhất" — ' +
+              'hoặc cập nhật kho: "Nhập 10 dầu hộp số", "Bán 2 bugi".' });
+      }
+
+      // Real AI: one full agent turn via minder_chat.py -> backend loopback.
+      // Falls back to the local keyword brain if the agent is unreachable.
+      function askAgent(text) {
+        return AtriaDash.json("minder_chat.py", [], {
+          stdin: JSON.stringify({ message: text, chat_session_id: state.chat.sessionId }),
+          timeout_ms: 110000
+        }).then(function (res) {
+          if (res && res.session_id) state.chat.sessionId = res.session_id;
+          // error wins even when a reply exists: failed turns persist the
+          // API error text as the assistant message.
+          if (res && !res.error && res.reply) {
+            // Agent may have changed stock — reconcile the tables.
+            refresh();
+            var m = { role: "ai", text: res.reply };
+            if (res.file && state.chat.sessionId) {
+              // A report file was created — offer to open it in the Files tab.
+              m.openFile = { file: res.file, sessionId: state.chat.sessionId };
+            }
+            return m;
+          }
+          throw new Error((res && res.error) || "empty reply");
+        }).catch(function () {
+          return replyTo(text).then(function (m) {
+            m.text += " · offline";
+            return m;
+          });
+        });
+      }
+
+      // Save the conversation into the module's workspace project. The
+      // backend asks for confirmation (needs_workspace) before creating it.
+      function saveConversation(createWorkspace) {
+        state.chat.typing = true;
+        renderChat();
+        AtriaDash.json("minder_chat.py", [], {
+          stdin: JSON.stringify({ action: "save", chat_session_id: state.chat.sessionId,
+                                  create_workspace: !!createWorkspace }),
+          timeout_ms: 60000
+        }).then(function (res) {
+          state.chat.typing = false;
+          if (res && res.needs_workspace) {
+            state.chat.msgs.push({
+              role: "ai",
+              text: 'There is no "' + res.workspace_name + '" workspace yet — create one for these chats?',
+              vi: 'Chưa có không gian làm việc "' + res.workspace_name + '" — tạo mới nhé?',
+              confirmSave: true
+            });
+            renderChat();
+            return;
+          }
+          if (res && res.ok) {
+            showToast({
+              en: 'Saved to "' + res.workspace + '" as "' + res.title + '".',
+              vi: 'Đã lưu vào "' + res.workspace + '": "' + res.title + '".'
+            });
+            var sid = res.session_id || state.chat.sessionId;
+            state.chat.msgs = [MINDER_WELCOME];
+            state.chat.sessionId = null;
+            renderChat();
+            // Open the saved conversation in the main chat + history sidebar.
+            if (AtriaDash.openHistory && sid) {
+              AtriaDash.openHistory(sid, res.project_id);
+            }
+            return;
+          }
+          throw new Error((res && res.error) || "save failed");
+        }).catch(function (err) {
+          state.chat.typing = false;
+          showToast({ en: "Couldn't save this chat: " + ((err && err.message) || "").slice(0, 120),
+                      vi: "Chưa lưu được đoạn chat.", error: true });
+          renderChat();
+        });
+      }
+
+      function sendChat(preset, local) {
+        var input = $("chat-input");
+        var text = (preset != null ? preset : input.value).trim();
+        if (!text) return;
+        if (preset == null) input.value = "";
+        state.chat.msgs.push({ role: "user", text: text });
+        state.chat.typing = true;
+        state.chat.open = true;
+        renderChat();
+        var answer = local ? replyTo(text) : askAgent(text);
+        Promise.all([answer, delay(700)]).then(function (res) {
+          state.chat.msgs.push(res[0]);
+          state.chat.typing = false;
+          renderChat();
+        });
+      }
+
+      function renderChat() {
+        var chat = state.chat;
+        $("chat-panel").hidden = !chat.open;
+        document.body.classList.toggle("chat-open", chat.open);
+        $("assist-toggle").classList.toggle("open", chat.open);
+        var float = $("chat-float");
+        float.hidden = chat.open || !!state.wizard;
+        float.classList.toggle("pos-lift", state.tab === "pos");
+
+        if (!chat.open) { reportSize(); return; }
+
+        $("chat-save").disabled = chat.typing;
+        var body = $("chat-body");
+        body.innerHTML = "";
+        chat.msgs.forEach(function (m) {
+          if (m.role === "user") {
+            body.appendChild(h("div", "bub-user", m.text));
+            return;
+          }
+          var b = h("div", "bub-ai");
+          b.appendChild(document.createTextNode(m.text));
+          if (m.vi) b.appendChild(h("span", "vi-sub", m.vi));
+          if (m.chart) b.appendChild(buildChart(m.chart));
+          if (m.action) {
+            var act = h("button", "act", m.actionLabel + " →");
+            act.addEventListener("click", function () {
+              setTab(m.action === "goHist" ? "hist" : "res");
+            });
+            var actWrap = h("div");
+            actWrap.appendChild(act);
+            b.appendChild(actWrap);
+          }
+          if (m.openFile) {
+            var ofWrap = h("div");
+            var ofBtn = h("button", "act", "📄 Open " + m.openFile.file + " in Files →");
+            ofBtn.addEventListener("click", function () {
+              if (AtriaDash.openHistory) AtriaDash.openHistory(m.openFile.sessionId, null);
+            });
+            ofWrap.appendChild(ofBtn);
+            b.appendChild(ofWrap);
+          }
+          if (m.confirmSave) {
+            var cWrap = h("div");
+            cWrap.style.cssText = "display:flex;gap:8px;margin-top:10px;flex-wrap:wrap";
+            var yes = h("button", "act", "Create workspace · Tạo →");
+            yes.addEventListener("click", function () {
+              var i = chat.msgs.indexOf(m);
+              if (i >= 0) chat.msgs.splice(i, 1);
+              saveConversation(true);
+            });
+            var no = h("button", "act", "Not now · Để sau");
+            no.style.cssText = "border-color:hsl(var(--hairline-soft));color:hsl(var(--muted-ink));background:transparent";
+            no.addEventListener("click", function () {
+              var i = chat.msgs.indexOf(m);
+              if (i >= 0) chat.msgs.splice(i, 1);
+              renderChat();
+            });
+            cWrap.appendChild(yes);
+            cWrap.appendChild(no);
+            b.appendChild(cWrap);
+          }
+          body.appendChild(b);
+        });
+        if (chat.typing) {
+          body.appendChild(h("div", "bub-typing", "Minder is thinking… · Đang suy nghĩ…"));
+        }
+        var key = chat.msgs.length + ":" + chat.typing;
+        if (key !== _chatKey) { _chatKey = key; body.scrollTop = body.scrollHeight; }
+        reportSize();
+      }
+
       /* ═════════ 12. Add-item dialog ═════════ */
 
       function genSku(name) {
@@ -1855,6 +2500,7 @@
         if (state.tab === "pos") renderPos();
         if (state.tab === "res") renderRes();
         if (state.tab === "hist") renderHist();
+        renderChat();
         renderToast();
         reportSize();
       }
@@ -1913,6 +2559,39 @@
       $("wiz-cancel").addEventListener("click", function () { closeWizard(false); });
       $("file-input").addEventListener("change", function () {
         handleFile(this.files && this.files[0]);
+      });
+
+      // Minder assistant
+      $("assist-toggle").addEventListener("click", function () {
+        state.chat.open = !state.chat.open;
+        renderChat();
+      });
+      $("chat-float").addEventListener("click", function () {
+        state.chat.open = true;
+        renderChat();
+      });
+      $("chat-close").addEventListener("click", function () {
+        state.chat.open = false;
+        renderChat();
+      });
+      $("chat-send").addEventListener("click", function () { sendChat(); });
+      $("chat-input").addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); sendChat(); }
+      });
+      $("chat-save").addEventListener("click", function () {
+        if (state.chat.typing) return;
+        if (!state.chat.sessionId) {
+          // Only agent-backed turns exist server-side; offline-only chats
+          // have nothing stored to move into a workspace.
+          showToast({ en: "Nothing to save yet.", vi: "Chưa có gì để lưu." });
+          return;
+        }
+        saveConversation(false);
+      });
+      MINDER_CHIPS.forEach(function (cc) {
+        var b = h("button", "chat-chip", cc.label);
+        b.addEventListener("click", function () { sendChat(cc.q, !!cc.local); });
+        $("chat-chips").appendChild(b);
       });
 
       var changeRefresh = debounce(function () {

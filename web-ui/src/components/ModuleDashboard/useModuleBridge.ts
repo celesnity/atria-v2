@@ -23,6 +23,7 @@ type InboundMessage =
       props?: Record<string, unknown>;
     }
   | { type: 'openChat' }
+  | { type: 'openHistory'; sessionId: string; projectId?: number | null }
   | {
       type: 'run';
       requestId: string;
@@ -131,6 +132,23 @@ export function useModuleBridge({
           break;
         }
         case 'openChat': {
+          useModulesStore.getState().closeDashboard();
+          break;
+        }
+        case 'openHistory': {
+          // Surface a chat the widget just saved: refresh the history sidebar
+          // (so a new project like "Warehouse" appears), open the conversation
+          // in the main view, then close the dashboard.
+          try {
+            const { useProjectsStore } = await import('../../stores/projects');
+            const { useChatStore } = await import('../../stores/chat');
+            await useProjectsStore.getState().loadProjects();
+            if (msg.sessionId) {
+              await useChatStore.getState().loadSession(String(msg.sessionId));
+            }
+          } catch (err) {
+            console.error('[module bridge] openHistory failed', err);
+          }
           useModulesStore.getState().closeDashboard();
           break;
         }

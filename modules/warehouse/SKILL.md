@@ -100,5 +100,26 @@ automatically) — do not set them manually.
 - `blocks/item_form.html` — sandboxed iframe form for an inventory item.
 - `dashboard.html` — GearStock dashboard (bilingual EN·VI): inventory, record
   sale (POS cart), needs-restock and sales-history tabs plus a CSV import
-  wizard, all driven by `inventory.py` through the AtriaDash bridge.
+  wizard, all driven by `inventory.py` through the AtriaDash bridge. Includes
+  **Minder**, a docked chat assistant: typed questions are answered by the
+  REAL main-chat agent (via `scripts/minder_chat.py` → the backend's
+  `/api/modules/warehouse/chat` route, one dedicated auto-titled session per
+  widget conversation, visible in chat history), while the four data
+  quick-chips answer instantly from the local snapshot with charts. If the
+  agent is unreachable the widget falls back to a local keyword brain
+  (replies marked "· offline"). The warehouse chat runs with **thinking off**,
+  starts **on the warehouse module directory** (its bash cwd holds
+  `scripts/inventory.py` + `data/warehouse.db`), and gets the **live snapshot
+  injected into every turn** so it answers from data (not filesystem
+  exploration) even with a weak model; replies match the user's language.
+  Asking for a "report"/"file"/"export" deterministically writes a markdown
+  report (`inventory.py report`) into the conversation's working dir — it shows
+  in that conversation's Files tab and the reply names it truthfully. Minder
+  **cannot generate images** and says so instead of pretending. The save button
+  moves the conversation into the module's "Warehouse" workspace project
+  (created after in-chat confirmation via `/chat/save`), re-titles it by
+  LLM-summarizing the recent messages, and opens it in the main history via the
+  dashboard bridge's `openHistory`.
+- `scripts/minder_chat.py` — loopback client for the Minder widget (stdin
+  JSON → POST `$ATRIA_API_BASE/api/modules/warehouse/chat` → stdout JSON).
 - `data/warehouse.db` — live SQLite store (auto-created; gitignored).

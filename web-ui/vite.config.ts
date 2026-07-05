@@ -2,8 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Get backend URL from environment or default to localhost:8080
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:8080';
+// Get backend URL from environment or default to the backend's IPv4 bind.
+// Use 127.0.0.1 (not "localhost"): on Windows "localhost" resolves to IPv6
+// ::1 first, but run-backend.ps1 binds 127.0.0.1 only, so a localhost target
+// makes Node's proxy log AggregateError [ECONNREFUSED] on the ::1 attempt.
+const apiUrl = process.env.VITE_API_URL || 'http://127.0.0.1:8080';
 
 // https://vitejs.dev/config/
 export default defineConfig({

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
+import { wsClient } from '../api/websocket';
 import type { FsEntry, FsScope } from '../types';
 import { fsScopeKey } from '../types';
 
@@ -242,3 +243,16 @@ export const useFileExplorerStore = create<FileExplorerState>((set, get) => ({
     await get().loadDir(scope, parent);
   },
 }));
+
+// Auto-refresh a conversation's file tree when the backend reports a change
+// (agent/fs.py writes broadcast `artifact.changed`). Only refreshes trees that
+// are already loaded, so it's cheap.
+wsClient.on('artifact.changed', (msg) => {
+  const m = msg as unknown as { scope?: string; conversation_id?: number | string };
+  if (m?.scope !== 'conv' || m.conversation_id == null) return;
+  const scope: FsScope = { kind: 'conv', id: Number(m.conversation_id) };
+  const key = fsScopeKey(scope);
+  if (useFileExplorerStore.getState().treesByScope[key]?.rootLoaded) {
+    void useFileExplorerStore.getState().refresh(scope);
+  }
+});
