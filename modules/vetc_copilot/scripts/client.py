@@ -1,4 +1,5 @@
 """Thin OpenAI-compatible Brain client; reports availability so callers can fall back."""
+
 from __future__ import annotations
 
 from typing import Callable, List, Optional
@@ -39,5 +40,6 @@ class BrainClient:
         kw.setdefault("temperature", 0)
         kw.setdefault("max_tokens", 500)
         resp = self._client.chat.completions.create(  # type: ignore[attr-defined]
-            model=self._cfg.model, messages=messages, **kw)
+            model=self._cfg.model, messages=messages, **kw
+        )
         return resp.choices[0].message.content

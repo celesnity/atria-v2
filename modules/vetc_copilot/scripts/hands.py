@@ -1,4 +1,5 @@
 """Hands: execute a renewal end-to-end over the mock APIs (consent-gated)."""
+
 from __future__ import annotations
 
 import sys
@@ -18,8 +19,15 @@ PRICES: dict[str, int] = {"SVC001": 500700, "SVC002": 300000, "SVC003": 0}
 _EXPIRY_COL = {"SVC001": "civil_liability_expiry", "SVC003": "inspection_expiry"}
 
 
-def renew(ds, user_id: str, vehicle_id: str, service_id: str, today: date,
-          consent: bool = True, audit_path: str | Path | None = None) -> dict:
+def renew(
+    ds,
+    user_id: str,
+    vehicle_id: str,
+    service_id: str,
+    today: date,
+    consent: bool = True,
+    audit_path: str | Path | None = None,
+) -> dict:
     """Run consent -> pay -> renew -> update wallet -> audit; return a receipt.
 
     Args:
@@ -54,18 +62,40 @@ def renew(ds, user_id: str, vehicle_id: str, service_id: str, today: date,
 
     if new_expiry:
         vehicle[col] = new_expiry
-    ds.documents.append({
-        "document_id": renewal["policy_id"], "vehicle_id": vehicle_id,
-        "document_type": "Insurance", "document_name": service.get("service_name", service_id),
-        "status": "Valid", "issue_date": today.isoformat(), "expiry_date": new_expiry,
-        "uploaded": "Yes", "notes": "Gia hạn qua Auto-Pilot (mô phỏng)",
-    })
+    ds.documents.append(
+        {
+            "document_id": renewal["policy_id"],
+            "vehicle_id": vehicle_id,
+            "document_type": "Insurance",
+            "document_name": service.get("service_name", service_id),
+            "status": "Valid",
+            "issue_date": today.isoformat(),
+            "expiry_date": new_expiry,
+            "uploaded": "Yes",
+            "notes": "Gia hạn qua Auto-Pilot (mô phỏng)",
+        }
+    )
     receipt = {
-        "ok": True, "service_id": service_id, "service_name": service.get("service_name", service_id),
-        "policy_id": renewal["policy_id"], "amount": amount, "txn_id": pay["txn_id"],
-        "old_expiry": old_expiry, "new_expiry": new_expiry, "wallet_updated": True,
-        "simulated": True, "advisory": ADVISORY_NOTE,
+        "ok": True,
+        "service_id": service_id,
+        "service_name": service.get("service_name", service_id),
+        "policy_id": renewal["policy_id"],
+        "amount": amount,
+        "txn_id": pay["txn_id"],
+        "old_expiry": old_expiry,
+        "new_expiry": new_expiry,
+        "wallet_updated": True,
+        "simulated": True,
+        "advisory": ADVISORY_NOTE,
     }
-    audit.append_event({"type": "renew", **{k: receipt[k] for k in
-                        ("service_id", "policy_id", "amount", "old_expiry", "new_expiry")}}, audit_path)
+    audit.append_event(
+        {
+            "type": "renew",
+            **{
+                k: receipt[k]
+                for k in ("service_id", "policy_id", "amount", "old_expiry", "new_expiry")
+            },
+        },
+        audit_path,
+    )
     return receipt

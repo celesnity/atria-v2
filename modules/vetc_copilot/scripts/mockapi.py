@@ -1,4 +1,5 @@
 """In-process mock of the challenge platform APIs (deterministic, labelled simulated)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -15,14 +16,22 @@ def add_one_year(iso: str) -> str:
 
 def wallet_pay(amount: int, order_id: str) -> dict:
     """Simulate a VETC Wallet payment. Deterministic txn id derived from the order."""
-    return {"payment_status": "success", "txn_id": f"TXN-{order_id}", "amount": amount,
-            "simulated": True}
+    return {
+        "payment_status": "success",
+        "txn_id": f"TXN-{order_id}",
+        "amount": amount,
+        "simulated": True,
+    }
 
 
 def insurance_renew(vehicle_id: str, service_id: str, new_expiry: str) -> dict:
     """Simulate an insurance renewal, returning a policy id and the new expiry."""
-    return {"status": "success", "policy_id": f"POL-{vehicle_id}-{service_id}",
-            "new_expiry": new_expiry, "simulated": True}
+    return {
+        "status": "success",
+        "policy_id": f"POL-{vehicle_id}-{service_id}",
+        "new_expiry": new_expiry,
+        "simulated": True,
+    }
 
 
 def roadside_activate(vehicle_id: str) -> dict:

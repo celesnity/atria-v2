@@ -7,8 +7,14 @@ import audit
 def _ds() -> Dataset:
     return Dataset(
         users=[{"user_id": "U001"}],
-        vehicles=[{"vehicle_id": "VEH001", "user_id": "U001", "vehicle_type": "Car",
-                   "civil_liability_expiry": "2026-08-15"}],
+        vehicles=[
+            {
+                "vehicle_id": "VEH001",
+                "user_id": "U001",
+                "vehicle_type": "Car",
+                "civil_liability_expiry": "2026-08-15",
+            }
+        ],
         documents=[],
         services=[{"service_id": "SVC001", "service_name": "Civil Liability Insurance Renewal"}],
     )

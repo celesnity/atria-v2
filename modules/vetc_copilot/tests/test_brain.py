@@ -6,19 +6,39 @@ from brain import recommend, ask
 def _ds() -> Dataset:
     return Dataset(
         users=[{"user_id": "U001", "primary_vehicle_id": "VEH001"}],
-        vehicles=[{"vehicle_id": "VEH001", "user_id": "U001", "vehicle_type": "Car",
-                   "fuel_type": "Gasoline", "vehicle_age_years": "8",
-                   "roadside_assistance_status": "Inactive",
-                   "inspection_expiry": "2026-07-20", "civil_liability_expiry": "2026-07-15",
-                   "registration_expiry": "2029-01-10"}],
-        services=[
-            {"service_id": "SVC001", "service_name": "Civil Liability Insurance Renewal",
-             "context_to_recommend": "insurance expiring"},
-            {"service_id": "SVC002", "service_name": "Roadside Assistance",
-             "context_to_recommend": "old vehicle"},
+        vehicles=[
+            {
+                "vehicle_id": "VEH001",
+                "user_id": "U001",
+                "vehicle_type": "Car",
+                "fuel_type": "Gasoline",
+                "vehicle_age_years": "8",
+                "roadside_assistance_status": "Inactive",
+                "inspection_expiry": "2026-07-20",
+                "civil_liability_expiry": "2026-07-15",
+                "registration_expiry": "2029-01-10",
+            }
         ],
-        knowledge=[{"knowledge_id": "K001", "question": "Khi nào cần đăng kiểm",
-                    "answer": "Theo tuổi xe.", "topic": "Đăng kiểm"}],
+        services=[
+            {
+                "service_id": "SVC001",
+                "service_name": "Civil Liability Insurance Renewal",
+                "context_to_recommend": "insurance expiring",
+            },
+            {
+                "service_id": "SVC002",
+                "service_name": "Roadside Assistance",
+                "context_to_recommend": "old vehicle",
+            },
+        ],
+        knowledge=[
+            {
+                "knowledge_id": "K001",
+                "question": "Khi nào cần đăng kiểm",
+                "answer": "Theo tuổi xe.",
+                "topic": "Đăng kiểm",
+            }
+        ],
     )
 
 

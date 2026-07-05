@@ -1,4 +1,5 @@
 """Append-only JSONL audit trail for the module."""
+
 from __future__ import annotations
 
 import json
