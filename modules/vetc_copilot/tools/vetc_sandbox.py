@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -154,3 +155,45 @@ def handle(method: str, path: str, headers: dict, body: bytes, state: SandboxSta
             return 404, {"code": "NOT_FOUND", "message": "payment not found"}
         return 200, {"code": "00", "message": "completed"}
     return 404, {"code": "NOT_FOUND", "message": f"no route {method} {path}"}
+
+
+def default_poster(url: str, payload: dict) -> None:
+    """POST a JSON IPN to ``url`` (best-effort; ignores the response)."""
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST",
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10):  # noqa: S310 - internal sandbox call
+            return
+    except Exception:  # noqa: BLE001 - IPN delivery is best-effort in the sandbox
+        return
+
+
+def serve(state: SandboxState, port: int) -> None:
+    """Run the sandbox HTTP server (threaded) until interrupted."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def _dispatch(self) -> None:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            body = self.rfile.read(length) if length else b""
+            status, data = handle(self.command, self.path, dict(self.headers), body, state, default_poster)
+            payload = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(payload)
+
+        do_GET = _dispatch  # noqa: N815
+        do_POST = _dispatch  # noqa: N815
+
+        def log_message(self, *a) -> None:
+            return
+
+    ThreadingHTTPServer(("0.0.0.0", port), Handler).serve_forever()  # noqa: S104 - container service
+
+
+if __name__ == "__main__":
+    st = new_state(dict(os.environ))
+    print(json.dumps({"sandbox": "up", "port": int(os.environ.get("SANDBOX_PORT", "9099"))}))
+    serve(st, int(os.environ.get("SANDBOX_PORT", "9099")))
