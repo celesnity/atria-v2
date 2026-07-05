@@ -27,3 +27,9 @@ def test_dashboard_has_agentic_chat():
     assert "chat-log" in html
     assert "'agent'" in html  # callApi('agent', ...) drives the assistant
     assert "tool-chip" in html  # shows which tools the AI invoked
+
+
+def test_dashboard_polls_wallet_for_pending_renewal():
+    html = (Path(__file__).resolve().parent.parent / "dashboard.html").read_text(encoding="utf-8")
+    assert "pending_user_confirmation" in html  # handles the async gateway path
+    assert "pollWallet" in html  # polls /api/wallet until the policy appears
