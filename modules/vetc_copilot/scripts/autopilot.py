@@ -149,7 +149,7 @@ def _cmd_serve(ds, today: date, port: int) -> int:
             return
 
     print(json.dumps({"serving": f"http://localhost:{port}", "dashboard": "/"}))
-    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()  # noqa: S104 - container service
     return 0
 
 
