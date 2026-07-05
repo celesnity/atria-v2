@@ -1,0 +1,1935 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Warehouse · GearStock</title>
+  <link rel="stylesheet" href="__base.css" />
+  <link rel="preconnect" href="https://rsms.me" crossorigin />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <style>
+    /* ── Editorial token bridge — projects the GearStock prototype onto the
+         web-ui design system (ink/canvas/hairline/blocks). Layout and
+         behaviour follow the GearStock design; the skin is the host app's. ── */
+    :root {
+      --ink: 0 0% 0%;
+      --canvas: 0 0% 100%;
+      --surface-soft: 40 22% 96%;
+      --hairline: 0 0% 12%;
+      --hairline-soft: 0 0% 88%;
+      --muted-ink: 0 0% 38%;
+
+      --block-lime:  72 70% 78%;
+      --block-coral:   8 80% 78%;
+      --block-cream: 38 60% 92%;
+      --block-mint:  150 50% 86%;
+
+      --semantic-danger: 0 70% 45%;
+      --semantic-warn:   38 92% 42%;
+      --semantic-success: 142 68% 28%;
+
+      --motion-fast: 160ms;
+      --motion-base: 240ms;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: 0 0% 96%;
+        --canvas: 222 18% 11%;
+        --surface-soft: 222 14% 16%;
+        --hairline: 0 0% 70%;
+        --hairline-soft: 222 10% 26%;
+        --muted-ink: 220 8% 62%;
+        --block-lime:  72 40% 30%;
+        --block-coral:   8 45% 32%;
+        --block-cream: 38 30% 24%;
+        --block-mint:  150 30% 26%;
+        --semantic-danger: 0 80% 62%;
+        --semantic-warn:   38 92% 58%;
+        --semantic-success: 142 55% 55%;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: 'kern' 1, 'cv11' 1, 'ss01' 1;
+      -webkit-font-smoothing: antialiased;
+      font-weight: 320;
+      color: hsl(var(--ink));
+      background: hsl(var(--canvas));
+    }
+    body { padding: 0 24px 96px; }
+    .mono { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-variant-numeric: tabular-nums; }
+    .eyebrow {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-size: 11px; font-weight: 500;
+    }
+    h1, h2, h3 { font-weight: 540; letter-spacing: -0.01em; margin: 0; }
+    .vi { color: hsl(var(--muted-ink)); font-weight: 320; }
+    .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Buttons ──────────────────────────────────────────────────── */
+    button {
+      font: inherit; cursor: pointer;
+      background: hsl(var(--ink)); color: hsl(var(--canvas));
+      border: 1px solid hsl(var(--ink));
+      border-radius: 999px; padding: 8px 16px;
+      font-size: 13px; font-weight: 500; line-height: 1;
+      transition: background var(--motion-fast) var(--ease-out),
+                  color var(--motion-fast) var(--ease-out),
+                  border-color var(--motion-fast) var(--ease-out),
+                  opacity var(--motion-fast) var(--ease-out);
+    }
+    button.secondary {
+      background: transparent; color: hsl(var(--ink));
+      border-color: hsl(var(--hairline-soft));
+    }
+    button.secondary:hover:not(:disabled) { background: hsl(var(--surface-soft)); }
+    button:hover:not(:disabled) { opacity: 0.88; }
+    button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px hsl(var(--canvas)), 0 0 0 4px hsl(var(--ink));
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.success {
+      background: hsl(var(--semantic-success)); border-color: hsl(var(--semantic-success));
+      color: hsl(var(--canvas));
+    }
+    button.danger-ghost {
+      background: transparent; color: hsl(var(--semantic-danger));
+      border-color: hsl(var(--semantic-danger) / 0.4);
+    }
+    .link-btn {
+      background: transparent; border: 0; color: hsl(var(--muted-ink));
+      font-size: 12px; cursor: pointer; padding: 4px 6px; border-radius: 6px;
+    }
+    .link-btn:hover { color: hsl(var(--ink)); background: hsl(var(--surface-soft)); }
+    .icon-btn {
+      background: transparent; border: 0; color: hsl(var(--muted-ink));
+      font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 8px; cursor: pointer;
+    }
+    .icon-btn:hover { background: hsl(var(--surface-soft)); color: hsl(var(--ink)); }
+
+    /* ── Sticky header: brand + tabs + bell ──────────────────────── */
+    header.gs-top {
+      position: sticky; top: 0; z-index: 30;
+      background: hsl(var(--canvas) / 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid hsl(var(--hairline));
+      margin: 0 -24px; padding: 0 24px;
+    }
+    .gs-top-inner {
+      max-width: 1080px; margin: 0 auto; height: 64px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand svg { flex: 0 0 auto; }
+    .brand .wordmark { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+    .brand .crumb { font-size: 10px; white-space: nowrap; color: hsl(var(--muted-ink)); }
+
+    nav.tabs { display: flex; align-items: stretch; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; }
+    .tab {
+      background: transparent; border: 0; border-radius: 0;
+      border-bottom: 3px solid transparent;
+      color: hsl(var(--muted-ink));
+      display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+      gap: 1px; padding: 8px 12px; white-space: nowrap; position: relative;
+    }
+    .tab:hover:not(:disabled) { opacity: 1; color: hsl(var(--ink)); background: hsl(var(--surface-soft) / 0.6); }
+    .tab .en { font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+    .tab .vi { font-size: 10.5px; }
+    .tab.active { border-bottom-color: hsl(var(--ink)); color: hsl(var(--ink)); }
+    .tab.active .en { font-weight: 600; }
+    .tab .badge {
+      background: hsl(var(--semantic-danger)); color: hsl(var(--canvas));
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10px; font-weight: 600; line-height: 1;
+      border-radius: 999px; padding: 3px 6px; min-width: 18px; text-align: center;
+    }
+    .bell {
+      position: relative; background: transparent; color: hsl(var(--ink));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      width: 36px; height: 36px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    }
+    .bell .dot {
+      position: absolute; top: 5px; right: 6px; width: 8px; height: 8px;
+      border-radius: 50%; background: hsl(var(--semantic-danger));
+      animation: pulse-live 2s infinite;
+    }
+    @keyframes pulse-live {
+      0%, 100% { box-shadow: 0 0 0 3px hsl(var(--semantic-danger) / 0.18); }
+      50%      { box-shadow: 0 0 0 7px hsl(var(--semantic-danger) / 0.04); }
+    }
+
+    /* ── Inventory toolbar ────────────────────────────────────────── */
+    .subbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .subbar .search { flex: 1 1 260px; position: relative; }
+    .subbar .search svg {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      opacity: 0.45; pointer-events: none;
+    }
+    input[type="text"], input[type="number"], select {
+      font: inherit; font-size: 14px; color: hsl(var(--ink));
+      background: hsl(var(--canvas));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      padding: 9px 14px; outline: none; width: 100%;
+      transition: border-color var(--motion-fast) var(--ease-out),
+                  box-shadow var(--motion-fast) var(--ease-out);
+    }
+    input::placeholder { color: hsl(var(--ink) / 0.4); }
+    input:focus, select:focus {
+      border-color: hsl(var(--ink));
+      box-shadow: 0 0 0 3px hsl(var(--ink) / 0.08);
+    }
+    .subbar .search input { padding-left: 34px; }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .pill {
+      background: transparent; color: hsl(var(--muted-ink));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      padding: 6px 12px; font-size: 12px;
+    }
+    .pill.active {
+      border-color: hsl(var(--ink)); color: hsl(var(--ink));
+      background: hsl(var(--surface-soft)); font-weight: 600;
+    }
+    .pill .vi { font-size: 11px; }
+    .count-note { margin-left: auto; font-size: 12px; color: hsl(var(--muted-ink)); white-space: nowrap; }
+
+    /* ── Panels & item rows ───────────────────────────────────────── */
+    .panel {
+      border: 1px solid hsl(var(--hairline));
+      background: hsl(var(--canvas)); border-radius: 12px; overflow: hidden;
+    }
+    .item-row {
+      display: grid;
+      grid-template-columns: 44px minmax(160px, 2fr) minmax(120px, auto) 96px 110px auto;
+      align-items: center; gap: 14px;
+      padding: 13px 18px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+    }
+    .item-row:last-child { border-bottom: 0; }
+    .item-row.low { background: hsl(var(--block-cream) / 0.5); }
+    .item-row.out { background: hsl(var(--block-coral) / 0.28); }
+    body.compact .item-row {
+      grid-template-columns: minmax(150px, 2fr) minmax(110px, auto) 86px 100px auto;
+      padding: 7px 18px; gap: 10px;
+    }
+    body.compact .photo { display: none; }
+    .photo {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: hsl(var(--surface-soft));
+      border: 1px solid hsl(var(--hairline-soft));
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 12px; font-weight: 600; color: hsl(var(--muted-ink));
+    }
+    .imeta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .imeta .nm { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    body.compact .imeta .nm { font-size: 13px; }
+    .imeta .sub {
+      font-size: 11.5px; color: hsl(var(--muted-ink));
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .imeta .sub .mono { font-size: 10.5px; letter-spacing: 0.04em; }
+
+    .st {
+      display: inline-flex; align-items: center; gap: 6px;
+      border-radius: 999px; padding: 4px 10px;
+      font-size: 11px; font-weight: 600; white-space: nowrap; width: max-content;
+    }
+    .st .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .st.ok  { background: hsl(var(--block-mint) / 0.6);  color: hsl(var(--semantic-success)); }
+    .st.ok .dot { background: hsl(var(--semantic-success)); }
+    .st.low { background: hsl(var(--block-cream));       color: hsl(var(--semantic-warn)); }
+    .st.low .dot { background: hsl(var(--semantic-warn)); }
+    .st.out { background: hsl(var(--block-coral) / 0.55); color: hsl(var(--semantic-danger)); }
+    .st.out .dot { background: hsl(var(--semantic-danger)); }
+    .st-wrap { display: flex; flex-direction: column; gap: 3px; }
+    .days-hint { font-size: 10.5px; color: hsl(var(--semantic-warn)); }
+
+    .cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .cell .cap {
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: hsl(var(--muted-ink));
+    }
+    .cell .val { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 540; }
+    .qty-btn {
+      background: transparent; color: hsl(var(--ink));
+      border: 1px dashed hsl(var(--hairline-soft)); border-radius: 8px;
+      padding: 3px 10px; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 15px; font-weight: 540;
+    }
+    .qty-btn:hover:not(:disabled) { border-color: hsl(var(--ink)); opacity: 1; }
+    .qty-input {
+      width: 76px !important; text-align: right; border-radius: 8px !important;
+      padding: 4px 8px !important; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 15px !important;
+    }
+    .saved-flash { font-size: 10.5px; color: hsl(var(--semantic-success)); }
+    .acts { display: flex; gap: 8px; justify-self: end; }
+    .acts button { padding: 7px 13px; font-size: 12px; }
+
+    .empty {
+      padding: 44px 16px 52px; text-align: center; color: hsl(var(--muted-ink));
+      font-size: 13px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .empty svg { opacity: 0.4; }
+    .empty .big-check { opacity: 1; color: hsl(var(--semantic-success)); }
+
+    /* ── POS ─────────────────────────────────────────────────────── */
+    .pos-head { display: flex; flex-direction: column; gap: 4px; }
+    .pos-head .sub { font-size: 13px; color: hsl(var(--muted-ink)); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip-add {
+      background: hsl(var(--surface-soft)); color: hsl(var(--ink));
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      padding: 7px 13px; font-size: 12.5px;
+    }
+    .chip-add:hover:not(:disabled) { border-color: hsl(var(--ink)); opacity: 1; }
+    .pos-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(130px, auto);
+      align-items: center; gap: 14px; padding: 12px 18px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+    }
+    .pos-row:last-child { border-bottom: 0; }
+    .pos-row.incart { background: hsl(var(--block-mint) / 0.35); }
+    .pos-row .right { text-align: right; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .stepper {
+      display: inline-flex; align-items: center;
+      border: 1px solid hsl(var(--hairline-soft)); border-radius: 999px;
+      overflow: hidden; background: hsl(var(--canvas));
+    }
+    .stepper button {
+      background: transparent; color: hsl(var(--ink)); border: 0; border-radius: 0;
+      width: 34px; height: 30px; padding: 0; font-size: 15px; font-weight: 540;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .stepper button:hover:not(:disabled) { background: hsl(var(--surface-soft)); opacity: 1; }
+    .stepper .qv {
+      min-width: 34px; text-align: center;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 14px; font-weight: 600;
+    }
+    .checkout {
+      position: sticky; bottom: 12px; z-index: 20;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      background: hsl(var(--canvas) / 0.96); backdrop-filter: blur(6px);
+      border: 1px solid hsl(var(--hairline)); border-radius: 14px;
+      padding: 13px 18px;
+      box-shadow: 0 14px 34px -18px hsl(var(--ink) / 0.35);
+    }
+    .checkout .info { flex: 1 1 200px; min-width: 0; font-size: 13px; }
+    .checkout .info .vi { font-size: 11.5px; }
+    .checkout .total { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 17px; font-weight: 600; white-space: nowrap; }
+
+    /* ── Needs restock ───────────────────────────────────────────── */
+    .res-row {
+      display: grid; grid-template-columns: minmax(170px, 2fr) minmax(200px, 3fr) auto;
+      align-items: center; gap: 14px; padding: 14px 18px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+    }
+    .res-row:last-child { border-bottom: 0; }
+    .res-row.ordered { opacity: 0.66; }
+    .suggest { font-size: 12px; color: hsl(var(--muted-ink)); }
+    .suggest strong { color: hsl(var(--ink)); font-weight: 600; }
+    .ordered-note { font-size: 12px; color: hsl(var(--semantic-success)); }
+
+    /* ── History ─────────────────────────────────────────────────── */
+    .hist-headrow, .hist-row {
+      display: grid; grid-template-columns: minmax(130px, 170px) minmax(90px, 120px) minmax(0, 1fr) minmax(100px, 130px);
+      gap: 12px; align-items: baseline; padding: 10px 18px;
+      border-bottom: 1px solid hsl(var(--hairline-soft));
+      font-size: 12.5px;
+    }
+    .hist-headrow {
+      background: hsl(var(--surface-soft));
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: hsl(var(--muted-ink));
+    }
+    .hist-row:last-child { border-bottom: 0; }
+    .hist-row:nth-child(even) { background: hsl(var(--surface-soft) / 0.5); }
+    .hist-when { color: hsl(var(--muted-ink)); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+    .kind-badge {
+      display: inline-block; border-radius: 999px; padding: 3px 9px;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace;
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .kind-badge.sale    { background: hsl(var(--block-mint) / 0.6);  color: hsl(var(--semantic-success)); }
+    .kind-badge.restock { background: hsl(var(--block-lime) / 0.5);  color: hsl(var(--ink)); }
+    .kind-badge.import  { background: hsl(var(--surface-soft));      color: hsl(var(--muted-ink)); }
+    .kind-badge.undo    { background: hsl(var(--block-coral) / 0.5); color: hsl(var(--semantic-danger)); }
+    .hist-desc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hist-desc .vi { font-size: 11px; display: block; }
+    .hist-total { text-align: right; font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+    /* ── Modals (add item / receive) ─────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 50;
+      background: hsl(var(--ink) / 0.35);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 32px 20px; overflow: auto;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal {
+      background: hsl(var(--canvas));
+      border: 1px solid hsl(var(--hairline)); border-radius: 14px;
+      width: min(520px, 100%);
+      box-shadow: 0 20px 60px hsl(var(--ink) / 0.18);
+      animation: drawer-in var(--motion-base) var(--ease-out);
+    }
+    .modal.narrow { width: min(420px, 100%); }
+    .modal.wide { width: min(760px, 100%); }
+    @keyframes drawer-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 16px 18px; border-bottom: 1px solid hsl(var(--hairline-soft));
+    }
+    .modal-head h3 { font-size: 15px; font-weight: 600; }
+    .modal-head .vi { font-size: 11.5px; display: block; }
+    .modal-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 18px 20px 20px; }
+    .modal-form label {
+      display: flex; flex-direction: column; gap: 5px;
+      font-size: 12px; font-weight: 500; color: hsl(var(--muted-ink));
+    }
+    .modal-form label.full { grid-column: 1 / -1; }
+    .modal-form input { border-radius: 8px; padding: 9px 11px; font-size: 13px; }
+    .modal-error {
+      grid-column: 1 / -1;
+      color: hsl(var(--semantic-danger));
+      background: hsl(var(--semantic-danger) / 0.08);
+      border: 1px solid hsl(var(--semantic-danger) / 0.25);
+      border-radius: 8px; padding: 8px 11px; font-size: 12px; font-weight: 500;
+    }
+    .modal-error[hidden] { display: none; }
+    .modal-actions {
+      grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px;
+      padding-top: 10px; border-top: 1px solid hsl(var(--hairline-soft)); margin-top: 4px;
+    }
+    .rcv-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; align-items: center; }
+    .rcv-sub { font-size: 13px; color: hsl(var(--muted-ink)); text-align: center; }
+    .stepper.big button { width: 46px; height: 42px; font-size: 19px; }
+    .stepper.big .qv { min-width: 66px; font-size: 19px; }
+    .stepper.big input {
+      width: 66px; border: 0; text-align: center; border-radius: 0; padding: 0;
+      font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 19px; font-weight: 600;
+    }
+
+    /* ── Import wizard ───────────────────────────────────────────── */
+    .wiz-head { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+    .wiz-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .wiz-step-num { font-family: 'JetBrains Mono', SF Mono, Menlo, monospace; font-size: 11px; color: hsl(var(--muted-ink)); }
+    .wiz-bar-track { height: 5px; border-radius: 999px; background: hsl(var(--surface-soft)); overflow: hidden; }
+    .wiz-bar { height: 100%; width: 0; border-radius: 999px; background: hsl(var(--semantic-success)); transition: width 0.4s var(--ease-out); }
+    .wiz-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; max-height: 62vh; overflow: auto; }
+    .dropzone {
+      border: 2px dashed hsl(var(--hairline-soft)); border-radius: 14px;
+      padding: 42px 20px; text-align: center; cursor: pointer;
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+      color: hsl(var(--muted-ink)); font-size: 13px;
+      transition: border-color var(--motion-fast) var(--ease-out), background var(--motion-fast) var(--ease-out);
+    }
+    .dropzone.drag, .dropzone:hover { border-color: hsl(var(--ink)); background: hsl(var(--surface-soft) / 0.6); }
+    .dropzone .lead { font-size: 14px; font-weight: 600; color: hsl(var(--ink)); }
+    .map-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+      gap: 10px; align-items: center;
+      padding: 10px 12px; border: 1px solid hsl(var(--hairline-soft)); border-radius: 10px;
+    }
+    .map-row .src .hd { font-weight: 600; font-size: 13px; }
+    .map-row .src .sample { font-size: 11px; color: hsl(var(--muted-ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .map-row .arrow { text-align: center; color: hsl(var(--muted-ink)); }
+    .map-row select { border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+    .map-row.matched { border-color: hsl(var(--semantic-success) / 0.4); }
+    .err-row {
+      display: grid; grid-template-columns: 58px minmax(0, 1fr) 200px;
+      gap: 10px; align-items: center; padding: 9px 12px;
+      border: 1px solid hsl(var(--semantic-danger) / 0.3);
+      background: hsl(var(--semantic-danger) / 0.05);
+      border-radius: 10px; font-size: 12.5px;
+    }
+    .err-row.fixed { border-color: hsl(var(--semantic-success) / 0.4); background: hsl(var(--block-mint) / 0.25); }
+    .err-row input { border-radius: 8px; padding: 6px 9px; font-size: 12.5px; border-color: hsl(var(--semantic-danger) / 0.5); }
+    .err-row.fixed input { border-color: hsl(var(--semantic-success) / 0.5); }
+    .wiz-note { font-size: 12px; color: hsl(var(--muted-ink)); }
+    .wiz-ok { text-align: center; padding: 26px 12px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .wiz-foot {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 14px 20px; border-top: 1px solid hsl(var(--hairline-soft));
+    }
+
+    /* ── Toast ───────────────────────────────────────────────────── */
+    .toast {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      z-index: 80; max-width: min(520px, 92vw);
+      background: hsl(var(--ink)); color: hsl(var(--canvas));
+      border-radius: 12px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 20px 40px -16px hsl(var(--ink) / 0.45);
+      animation: toast-in 0.28s var(--ease-out);
+      font-size: 13px;
+    }
+    @keyframes toast-in { from { transform: translate(-50%, 16px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+    .toast .msg { min-width: 0; }
+    .toast .msg .vi { color: hsl(var(--canvas) / 0.7); font-size: 11.5px; display: block; }
+    .toast.error { background: hsl(var(--semantic-danger)); }
+    .toast .undo {
+      background: transparent; border: 1px solid hsl(var(--canvas) / 0.5);
+      color: hsl(var(--canvas)); padding: 6px 12px; font-size: 12px; white-space: nowrap;
+    }
+    .toast .x { background: transparent; border: 0; color: hsl(var(--canvas) / 0.7); font-size: 16px; padding: 2px 4px; }
+
+    section[hidden] { display: none !important; }
+    @media (max-width: 860px) {
+      .item-row { grid-template-columns: minmax(140px, 2fr) 90px auto; }
+      .item-row .photo, .item-row .st-wrap, .item-row .cell.price-cell { display: none; }
+      .res-row { grid-template-columns: 1fr; }
+      .hist-headrow, .hist-row { grid-template-columns: minmax(90px, 120px) minmax(70px, 90px) minmax(0, 1fr) minmax(80px, 100px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="gs-top">
+    <div class="gs-top-inner">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <div>
+          <div class="wordmark">GearStock</div>
+          <div class="crumb mono">Warehouse · Kho phụ tùng</div>
+        </div>
+      </div>
+      <nav class="tabs" id="tabs"></nav>
+      <button type="button" class="bell" id="bell" aria-label="Restock alerts">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="dot" id="bell-dot" hidden></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="wrap" id="root">
+
+    <!-- ═════════ Inventory ═════════ -->
+    <section id="scr-inv">
+      <div class="wrap" style="gap:14px">
+        <div class="subbar">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="inv-search" placeholder="Search item name, code or category… · Tìm phụ tùng…" />
+          </div>
+          <button type="button" class="secondary" id="density-btn"></button>
+          <button type="button" class="secondary" id="import-btn">Import Excel <span class="vi">· Nhập file</span></button>
+          <button type="button" id="add-btn">+ Add item <span style="opacity:.75">· Thêm hàng</span></button>
+        </div>
+        <div class="pills" id="inv-pills"></div>
+        <div class="panel" id="inv-list"></div>
+      </div>
+    </section>
+
+    <!-- ═════════ Record sale (POS) ═════════ -->
+    <section id="scr-pos" hidden>
+      <div class="wrap" style="gap:14px; max-width:880px">
+        <div class="pos-head">
+          <h2>Record a sale <span class="vi">· Ghi bán hàng</span></h2>
+          <div class="sub">Type an item name — results appear as you type. · Gõ tên phụ tùng để tìm.</div>
+        </div>
+        <div class="subbar">
+          <div class="search" style="flex:1 1 100%">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="pos-search" placeholder="Type an item name… · Gõ tên phụ tùng…" />
+          </div>
+        </div>
+        <div class="chips" id="pos-chips"></div>
+        <div class="panel" id="pos-list"></div>
+        <div class="checkout" id="pos-cartbar"></div>
+      </div>
+    </section>
+
+    <!-- ═════════ Needs restock ═════════ -->
+    <section id="scr-res" hidden>
+      <div class="wrap" style="gap:14px; max-width:860px">
+        <div class="pos-head">
+          <h2>Needs restock <span class="vi">· Cần nhập hàng</span></h2>
+          <div class="sub">Items below their minimum level appear here automatically. · Hàng dưới mức tối thiểu tự hiện ở đây.</div>
+        </div>
+        <div class="panel" id="res-list"></div>
+      </div>
+    </section>
+
+    <!-- ═════════ Sales history ═════════ -->
+    <section id="scr-hist" hidden>
+      <div class="wrap" style="gap:14px; max-width:960px">
+        <div class="pos-head" style="flex-direction:row; justify-content:space-between; align-items:baseline; display:flex">
+          <h2>Sales history <span class="vi">· Lịch sử bán</span></h2>
+          <span class="count-note" id="sold-today"></span>
+        </div>
+        <div class="panel" id="hist-table"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═════════ Add-item dialog ═════════ -->
+  <div class="modal-backdrop" id="dlg-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+      <header class="modal-head">
+        <h3 id="dlg-title">Add a new item <span class="vi">Thêm phụ tùng mới</span></h3>
+        <button type="button" class="icon-btn" id="dlg-close" aria-label="Close">×</button>
+      </header>
+      <form class="modal-form" id="dlg-form" novalidate>
+        <label class="full">Item name * <span class="vi">Tên hàng</span>
+          <input type="text" id="f-name" autocomplete="off" />
+        </label>
+        <label class="full">Vietnamese name <span class="vi">Tên tiếng Việt</span>
+          <input type="text" id="f-vi" autocomplete="off" />
+        </label>
+        <label>Category <span class="vi">Loại</span>
+          <input type="text" id="f-cat" list="cat-list" autocomplete="off" />
+          <datalist id="cat-list"></datalist>
+        </label>
+        <label>Location <span class="vi">Vị trí kho</span>
+          <input type="text" id="f-loc" autocomplete="off" />
+        </label>
+        <label>Starting quantity <span class="vi">Số lượng ban đầu</span>
+          <input type="number" id="f-qty" min="0" step="1" value="0" />
+        </label>
+        <label>Price ₫ <span class="vi">Giá bán</span>
+          <input type="number" id="f-price" min="0" step="any" value="0" />
+        </label>
+        <label>Alert when stock falls below <span class="vi">Mức cảnh báo tối thiểu</span>
+          <input type="number" id="f-min" min="0" step="1" value="0" />
+        </label>
+        <label>Code (optional) <span class="vi">Mã hàng (tự tạo nếu bỏ trống)</span>
+          <input type="text" id="f-sku" autocomplete="off" placeholder="auto" />
+        </label>
+        <div class="modal-error" id="dlg-error" hidden></div>
+        <div class="modal-actions">
+          <button type="button" class="secondary" id="dlg-cancel">Cancel · Hủy</button>
+          <button type="submit" id="dlg-save">Save item · Lưu hàng mới</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═════════ Receive-stock dialog ═════════ -->
+  <div class="modal-backdrop" id="rcv-backdrop" hidden>
+    <div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="rcv-title">
+      <header class="modal-head">
+        <h3 id="rcv-title">Receive stock <span class="vi">Nhận hàng về</span></h3>
+        <button type="button" class="icon-btn" id="rcv-close" aria-label="Close">×</button>
+      </header>
+      <div class="rcv-body">
+        <div class="rcv-sub" id="rcv-sub"></div>
+        <div class="stepper big">
+          <button type="button" id="rcv-minus" aria-label="Less">−</button>
+          <input type="number" id="rcv-qty" min="1" step="1" value="1" />
+          <button type="button" id="rcv-plus" aria-label="More">＋</button>
+        </div>
+        <div class="modal-actions" style="border:0; padding:0; margin:0">
+          <button type="button" class="secondary" id="rcv-cancel">Cancel · Hủy</button>
+          <button type="button" class="success" id="rcv-confirm">Add to stock · Nhập kho</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════ Import wizard ═════════ -->
+  <div class="modal-backdrop" id="wiz-backdrop" hidden>
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
+      <div class="wiz-head">
+        <div class="wiz-meta">
+          <h3 id="wiz-title">Import from file <span class="vi">Nhập hàng từ file</span></h3>
+          <span class="wiz-step-num" id="wiz-step-num"></span>
+        </div>
+        <div class="wiz-bar-track"><div class="wiz-bar" id="wiz-bar"></div></div>
+      </div>
+      <div class="wiz-body" id="wiz-body"></div>
+      <div class="wiz-foot">
+        <button type="button" class="secondary" id="wiz-cancel">✕ Cancel import · Hủy nhập file</button>
+        <button type="button" id="wiz-next" hidden></button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="file-input" hidden accept=".csv,.tsv,.txt,.xlsx,.xls" />
+  <div id="toast-host"></div>
+
+  <script src="__bridge.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      /* ═════════ 1. Constants & bilingual strings ═════════ */
+
+      var CATS = [
+        { en: "Engine",     vi: "Động cơ" },
+        { en: "Gearbox",    vi: "Hộp số" },
+        { en: "Drivetrain", vi: "Truyền động" },
+        { en: "Brakes",     vi: "Phanh" },
+        { en: "Fluids",     vi: "Dầu nhớt" },
+        { en: "Filters",    vi: "Lọc" },
+        { en: "Electrical", vi: "Điện" }
+      ];
+      var CAT_VI = {};
+      CATS.forEach(function (c) { CAT_VI[c.en] = c.vi; });
+
+      var TABS = [
+        { id: "inv",  en: "Inventory",     vi: "Tồn kho" },
+        { id: "pos",  en: "Record sale",   vi: "Ghi bán hàng" },
+        { id: "res",  en: "Needs restock", vi: "Cần nhập hàng" },
+        { id: "hist", en: "Sales history", vi: "Lịch sử bán" }
+      ];
+
+      var TARGETS = [
+        { key: "",              en: "— skip this column —", vi: "bỏ qua cột này" },
+        { key: "sku",           en: "Code / SKU",           vi: "Mã hàng" },
+        { key: "name",          en: "Item name",            vi: "Tên hàng" },
+        { key: "name_vi",       en: "Vietnamese name",      vi: "Tên tiếng Việt" },
+        { key: "category",      en: "Category",             vi: "Loại" },
+        { key: "quantity",      en: "Stock level",          vi: "Số lượng" },
+        { key: "unit_price",    en: "Price",                vi: "Giá" },
+        { key: "reorder_level", en: "Minimum level",        vi: "Mức tối thiểu" },
+        { key: "location",      en: "Location",             vi: "Vị trí" }
+      ];
+
+      // Header auto-match synonyms (diacritics-folded, lowercase).
+      var SYNONYMS = {
+        sku:           ["sku", "code", "ma", "mahang", "ma hang", "item code", "part no", "partno"],
+        name:          ["name", "item", "item name", "ten", "ten hang", "tenhang", "product"],
+        name_vi:       ["name_vi", "vietnamese", "ten tieng viet", "tenvi", "ten vi"],
+        category:      ["category", "cat", "loai", "danh muc", "danhmuc", "type", "nhom"],
+        quantity:      ["quantity", "qty", "stock", "sl", "so luong", "soluong", "ton kho", "tonkho", "stock level"],
+        unit_price:    ["unit_price", "price", "gia", "gia ban", "giaban", "don gia", "dongia", "cost"],
+        reorder_level: ["reorder_level", "min", "minimum", "toi thieu", "toithieu", "muc toi thieu", "reorder"],
+        location:      ["location", "loc", "vi tri", "vitri", "kho", "bin", "shelf"]
+      };
+
+      /* ═════════ 2. State ═════════ */
+
+      var state = {
+        snap: null,          // last snapshot payload from inventory.py
+        loadError: null,
+        tab: "inv",
+        search: "",
+        cat: "",
+        density: "comfy",
+        editingSku: null,
+        justSavedSku: null,
+        posSearch: "",
+        cart: {},            // sku -> qty
+        receiveFor: null,    // item being received
+        wizard: null,        // { step, fileName, headers, rows, mapping, edits, result }
+        toast: null
+      };
+
+      /* ═════════ 3. Utilities ═════════ */
+
+      function $(id) { return document.getElementById(id); }
+
+      function h(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;
+        return n;
+      }
+
+      function frag() { return document.createDocumentFragment(); }
+
+      function fmtVND(n) {
+        var v = Math.round(Number(n) || 0);
+        return v.toLocaleString("vi-VN") + "₫";
+      }
+
+      function norm(s) {
+        return String(s || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .replace(/đ/g, "d");
+      }
+
+      function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+      function fmtWhen(iso) {
+        var d = new Date(iso);
+        if (isNaN(d)) return { en: iso || "", vi: "" };
+        var now = new Date();
+        var hm = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+        if (d.toDateString() === now.toDateString()) {
+          return { en: "Today " + hm, vi: "Hôm nay " + hm };
+        }
+        return { en: pad2(d.getDate()) + "/" + pad2(d.getMonth() + 1) + "/" + d.getFullYear() + " " + hm, vi: "" };
+      }
+
+      function debounce(fn, ms) {
+        var t = null;
+        return function () {
+          if (t) clearTimeout(t);
+          t = setTimeout(fn, ms);
+        };
+      }
+
+      function catLabel(cat) {
+        if (!cat) return { en: "Uncategorised", vi: "Chưa phân loại" };
+        return { en: cat, vi: CAT_VI[cat] || "" };
+      }
+
+      function items() { return (state.snap && state.snap.items) || []; }
+
+      function itemBySku(sku) {
+        var list = items();
+        for (var i = 0; i < list.length; i++) if (list[i].sku === sku) return list[i];
+        return null;
+      }
+
+      function attention(it) { return it.status !== "in_stock"; }
+      function alertCount() {
+        return items().filter(function (it) { return attention(it) && !it.ordered_by; }).length;
+      }
+      function uiBusy() {
+        return !!(state.receiveFor || state.wizard || state.editingSku
+                  || !$("dlg-backdrop").hidden);
+      }
+
+      /* ═════════ 4. Data layer ═════════ */
+
+      var refreshing = false;
+      var queue = Promise.resolve();
+
+      function localTodayStartISO() {
+        var d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString().replace(/\.\d{3}Z$/, "Z");
+      }
+
+      function refresh() {
+        if (refreshing) return Promise.resolve();
+        refreshing = true;
+        return AtriaDash.json("inventory.py",
+            ["snapshot", "--today-start", localTodayStartISO(), "--history-limit", "80"])
+          .then(function (snap) {
+            state.snap = snap;
+            state.loadError = null;
+          })
+          .catch(function (err) {
+            state.loadError = (err && err.message) || "load failed";
+          })
+          .then(function () {
+            refreshing = false;
+            renderAll();
+          });
+      }
+
+      // All mutations flow through one serialized queue: keeps us far below
+      // the server's 4-in-flight cap and gives deterministic ordering.
+      function enqueue(fn) {
+        queue = queue.then(fn, fn);
+        return queue;
+      }
+
+      function scriptError(err) {
+        var m = ((err && err.message) || "").match(/ERROR:\s*([^\n]+)/);
+        return m ? m[1] : ((err && err.message) || "Something went wrong");
+      }
+
+      function mutate(args, opts) {
+        opts = opts || {};
+        return enqueue(function () {
+          return AtriaDash.json("inventory.py", args, opts.runOpts)
+            .then(function (res) {
+              return refresh().then(function () {
+                if (opts.toast) showToast(opts.toast(res));
+                return res;
+              });
+            })
+            .catch(function (err) {
+              showToast({ en: scriptError(err), vi: "Có lỗi xảy ra", error: true });
+              return refresh().then(function () { return null; });
+            });
+        });
+      }
+
+      /* ═════════ 5. Toast + undo ═════════ */
+
+      var toastTimer = null;
+
+      function showToast(t) {
+        state.toast = t;
+        renderToast();
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(hideToast, t.error ? 6000 : 10000);
+      }
+
+      function hideToast() {
+        state.toast = null;
+        if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+        renderToast();
+      }
+
+      function undoReference(ref) {
+        hideToast();
+        mutate(["revert", "--reference", ref, "--json"], {
+          toast: function () { return { en: "Undone.", vi: "Đã hoàn tác." }; }
+        });
+      }
+
+      function renderToast() {
+        var host = $("toast-host");
+        host.innerHTML = "";
+        var t = state.toast;
+        if (!t) return;
+        var box = h("div", "toast" + (t.error ? " error" : ""));
+        var icon = h("span", null, t.error ? "⚠" : "✓");
+        var msg = h("div", "msg");
+        msg.appendChild(h("div", null, t.en));
+        if (t.vi) msg.appendChild(h("span", "vi", t.vi));
+        box.appendChild(icon);
+        box.appendChild(msg);
+        if (t.reference) {
+          var u = h("button", "undo", "↩ Undo · Hoàn tác");
+          u.addEventListener("click", function () { undoReference(t.reference); });
+          box.appendChild(u);
+        }
+        var x = h("button", "x", "✕");
+        x.addEventListener("click", hideToast);
+        box.appendChild(x);
+        host.appendChild(box);
+      }
+
+      /* ═════════ 6. Header / tabs ═════════ */
+
+      function setTab(tab) {
+        state.tab = tab;
+        state.editingSku = null;
+        renderAll();
+      }
+
+      function renderTabs() {
+        var nav = $("tabs");
+        nav.innerHTML = "";
+        var n = alertCount();
+        TABS.forEach(function (t) {
+          var b = h("button", "tab" + (state.tab === t.id ? " active" : ""));
+          var en = h("span", "en", t.en);
+          if (t.id === "res" && n > 0) en.appendChild(h("span", "badge", String(n)));
+          b.appendChild(en);
+          b.appendChild(h("span", "vi", t.vi));
+          b.addEventListener("click", function () { setTab(t.id); });
+          nav.appendChild(b);
+        });
+        $("bell-dot").hidden = n === 0;
+        AtriaDash.setBadge(n > 0 ? { count: n, severity: "warning" } : null);
+
+        ["inv", "pos", "res", "hist"].forEach(function (id) {
+          $("scr-" + id).hidden = state.tab !== id;
+        });
+      }
+
+      /* ═════════ 7. Inventory screen ═════════ */
+
+      function statusPill(it) {
+        var wrap = h("div", "st-wrap");
+        var cls = it.status === "out" ? "out" : it.status === "low" ? "low" : "ok";
+        var pill = h("span", "st " + cls);
+        pill.appendChild(h("span", "dot"));
+        var label =
+          it.status === "out" ? "Out of stock · Hết hàng" :
+          it.status === "low" ? "Only " + it.quantity + " left · Chỉ còn " + it.quantity :
+          "In stock · Còn hàng";
+        pill.appendChild(document.createTextNode(label));
+        wrap.appendChild(pill);
+        if (it.status === "low" && it.days_left) {
+          wrap.appendChild(h("span", "days-hint",
+            "empty in ~" + it.days_left + " days · hết trong ~" + it.days_left + " ngày"));
+        }
+        return wrap;
+      }
+
+      function filteredItems() {
+        var q = norm(state.search.trim());
+        return items().filter(function (it) {
+          if (state.cat && it.category !== state.cat) return false;
+          if (!q) return true;
+          return norm(it.name).indexOf(q) !== -1
+              || norm(it.name_vi).indexOf(q) !== -1
+              || norm(it.sku).indexOf(q) !== -1
+              || norm(it.category).indexOf(q) !== -1;
+        });
+      }
+
+      function renderInvPills() {
+        var host = $("inv-pills");
+        host.innerHTML = "";
+        var cats = (state.snap && state.snap.categories) || [];
+        var all = h("button", "pill" + (state.cat === "" ? " active" : ""));
+        all.appendChild(document.createTextNode("All "));
+        all.appendChild(h("span", "vi", "· Tất cả"));
+        all.addEventListener("click", function () { state.cat = ""; renderAll(); });
+        host.appendChild(all);
+        cats.forEach(function (c) {
+          var lbl = catLabel(c);
+          var b = h("button", "pill" + (state.cat === c ? " active" : ""));
+          b.appendChild(document.createTextNode(lbl.en + " "));
+          if (lbl.vi) b.appendChild(h("span", "vi", "· " + lbl.vi));
+          b.addEventListener("click", function () {
+            state.cat = state.cat === c ? "" : c;
+            renderAll();
+          });
+          host.appendChild(b);
+        });
+
+        var stats = (state.snap && state.snap.stats) || {};
+        var list = filteredItems();
+        var note = h("span", "count-note",
+          list.length + " of " + items().length + " items · " +
+          (stats.sold_today_count || 0) + " sold today · đã bán hôm nay");
+        host.appendChild(note);
+      }
+
+      function qtyCell(it) {
+        var cell = h("div", "cell");
+        cell.appendChild(h("span", "cap", "Stock · Tồn kho"));
+        if (state.editingSku === it.sku) {
+          var input = h("input", "qty-input");
+          input.type = "number";
+          input.min = "0";
+          input.value = String(it.quantity);
+          var done = false; // Enter commits then blur fires on re-render — run once
+          function commit() {
+            if (done) return;
+            done = true;
+            var v = parseInt(input.value, 10);
+            state.editingSku = null;
+            if (isNaN(v) || v < 0 || v === it.quantity) { renderAll(); return; }
+            mutate(["update", "--sku", it.sku, "--quantity", String(v), "--json"], {
+              toast: function () {
+                state.justSavedSku = it.sku;
+                setTimeout(function () { state.justSavedSku = null; renderAll(); }, 1800);
+                return { en: "Stock updated: " + it.sku + " → " + v, vi: "Đã lưu tồn kho" };
+              }
+            });
+          }
+          input.addEventListener("keydown", function (ev) {
+            if (ev.key === "Enter") { ev.preventDefault(); commit(); }
+            if (ev.key === "Escape") { done = true; state.editingSku = null; renderAll(); }
+          });
+          input.addEventListener("blur", commit);
+          cell.appendChild(input);
+          setTimeout(function () { input.focus(); input.select(); }, 0);
+        } else {
+          var btn = h("button", "qty-btn", String(it.quantity));
+          btn.title = "Click to edit · Bấm để sửa";
+          btn.addEventListener("click", function () {
+            state.editingSku = it.sku;
+            renderAll();
+          });
+          cell.appendChild(btn);
+          if (state.justSavedSku === it.sku) {
+            cell.appendChild(h("span", "saved-flash", "✓ Saved · Đã lưu"));
+          } else {
+            cell.appendChild(h("span", "cap", "min " + it.reorder_level));
+          }
+        }
+        return cell;
+      }
+
+      function renderInvList() {
+        var host = $("inv-list");
+        host.innerHTML = "";
+        var list = filteredItems();
+        if (!list.length) {
+          var empty = h("div", "empty");
+          empty.appendChild(h("div", null,
+            items().length === 0
+              ? "No items yet — click + Add item or import a file. · Chưa có hàng."
+              : "No items match your search. · Không tìm thấy phụ tùng nào."));
+          host.appendChild(empty);
+          return;
+        }
+        var f = frag();
+        list.forEach(function (it) {
+          var row = h("div", "item-row" +
+            (it.status === "out" ? " out" : it.status === "low" ? " low" : ""));
+
+          if (state.density === "comfy") {
+            row.appendChild(h("div", "photo", (it.sku || "??").slice(0, 2)));
+          }
+
+          var meta = h("div", "imeta");
+          meta.appendChild(h("div", "nm", it.name));
+          var lbl = catLabel(it.category);
+          var subBits = [];
+          if (it.name_vi) subBits.push(it.name_vi);
+          var sub = h("div", "sub");
+          if (subBits.length) sub.appendChild(document.createTextNode(subBits.join(" ") + "  ·  "));
+          var skuEl = h("span", "mono", it.sku);
+          sub.appendChild(skuEl);
+          sub.appendChild(document.createTextNode("  ·  " + lbl.en + (lbl.vi ? " · " + lbl.vi : "")
+            + (it.location ? "  ·  " + it.location : "")));
+          meta.appendChild(sub);
+          row.appendChild(meta);
+
+          row.appendChild(statusPill(it));
+          row.appendChild(qtyCell(it));
+
+          var price = h("div", "cell price-cell");
+          price.appendChild(h("span", "cap", "Price · Giá"));
+          price.appendChild(h("span", "val", fmtVND(it.unit_price)));
+          row.appendChild(price);
+
+          var acts = h("div", "acts");
+          var sell = h("button", "secondary", "Sell 1 · Bán 1");
+          sell.disabled = it.quantity <= 0;
+          sell.addEventListener("click", function () { sellOne(it); });
+          acts.appendChild(sell);
+          var rst = h("button", it.status === "out" ? "" : "secondary", "Restock · Nhập thêm");
+          rst.addEventListener("click", function () { openReceive(it); });
+          acts.appendChild(rst);
+          row.appendChild(acts);
+
+          f.appendChild(row);
+        });
+        host.appendChild(f);
+      }
+
+      function sellOne(it) {
+        mutate(["sell", "--line", it.sku + "=1", "--json"], {
+          toast: function (res) {
+            return {
+              en: "Sold 1 × " + it.name + " — " + fmtVND(it.unit_price),
+              vi: "Đã bán 1 " + (it.name_vi || it.name),
+              reference: res && res.reference
+            };
+          }
+        });
+      }
+
+      /* ═════════ 8. Receive modal ═════════ */
+
+      function openReceive(it) {
+        state.receiveFor = it;
+        var sub = $("rcv-sub");
+        sub.textContent = it.name + (it.name_vi ? " · " + it.name_vi : "") +
+          " — now " + it.quantity + " in stock · còn " + it.quantity;
+        $("rcv-qty").value = String(Math.max(1, it.suggested_order || 1));
+        $("rcv-backdrop").hidden = false;
+        $("rcv-qty").focus();
+      }
+
+      function closeReceive() {
+        state.receiveFor = null;
+        $("rcv-backdrop").hidden = true;
+      }
+
+      function confirmReceive() {
+        var it = state.receiveFor;
+        if (!it) return;
+        var qty = parseInt($("rcv-qty").value, 10);
+        if (isNaN(qty) || qty < 1) return;
+        closeReceive();
+        var ref = "RCV-" + Date.now().toString(36).toUpperCase();
+        mutate(["receive", "--sku", it.sku, "--qty", String(qty),
+                "--reference", ref, "--json"], {
+          toast: function () {
+            return {
+              en: "Received " + qty + " × " + it.name,
+              vi: "Đã nhập " + qty + " " + (it.name_vi || it.name),
+              reference: ref
+            };
+          }
+        });
+      }
+
+      /* ═════════ 9. POS screen ═════════ */
+
+      function cartCount() {
+        var n = 0;
+        Object.keys(state.cart).forEach(function (k) { n += state.cart[k]; });
+        return n;
+      }
+
+      function cartTotal() {
+        var t = 0;
+        Object.keys(state.cart).forEach(function (k) {
+          var it = itemBySku(k);
+          if (it) t += state.cart[k] * it.unit_price;
+        });
+        return t;
+      }
+
+      function bumpCart(sku, delta) {
+        var it = itemBySku(sku);
+        if (!it) return;
+        var cur = state.cart[sku] || 0;
+        var next = Math.min(Math.max(cur + delta, 0), it.quantity);
+        if (next === 0) delete state.cart[sku];
+        else state.cart[sku] = next;
+        renderAll();
+      }
+
+      function posRows() {
+        var q = norm(state.posSearch.trim());
+        var all = items();
+        if (!q) {
+          return all.slice().sort(function (a, b) { return (b.spw || 0) - (a.spw || 0); }).slice(0, 8);
+        }
+        return all.filter(function (it) {
+          return norm(it.name).indexOf(q) !== -1
+              || norm(it.name_vi).indexOf(q) !== -1
+              || norm(it.sku).indexOf(q) !== -1;
+        });
+      }
+
+      function renderPos() {
+        // Frequently-sold chips: top by sales-per-week with stock.
+        var chips = $("pos-chips");
+        chips.innerHTML = "";
+        items().slice()
+          .sort(function (a, b) { return (b.spw || 0) - (a.spw || 0); })
+          .filter(function (it) { return (it.spw || 0) > 0 && it.quantity > 0; })
+          .slice(0, 6)
+          .forEach(function (it) {
+            var c = h("button", "chip-add", "+ " + it.name);
+            c.addEventListener("click", function () { bumpCart(it.sku, 1); });
+            chips.appendChild(c);
+          });
+
+        var host = $("pos-list");
+        host.innerHTML = "";
+        var rows = posRows();
+        if (!rows.length) {
+          var empty = h("div", "empty");
+          empty.appendChild(h("div", null, "No items match. · Không tìm thấy phụ tùng."));
+          host.appendChild(empty);
+        }
+        var f = frag();
+        rows.forEach(function (it) {
+          var inCart = !!state.cart[it.sku];
+          var row = h("div", "pos-row" + (inCart ? " incart" : ""));
+
+          var meta = h("div", "imeta");
+          meta.appendChild(h("div", "nm", it.name));
+          meta.appendChild(h("div", "sub",
+            (it.name_vi ? it.name_vi + " · " : "") + it.quantity + " in stock · còn " + it.quantity));
+          row.appendChild(meta);
+
+          if (inCart) {
+            var st = h("div", "stepper");
+            var minus = h("button", null, "−");
+            minus.addEventListener("click", function () { bumpCart(it.sku, -1); });
+            var qv = h("span", "qv", String(state.cart[it.sku]));
+            var plus = h("button", null, "＋");
+            plus.disabled = state.cart[it.sku] >= it.quantity;
+            plus.addEventListener("click", function () { bumpCart(it.sku, 1); });
+            st.appendChild(minus); st.appendChild(qv); st.appendChild(plus);
+            row.appendChild(st);
+            row.appendChild(h("div", "right mono", fmtVND(state.cart[it.sku] * it.unit_price)));
+          } else {
+            var add = h("button", "secondary", "Add to sale · Thêm");
+            add.disabled = it.quantity <= 0;
+            add.addEventListener("click", function () { bumpCart(it.sku, 1); });
+            row.appendChild(add);
+            row.appendChild(h("div", "right mono", fmtVND(it.unit_price)));
+          }
+          f.appendChild(row);
+        });
+        host.appendChild(f);
+
+        renderCartbar();
+      }
+
+      function renderCartbar() {
+        var bar = $("pos-cartbar");
+        bar.innerHTML = "";
+        var n = cartCount();
+        var info = h("div", "info");
+        if (n === 0) {
+          info.appendChild(h("div", null, "Cart is empty — click an item above."));
+          info.appendChild(h("span", "vi", "Giỏ trống — bấm vào phụ tùng ở trên."));
+        } else {
+          info.appendChild(h("div", null, n + " item" + (n === 1 ? "" : "s") + " in this sale"));
+          info.appendChild(h("span", "vi", n + " món trong đơn"));
+        }
+        bar.appendChild(info);
+        bar.appendChild(h("div", "total", fmtVND(cartTotal())));
+
+        var clear = h("button", "danger-ghost", "✕ Clear · Xóa");
+        clear.disabled = n === 0;
+        clear.addEventListener("click", function () { state.cart = {}; renderAll(); });
+        bar.appendChild(clear);
+
+        var confirm = h("button", "success", "Confirm sale · Xác nhận bán");
+        confirm.disabled = n === 0;
+        confirm.addEventListener("click", confirmSale);
+        bar.appendChild(confirm);
+      }
+
+      function confirmSale() {
+        var lines = Object.keys(state.cart).map(function (sku) {
+          return ["--line", sku + "=" + state.cart[sku]];
+        });
+        if (!lines.length) return;
+        var args = ["sell"].concat(lines.reduce(function (a, b) { return a.concat(b); }, []), ["--json"]);
+        var count = cartCount();
+        var total = cartTotal();
+        state.cart = {};
+        mutate(args, {
+          toast: function (res) {
+            return {
+              en: "Sale recorded: " + count + " item" + (count === 1 ? "" : "s") + " — " + fmtVND(total),
+              vi: "Đã ghi bán " + count + " món",
+              reference: res && res.reference
+            };
+          }
+        });
+      }
+
+      /* ═════════ 10. Needs-restock screen ═════════ */
+
+      function renderRes() {
+        var host = $("res-list");
+        host.innerHTML = "";
+        var low = items().filter(attention);
+        if (!low.length) {
+          var empty = h("div", "empty");
+          var check = h("div", "big-check");
+          check.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>';
+          empty.appendChild(check);
+          empty.appendChild(h("div", null, "Everything is well stocked. · Tất cả hàng hóa đều đủ tồn kho."));
+          host.appendChild(empty);
+          return;
+        }
+        var f = frag();
+        low.forEach(function (it) {
+          var row = h("div", "res-row" + (it.ordered_by ? " ordered" : ""));
+
+          var meta = h("div", "imeta");
+          meta.appendChild(h("div", "nm", it.name));
+          meta.appendChild(h("div", "sub", (it.name_vi ? it.name_vi + " · " : "") + it.sku));
+          row.appendChild(meta);
+
+          var mid = h("div", "st-wrap");
+          mid.appendChild(statusPill(it));
+          var sg = h("div", "suggest");
+          sg.appendChild(document.createTextNode("Minimum " + it.reorder_level + " · Suggested order: "));
+          sg.appendChild(h("strong", null, String(it.suggested_order)));
+          sg.appendChild(document.createTextNode(" · Nên đặt: " + it.suggested_order +
+            (it.days_left ? " · empty in ~" + it.days_left + " days" : "")));
+          mid.appendChild(sg);
+          if (it.ordered_by) {
+            var when = fmtWhen(it.ordered_at);
+            mid.appendChild(h("div", "ordered-note",
+              "Ordered by " + it.ordered_by + ", " + when.en + " — Đã đặt hàng, đang chờ về"));
+          }
+          row.appendChild(mid);
+
+          var acts = h("div", "acts");
+          if (it.ordered_by) {
+            var un = h("button", "secondary", "Undo mark · Bỏ đánh dấu");
+            un.addEventListener("click", function () {
+              mutate(["unmark-ordered", "--sku", it.sku, "--json"], {
+                toast: function () { return { en: "Order mark removed: " + it.sku, vi: "Đã bỏ đánh dấu" }; }
+              });
+            });
+            acts.appendChild(un);
+          } else {
+            var mk = h("button", "secondary", "Mark as ordered · Đã đặt hàng");
+            mk.addEventListener("click", function () {
+              mutate(["mark-ordered", "--sku", it.sku, "--json"], {
+                toast: function () { return { en: "Marked as ordered: " + it.sku, vi: "Đã đánh dấu là đã đặt" }; }
+              });
+            });
+            acts.appendChild(mk);
+          }
+          var rc = h("button", "success", "Receive stock · Nhận hàng về");
+          rc.addEventListener("click", function () { openReceive(it); });
+          acts.appendChild(rc);
+          row.appendChild(acts);
+
+          f.appendChild(row);
+        });
+        host.appendChild(f);
+      }
+
+      /* ═════════ 11. Sales-history screen ═════════ */
+
+      function kindBadge(m) {
+        if (m.kind === "ship")   return { cls: "sale",    en: "Sale",    vi: "Bán" };
+        if (m.kind === "receive") return { cls: "restock", en: "Restock", vi: "Nhập" };
+        if (m.kind === "revert") return { cls: "undo",    en: "Undo",    vi: "Hoàn tác" };
+        if (m.reason === "import" || m.reason === "seed") return { cls: "import", en: "Import", vi: "File" };
+        return { cls: "import", en: m.kind, vi: "" };
+      }
+
+      function renderHist() {
+        var stats = (state.snap && state.snap.stats) || {};
+        $("sold-today").textContent =
+          (stats.sold_today_count || 0) + " items sold today · đã bán hôm nay" +
+          (stats.sold_today_value ? " — " + fmtVND(stats.sold_today_value) : "");
+
+        var host = $("hist-table");
+        host.innerHTML = "";
+        var head = h("div", "hist-headrow");
+        ["When · Thời gian", "Type · Loại", "Details · Chi tiết", "Total · Tổng"].forEach(function (c, i) {
+          var s = h("span", null, c);
+          if (i === 3) s.style.textAlign = "right";
+          head.appendChild(s);
+        });
+        host.appendChild(head);
+
+        var movs = ((state.snap && state.snap.movements) || []).filter(function (m) {
+          return ["ship", "receive", "revert", "add", "recount"].indexOf(m.kind) !== -1;
+        });
+        if (!movs.length) {
+          var empty = h("div", "empty");
+          empty.appendChild(h("div", null, "No activity yet. · Chưa có giao dịch."));
+          host.appendChild(empty);
+          return;
+        }
+        var f = frag();
+        movs.forEach(function (m) {
+          var row = h("div", "hist-row");
+          var when = fmtWhen(m.created_at);
+          var w = h("div", "hist-when", when.en + (when.vi ? " · " + when.vi : ""));
+          row.appendChild(w);
+
+          var kb = kindBadge(m);
+          var kd = h("div");
+          var badge = h("span", "kind-badge " + kb.cls, kb.en + (kb.vi ? " · " + kb.vi : ""));
+          kd.appendChild(badge);
+          row.appendChild(kd);
+
+          var it = itemBySku(m.sku);
+          var qty = Math.abs(m.delta || 0);
+          var desc = h("div", "hist-desc");
+          desc.appendChild(document.createTextNode(
+            (qty ? qty + " × " : "") + (it ? it.name : m.sku) +
+            (m.reference ? "  ·  " + m.reference : "")));
+          if (it && it.name_vi) desc.appendChild(h("span", "vi", it.name_vi));
+          row.appendChild(desc);
+
+          var total = "—";
+          if (m.kind === "ship" && it) total = fmtVND(qty * it.unit_price);
+          row.appendChild(h("div", "hist-total", total));
+
+          f.appendChild(row);
+        });
+        host.appendChild(f);
+      }
+
+      /* ═════════ 12. Add-item dialog ═════════ */
+
+      function genSku(name) {
+        var letters = norm(name).replace(/[^a-z]/g, "").toUpperCase() || "XX";
+        var prefix = (letters[0] || "X") + (letters[1] || "X");
+        for (var tries = 0; tries < 50; tries++) {
+          var code = prefix + "-" + (100 + Math.floor(Math.random() * 900));
+          if (!itemBySku(code)) return code;
+        }
+        return prefix + "-" + Date.now().toString(36).toUpperCase();
+      }
+
+      function openDialog() {
+        $("dlg-form").reset();
+        $("dlg-error").hidden = true;
+        var dl = $("cat-list");
+        dl.innerHTML = "";
+        var seen = {};
+        CATS.map(function (c) { return c.en; })
+          .concat((state.snap && state.snap.categories) || [])
+          .forEach(function (c) {
+            if (seen[c]) return;
+            seen[c] = true;
+            var o = document.createElement("option");
+            o.value = c;
+            dl.appendChild(o);
+          });
+        $("dlg-backdrop").hidden = false;
+        $("f-name").focus();
+      }
+
+      function closeDialog() { $("dlg-backdrop").hidden = true; }
+
+      function dlgError(msg) {
+        var e = $("dlg-error");
+        e.textContent = msg;
+        e.hidden = false;
+      }
+
+      function saveItem(ev) {
+        ev.preventDefault();
+        var name = $("f-name").value.trim();
+        if (!name) return dlgError("Item name is required. · Cần nhập tên hàng.");
+        var qty = parseInt($("f-qty").value || "0", 10);
+        var price = parseFloat($("f-price").value || "0");
+        var minv = parseInt($("f-min").value || "0", 10);
+        if (isNaN(qty) || qty < 0 || isNaN(price) || price < 0 || isNaN(minv) || minv < 0) {
+          return dlgError("Quantity, price and minimum must be numbers. · Số lượng, giá và mức tối thiểu phải là số.");
+        }
+        var sku = $("f-sku").value.trim() || genSku(name);
+        if (itemBySku(sku)) return dlgError("Code already exists: " + sku + " · Mã đã tồn tại.");
+        var args = ["add", "--sku", sku, "--name", name,
+                    "--quantity", String(qty), "--unit-price", String(price),
+                    "--reorder-level", String(minv), "--json"];
+        var vi = $("f-vi").value.trim();
+        var cat = $("f-cat").value.trim();
+        var loc = $("f-loc").value.trim();
+        if (vi) args.push("--name-vi", vi);
+        if (cat) args.push("--category", cat);
+        if (loc) args.push("--location", loc);
+        closeDialog();
+        mutate(args, {
+          toast: function () {
+            return { en: "Item saved: " + name + " (" + sku + ")", vi: "Đã lưu hàng mới" };
+          }
+        });
+      }
+
+      /* ═════════ 13. Import wizard ═════════ */
+
+      var WIZ_STEPS = [
+        { n: 1, en: "Upload your file",    vi: "Tải file lên" },
+        { n: 2, en: "Match columns",       vi: "Khớp cột dữ liệu" },
+        { n: 3, en: "Check for errors",    vi: "Kiểm tra lỗi" },
+        { n: 4, en: "Done",                vi: "Hoàn tất" }
+      ];
+
+      function openWizard() {
+        state.wizard = { step: 1, fileName: "", headers: [], rows: [], mapping: {}, result: null };
+        $("wiz-backdrop").hidden = false;
+        renderWizard();
+      }
+
+      function closeWizard(goInv) {
+        state.wizard = null;
+        $("wiz-backdrop").hidden = true;
+        $("file-input").value = "";
+        if (goInv) setTab("inv");
+      }
+
+      // Small quote-aware CSV/TSV parser (BOM-tolerant).
+      function parseDelimited(text) {
+        text = text.replace(/^﻿/, "");
+        var delim = (text.split("\n", 1)[0].indexOf("\t") !== -1) ? "\t" : ",";
+        var rows = [];
+        var row = [];
+        var cur = "";
+        var inQ = false;
+        for (var i = 0; i < text.length; i++) {
+          var ch = text[i];
+          if (inQ) {
+            if (ch === '"') {
+              if (text[i + 1] === '"') { cur += '"'; i++; }
+              else inQ = false;
+            } else cur += ch;
+          } else if (ch === '"') {
+            inQ = true;
+          } else if (ch === delim) {
+            row.push(cur); cur = "";
+          } else if (ch === "\n" || ch === "\r") {
+            if (ch === "\r" && text[i + 1] === "\n") i++;
+            row.push(cur); cur = "";
+            if (row.some(function (c) { return c.trim() !== ""; })) rows.push(row);
+            row = [];
+          } else cur += ch;
+        }
+        row.push(cur);
+        if (row.some(function (c) { return c.trim() !== ""; })) rows.push(row);
+        return rows;
+      }
+
+      function autoMap(headers) {
+        var mapping = {};
+        var used = {};
+        headers.forEach(function (hd, idx) {
+          var n = norm(hd).replace(/[_-]+/g, " ").trim();
+          Object.keys(SYNONYMS).some(function (target) {
+            if (used[target]) return false;
+            if (SYNONYMS[target].indexOf(n) !== -1) {
+              mapping[idx] = target;
+              used[target] = true;
+              return true;
+            }
+            return false;
+          });
+        });
+        return mapping;
+      }
+
+      function handleFile(file) {
+        if (!file) return;
+        var w = state.wizard;
+        if (!w) return;
+        if (/\.xlsx?$/i.test(file.name)) {
+          showToast({
+            en: "Excel .xlsx isn't supported directly — open it and save as CSV first.",
+            vi: "Chưa đọc trực tiếp file .xlsx — hãy mở file và lưu lại thành CSV.",
+            error: true
+          });
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          var grid = parseDelimited(String(reader.result || ""));
+          if (grid.length < 2) {
+            showToast({ en: "The file needs a header row and at least one data row.",
+                        vi: "File cần dòng tiêu đề và ít nhất một dòng dữ liệu.", error: true });
+            return;
+          }
+          w.fileName = file.name;
+          w.headers = grid[0].map(function (s) { return s.trim(); });
+          w.rows = grid.slice(1).map(function (r) {
+            var o = [];
+            for (var i = 0; i < w.headers.length; i++) o.push((r[i] || "").trim());
+            return o;
+          });
+          w.mapping = autoMap(w.headers);
+          w.step = 2;
+          renderWizard();
+        };
+        reader.readAsText(file, "utf-8");
+      }
+
+      function mappedField(w, target) {
+        var idx = null;
+        Object.keys(w.mapping).forEach(function (k) {
+          if (w.mapping[k] === target) idx = parseInt(k, 10);
+        });
+        return idx;
+      }
+
+      function requiredMapped(w) {
+        return ["sku", "name", "quantity", "unit_price"].every(function (t) {
+          return mappedField(w, t) !== null;
+        });
+      }
+
+      // Validate mapped rows → list of {row, field, message, value} problems.
+      function validateRows(w) {
+        var problems = [];
+        var seenSku = {};
+        var iSku = mappedField(w, "sku");
+        var iQty = mappedField(w, "quantity");
+        var iPrice = mappedField(w, "unit_price");
+        var iMin = mappedField(w, "reorder_level");
+        w.rows.forEach(function (r, ri) {
+          var rowNo = ri + 2; // 1-based + header
+          var sku = (r[iSku] || "").trim();
+          if (!sku) problems.push({ row: ri, rowNo: rowNo, col: iSku, field: "sku", msg: "missing code · thiếu mã" });
+          else if (seenSku[sku]) problems.push({ row: ri, rowNo: rowNo, col: iSku, field: "sku", msg: "duplicate code · mã trùng" });
+          seenSku[sku] = true;
+          [[iQty, "quantity", "stock must be a whole number · số lượng phải là số"],
+           [iPrice, "unit_price", "price must be a number · giá phải là số"],
+           [iMin, "reorder_level", "minimum must be a whole number · mức tối thiểu phải là số"]]
+            .forEach(function (spec) {
+              var idx = spec[0];
+              if (idx === null) return;
+              var v = (r[idx] || "").trim();
+              if (spec[1] === "unit_price" ? isNaN(parseFloat(v)) || v === "" : !/^\d+$/.test(v)) {
+                problems.push({ row: ri, rowNo: rowNo, col: idx, field: spec[1], msg: spec[2] });
+              }
+            });
+        });
+        return problems;
+      }
+
+      function buildImportCSV(w) {
+        var fields = ["sku", "name", "name_vi", "category", "quantity", "unit_price", "reorder_level", "location"];
+        var cols = {};
+        fields.forEach(function (t) { cols[t] = mappedField(w, t); });
+        var out = [fields.join(",")];
+        w.rows.forEach(function (r) {
+          var line = fields.map(function (t) {
+            var idx = cols[t];
+            var v = idx === null ? "" : (r[idx] || "");
+            if (/[",\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+            return v;
+          });
+          out.push(line.join(","));
+        });
+        return out.join("\n") + "\n";
+      }
+
+      function downloadTemplate() {
+        var csv = "sku,name,name_vi,category,quantity,unit_price,reorder_level,location\n" +
+          "OP-085,Oil pan gasket,Gioăng các te,Engine,10,120000,4,A1-01\n" +
+          "FF-130,Fuel filter,Lọc xăng,Filters,15,95000,6,B2-03\n";
+        var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "gearstock-template.csv";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+        showToast({ en: "Template downloaded.", vi: "Đã tải file mẫu." });
+      }
+
+      function doImport() {
+        var w = state.wizard;
+        if (!w) return;
+        var csv = buildImportCSV(w);
+        var rowCount = w.rows.length;
+        enqueue(function () {
+          return AtriaDash.json("inventory.py",
+              ["import", "--format", "csv", "--file", "-", "--json"],
+              { stdin: csv, timeout_ms: 60000 })
+            .then(function (res) {
+              w.result = res;
+              w.step = 4;
+              return refresh().then(renderWizard);
+            })
+            .catch(function (err) {
+              showToast({ en: scriptError(err), vi: "Nhập file thất bại", error: true });
+            });
+        });
+        showToast({ en: "Importing " + rowCount + " rows…", vi: "Đang nhập " + rowCount + " dòng…" });
+      }
+
+      function renderWizard() {
+        var w = state.wizard;
+        if (!w) return;
+        var body = $("wiz-body");
+        body.innerHTML = "";
+        var next = $("wiz-next");
+        next.hidden = true;
+        next.onclick = null;
+
+        $("wiz-step-num").textContent = w.step < 4 ? (w.step + " / 3") : "DONE";
+        $("wiz-bar").style.width = (w.step === 1 ? 33 : w.step === 2 ? 66 : 100) + "%";
+
+        if (w.step === 1) {
+          var dz = h("div", "dropzone");
+          dz.appendChild(h("div", "lead", "Drag & drop your file here — or click to choose"));
+          dz.appendChild(h("div", null, "Kéo thả file vào đây hoặc bấm để chọn · .csv / .tsv"));
+          dz.addEventListener("click", function () { $("file-input").click(); });
+          dz.addEventListener("dragover", function (ev) { ev.preventDefault(); dz.classList.add("drag"); });
+          dz.addEventListener("dragleave", function () { dz.classList.remove("drag"); });
+          dz.addEventListener("drop", function (ev) {
+            ev.preventDefault();
+            dz.classList.remove("drag");
+            handleFile(ev.dataTransfer.files && ev.dataTransfer.files[0]);
+          });
+          body.appendChild(dz);
+          var tpl = h("button", "secondary", "Download our blank CSV template · Tải file mẫu");
+          tpl.addEventListener("click", downloadTemplate);
+          body.appendChild(tpl);
+          body.appendChild(h("div", "wiz-note",
+            "Working in Excel? Save your sheet as CSV (UTF-8) first. · Dùng Excel? Lưu bảng thành CSV (UTF-8) trước."));
+        }
+
+        if (w.step === 2) {
+          body.appendChild(h("div", "wiz-note",
+            w.fileName + " · " + w.rows.length + " rows read · đã đọc " + w.rows.length + " dòng"));
+          w.headers.forEach(function (hd, idx) {
+            var row = h("div", "map-row" + (w.mapping[idx] ? " matched" : ""));
+            var src = h("div", "src");
+            src.appendChild(h("div", "hd", hd || "(column " + (idx + 1) + ")"));
+            src.appendChild(h("div", "sample", "e.g. " + ((w.rows[0] || [])[idx] || "—")));
+            row.appendChild(src);
+            row.appendChild(h("div", "arrow", "→"));
+            var sel = document.createElement("select");
+            TARGETS.forEach(function (t) {
+              var o = document.createElement("option");
+              o.value = t.key;
+              o.textContent = t.en + (t.vi ? " · " + t.vi : "");
+              sel.appendChild(o);
+            });
+            sel.value = w.mapping[idx] || "";
+            sel.addEventListener("change", function () {
+              // A target can only be mapped once — steal it from any other column.
+              if (sel.value) {
+                Object.keys(w.mapping).forEach(function (k) {
+                  if (w.mapping[k] === sel.value) delete w.mapping[k];
+                });
+                w.mapping[idx] = sel.value;
+              } else {
+                delete w.mapping[idx];
+              }
+              renderWizard();
+            });
+            row.appendChild(sel);
+            body.appendChild(row);
+          });
+          if (!requiredMapped(w)) {
+            body.appendChild(h("div", "wiz-note",
+              "Code, item name, stock level and price must each be matched to a column. · Cần khớp đủ cột mã, tên, số lượng và giá."));
+          }
+          next.hidden = false;
+          next.textContent = "Next: check for errors · Tiếp: kiểm tra lỗi";
+          next.disabled = !requiredMapped(w);
+          next.onclick = function () { w.step = 3; renderWizard(); };
+        }
+
+        if (w.step === 3) {
+          var problems = validateRows(w);
+          var bad = {};
+          problems.forEach(function (p) { bad[p.row] = true; });
+          var fine = w.rows.length - Object.keys(bad).length;
+          body.appendChild(h("div", "wiz-note",
+            fine + " rows are fine · " + fine + " dòng hợp lệ — " +
+            problems.length + " problem" + (problems.length === 1 ? "" : "s") + " to fix · lỗi cần sửa"));
+          if (!problems.length) {
+            var ok = h("div", "wiz-ok");
+            ok.appendChild(h("div", null, "✓ Everything looks good. · Dữ liệu hợp lệ."));
+            body.appendChild(ok);
+          }
+          problems.forEach(function (p) {
+            var row = h("div", "err-row");
+            row.appendChild(h("div", "mono", "Row " + p.rowNo));
+            var mid = h("div");
+            var nameIdx = mappedField(w, "name");
+            mid.appendChild(h("div", null,
+              ((w.rows[p.row] || [])[nameIdx] || "(no name)") + " — " + p.msg));
+            row.appendChild(mid);
+            var inp = h("input");
+            inp.type = "text";
+            inp.value = (w.rows[p.row] || [])[p.col] || "";
+            inp.placeholder = "fix value · sửa giá trị";
+            function apply() {
+              w.rows[p.row][p.col] = inp.value.trim();
+              renderWizard();
+            }
+            inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter") { ev.preventDefault(); apply(); } });
+            inp.addEventListener("blur", apply);
+            row.appendChild(inp);
+            body.appendChild(row);
+          });
+          body.appendChild(h("div", "wiz-note",
+            "Type the corrected value and press Enter. Import unlocks when every problem is fixed. · Nhập giá trị đúng rồi nhấn Enter."));
+          next.hidden = false;
+          next.textContent = "Import " + w.rows.length + " items · Nhập " + w.rows.length + " mặt hàng";
+          next.disabled = problems.length > 0;
+          next.onclick = doImport;
+        }
+
+        if (w.step === 4) {
+          var res = w.result || {};
+          var okBox = h("div", "wiz-ok");
+          var check = h("div", "big-check");
+          check.innerHTML = '<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--semantic-success))" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>';
+          okBox.appendChild(check);
+          okBox.appendChild(h("h3", null, "Success! · Thành công!"));
+          okBox.appendChild(h("div", "wiz-note",
+            (res.added || 0) + " added · thêm mới, " + (res.updated || 0) + " updated · cập nhật" +
+            (res.skipped ? ", " + res.skipped + " skipped · bỏ qua" : "")));
+          var go = h("button", null, "Go to my inventory → · Xem tồn kho");
+          go.addEventListener("click", function () { closeWizard(true); });
+          okBox.appendChild(go);
+          body.appendChild(okBox);
+        }
+
+        $("wiz-cancel").textContent = w.step === 4
+          ? "Close · Đóng"
+          : "✕ Cancel import · Hủy nhập file";
+      }
+
+      /* ═════════ 14. Render root & sizing ═════════ */
+
+      function renderAll() {
+        if (!state.snap && state.loadError) {
+          $("inv-list").innerHTML = "";
+          var e = h("div", "empty");
+          e.appendChild(h("div", null, "Couldn't load inventory. · Không tải được dữ liệu."));
+          e.appendChild(h("div", "vi", state.loadError));
+          var retry = h("button", "secondary", "Retry · Thử lại");
+          retry.addEventListener("click", refresh);
+          e.appendChild(retry);
+          $("inv-list").appendChild(e);
+          renderTabs();
+          return;
+        }
+        if (!state.snap) return;
+
+        document.body.classList.toggle("compact", state.density === "compact");
+        $("density-btn").textContent = state.density === "comfy"
+          ? "View: Comfortable · Thoải mái"
+          : "View: Compact · Gọn (Excel)";
+
+        renderTabs();
+        if (state.tab === "inv") { renderInvPills(); renderInvList(); }
+        if (state.tab === "pos") renderPos();
+        if (state.tab === "res") renderRes();
+        if (state.tab === "hist") renderHist();
+        renderToast();
+        reportSize();
+      }
+
+      var reportSize = debounce(function () {
+        var hgt = Math.max(
+          document.body.scrollHeight,
+          document.documentElement.scrollHeight,
+          640
+        );
+        AtriaDash.resize(hgt + 24);
+      }, 60);
+
+      /* ═════════ 15. Wiring & boot ═════════ */
+
+      $("inv-search").addEventListener("input", function () {
+        state.search = this.value;
+        renderInvPills();
+        renderInvList();
+        reportSize();
+      });
+      $("pos-search").addEventListener("input", function () {
+        state.posSearch = this.value;
+        renderPos();
+        reportSize();
+      });
+      $("density-btn").addEventListener("click", function () {
+        state.density = state.density === "comfy" ? "compact" : "comfy";
+        renderAll();
+      });
+      $("add-btn").addEventListener("click", openDialog);
+      $("dlg-close").addEventListener("click", closeDialog);
+      $("dlg-cancel").addEventListener("click", closeDialog);
+      $("dlg-form").addEventListener("submit", saveItem);
+      $("dlg-backdrop").addEventListener("click", function (ev) {
+        if (ev.target === this) closeDialog();
+      });
+
+      $("bell").addEventListener("click", function () { setTab("res"); });
+
+      $("rcv-close").addEventListener("click", closeReceive);
+      $("rcv-cancel").addEventListener("click", closeReceive);
+      $("rcv-confirm").addEventListener("click", confirmReceive);
+      $("rcv-minus").addEventListener("click", function () {
+        var q = Math.max(1, (parseInt($("rcv-qty").value, 10) || 1) - 1);
+        $("rcv-qty").value = String(q);
+      });
+      $("rcv-plus").addEventListener("click", function () {
+        $("rcv-qty").value = String((parseInt($("rcv-qty").value, 10) || 0) + 1);
+      });
+      $("rcv-backdrop").addEventListener("click", function (ev) {
+        if (ev.target === this) closeReceive();
+      });
+
+      $("import-btn").addEventListener("click", openWizard);
+      $("wiz-cancel").addEventListener("click", function () { closeWizard(false); });
+      $("file-input").addEventListener("change", function () {
+        handleFile(this.files && this.files[0]);
+      });
+
+      var changeRefresh = debounce(function () {
+        if (!uiBusy()) refresh();
+      }, 400);
+      AtriaDash.onChange(function () { changeRefresh(); });
+      AtriaDash.onVisibility(function (visible) {
+        if (visible && !uiBusy()) refresh();
+      });
+
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () { reportSize(); }).observe(document.body);
+      }
+
+      AtriaDash.ready();
+      refresh();
+    })();
+  </script>
+</body>
+</html>
