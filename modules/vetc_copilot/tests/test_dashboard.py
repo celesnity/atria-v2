@@ -17,5 +17,13 @@ def test_dashboard_uses_atria_bridge():
     assert "AtriaDash" in html  # uses window.AtriaDash
     assert "autopilot.py" in html  # bridge runs the module CLI
     # every endpoint the UI needs must be routed through the bridge/fallback layer
-    for cmd in ("radar", "recommend", "ask", "wallet", "renew"):
+    for cmd in ("radar", "recommend", "agent", "wallet", "renew"):
         assert cmd in html
+
+
+def test_dashboard_has_agentic_chat():
+    """The assistant panel must be the agentic chat (calls the `agent` command)."""
+    html = (Path(__file__).resolve().parent.parent / "dashboard.html").read_text(encoding="utf-8")
+    assert "chat-log" in html
+    assert "'agent'" in html  # callApi('agent', ...) drives the assistant
+    assert "tool-chip" in html  # shows which tools the AI invoked

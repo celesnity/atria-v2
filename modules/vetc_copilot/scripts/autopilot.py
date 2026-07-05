@@ -14,6 +14,7 @@ from datastore import load_dataset  # type: ignore[import-not-found]
 from radar import radar_for_user  # type: ignore[import-not-found]
 from brain import ask as brain_ask, recommend as brain_recommend  # type: ignore[import-not-found]
 from hands import renew as hands_renew  # type: ignore[import-not-found]
+from agent import run_agent  # type: ignore[import-not-found]
 from guardrails import privacy_refusal  # type: ignore[import-not-found]
 from config import load_brain_config  # type: ignore[import-not-found]
 from client import BrainClient  # type: ignore[import-not-found]
@@ -59,6 +60,13 @@ def api_dispatch(endpoint: str, params: dict, ds, today: date, client=None) -> d
             "vehicle_id": params.get("vehicle"),
             "documents": ds.documents_for_vehicle(params.get("vehicle", "")),
         }
+    if endpoint == "agent":
+        history = params.get("history", "[]")
+        try:
+            messages = json.loads(history) if isinstance(history, str) else history
+        except (ValueError, TypeError):
+            messages = []
+        return run_agent(ds, user, messages if isinstance(messages, list) else [], today, client)
     return {"error": f"unknown endpoint: {endpoint}"}
 
 
@@ -150,6 +158,9 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("ask", parents=[_global])
     a.add_argument("text")
     a.add_argument("--user", required=True)
+    ag = sub.add_parser("agent", parents=[_global])
+    ag.add_argument("--user", required=True)
+    ag.add_argument("--history", required=True, help="JSON list of {role,content} messages.")
     r = sub.add_parser("renew", parents=[_global])
     r.add_argument("--user", required=True)
     r.add_argument("--vehicle", required=True)
@@ -210,6 +221,11 @@ def main(argv: list[str] | None = None) -> int:
                 indent=2,
             )
         )
+    elif args.command == "agent":
+        result = api_dispatch(
+            "agent", {"user": args.user, "history": args.history}, ds, today, client
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "eval":
         print(json.dumps(run_eval(ds, today, client), ensure_ascii=False, indent=2))
     elif args.command == "audit":
