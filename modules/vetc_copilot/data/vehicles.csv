@@ -1,0 +1,21 @@
+vehicle_id,user_id,vehicle_type,brand,model,year,fuel_type,license_plate_masked,ownership_status,inspection_expiry,civil_liability_expiry,registration_expiry,roadside_assistance_status,vehicle_age_years,risk_notes
+VEH001,U001,Car,Toyota,Vios,2019.0,Gasoline,30A-***.12,Owner,2026-07-20,2026-08-15,2029-01-10,Inactive,7.0,"Đăng kiểm sắp hết hạn, chưa có cứu hộ"
+VEH002,U002,Car,Mazda,CX-5,2021.0,Gasoline,51G-***.88,Owner,2027-01-10,2026-11-05,2030-02-01,Active,5.0,"Xe gia đình, cần nhắc bảo hiểm"
+VEH003,U003,Car,Hyundai,Accent,2020.0,Gasoline,43A-***.45,Owner,2026-07-30,2026-07-25,2028-10-12,Inactive,6.0,Cả đăng kiểm và bảo hiểm sắp hết hạn
+VEH004,U004,Car,Ford,Everest,2018.0,Diesel,15A-***.09,Owner,2026-12-12,2026-10-01,2028-05-09,Active,8.0,Xe đi công tác nhiều
+VEH005,U005,Car,Kia,Morning,2022.0,Gasoline,30K-***.19,Owner,2027-03-11,2026-08-30,2031-04-22,Inactive,4.0,"Người dùng mới, cần hướng dẫn giấy tờ"
+VEH006,U006,Car,Honda,City,2017.0,Gasoline,51F-***.77,Owner,2026-08-10,2026-08-01,2028-02-15,Inactive,9.0,"Xe cũ, nên xem xét cứu hộ"
+VEH007,U007,Car,Toyota,Corolla Cross,2023.0,Hybrid,79A-***.26,Owner,2027-06-18,2027-01-05,2032-01-01,Active,3.0,Đi xa cuối tuần
+VEH008,U008,Car,Mitsubishi,Xpander,2019.0,Gasoline,29A-***.99,Owner,2026-10-22,2026-09-13,2028-12-21,Inactive,7.0,"Quản lý nhiều xe, chưa kích hoạt cứu hộ"
+VEH009,U009,Car,Suzuki,XL7,2020.0,Gasoline,49A-***.31,Owner,2026-11-02,2026-10-25,2029-03-30,Inactive,6.0,Ít mở app
+VEH010,U010,EV,VinFast,VF 8,2024.0,Electric,51E-***.66,Owner,2027-08-08,2027-02-15,2032-08-08,Active,2.0,"Xe điện, cần nhắc sạc/bảo dưỡng"
+VEH011,U011,Car,Toyota,Innova,2015.0,Gasoline,30E-***.22,Owner,2026-09-01,2026-08-28,2027-09-01,Inactive,11.0,"Xe cũ, rủi ro sự cố cao"
+VEH012,U012,Car,Honda,Civic,2021.0,Gasoline,51H-***.41,Owner,2027-02-05,2026-07-18,2030-06-02,Inactive,5.0,Bảo hiểm sắp hết hạn rất gần
+VEH013,U013,Car,Ford,Ranger,2018.0,Diesel,43C-***.88,Owner,2026-08-05,2026-09-20,2028-04-19,Active,8.0,Đăng kiểm sắp hết hạn
+VEH014,U014,Motorbike,Honda,SH,2022.0,Gasoline,29B1-***.10,Owner,N/A,2026-11-10,2031-08-18,Inactive,4.0,Cần hướng dẫn khác biệt xe máy/ô tô
+VEH015,U015,Car,Kia,Sorento,2020.0,Gasoline,51K-***.55,Owner,2026-12-25,2026-07-22,2029-11-01,Inactive,6.0,Bảo hiểm sắp hết hạn
+VEH016,U016,EV,VinFast,VF e34,2023.0,Electric,15E-***.19,Owner,2027-05-20,2026-12-15,2032-05-20,Active,3.0,EV owner
+VEH017,U017,Car,Toyota,Raize,2024.0,Gasoline,43A-***.02,Owner,2027-09-18,2027-01-10,2034-01-10,Inactive,2.0,Người mới lái
+VEH018,U018,Car,Mercedes,C200,2019.0,Gasoline,30G-***.77,Owner,2026-08-15,2026-08-20,2029-01-01,Active,7.0,Đăng kiểm và bảo hiểm cùng gần hạn
+VEH019,U019,Car,Mazda,Mazda 3,2020.0,Gasoline,51F-***.03,Owner,2026-09-25,2026-10-02,2029-09-25,Inactive,6.0,Ít mở app
+VEH020,U020,Car,Hyundai,Tucson,2018.0,Diesel,79A-***.81,Owner,2026-07-25,2026-07-28,2028-07-25,Inactive,8.0,Cần nhắc gấp đăng kiểm và bảo hiểm
