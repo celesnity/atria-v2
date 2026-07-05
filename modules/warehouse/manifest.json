@@ -12,6 +12,7 @@
     "actions": {
       "list":        { "running": "Checking inventory…",  "done": "Inventory loaded" },
       "snapshot":    { "running": "Loading dashboard…",    "done": "Dashboard ready" },
+      "report":      { "running": "Writing report…",       "done": "Report ready" },
       "summary":     { "running": "Building summary…",     "done": "Summary ready" },
       "low-stock":   { "running": "Finding low stock…",    "done": "Low-stock report ready" },
       "valuation":   { "running": "Valuing inventory…",    "done": "Valuation ready" },

@@ -241,7 +241,16 @@ class LlmCallsMixin:
             response = result.response
             if response.status_code != 200:
                 last_error = f"API Error {response.status_code}: {response.text}"
-                if has_next and response.status_code in _RETRYABLE_STATUS:
+                # DashScope returns 403 "FreeTierOnly" when a model's free quota
+                # is exhausted — treat that like a retryable error so we fall
+                # back to the next model instead of dead-ending.
+                quota_exhausted = (
+                    response.status_code == 403
+                    and "FreeTierOnly" in (response.text or "")
+                )
+                if has_next and (
+                    response.status_code in _RETRYABLE_STATUS or quota_exhausted
+                ):
                     _logger.warning(
                         "Model %s returned HTTP %s; falling back to %s",
                         candidate, response.status_code, candidates[idx + 1],

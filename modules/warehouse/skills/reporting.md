@@ -29,10 +29,22 @@ level.
 Everything the module dashboard renders, in one JSON payload: items enriched
 with `status` (`in_stock|low|out`), `spw` (units sold per week over the last
 28 days), `days_left`, `suggested_order`, plus aggregate `stats` (including
-sold-today), `categories` and recent `movements`:
+sold-today), `categories`, recent `movements`, and `week` (last 7 days of
+`{date, units, value}` sales aggregates, oldest first — used by the
+dashboard's Minder assistant for its sales-trend chart):
 
 ```
 python <modules>/warehouse/scripts/inventory.py snapshot --history-limit 50
+```
+
+## Written report
+
+Render a human-readable inventory + sales report (summary, needs-restock table,
+top sellers, last-7-days sales) to a file or stdout — deterministic, no LLM:
+
+```
+python <modules>/warehouse/scripts/inventory.py report --out warehouse-report.md
+python <modules>/warehouse/scripts/inventory.py report --format txt
 ```
 
 ## Summary KPIs

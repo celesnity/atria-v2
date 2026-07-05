@@ -6,7 +6,7 @@ change is recorded in an append-only ``movements`` ledger alongside the
 current-state ``items`` table.
 
 Subcommands:
-  state ........ list, summary, low-stock, valuation, history, query, snapshot
+  state ........ list, summary, low-stock, valuation, history, query, snapshot, report
   CRUD ......... add, update, remove, reset
   stock ops .... adjust, receive, ship, sell, revert, move, set-reorder,
                  mark-ordered, unmark-ordered
@@ -514,8 +514,9 @@ def _spw_by_sku(conn: sqlite3.Connection, days: int = 28) -> dict[str, float]:
     return {r["sku"]: max(0.0, (r["sold"] or 0) / weeks) for r in rows}
 
 
-def cmd_snapshot(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
-    """Everything the module dashboard needs, in a single subprocess call."""
+def _build_snapshot(conn: sqlite3.Connection, today_start: str | None = None,
+                    history_limit: int = 50) -> dict:
+    """Assemble the dashboard snapshot dict (shared by snapshot + report)."""
     spw = _spw_by_sku(conn)
     items = []
     for r in conn.execute("SELECT * FROM items ORDER BY sku").fetchall():
@@ -532,7 +533,7 @@ def cmd_snapshot(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
                    "days_left": days_left, "suggested_order": suggested})
         items.append(it)
 
-    today_start = args.today_start or _utc_today_start()
+    today_start = today_start or _utc_today_start()
     sold = conn.execute(
         f"SELECT m.sku, SUM({_SOLD_EXPR}) AS units FROM movements m "
         "WHERE m.created_at >= ? GROUP BY m.sku",
@@ -542,6 +543,26 @@ def cmd_snapshot(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
     sold_units = sum(max(0, r["units"] or 0) for r in sold)
     sold_value = round(sum(max(0, r["units"] or 0) * price_by_sku.get(r["sku"], 0.0)
                            for r in sold), 2)
+
+    # Last 7 local days (oldest -> today), keyed off the caller's today-start
+    # so day boundaries match the dashboard's timezone.
+    try:
+        day0 = datetime.strptime(today_start, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        day0 = datetime.strptime(_utc_today_start(), "%Y-%m-%dT%H:%M:%SZ")
+    week = []
+    for back in range(6, -1, -1):
+        start = day0 - timedelta(days=back)
+        end = start + timedelta(days=1)
+        rows_day = conn.execute(
+            f"SELECT m.sku, SUM({_SOLD_EXPR}) AS units FROM movements m "
+            "WHERE m.created_at >= ? AND m.created_at < ? GROUP BY m.sku",
+            (start.strftime("%Y-%m-%dT%H:%M:%SZ"), end.strftime("%Y-%m-%dT%H:%M:%SZ")),
+        ).fetchall()
+        units = sum(max(0, r["units"] or 0) for r in rows_day)
+        value = round(sum(max(0, r["units"] or 0) * price_by_sku.get(r["sku"], 0.0)
+                          for r in rows_day), 2)
+        week.append({"date": start.strftime("%Y-%m-%d"), "units": units, "value": value})
 
     stats = {
         "skus": len(items),
@@ -553,11 +574,99 @@ def cmd_snapshot(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
         "sold_today_value": sold_value,
     }
     movements = [dict(r) for r in conn.execute(
-        "SELECT * FROM movements ORDER BY id DESC LIMIT ?", (args.history_limit,)
+        "SELECT * FROM movements ORDER BY id DESC LIMIT ?", (history_limit,)
     ).fetchall()]
     categories = sorted({it["category"] for it in items if it["category"]})
-    _emit({"generated_at": _db.now(), "items": items, "stats": stats,
-           "categories": categories, "movements": movements})
+    return {"generated_at": _db.now(), "items": items, "stats": stats,
+            "categories": categories, "movements": movements, "week": week}
+
+
+def cmd_snapshot(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
+    """Everything the module dashboard needs, in a single subprocess call."""
+    _emit(_build_snapshot(conn, args.today_start, args.history_limit))
+    return 0
+
+
+_WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def _render_report(snap: dict, fmt: str = "md") -> str:
+    """Render a human-readable inventory + sales report from a snapshot dict."""
+    st = snap.get("stats", {})
+    items = snap.get("items", [])
+    low = [it for it in items if it.get("status") != "in_stock"]
+    top = sorted(items, key=lambda it: it.get("spw", 0), reverse=True)
+    top = [it for it in top if it.get("spw", 0) > 0][:5]
+    week = snap.get("week", [])
+
+    def money(n: float) -> str:
+        return f"{n:,.0f} VND"
+
+    md = fmt != "txt"
+    h1 = (lambda s: f"# {s}") if md else (lambda s: s.upper())
+    h2 = (lambda s: f"\n## {s}") if md else (lambda s: f"\n{s}\n" + "-" * len(s))
+    L: list[str] = []
+    L.append(h1("Warehouse report"))
+    L.append(f"Generated: {snap.get('generated_at', '')}")
+    L.append(h2("Summary"))
+    L.append(f"- SKUs: {st.get('skus', 0)}")
+    L.append(f"- Units on hand: {st.get('units', 0)}")
+    L.append(f"- Inventory value: {money(st.get('value', 0))}")
+    L.append(f"- Low stock: {st.get('low_count', 0)} | Out of stock: {st.get('out_count', 0)}")
+    L.append(f"- Sold today: {st.get('sold_today_count', 0)} units "
+             f"({money(st.get('sold_today_value', 0))})")
+
+    L.append(h2("Needs restock"))
+    if not low:
+        L.append("Everything is at or above its reorder level.")
+    elif md:
+        L.append("| SKU | Name | Qty | Reorder | Status |")
+        L.append("|-----|------|-----|---------|--------|")
+        for it in low:
+            L.append(f"| {it['sku']} | {it['name']} | {it['quantity']} | "
+                     f"{it['reorder_level']} | {it['status']} |")
+    else:
+        for it in low:
+            L.append(f"  {it['sku']:<10} {it['name'][:24]:<24} qty {it['quantity']:>4} "
+                     f"(min {it['reorder_level']}) [{it['status']}]")
+
+    L.append(h2("Top sellers (per week)"))
+    if not top:
+        L.append("No sales recorded yet.")
+    else:
+        for it in top:
+            L.append(f"- {it['name']} — {it.get('spw', 0)}/week")
+
+    L.append(h2("Sales, last 7 days"))
+    if week:
+        for w in week:
+            try:
+                wd = _WEEKDAYS[datetime.strptime(w["date"], "%Y-%m-%d").weekday()]
+            except (ValueError, KeyError):
+                wd = ""
+            L.append(f"- {w.get('date', '')} ({wd}): {w.get('units', 0)} units, "
+                     f"{money(w.get('value', 0))}")
+    else:
+        L.append("No data.")
+    return "\n".join(L) + "\n"
+
+
+def cmd_report(conn: sqlite3.Connection, args: argparse.Namespace) -> int:
+    """Write (or print) a deterministic inventory + sales report."""
+    snap = _build_snapshot(conn, history_limit=200)
+    text = _render_report(snap, args.format)
+    if args.out:
+        out = Path(args.out)
+        if out.parent and not out.parent.exists():
+            out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        if args.json:
+            _emit({"ok": True, "path": str(args.out),
+                   "bytes": len(text.encode("utf-8"))})
+        else:
+            print(f"report written: {args.out}")
+    else:
+        sys.stdout.write(text)
     return 0
 
 
@@ -751,6 +860,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--today-start", help="ISO cutoff for the sold-today KPI (default: UTC midnight)")
     p.add_argument("--history-limit", type=int, default=50)
     p.set_defaults(fn=cmd_snapshot)
+
+    p = sub.add_parser("report", help="write a human-readable inventory + sales report")
+    p.add_argument("--out", help="write to this file (relative -> cwd); omit to print")
+    p.add_argument("--format", choices=["md", "txt"], default="md")
+    p.add_argument("--json", action="store_true", help="emit a JSON {ok, path, bytes} summary")
+    p.set_defaults(fn=cmd_report)
 
     p = sub.add_parser("add", help="add a new item")
     p.add_argument("--sku", required=True)
