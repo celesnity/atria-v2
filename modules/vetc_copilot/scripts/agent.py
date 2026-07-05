@@ -92,8 +92,10 @@ def run_tool(name: str, args: dict, ds, user_id: str, today: date, client) -> di
 def parse_tool_call(raw: str) -> dict | None:
     """Return ``{"tool", "args"}`` if the model output is a tool call, else None.
 
-    Tolerates code fences and surrounding prose: finds the first JSON object that
-    contains a ``"tool"`` key.
+    Weak models often emit the tool-call JSON followed by extra prose (a
+    hallucinated answer). We scan for balanced ``{...}`` objects — handling
+    nested braces like ``"args": {}`` — and return the first one carrying a
+    ``"tool"`` key, ignoring any trailing text so the tool still executes.
     """
     text = raw.strip()
     text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.MULTILINE).strip()
@@ -105,17 +107,46 @@ def parse_tool_call(raw: str) -> dict | None:
 
 
 def _json_objects(text: str):
-    """Yield parsed JSON objects found in ``text`` (whole string first, then spans)."""
-    try:
-        yield json.loads(text)
-        return
-    except (ValueError, TypeError):
-        pass
-    for match in re.finditer(r"\{.*?\}", text, flags=re.DOTALL):
-        try:
-            yield json.loads(match.group(0))
-        except (ValueError, TypeError):
-            continue
+    """Yield parsed JSON objects found in ``text`` (balanced-brace aware)."""
+    idx = text.find("{")
+    while idx != -1:
+        span = _balanced_object(text, idx)
+        if span is not None:
+            try:
+                yield json.loads(text[idx : span + 1])
+            except (ValueError, TypeError):
+                pass
+            idx = text.find("{", span + 1)
+        else:
+            idx = text.find("{", idx + 1)
+
+
+def _balanced_object(text: str, start: int) -> int | None:
+    """Return the index of the ``}`` closing the object opened at ``start``, or None.
+
+    String-aware so braces inside JSON strings don't affect nesting depth.
+    """
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        c = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    return None
 
 
 _BUSY = (
