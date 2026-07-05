@@ -1,4 +1,5 @@
 """Brain model config from VA_BRAIN_* env, falling back to OPENAI_API_KEY."""
+
 from __future__ import annotations
 
 import os
