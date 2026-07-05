@@ -13,6 +13,33 @@ def test_client_unavailable_without_key():
     assert BrainClient(cfg).available is False
 
 
+def test_config_prefers_openrouter_key_and_defaults():
+    cfg = load_brain_config({"OPENROUTER_API_KEY": "sk-or-abc"})
+    assert cfg.api_key == "sk-or-abc"
+    assert cfg.base_url == "https://openrouter.ai/api/v1"
+    assert cfg.model == "openai/gpt-oss-120b:free"
+    assert cfg.provider == "openrouter"
+
+
+def test_config_sk_or_key_in_openai_var_routes_to_openrouter():
+    # An OpenRouter key stored in OPENAI_API_KEY must still use OpenRouter's endpoint.
+    cfg = load_brain_config({"OPENAI_API_KEY": "sk-or-xyz"})
+    assert cfg.base_url == "https://openrouter.ai/api/v1"
+    assert cfg.provider == "openrouter"
+
+
+def test_config_va_brain_overrides_win():
+    cfg = load_brain_config(
+        {
+            "OPENROUTER_API_KEY": "sk-or-abc",
+            "VA_BRAIN_BASE_URL": "https://example.test/v1",
+            "VA_BRAIN_MODEL": "custom-model",
+        }
+    )
+    assert cfg.base_url == "https://example.test/v1"
+    assert cfg.model == "custom-model"
+
+
 def test_client_chat_uses_injected_factory():
     cfg = load_brain_config({"OPENAI_API_KEY": "sk-x"})
 
