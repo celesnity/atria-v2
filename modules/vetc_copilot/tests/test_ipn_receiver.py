@@ -38,6 +38,13 @@ def test_ipn_rejects_bad_signature(tmp_path):
     assert code == 401
 
 
+def test_ipn_rejects_when_secret_unconfigured(tmp_path):
+    code, out = handle_ipn(
+        {"order_id": "O1", "payment_id": "P1", "status": "SUCCESS", "signature": "anything"},
+        "", pending_path=tmp_path / "p.jsonl", renewals_path=tmp_path / "r.jsonl")
+    assert code == 401
+
+
 def test_ipn_replay_is_idempotent(tmp_path):
     pend = tmp_path / "pending.jsonl"
     ren = tmp_path / "renewals.jsonl"
