@@ -60,3 +60,21 @@ def test_ask_uncovered_question_abstains():
     out = ask(_ds(), "U001", "zzz qqq www", date(2026, 7, 5), client=None)
     assert out["citations"] == []
     assert out["needs_review"] is True
+
+
+class _RaisingClient:
+    """Stub Brain client that is 'available' but fails on chat (e.g. bad key)."""
+
+    available = True
+
+    def chat(self, messages, **kw):
+        raise RuntimeError("401 auth error")
+
+
+def test_ask_falls_back_to_offline_when_llm_errors():
+    # A failing LLM (e.g. a bad key in the host env) must not crash ask —
+    # it falls back to the deterministic grounded template.
+    out = ask(_ds(), "U001", "Khi nào cần đăng kiểm?", date(2026, 7, 5), client=_RaisingClient())
+    assert out["source"] == "offline"
+    assert "K001" in out["citations"]
+    assert out["needs_review"] is False
