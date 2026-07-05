@@ -50,7 +50,9 @@ def _system_prompt(user_id: str) -> str:
         "- Khi cần dữ liệu, chỉ trả về MỘT dòng JSON duy nhất: "
         '{"tool": "<tên>", "args": {...}} và KHÔNG kèm chữ nào khác.\n'
         "- Khi đã đủ dữ liệu, trả lời người dùng bằng tiếng Việt tự nhiên, ngắn gọn (KHÔNG JSON).\n"
-        "- LUÔN hỏi xác nhận trước khi gọi renew_service.\n"
+        "- LUÔN hỏi xác nhận trước khi gọi renew_service. Sau khi gọi, nếu kết quả có "
+        "pending_user_confirmation, hãy nói 'Đã gửi yêu cầu thanh toán sang VETC, đang chờ xác nhận…' "
+        "(KHÔNG khẳng định đã gia hạn xong).\n"
         "- Khi nói về quy định, giữ nguyên trích dẫn [Kxxx] từ kết quả lookup_regulation.\n"
         "- Không bịa số liệu; chỉ dùng dữ liệu từ kết quả công cụ."
     )
