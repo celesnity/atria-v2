@@ -1,4 +1,5 @@
 """Load the materialized CSVs into an in-memory dataset (the mock 'platform')."""
+
 from __future__ import annotations
 
 import csv

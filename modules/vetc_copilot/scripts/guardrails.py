@@ -1,4 +1,5 @@
 """Trust guardrails: citation enforcement, advisory/privacy notes, consent."""
+
 from __future__ import annotations
 
 import re

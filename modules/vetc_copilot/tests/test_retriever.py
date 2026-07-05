@@ -1,7 +1,12 @@
 from retriever import Retriever
 
 ROWS = [
-    {"knowledge_id": "K001", "question": "Khi nào cần đăng kiểm xe", "answer": "", "topic": "Đăng kiểm"},
+    {
+        "knowledge_id": "K001",
+        "question": "Khi nào cần đăng kiểm xe",
+        "answer": "",
+        "topic": "Đăng kiểm",
+    },
     {"knowledge_id": "K002", "question": "Bảo hiểm TNDS là gì", "answer": "", "topic": "Bảo hiểm"},
 ]
 
