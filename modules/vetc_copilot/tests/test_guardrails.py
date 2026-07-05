@@ -9,6 +9,14 @@ def test_enforce_citations_drops_uncited():
     assert out["dropped"]
 
 
+def test_enforce_citations_keeps_inline_decimals():
+    raw = "Phí bảo hiểm bắt buộc là 1.500.000 đồng mỗi năm [K001]."
+    out = enforce_citations(raw, {"K001"})
+    assert "1.500.000" in out["answer"]
+    assert "[K001]" in out["answer"]
+    assert out["dropped"] is False
+
+
 def test_consent_gate_blocks_without_consent():
     assert consent_gate(True)[0] is True
     ok, reason = consent_gate(False)

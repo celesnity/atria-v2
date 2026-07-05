@@ -12,7 +12,7 @@ PRIVACY_NOTE = (
 )
 
 _CITE = re.compile(r"\[([A-Za-z0-9_-]+)\]")
-_SENT = re.compile(r"[^.!?]+[.!?]?")
+_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
 def enforce_citations(answer: str, allowed_ids: set[str]) -> dict:
@@ -28,7 +28,7 @@ def enforce_citations(answer: str, allowed_ids: set[str]) -> dict:
     kept: list[str] = []
     grounded: set[str] = set()
     dropped = False
-    for sent in (s.strip() for s in _SENT.findall(answer) if s.strip()):
+    for sent in (s.strip() for s in _SENT_SPLIT.split(answer.strip()) if s.strip()):
         ids = {m for m in _CITE.findall(sent) if m in allowed_ids}
         if ids:
             kept.append(sent)
