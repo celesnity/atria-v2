@@ -269,6 +269,8 @@ def handle_ipn(
     order_id = str(payload.get("order_id", ""))
     payment_id = str(payload.get("payment_id", ""))
     status = str(payload.get("status", ""))
+    if not secret:
+        return 401, {"code": "UNAUTHORIZED", "message": "IPN secret not configured"}
     if not ipn_verify(order_id, payment_id, status, str(payload.get("signature", "")), secret):
         return 401, {"code": "UNAUTHORIZED", "message": "bad signature"}
     if status != "SUCCESS":
