@@ -1,4 +1,5 @@
 """Pure-Python TF-IDF cosine retriever over small text tables (no external index)."""
+
 from __future__ import annotations
 
 import math
@@ -15,8 +16,12 @@ def _tokens(text: str) -> list[str]:
 class Retriever:
     """Rank rows by TF-IDF cosine similarity of their concatenated text fields."""
 
-    def __init__(self, rows: list[dict], text_fields: tuple[str, ...] =
-                 ("question", "answer", "topic"), id_field: str = "knowledge_id") -> None:
+    def __init__(
+        self,
+        rows: list[dict],
+        text_fields: tuple[str, ...] = ("question", "answer", "topic"),
+        id_field: str = "knowledge_id",
+    ) -> None:
         self._rows = rows
         self._id_field = id_field
         self._docs = [_tokens(" ".join(str(r.get(f, "")) for f in text_fields)) for r in rows]

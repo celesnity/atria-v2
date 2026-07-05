@@ -1,4 +1,5 @@
 """Deadline detection over vehicle rows (deterministic, no LLM)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -54,23 +55,35 @@ def deadlines_for_vehicle(vehicle: dict, today: date) -> list[dict]:
             continue
         expiry = parse_date(vehicle.get(col, ""))
         days = (expiry - today).days if expiry else None
-        out.append({
-            "kind": kind, "label": label,
-            "expiry": expiry.isoformat() if expiry else None,
-            "days_to_expiry": days, "urgency": urgency(days),
-        })
+        out.append(
+            {
+                "kind": kind,
+                "label": label,
+                "expiry": expiry.isoformat() if expiry else None,
+                "days_to_expiry": days,
+                "urgency": urgency(days),
+            }
+        )
     order = {"overdue": 0, "urgent": 1, "soon": 2, "ok": 3, "unknown": 4}
-    return sorted(out, key=lambda d: (order[d["urgency"]], d["days_to_expiry"] is None,
-                                      d["days_to_expiry"] if d["days_to_expiry"] is not None else 0))
+    return sorted(
+        out,
+        key=lambda d: (
+            order[d["urgency"]],
+            d["days_to_expiry"] is None,
+            d["days_to_expiry"] if d["days_to_expiry"] is not None else 0,
+        ),
+    )
 
 
 def radar_for_user(ds, user_id: str, today: date) -> dict:
     """Return every vehicle's deadlines for a user."""
     vehicles = []
     for v in ds.vehicles_for_user(user_id):
-        vehicles.append({
-            "vehicle_id": v.get("vehicle_id"),
-            "vehicle_type": v.get("vehicle_type"),
-            "deadlines": deadlines_for_vehicle(v, today),
-        })
+        vehicles.append(
+            {
+                "vehicle_id": v.get("vehicle_id"),
+                "vehicle_type": v.get("vehicle_type"),
+                "deadlines": deadlines_for_vehicle(v, today),
+            }
+        )
     return {"user_id": user_id, "vehicles": vehicles}
