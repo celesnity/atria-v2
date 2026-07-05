@@ -173,6 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--port", type=int, default=8770)
     au = sub.add_parser("audit", parents=[_global])
     au.add_argument("--limit", type=int, default=50)
+    sub.add_parser("vetc", parents=[_global], help="Check the real VETC gateway connection.")
     return p
 
 
@@ -231,9 +232,36 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "audit":
         events = audit.read_events()
         print(json.dumps({"events": events[-args.limit :]}, ensure_ascii=False, indent=2))
+    elif args.command == "vetc":
+        print(json.dumps(_vetc_check(), ensure_ascii=False, indent=2))
     elif args.command == "serve":
         return _cmd_serve(ds, today, args.port)
     return 0
+
+
+def _vetc_check() -> dict:
+    """Report whether the real VETC gateway is configured and reachable (auth)."""
+    from vetc_config import load_vetc_config  # type: ignore[import-not-found]
+
+    cfg = load_vetc_config()
+    out: dict = {
+        "configured": cfg.configured,
+        "base_url": cfg.base_url,
+        "terminal_id": cfg.terminal_id,
+    }
+    if not cfg.configured:
+        out["hint"] = "Đặt VETC_CLIENT_ID và VETC_CLIENT_SECRET trong .env để bật tích hợp thật."
+        return out
+    from vetc_client import VetcClient, VetcError  # type: ignore[import-not-found]
+
+    try:
+        token = VetcClient(cfg).backend_token()
+        out["auth"] = "ok"
+        out["token_prefix"] = token[:12]
+    except VetcError as exc:
+        out["auth"] = "error"
+        out["error"] = str(exc)
+    return out
 
 
 if __name__ == "__main__":
