@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>VETC Auto-Pilot</title>
+<!-- Dev: run `python scripts/autopilot.py serve --port 8770`, open http://localhost:8770
+     (or http://127.0.0.1:8770). This page only ever calls same-origin /api/... routes. -->
+<style>
+  :root { --bg:#F8F9FE; --ink:#1C2240; --cobalt:#2D44E0; --violet:#8739E0; --lavender:#EEECF8;
+    --red:#D3324B; --amber:#C9880A; --green:#1E9E64; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; }
+  header { padding:20px 24px; }
+  header h1 { margin:0 0 4px; font-size:22px; color:var(--cobalt); }
+  header .sub { font-size:13px; opacity:.75; }
+  .row { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  select, input, button { font:inherit; padding:8px 12px; border-radius:8px; border:1px solid var(--lavender); background:#fff; color:var(--ink); }
+  button { background:var(--cobalt); color:#fff; border:none; cursor:pointer; font-weight:600; }
+  button.secondary { background:var(--violet); }
+  button:disabled { opacity:.6; cursor:not-allowed; }
+  main { padding:0 24px 40px; display:grid; gap:20px; grid-template-columns:1fr; }
+  section { background:#fff; border:1px solid var(--lavender); border-radius:14px; padding:16px 18px; }
+  section h2 { margin:0 0 10px; font-size:15px; color:var(--violet); }
+  .cards { display:flex; flex-wrap:wrap; gap:12px; }
+  .card { flex:1 1 220px; border-radius:10px; padding:12px 14px; background:var(--lavender); border-left:6px solid var(--ink); }
+  .card.overdue, .card.urgent { border-left-color:var(--red); background:#FDEAEE; }
+  .card.soon { border-left-color:var(--amber); background:#FBF3DF; }
+  .card.ok { border-left-color:var(--green); background:#E7F6EE; }
+  .card .k { font-weight:700; }
+  .card .d { font-size:12px; opacity:.8; margin:4px 0; }
+  .chip { display:inline-block; background:var(--lavender); color:var(--cobalt); border-radius:999px; padding:2px 10px; font-size:12px; margin:2px 4px 0 0; }
+  .answer { margin:6px 0; line-height:1.5; }
+  .note { font-size:11px; opacity:.65; margin-top:8px; }
+  .rec { flex:1 1 200px; background:var(--lavender); border-radius:10px; padding:10px 12px; }
+  .rec .name { font-weight:700; color:var(--cobalt); }
+  .rec .why { font-size:12px; margin-top:4px; }
+  #wallet .doc { border-left:6px solid var(--cobalt); background:var(--lavender); border-radius:10px; padding:10px 12px; margin-bottom:8px; animation:pop .4s ease; }
+  @keyframes pop { from { transform:scale(.9); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .empty { font-size:13px; opacity:.6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>VETC Auto-Pilot</h1>
+  <div class="sub">Trợ lý sở hữu xe: nhắc hạn, hỏi đáp có trích dẫn, gợi ý dịch vụ, gia hạn 1 chạm.</div>
+  <div class="row">
+    <label for="user">Người dùng:</label>
+    <select id="user">
+      <option value="U001">U001 — Nguyễn Minh Anh</option>
+      <option value="U002">U002 — Trần Quốc Huy</option>
+      <option value="U003">U003 — Lê Thu Trang</option>
+      <option value="U010">U010 — Hoàng Gia Bảo (EV)</option>
+      <option value="U011">U011 — Mai Anh Tuấn</option>
+      <option value="U012">U012 — Phan Thùy Dương</option>
+      <option value="U020">U020 — Hồ Đức Anh</option>
+    </select>
+    <span id="today-note" class="note"></span>
+  </div>
+</header>
+<main>
+  <section id="deadlines-section">
+    <h2>Hạn giấy tờ (Radar)</h2>
+    <div id="deadlines" class="cards"><div class="empty">Đang tải...</div></div>
+  </section>
+
+  <section id="ask-section">
+    <h2>Hỏi đáp</h2>
+    <div class="row">
+      <input id="ask-input" placeholder="VD: Khi nào cần đăng kiểm?" style="flex:1;min-width:220px" />
+      <button id="ask-btn">Hỏi</button>
+    </div>
+    <div id="ask-answer" class="answer"></div>
+    <div id="ask-citations"></div>
+    <div id="ask-notes" class="note"></div>
+  </section>
+
+  <section id="recommend-section">
+    <h2>Gợi ý dịch vụ</h2>
+    <div id="recommend" class="cards"><div class="empty">Đang tải...</div></div>
+  </section>
+
+  <section id="wallet-section">
+    <h2>Ví giấy tờ (Wallet)</h2>
+    <div id="wallet"><div class="empty">Chọn xe ở trên để xem giấy tờ.</div></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var userSel = document.getElementById('user');
+  var deadlinesEl = document.getElementById('deadlines');
+  var recommendEl = document.getElementById('recommend');
+  var walletEl = document.getElementById('wallet');
+  var askInput = document.getElementById('ask-input');
+  var askBtn = document.getElementById('ask-btn');
+  var askAnswerEl = document.getElementById('ask-answer');
+  var askCitationsEl = document.getElementById('ask-citations');
+  var askNotesEl = document.getElementById('ask-notes');
+  var todayNote = document.getElementById('today-note');
+
+  function urgencyClass(u) {
+    if (u === 'overdue' || u === 'urgent') return u === 'overdue' ? 'overdue' : 'urgent';
+    if (u === 'soon') return 'soon';
+    if (u === 'ok') return 'ok';
+    return '';
+  }
+
+  function renderDeadlines(data) {
+    deadlinesEl.innerHTML = '';
+    var vehicles = data.vehicles || [];
+    if (!vehicles.length) {
+      deadlinesEl.innerHTML = '<div class="empty">Không có xe nào cho người dùng này.</div>';
+      return;
+    }
+    vehicles.forEach(function (v) {
+      (v.deadlines || []).forEach(function (d) {
+        var card = document.createElement('div');
+        card.className = 'card ' + urgencyClass(d.urgency);
+        var renewBtn = '';
+        if (d.kind === 'insurance') {
+          renewBtn = '<button class="secondary renew-btn" data-vehicle="' + v.vehicle_id +
+            '">Gia hạn — 1 chạm</button>';
+        }
+        card.innerHTML =
+          '<div class="k">' + v.vehicle_id + ' (' + v.vehicle_type + ') — ' + d.label + '</div>' +
+          '<div class="d">Hết hạn: ' + (d.expiry || 'Không rõ') +
+          ' · Còn ' + (d.days_to_expiry === null ? '?' : d.days_to_expiry) + ' ngày' +
+          ' · <b>' + d.urgency + '</b></div>' + renewBtn;
+        deadlinesEl.appendChild(card);
+      });
+    });
+    deadlinesEl.querySelectorAll('.renew-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { doRenew(btn.dataset.vehicle, btn); });
+    });
+  }
+
+  function renderRecommend(data) {
+    recommendEl.innerHTML = '';
+    var recs = data.recommendations || [];
+    if (!recs.length) {
+      recommendEl.innerHTML = '<div class="empty">Chưa có gợi ý nào.</div>';
+      return;
+    }
+    recs.forEach(function (r) {
+      var el = document.createElement('div');
+      el.className = 'rec';
+      el.innerHTML = '<div class="name">' + r.service_name + '</div>' +
+        '<div class="why">' + r.reason + '</div>';
+      recommendEl.appendChild(el);
+    });
+  }
+
+  function renderWallet(data) {
+    walletEl.innerHTML = '';
+    var docs = data.documents || [];
+    if (!docs.length) {
+      walletEl.innerHTML = '<div class="empty">Chưa có giấy tờ nào.</div>';
+      return;
+    }
+    docs.forEach(function (d) {
+      var el = document.createElement('div');
+      el.className = 'doc';
+      el.innerHTML = '<b>' + (d.document_name || d.document_type) + '</b><br/>' +
+        'Trạng thái: ' + d.status + ' · Hết hạn: ' + d.expiry_date;
+      walletEl.appendChild(el);
+    });
+  }
+
+  function loadRadar() {
+    deadlinesEl.innerHTML = '<div class="empty">Đang tải...</div>';
+    fetch('/api/radar?user=' + encodeURIComponent(userSel.value))
+      .then(function (r) { return r.json(); })
+      .then(renderDeadlines);
+  }
+
+  function loadRecommend() {
+    recommendEl.innerHTML = '<div class="empty">Đang tải...</div>';
+    fetch('/api/recommend?user=' + encodeURIComponent(userSel.value))
+      .then(function (r) { return r.json(); })
+      .then(renderRecommend);
+  }
+
+  function loadWallet(vehicleId) {
+    fetch('/api/wallet?vehicle=' + encodeURIComponent(vehicleId))
+      .then(function (r) { return r.json(); })
+      .then(renderWallet);
+  }
+
+  function doRenew(vehicleId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang xử lý...';
+    fetch('/api/renew?user=' + encodeURIComponent(userSel.value) +
+      '&vehicle=' + encodeURIComponent(vehicleId) + '&service=SVC001')
+      .then(function (r) { return r.json(); })
+      .then(function () {
+        loadRadar();
+        loadWallet(vehicleId);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Gia hạn — 1 chạm';
+      });
+  }
+
+  askBtn.addEventListener('click', function () {
+    var q = askInput.value.trim();
+    if (!q) return;
+    askAnswerEl.textContent = 'Đang tìm câu trả lời...';
+    askCitationsEl.innerHTML = '';
+    askNotesEl.textContent = '';
+    fetch('/api/ask?user=' + encodeURIComponent(userSel.value) + '&q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        askAnswerEl.textContent = data.answer || '';
+        askCitationsEl.innerHTML = (data.citations || [])
+          .map(function (c) { return '<span class="chip">' + c + '</span>'; }).join('');
+        askNotesEl.textContent = [data.advisory, data.privacy_note].filter(Boolean).join(' ');
+      });
+  });
+
+  userSel.addEventListener('change', function () {
+    loadRadar();
+    loadRecommend();
+    walletEl.innerHTML = '<div class="empty">Chọn xe ở trên để xem giấy tờ.</div>';
+  });
+
+  todayNote.textContent = 'Ngày tham chiếu do máy chủ quy định (--today).';
+  loadRadar();
+  loadRecommend();
+})();
+</script>
+</body>
+</html>
