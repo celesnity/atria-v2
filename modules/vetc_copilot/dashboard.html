@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <title>VETC Auto-Pilot</title>
-<!-- Dev: run `python scripts/autopilot.py serve --port 8770`, open http://localhost:8770
-     (or http://127.0.0.1:8770). This page only ever calls same-origin /api/... routes. -->
+<!-- Backend access has two modes, auto-detected at runtime:
+     1. Inside Atria: the AtriaDash bridge (__bridge.js) runs `autopilot.py <args>`
+        as a subprocess and returns its JSON stdout. This is how the module works
+        when opened from the Atria UI at http://localhost:8080.
+     2. Standalone dev server: `python scripts/autopilot.py serve --port 8770`
+        (open http://localhost:8770) — no bridge present, so calls fall back to
+        the same-origin /api/... routes (/api/radar, /api/renew, ...). -->
 <style>
   :root { --bg:#F8F9FE; --ink:#1C2240; --cobalt:#2D44E0; --violet:#8739E0; --lavender:#EEECF8;
     --red:#D3324B; --amber:#C9880A; --green:#1E9E64; }
@@ -85,8 +90,10 @@
   </section>
 </main>
 
+<script src="__bridge.js"></script>
 <script>
 (function () {
+  var D = window.AtriaDash;
   var userSel = document.getElementById('user');
   var deadlinesEl = document.getElementById('deadlines');
   var recommendEl = document.getElementById('recommend');
@@ -98,8 +105,33 @@
   var askNotesEl = document.getElementById('ask-notes');
   var todayNote = document.getElementById('today-note');
 
+  // Map an endpoint + params to autopilot.py CLI argv (bridge mode).
+  function toCliArgs(endpoint, p) {
+    if (endpoint === 'radar') return ['radar', '--user', p.user];
+    if (endpoint === 'recommend') return ['recommend', '--user', p.user];
+    if (endpoint === 'ask') return ['ask', p.q, '--user', p.user];
+    if (endpoint === 'wallet') return ['wallet', '--vehicle', p.vehicle];
+    if (endpoint === 'renew')
+      return ['renew', '--user', p.user, '--vehicle', p.vehicle, '--service', p.service || 'SVC001'];
+    return [endpoint];
+  }
+  function toQuery(p) {
+    return Object.keys(p).map(function (k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(p[k]);
+    }).join('&');
+  }
+  // Inside Atria → AtriaDash.json runs autopilot.py; standalone serve → /api fetch.
+  function callApi(endpoint, params) {
+    if (D && D.json) return D.json('autopilot.py', toCliArgs(endpoint, params), { timeout_ms: 20000 });
+    return fetch('/api/' + endpoint + '?' + toQuery(params)).then(function (r) { return r.json(); });
+  }
+  function showErr(el) {
+    return function () { el.innerHTML = '<div class="empty">Lỗi tải dữ liệu.</div>'; };
+  }
+
   function urgencyClass(u) {
-    if (u === 'overdue' || u === 'urgent') return u === 'overdue' ? 'overdue' : 'urgent';
+    if (u === 'overdue') return 'overdue';
+    if (u === 'urgent') return 'urgent';
     if (u === 'soon') return 'soon';
     if (u === 'ok') return 'ok';
     return '';
@@ -132,6 +164,7 @@
     deadlinesEl.querySelectorAll('.renew-btn').forEach(function (btn) {
       btn.addEventListener('click', function () { doRenew(btn.dataset.vehicle, btn); });
     });
+    loadWallet(vehicles[0].vehicle_id);
   }
 
   function renderRecommend(data) {
@@ -150,6 +183,14 @@
     });
   }
 
+  function docCard(d) {
+    var el = document.createElement('div');
+    el.className = 'doc';
+    el.innerHTML = '<b>' + (d.document_name || d.document_type) + '</b><br/>' +
+      'Trạng thái: ' + d.status + ' · Hết hạn: ' + d.expiry_date;
+    return el;
+  }
+
   function renderWallet(data) {
     walletEl.innerHTML = '';
     var docs = data.documents || [];
@@ -157,46 +198,53 @@
       walletEl.innerHTML = '<div class="empty">Chưa có giấy tờ nào.</div>';
       return;
     }
-    docs.forEach(function (d) {
-      var el = document.createElement('div');
-      el.className = 'doc';
-      el.innerHTML = '<b>' + (d.document_name || d.document_type) + '</b><br/>' +
-        'Trạng thái: ' + d.status + ' · Hết hạn: ' + d.expiry_date;
-      walletEl.appendChild(el);
-    });
+    docs.forEach(function (d) { walletEl.appendChild(docCard(d)); });
+  }
+
+  function prependPolicy(d) {
+    var empty = walletEl.querySelector('.empty');
+    if (empty) walletEl.innerHTML = '';
+    walletEl.insertBefore(docCard(d), walletEl.firstChild);
   }
 
   function loadRadar() {
     deadlinesEl.innerHTML = '<div class="empty">Đang tải...</div>';
-    fetch('/api/radar?user=' + encodeURIComponent(userSel.value))
-      .then(function (r) { return r.json(); })
-      .then(renderDeadlines);
+    callApi('radar', { user: userSel.value }).then(renderDeadlines).catch(showErr(deadlinesEl));
   }
 
   function loadRecommend() {
     recommendEl.innerHTML = '<div class="empty">Đang tải...</div>';
-    fetch('/api/recommend?user=' + encodeURIComponent(userSel.value))
-      .then(function (r) { return r.json(); })
-      .then(renderRecommend);
+    callApi('recommend', { user: userSel.value }).then(renderRecommend).catch(showErr(recommendEl));
   }
 
   function loadWallet(vehicleId) {
-    fetch('/api/wallet?vehicle=' + encodeURIComponent(vehicleId))
-      .then(function (r) { return r.json(); })
-      .then(renderWallet);
+    callApi('wallet', { vehicle: vehicleId }).then(renderWallet).catch(function () {});
   }
 
+  // Each bridge call is a fresh subprocess, so we render the renewed policy from
+  // the receipt itself (client-side) rather than re-fetching the wallet.
   function doRenew(vehicleId, btn) {
     btn.disabled = true;
     btn.textContent = 'Đang xử lý...';
-    fetch('/api/renew?user=' + encodeURIComponent(userSel.value) +
-      '&vehicle=' + encodeURIComponent(vehicleId) + '&service=SVC001')
-      .then(function (r) { return r.json(); })
-      .then(function () {
-        loadRadar();
-        loadWallet(vehicleId);
+    callApi('renew', { user: userSel.value, vehicle: vehicleId, service: 'SVC001' })
+      .then(function (receipt) {
+        if (receipt && receipt.ok) {
+          prependPolicy({
+            document_name: receipt.service_name,
+            document_type: 'Insurance',
+            status: 'Đã gia hạn (mô phỏng)',
+            expiry_date: receipt.new_expiry
+          });
+          btn.textContent = 'Đã gia hạn ✓ ' + receipt.new_expiry;
+          var dline = btn.parentElement.querySelector('.d');
+          if (dline) dline.innerHTML += ' → <b>gia hạn đến ' + receipt.new_expiry + '</b>';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Gia hạn — 1 chạm';
+          askNotesEl.textContent = (receipt && receipt.reason) || 'Không thể gia hạn.';
+        }
       })
-      .finally(function () {
+      .catch(function () {
         btn.disabled = false;
         btn.textContent = 'Gia hạn — 1 chạm';
       });
@@ -208,14 +256,14 @@
     askAnswerEl.textContent = 'Đang tìm câu trả lời...';
     askCitationsEl.innerHTML = '';
     askNotesEl.textContent = '';
-    fetch('/api/ask?user=' + encodeURIComponent(userSel.value) + '&q=' + encodeURIComponent(q))
-      .then(function (r) { return r.json(); })
+    callApi('ask', { user: userSel.value, q: q })
       .then(function (data) {
         askAnswerEl.textContent = data.answer || '';
         askCitationsEl.innerHTML = (data.citations || [])
           .map(function (c) { return '<span class="chip">' + c + '</span>'; }).join('');
         askNotesEl.textContent = [data.advisory, data.privacy_note].filter(Boolean).join(' ');
-      });
+      })
+      .catch(function () { askAnswerEl.textContent = 'Lỗi khi hỏi.'; });
   });
 
   userSel.addEventListener('change', function () {
@@ -224,7 +272,8 @@
     walletEl.innerHTML = '<div class="empty">Chọn xe ở trên để xem giấy tờ.</div>';
   });
 
-  todayNote.textContent = 'Ngày tham chiếu do máy chủ quy định (--today).';
+  todayNote.textContent = 'Ngày tham chiếu: hôm nay.';
+  if (D && D.ready) D.ready();
   loadRadar();
   loadRecommend();
 })();

@@ -111,10 +111,15 @@ def ask(ds, user_id: str, question: str, today: date, client=None) -> dict:
             "privacy_note": PRIVACY_NOTE,
         }
     allowed = {h["knowledge_id"] for h in hits}
+    # Default to the deterministic template; try the LLM only when a client is
+    # available, and fall back to the template on ANY LLM/transport error (e.g.
+    # a bad/expired key in the host env) so the caller never crashes.
+    raw, source = _template_answer(hits), "offline"
     if client is not None and getattr(client, "available", False):
-        raw, source = _llm_answer(question, hits, client), "llm"
-    else:
-        raw, source = _template_answer(hits), "offline"
+        try:
+            raw, source = _llm_answer(question, hits, client), "llm"
+        except Exception:  # noqa: BLE001 - any LLM error → deterministic fallback
+            raw, source = _template_answer(hits), "offline"
     checked = enforce_citations(raw, allowed)
     return {
         "answer": checked["answer"] or _UNCOVERED,
