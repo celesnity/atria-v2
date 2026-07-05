@@ -230,6 +230,10 @@ def run_script(
         env["ATRIA_SESSION_ID"] = session_id
         env["ATRIA_MODULE_ROOT"] = str(module_dir)
         env.setdefault("ATRIA_API_BASE", "http://127.0.0.1:8000")
+        # Force UTF-8 on both sides of the pipe: Windows otherwise falls back
+        # to the ANSI code page and non-ASCII payloads (e.g. Vietnamese CSV
+        # imports) raise UnicodeEncodeError before the script even runs.
+        env.setdefault("PYTHONIOENCODING", "utf-8")
 
         cmd = [sys.executable, str(target), *body.args]
         timeout_s = body.timeout_ms / 1000.0
@@ -240,6 +244,8 @@ def run_script(
                 input=body.stdin,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout_s,
                 env=env,
                 cwd=str(module_dir),
