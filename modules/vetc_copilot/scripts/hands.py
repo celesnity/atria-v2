@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -123,22 +124,24 @@ def _renew_via_vetc(
 ) -> dict:
     """Initiate a REAL payment on the VETC gateway (VMA Payment).
 
-    Returns a receipt with the gateway ``provider_payload`` for the Mini App
-    front-end to hand off to the VETC Main App. The policy is finalized only
-    after the user confirms payment in the VETC app (IPN callback), so the
-    wallet is not updated here.
+    Records a pending renewal and passes ``ipn_url`` so the gateway can push a
+    signed IPN back to finalize it. The policy is finalized only after the IPN
+    confirms payment, so the wallet is not updated here.
     """
     from vetc_client import VetcClient, VetcError  # local import: optional integration
+    from renewals import append_pending  # local import: runtime persistence
 
     service_name = service.get("service_name", service_id)
+    policy_id = f"POL-{vehicle_id}-{service_id}"
+    order_id = f"ORD-{vehicle_id}-{service_id}-{today.isoformat()}"
     metadata = {
         "provider_name": "VETC",
         "service_name": service_name,
         "product_code": service_id,
         "product_name": service_name,
         "merchant_service": "vetc_copilot",
+        "ipn_url": os.environ.get("VETC_IPN_URL", ""),
     }
-    order_id = f"ORD-{vehicle_id}-{service_id}-{today.isoformat()}"
     try:
         payment = VetcClient(cfg).init_payment(
             order_id, amount, f"Gia hạn {service_name}", metadata, idempotency_key=order_id
@@ -146,32 +149,24 @@ def _renew_via_vetc(
     except VetcError as exc:
         return {"ok": False, "reason": f"Lỗi thanh toán VETC: {exc}"}
 
+    append_pending({
+        "order_id": order_id, "vehicle_id": vehicle_id, "service_id": service_id,
+        "col": _EXPIRY_COL.get(service_id, "civil_liability_expiry"), "new_expiry": new_expiry,
+        "amount": amount, "service_name": service_name, "policy_id": policy_id,
+        "payment_id": payment.get("id"),
+    })
     audit.append_event(
-        {
-            "type": "renew_init",
-            "service_id": service_id,
-            "order_id": order_id,
-            "payment_id": payment.get("id"),
-            "amount": amount,
-            "gateway": "vetc",
-        },
+        {"type": "renew_init", "service_id": service_id, "order_id": order_id,
+         "payment_id": payment.get("id"), "amount": amount, "gateway": "vetc"},
         audit_path,
     )
     return {
-        "ok": True,
-        "service_id": service_id,
-        "service_name": service_name,
-        "amount": amount,
-        "order_id": order_id,
-        "payment_id": payment.get("id"),
+        "ok": True, "service_id": service_id, "service_name": service_name, "amount": amount,
+        "order_id": order_id, "payment_id": payment.get("id"), "policy_id": policy_id,
         "status": payment.get("status", "CREATED"),
         "provider_payload": payment.get("provider_payload"),
-        "old_expiry": old_expiry,
-        "new_expiry": new_expiry,
-        "wallet_updated": False,
-        "pending_user_confirmation": True,
-        "simulated": False,
-        "advisory": ADVISORY_NOTE,
+        "old_expiry": old_expiry, "new_expiry": new_expiry, "wallet_updated": False,
+        "pending_user_confirmation": True, "simulated": False, "advisory": ADVISORY_NOTE,
         "note": (
             "Đã khởi tạo thanh toán trên cổng VETC. Hoàn tất trong ứng dụng VETC; "
             "giấy tờ cập nhật sau khi có xác nhận thanh toán (IPN)."
