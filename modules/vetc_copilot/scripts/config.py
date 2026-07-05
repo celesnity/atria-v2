@@ -38,10 +38,13 @@ class RoleConfig:
 
 
 def load_brain_config(env: Optional[Mapping[str, str]] = None) -> RoleConfig:
-    """Resolve the Brain config, applying ``VA_BRAIN_*`` overrides.
+    """Resolve the Brain config from env, applying ``VA_BRAIN_*`` overrides.
 
-    Returns a :class:`RoleConfig`; ``api_key`` is empty when no key is
-    configured, which makes the client report ``available == False``.
+    The operative values live in ``.env`` (``VA_BRAIN_PROVIDER`` /
+    ``VA_BRAIN_MODEL`` / ``VA_BRAIN_BASE_URL``, passed to the container via
+    docker-compose); the constants here are only the fallback when those are
+    unset or empty. ``api_key`` is empty when no key is configured, which makes
+    the client report ``available == False``.
     """
     src = os.environ if env is None else env
     api_key = (
@@ -57,9 +60,10 @@ def load_brain_config(env: Optional[Mapping[str, str]] = None) -> RoleConfig:
     default_base = _OPENROUTER_BASE if is_openrouter else _OPENAI_BASE
     default_model = _OPENROUTER_MODEL if is_openrouter else _OPENAI_MODEL
     default_provider = "openrouter" if is_openrouter else "openai"
+    # ``or default`` (not get(k, default)) so an empty env value falls back too.
     return RoleConfig(
-        provider=src.get("VA_BRAIN_PROVIDER", default_provider),
-        model=src.get("VA_BRAIN_MODEL", default_model),
-        base_url=src.get("VA_BRAIN_BASE_URL", default_base),
+        provider=src.get("VA_BRAIN_PROVIDER") or default_provider,
+        model=src.get("VA_BRAIN_MODEL") or default_model,
+        base_url=src.get("VA_BRAIN_BASE_URL") or default_base,
         api_key=api_key or "",
     )
