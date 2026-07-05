@@ -57,6 +57,15 @@ def renew(
     new_expiry = mockapi.add_one_year(old_expiry) if old_expiry else ""
     amount = PRICES.get(service_id, 0)
 
+    # Real VETC gateway when credentials are configured; else the mock path below.
+    from vetc_config import load_vetc_config  # local import: optional integration
+
+    vcfg = load_vetc_config()
+    if vcfg.configured:
+        return _renew_via_vetc(
+            vcfg, service, vehicle_id, service_id, amount, old_expiry, new_expiry, today, audit_path
+        )
+
     pay = mockapi.wallet_pay(amount, f"ORD-{vehicle_id}-{service_id}")
     renewal = mockapi.insurance_renew(vehicle_id, service_id, new_expiry)
 
@@ -99,3 +108,72 @@ def renew(
         audit_path,
     )
     return receipt
+
+
+def _renew_via_vetc(
+    cfg,
+    service: dict,
+    vehicle_id: str,
+    service_id: str,
+    amount: int,
+    old_expiry: str,
+    new_expiry: str,
+    today: date,
+    audit_path: str | Path | None,
+) -> dict:
+    """Initiate a REAL payment on the VETC gateway (VMA Payment).
+
+    Returns a receipt with the gateway ``provider_payload`` for the Mini App
+    front-end to hand off to the VETC Main App. The policy is finalized only
+    after the user confirms payment in the VETC app (IPN callback), so the
+    wallet is not updated here.
+    """
+    from vetc_client import VetcClient, VetcError  # local import: optional integration
+
+    service_name = service.get("service_name", service_id)
+    metadata = {
+        "provider_name": "VETC",
+        "service_name": service_name,
+        "product_code": service_id,
+        "product_name": service_name,
+        "merchant_service": "vetc_copilot",
+    }
+    order_id = f"ORD-{vehicle_id}-{service_id}-{today.isoformat()}"
+    try:
+        payment = VetcClient(cfg).init_payment(
+            order_id, amount, f"Gia hạn {service_name}", metadata, idempotency_key=order_id
+        )
+    except VetcError as exc:
+        return {"ok": False, "reason": f"Lỗi thanh toán VETC: {exc}"}
+
+    audit.append_event(
+        {
+            "type": "renew_init",
+            "service_id": service_id,
+            "order_id": order_id,
+            "payment_id": payment.get("id"),
+            "amount": amount,
+            "gateway": "vetc",
+        },
+        audit_path,
+    )
+    return {
+        "ok": True,
+        "service_id": service_id,
+        "service_name": service_name,
+        "amount": amount,
+        "order_id": order_id,
+        "payment_id": payment.get("id"),
+        "status": payment.get("status", "CREATED"),
+        "provider_payload": payment.get("provider_payload"),
+        "old_expiry": old_expiry,
+        "new_expiry": new_expiry,
+        "wallet_updated": False,
+        "pending_user_confirmation": True,
+        "simulated": False,
+        "advisory": ADVISORY_NOTE,
+        "note": (
+            "Đã khởi tạo thanh toán trên cổng VETC. Hoàn tất trong ứng dụng VETC; "
+            "giấy tờ cập nhật sau khi có xác nhận thanh toán (IPN)."
+        ),
+    }
