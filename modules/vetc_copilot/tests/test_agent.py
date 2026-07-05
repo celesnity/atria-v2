@@ -56,6 +56,16 @@ def test_parse_tool_call_variants():
     assert parse_tool_call("Chào bạn, xe của bạn vẫn ổn.") is None
 
 
+def test_parse_tool_call_ignores_trailing_prose_and_nested_braces():
+    # Weak models emit the tool JSON then extra prose; nested {} in args must not break parsing.
+    raw = '{"tool": "get_deadlines", "args": {}}Xin chào, đây là câu trả lời thừa.'
+    call = parse_tool_call(raw)
+    assert call["tool"] == "get_deadlines"
+    assert call["args"] == {}
+    raw2 = '{"tool": "renew_service", "args": {"vehicle_id": "VEH001", "service_id": "SVC001"}} ok'
+    assert parse_tool_call(raw2)["args"]["vehicle_id"] == "VEH001"
+
+
 def test_agent_calls_tool_then_answers():
     client = ScriptedClient(
         ['{"tool": "get_deadlines", "args": {}}', "Xe của bạn sắp hết hạn đăng kiểm trong 15 ngày."]
