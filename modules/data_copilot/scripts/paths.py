@@ -66,6 +66,11 @@ def new_unique_run_dir() -> Path:
     return Path(tempfile.mkdtemp(prefix=prefix, dir=str(base)))
 
 
+def checkpoint_db() -> Path:
+    """SQLite path for the LangGraph checkpointer (session-scoped)."""
+    return conversation_root() / "graph_checkpoints.sqlite"
+
+
 def audit_path() -> Path:
     """Audit log path — ``audit.jsonl`` in a session, legacy name in fallback."""
     if _in_module_fallback():

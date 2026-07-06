@@ -37,3 +37,7 @@ class AgentState(TypedDict, total=False):
     # Options threaded from the CLI
     domain: str
     k: Any
+    # Run bookkeeping persisted so `resume` can rebuild ctx (dataset, kernel dir)
+    # from the checkpoint alone — the CLI only takes --thread/--feedback.
+    dataset: str
+    run_dir: str
