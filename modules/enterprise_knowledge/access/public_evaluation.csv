@@ -1,0 +1,5 @@
+question_id,user_id,user_role,user_department,question_vi,expected_permission,expected_document_id
+P010,U001,Employee,HR,Chính sách nghỉ phép của phòng nhân sự?,Allow,DOC007
+P009,U004,Employee,ENG,Khung lương phòng nhân sự?,Deny,DOC007
+P008,U007,Executive,EXEC,Tài liệu chiến lược điều hành?,Allow,DOC020
+P007,U010,Employee,PROD,Tài liệu điều hành mật?,Deny,DOC020
