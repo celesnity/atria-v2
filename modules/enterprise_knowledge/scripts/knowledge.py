@@ -128,6 +128,15 @@ def _cmd_health() -> int:
         QdrantClient(url=_env("EK_QDRANT_URL", "http://localhost:6333")).get_collections()
 
     probe("qdrant", qdrant_probe)
+
+    def neo4j_probe() -> None:
+        driver = graph_store.build_driver()
+        try:
+            graph_store.neo4j_run_fn(driver)("RETURN 1 AS ok", {})
+        finally:
+            driver.close()
+
+    probe("neo4j", neo4j_probe)
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0 if all(v == "ok" for v in out.values()) else 1
 

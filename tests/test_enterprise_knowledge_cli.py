@@ -189,3 +189,12 @@ def test_cmd_query_graph_merges_safe_graph_hits(capsys, monkeypatch):
     out = json.loads(capsys.readouterr().out)
     ids = {h["chunk_id"] for h in out["hits"]}
     assert {"DOCA#0", "DOCB#0"} <= ids  # vector + safe graph hit both present
+
+
+def test_health_reports_neo4j_key(capsys, monkeypatch):
+    knowledge = _load("knowledge", "ek_cli_health_neo4j")
+    # Force the neo4j probe to fail fast (no server) — health must still return a dict.
+    monkeypatch.setenv("EK_NEO4J_URI", "bolt://127.0.0.1:59999")
+    knowledge._cmd_health()
+    out = json.loads(capsys.readouterr().out)
+    assert "neo4j" in out
