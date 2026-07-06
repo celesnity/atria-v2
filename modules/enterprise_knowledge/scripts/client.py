@@ -23,6 +23,12 @@ from config import RoleConfig  # type: ignore[import-not-found]
 
 ClientFactory = Callable[[str, str], object]
 
+# GPT-5 and O-series reasoning models take ``max_completion_tokens`` (they 400
+# on ``max_tokens``), accept only the default temperature, and support
+# ``reasoning_effort``. Everything else (gpt-4o-mini, OpenRouter models) keeps
+# the classic ``max_tokens``.
+_REASONING_PREFIXES = ("gpt-5", "o1", "o3", "o4")
+
 
 def _default_factory(base_url: str, api_key: str) -> object:
     if _OpenAI is None:  # pragma: no cover
@@ -90,8 +96,21 @@ class RoleClient:
         client = self._client_for(rc)
         # Cap the completion so the server does not reserve a large default
         # output and overflow the model context (input + output must both fit).
-        # An explicit caller-supplied max_tokens always wins.
-        kw.setdefault("max_tokens", budget.output_tokens(role))
+        # An explicit caller-supplied budget always wins.
+        budget_tokens = kw.pop("max_tokens", None)
+        budget_tokens = kw.pop("max_completion_tokens", budget_tokens)
+        if budget_tokens is None:
+            budget_tokens = budget.output_tokens(role)
+        if rc.model.startswith(_REASONING_PREFIXES):
+            # Reasoning models: use max_completion_tokens, keep reasoning minimal
+            # so the budget funds the grounded answer (not internal reasoning,
+            # which can otherwise consume it and yield an empty completion), and
+            # omit temperature (only the default is accepted).
+            kw["max_completion_tokens"] = budget_tokens
+            kw.setdefault("reasoning_effort", "minimal")
+            kw.pop("temperature", None)
+        else:
+            kw["max_tokens"] = budget_tokens
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=rc.model, messages=messages, **kw
         )

@@ -99,8 +99,10 @@ def _cmd_health() -> int:
             out[name] = f"error: {exc}"
 
     probe("index_embed", lambda: rc.embed("index_embed", ["ping"]))
+    # A tiny but non-trivial budget: reasoning models (gpt-5/o-series) 400 on a
+    # 1-token cap ("could not finish"), so give the probe enough to reply.
     probe("synthesis", lambda: rc.chat("synthesis", [{"role": "user", "content": "ping"}],
-                                       max_tokens=1))
+                                       max_tokens=32))
 
     def qdrant_probe() -> None:
         from qdrant_client import QdrantClient
