@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -38,20 +39,59 @@ def test_non_business_task_short_circuits_accept():
 
 def test_missing_json_block_revises():
     g = _gates()
-    v = g.verify_semantics("segment customers into personas", "code", "no markers here")
+    code = "from sklearn.cluster import KMeans\nKMeans(n_clusters=3)"
+    v = g.verify_semantics("segment customers into personas", code, "no markers here")
     assert v["status"] == "REVISE"
     assert "JSON" in v["feedback"]
 
 
 def test_priority_score_without_formula_revises():
     g = _gates()
+    code = "from sklearn.cluster import KMeans\nKMeans(n_clusters=3)"
+    # Three well-formed personas so Rule 3-6 (JSON/K/naming/ARPU) all pass
+    # cleanly and Gate 8 (revenue integrity) doesn't fire (arpu > 0), leaving
+    # Rule 12 (priority-score-without-formula) as the only gate that trips.
+    # Deliberately avoids the letters/symbols Rule 12's own regex treats as
+    # "has a formula" (=, *, the letter x) anywhere in the stdout.
+    personas = [
+        {
+            "cluster_id": 0,
+            "persona_name": "Persona Frequent Caller",
+            "priority_score": 10,
+            "evidence": {"f": 1},
+            "support": 100,
+            "support_pct": 0.3,
+            "churn_rate": 0.2,
+            "arpu": 100000,
+        },
+        {
+            "cluster_id": 1,
+            "persona_name": "Persona Network Complainer",
+            "priority_score": 8,
+            "evidence": {"f": 1},
+            "support": 100,
+            "support_pct": 0.3,
+            "churn_rate": 0.2,
+            "arpu": 100000,
+        },
+        {
+            "cluster_id": 2,
+            "persona_name": "Persona Loyal Long Term",
+            "priority_score": 5,
+            "evidence": {"f": 1},
+            "support": 100,
+            "support_pct": 0.4,
+            "churn_rate": 0.1,
+            "arpu": 100000,
+        },
+    ]
     stdout = (
-        "[JSON_START_PERSONA]"
-        '[{"cluster_id":0,"persona_name":"A","priority_score":9,"evidence":{"f":1}}]'
-        "[JSON_END_PERSONA]"
+        "We rank clusters by priority score for outreach and follow up.\n"
+        "[JSON_START_PERSONA]" + json.dumps(personas) + "[JSON_END_PERSONA]"
     )
-    v = g.verify_semantics("segment customers into personas", "code", stdout)
+    v = g.verify_semantics("segment customers into personas", code, stdout)
     assert v["status"] == "REVISE"
+    assert "Thiếu Minh Bạch" in v["feedback"]
 
 
 def test_causal_hallucination_revises_telecom():

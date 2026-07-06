@@ -185,17 +185,7 @@ def verify_semantics(
             )
 
     # Rule 3 & 4 & 5 & 6: JSON Validation & Support & Scale & Unique
-    #
-    # Adaptation note: the reference additionally gated this block on
-    # `"KMeans" in code or "TfidfVectorizer" in code` (a proxy for "this is a
-    # clustering task"). In this port, verify_semantics already short-circuits
-    # to ACCEPT for non-business tasks above, so that literal-code-substring
-    # proxy is redundant and — worse — would let a business/persona task with
-    # a missing/degenerate JSON block slip through untouched merely because
-    # the generated code happened not to mention "KMeans"/"TfidfVectorizer"
-    # verbatim. We keep this gate unconditional (any business task) so the
-    # JSON-presence / K>=3 / naming / ARPU checks always run.
-    if True:
+    if "KMeans" in code or "TfidfVectorizer" in code:
         # Personas are extracted once via persona_schema.extract_personas above
         # (adaptation over the reference's ad-hoc re.search/json.loads here).
         json_candidates = [personas] if personas else []
