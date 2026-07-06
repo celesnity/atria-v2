@@ -338,6 +338,34 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
+    # ===== Send Report Tool (web UI, read-only) =====
+    {
+        "type": "function",
+        "function": {
+            "name": "send_report",
+            "description": (
+                "Send a data_copilot run's generated report (markdown) to the web UI "
+                "chat as a report bubble. Use this after `resume` returns "
+                "{status: 'done', report: ...} to surface the finished report to the "
+                "user. Provide `run_dir` (the run directory returned by data_copilot "
+                "run/resume, e.g. 'runs/run-2026...'), relative to the session's "
+                "data_copilot dir. Only works in the web UI."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "run_dir": {
+                        "type": "string",
+                        "description": (
+                            "Run directory (relative to the session's data_copilot "
+                            "dir) whose report.md should be sent, e.g. 'runs/run-x'."
+                        ),
+                    },
+                },
+                "required": ["run_dir"],
+            },
+        },
+    },
     # Skill-owned schemas live in their skill folders and are merged in via
     # ToolSchemaBuilder(extra_schemas=...).
     {
