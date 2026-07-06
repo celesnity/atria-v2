@@ -22,19 +22,18 @@ correlations, trends, quick charts — rather than by reading documentation.
 ## Runbook — the standard flow
 
 **Run this entire runbook inline, in the current agent turn — never dispatch a
-subagent for it.** Do not spawn a Task/Agent/subagent to run `analyze`/`persona`,
-to draw or send charts, or to call `send_image`/`send_table`/`send_editable_table`.
+subagent for it.** Do not spawn a Task/Agent/subagent to run `run`/`resume`, to
+draw or send charts, or to call `send_image`/`send_table`/`send_editable_table`.
 These UI-callback tools only reach the chat from the main agent loop; a spawned
 subagent cannot render them and will drop the visuals. Call the CLI and the
 `send_*` tools yourself, directly, in this conversation.
 
 **Never hand-roll the analysis.** For any dataset question — including clustering,
-segmentation, and personas — run the `analyze`/`persona` CLI below. Do NOT write
-your own ad-hoc Python script into the workspace and run it with `python`, and do
-NOT `pip install` packages (scikit-learn, etc.): the runtime venv has no pip/network
+segmentation, and personas — run the `run`/`resume` CLI below. Do NOT write your
+own ad-hoc Python script into the workspace and run it with `python`, and do NOT
+`pip install` packages (scikit-learn, etc.): the runtime venv has no pip/network
 and those installs fail. The module's own sandbox already ships pandas, numpy,
-scikit-learn, and matplotlib and generates + repairs the code for you, so the
-`persona` command is how you cluster — not a manual `sklearn` script. If a run
+scikit-learn, and matplotlib and generates + repairs the code for you. If a run
 returns an error, re-run the CLI (the pipeline self-repairs) or surface the error;
 never fall back to writing your own analysis script.
 
@@ -51,118 +50,72 @@ to stdout; parse it and act on the fields named below.
    or pass a path relative to it. Supported inputs: `.csv`, `.xlsx`/`.xls`,
    `.parquet`.
 
-2. **Analyze it directly — no ingest needed.** Run
-   `analyze "<absolute path>" "<the user's question in plain language>"`.
-   `analyze` and `profile` read CSV/Excel/Parquet from any path, so this is the
-   normal path for "just answer my question". The dataset and question are both
-   **positional** (no `--dataset`/`--question` flags), and the **question is
-   required**. Tune with `--max-repair` / `--max-verify` only if needed.
-   (`profile "<path>"` gives a quick schema/stats look without an LLM call.)
+### Analysis (graph flow with plan review)
 
-3. **Present the result — and always push the visuals to the chat.** Show the
-   `report` field to the user as the answer. If `verified` is `false` (or the
-   report carries the UNVERIFIED banner), say so explicitly and do not present the
-   numbers as settled.
+No ingest step is required — `run` reads CSV/Excel/Parquet from any absolute
+path. The analysis is a LangGraph loop that pauses once for a human-in-the-loop
+plan review before it executes any code, then resumes on your relay of the
+user's reply. Repeat the review round-trip as many times as the user keeps
+asking for changes.
+
+1. `python <modules>/data_copilot/scripts/copilot.py run "<dataset path>" "<question>" [--domain telecom] [--k N]`
+   The dataset and question are both **positional** (no `--dataset`/`--question`
+   flags) and the **question is required**. `--domain telecom` tightens
+   anti-hallucination rules for FTEL/telecom-churn datasets; `--k` pins a
+   cluster count when the request is a segmentation ask. This prints:
+   `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}`.
+   (`profile "<path>"` gives a quick schema/stats look without an LLM call, if
+   you need one before or instead of a full run.)
+2. **Show the `plan` field to the user verbatim** and ask them to approve it or
+   describe changes. Do not skip this — the graph will not execute any code
+   until it is resumed.
+3. On the user's reply, relay it as feedback:
+   `python <modules>/data_copilot/scripts/copilot.py resume --thread <thread_id> --feedback "<their reply>"`
+   - If they approved (or the feedback reads as approval), this prints the
+     final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "report": "...", "verdict": {...}, "figures": [...]}`.
+   - If they asked for changes, this prints another
+     `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}` — go back
+     to step 2 with the new plan and the same `thread_id`.
+4. **Present the final result — and always push the visuals to the chat.** Show
+   the `report` field to the user as the answer. Inspect `verdict`; if it marks
+   the result unverified (or the report carries an UNVERIFIED banner), say so
+   explicitly and do not present the numbers as settled.
 
    **Always write a real final message — never just "Done"/"DONE".** After the
-   analysis (and after sending the charts/tables), your reply MUST present the
-   findings: reproduce or summarize the `report` field, call out the key numbers /
-   segments / trends in prose, note anything unverified, and say which charts you
-   sent. A bare "Done", "Task completed", or one-line acknowledgement is not an
-   acceptable final answer for a data-analysis turn — the user asked a question, so
-   answer it with the results. Then, in the **same turn**, without asking first:
-   - **For every file listed in `figures`** (matplotlib PNGs saved to the run
-     dir), call the `send_image` tool with its absolute path and a short caption.
-     This is how the chart the analysis drew reaches the user — do not just
-     describe it or print the path; send the image.
-   - **If the summary has a non-null `result_table`**, call the `send_table` tool
-     with `file=<result_table>`, a short `title`, and
-     `suggestions=<summary.suggestions>` to render an interactive table + chart in
-     the chat. **Forward `summary.suggestions` verbatim** — do not strip fields.
-     Each suggestion already carries the chart-drawing fields the web UI needs:
-     `chart_type` (`bar`/`line`/`area`/`pie`/`doughnut`/`scatter`/`combo`/`radar`),
-     `x`, `y[]`, `title`, `description` (one-line caption), `labels` (series key →
-     display name), `units` (series key → unit label such as `%` or `triệu VND`),
-     and — for mixed charts — `combo` (series key → `bar`/`line`), `secondaryAxis`
-     (series keys on the right-hand y-axis), and `normalized` (radar 0–100). The
-     web UI draws bars/lines/combo/radar, a secondary axis, and unit-suffixed
-     ticks/tooltips from these fields, so passing them all is what makes the chart
-     rich. You may lightly adjust them (e.g. fill in a `units` map or set a
-     clearer `title`) but keep the structure intact.
-   - **Pivot / cross-tab breakdowns.** When the question compares a measure
-     across two dimensions (e.g. "sales by region and category", "revenue per
-     month by channel"), `analyze` writes the result table as a **wide pivot**
-     — one row per primary category (the first column) and one numeric column
-     per value of the secondary dimension. Send it exactly like any other
-     result: call `send_table` with `file=<result_table>` and
-     `suggestions=<summary.suggestions>`. The heuristics turn that wide pivot
-     into a **grouped multi-series chart** automatically — `x` = the first
-     column, `y[]` = the pivoted measure columns — so a "region × category"
-     pivot renders as grouped bars (with line/radar alternates in the chart's
-     type switcher). You do not build the chart yourself; just forward the
-     pivot CSV and its suggestions. If `suggestions` is unexpectedly empty for a
-     pivot (e.g. the measure columns weren't detected as numeric), add one
-     suggestion by hand: `chart_type: "bar"`, `x` = the first column, `y` = the
-     remaining numeric columns.
-   - **When the user wants to edit the result** (or asked for an editable
-     dataframe), use the ingest → `send_editable_table` flow below — a plain
-     `analyze` result table is read-only. See "Only when the user wants to
-     view/edit the raw data".
+   analysis (and after sending any charts), your reply MUST present the
+   findings: reproduce or summarize the `report` field, call out the key numbers
+   / segments / trends in prose, note anything unverified, and say which charts
+   you sent. A bare "Done", "Task completed", or one-line acknowledgement is not
+   an acceptable final answer for a data-analysis turn — the user asked a
+   question, so answer it with the results. Then, in the **same turn**, without
+   asking first: for every file listed in `figures` (matplotlib PNGs saved to
+   the run dir), call the `send_image` tool with its absolute path and a short
+   caption. This is how the chart the analysis drew reaches the user — do not
+   just describe it or print the path; send the image. `send_image` renders
+   only in the web UI; in a plain terminal/CLI it returns
+   `"UI callback unavailable"` — in that case state that visuals need the web
+   UI rather than silently dropping them.
 
-   These `send_*` tools render only in the web UI; in a plain terminal/CLI they
-   return `"UI callback unavailable"`. In that case, do not silently drop the
-   data — state that visuals need the web UI and fall back to showing the
-   values inline (e.g. `cat` the `result_table`).
+   Run outputs (generated code, figures) and the audit trail are stored
+   automatically in the per-session data_copilot folder, not the module
+   folder — you do not pass or manage those paths.
 
-   Ingested datasets, run outputs (code, figures, `result.csv`), and the audit
-   trail are stored automatically in the per-session data_copilot folder, not the
-   module folder — you do not pass or manage those paths.
+If a step returns `{"error": …}`, surface that message to the user and stop —
+do not fabricate an answer. Run `health` first if you suspect the LLM endpoint
+is misconfigured (it returns `{"codegen": "ok"}` when reachable).
 
 **Only when the user wants to view/edit the raw data first (web UI):** ingest it
-into the module, then show an editable grid, then analyze the ingested copy:
+into the module, then show an editable grid, then run the analysis against the
+ingested copy:
   a. `ingest "<absolute path>"` (optionally `--name <base>`) → read `files[].path`
      (absolute) and `files[].file` (data/-relative). Use these verbatim; the name
      is slugified (`Telecom Churn (1).csv` → `telecom-churn.csv`). Multi-sheet
      Excel yields one entry per sheet — ask which sheet if there is more than one.
   b. Call the `send_editable_table` tool with `module="data_copilot"` and
      `file="<files[].file>"`; edits save back to the CSV in place.
-  c. `analyze "<files[].path>" "<question>"` — or pass the ingested name (with or
-     without `.csv`, e.g. `telecom-churn`), which `analyze`/`profile` also resolve
-     against the module's `data/` dir.
-
-If a step returns `{"error": …}`, surface that message to the user and stop —
-do not fabricate an answer. Run `health` first if you suspect the LLM endpoint
-is misconfigured (it returns `{"codegen": "ok"}` when reachable).
-
-## Persona / customer segmentation
-
-When the user asks to **cluster / segment customers or build personas**
-("phân cụm", "persona", "segment", "customer groups"), use `persona` instead of
-`analyze`:
-
-`python <modules>/data_copilot/scripts/copilot.py persona "<absolute path>" "<the request>" [--domain telecom] [--k N]`
-
-The dataset and request are **positional**. For convenience the CLI also accepts
-`--file`/`--dataset` and `--question`/`-q` as aliases, and for `persona` the
-request is **optional** — `persona "<path>"` alone defaults to a segmentation
-request. (`analyze` still needs a question.) Prefer the positional form:
-`persona "<path>" "<request>"`.
-
-It runs the same generate → run → repair loop, but forces the generated code to
-emit a persona array (schema below) which is validated and **written to
-`persona.json`** in the run dir, plus a narrative report. Present the `report`
-field; if `summary.result_table` is non-null call `send_table` with
-`file=<result_table>` and `suggestions=<summary.suggestions>`; mention that
-`persona.json` (path in `summary.persona_json`) holds the structured personas.
-If `verified` is `false`, say so and do not present the personas as settled.
-Add `--domain telecom` only for FTEL/telecom-churn datasets (stricter
-anti-hallucination rules). `--k` pins the cluster count when the user asks for a
-specific number of segments.
-
-Each persona in `persona.json` has: `cluster_id`, `persona_name`, `support`,
-`support_pct`, `confidence`, `priority_score`, `is_anomaly`,
-`segmentation_quality`, `risk_tier`, `evidence`, `profile_attributes`,
-`recommended_actions`, `sample_persona_text`.
+  c. `run "<files[].path>" "<question>"` — or pass the ingested name (with or
+     without `.csv`, e.g. `telecom-churn`), which `run`/`profile` also resolve
+     against the module's `data/` dir — then follow the plan-review loop above.
 
 ## Commands (reference)
 
@@ -176,22 +129,24 @@ directory — see the SKILL block header in the system prompt):
   `data/` dir as CSV. Add `--name sales` to control the stored name. It prints
   JSON `{"module": "data_copilot", "files": [{"file": "...", "path": "..."}]}`;
   `file` is the `data/`-relative name for `send_editable_table`, `path` is the
-  absolute path for `profile`/`analyze`. Excel workbooks yield one CSV per sheet.
+  absolute path for `profile`/`run`. Excel workbooks yield one CSV per sheet.
   Notes: pass the source file's path (quote it if it has spaces/parentheses,
   e.g. the artifact path `"…/008af448_telecom_churn (1).csv"`); the command works
   from any working directory (it resolves the module's `data/` dir from the
   script location, not the CWD). The stored name is slugified — lower-cased with
   non-alphanumerics collapsed to `-` (so `Telecom Churn (1).csv` becomes
   `telecom-churn.csv`) — so use the returned `file`/`path` values verbatim in
-  later `send_editable_table`/`analyze` calls rather than re-deriving the name.
+  later `send_editable_table`/`run` calls rather than re-deriving the name.
 - Profile a dataset:
   `python <modules>/data_copilot/scripts/copilot.py profile path/to/data.csv`
-- Analyze:
-  `python <modules>/data_copilot/scripts/copilot.py analyze path/to/data.csv "What is total revenue by region?"`
-  Flags: `--max-repair` (default 3), `--max-verify` (default 2), `--out <dir>`.
-- Persona clustering (writes persona.json + narrative report):
-  `python <modules>/data_copilot/scripts/copilot.py persona path/to/data.csv "Segment customers into personas" [--domain telecom] [--k N]`
-  Flags: `--max-repair` (default 3), `--max-verify` (default 2), `--out <dir>`.
+- Start the analysis graph (stops at the human-review interrupt):
+  `python <modules>/data_copilot/scripts/copilot.py run path/to/data.csv "What is total revenue by region?" [--domain telecom] [--k N]`
+  Prints `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}`.
+  Flags: `--domain`, `--k`, `--out <dir>` (default: a fresh `runs/run-<timestamp>` dir), `--thread <id>` (default: derived from `--out`).
+- Resume a run's checkpoint with the human's reply to the plan:
+  `python <modules>/data_copilot/scripts/copilot.py resume --thread <thread_id> --feedback "<their reply>"`
+  Prints the final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "report": "...", "verdict": {...}, "figures": [...]}`
+  or another `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}` if the feedback asked for changes.
 - Recent audit events:
   `python <modules>/data_copilot/scripts/copilot.py audit --limit 20`
 
@@ -203,9 +158,9 @@ analysis. Call the `send_editable_table` tool with `module="data_copilot"` and
 grid; when the user edits cells or adds/removes rows and clicks Save, the CSV is
 rewritten in place. In a chat session the grid binds to the session's copy of the
 dataset and saves back through the `/api/data-copilot/write` route, so edits
-persist where the analysis reads from. Then run `analyze` against the ingested `path` so the report
-reflects the corrected data. Recommended flow for a user-supplied dataset:
-**ingest → (optionally) `send_editable_table` for review/fix → `analyze` the
+persist where the analysis reads from. Then run `run` against the ingested `path` so the report
+reflects the corrected data (and continue the plan-review loop as usual). Recommended flow for a
+user-supplied dataset: **ingest → (optionally) `send_editable_table` for review/fix → `run` the
 ingested path.** This closes the loop so users analyze the data they actually
 approved. (Editable tables only render in the web UI.)
 
