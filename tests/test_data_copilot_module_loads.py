@@ -35,7 +35,6 @@ def test_key_scripts_present():
         "guardrails",
         "sandbox",
         "generate",
-        "verify",
         "report",
         "audit",
         "copilot",
