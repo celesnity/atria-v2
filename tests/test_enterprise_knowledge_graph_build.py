@@ -1,4 +1,5 @@
 """Graph build orchestration: backbone always, extraction cached + toggled."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -35,9 +36,17 @@ class RecordingStore:
 
 def _doc(corpus):
     return corpus.Document(
-        doc_id="DOC001", title="Sổ tay", department="COMP", classification="Public",
-        owner="COMP", knowledge_space="Company Knowledge", last_updated="2025-02-04",
-        language="vi", path="/x/DOC001.md", text="đoạn một. đoạn hai.", tags=("sổ",),
+        doc_id="DOC001",
+        title="Sổ tay",
+        department="COMP",
+        classification="Public",
+        owner="COMP",
+        knowledge_space="Company Knowledge",
+        last_updated="2025-02-04",
+        language="vi",
+        path="/x/DOC001.md",
+        text="đoạn một. đoạn hai.",
+        tags=("sổ",),
     )
 
 
@@ -46,10 +55,22 @@ def test_build_backbone_upserts_docs_and_chunks():
     corpus = _load("corpus", "ek_corpus_gb")
 
     def chunk_fn(doc):
-        return [type("C", (), {"chunk_id": "DOC001#0", "doc_id": "DOC001",
-                               "text": "đoạn một", "title": "Sổ tay", "department": "COMP",
-                               "classification": "Public", "knowledge_space": "Company Knowledge",
-                               "citation": "Sổ tay [DOC001] · DOC001#0"})()]
+        return [
+            type(
+                "C",
+                (),
+                {
+                    "chunk_id": "DOC001#0",
+                    "doc_id": "DOC001",
+                    "text": "đoạn một",
+                    "title": "Sổ tay",
+                    "department": "COMP",
+                    "classification": "Public",
+                    "knowledge_space": "Company Knowledge",
+                    "citation": "Sổ tay [DOC001] · DOC001#0",
+                },
+            )()
+        ]
 
     store = RecordingStore()
     stats = gb.build_backbone(store, [_doc(corpus)], chunk_fn)
@@ -64,14 +85,16 @@ def test_build_extraction_skips_cached_chunks(tmp_path):
     calls = {"n": 0}
 
     def chunk_fn(doc):
-        return [type("C", (), {"chunk_id": "DOC001#0", "text": "đoạn một"})()]
+        return [type("C", (), {"chunk_id": "DOC001#0", "doc_id": "DOC001", "text": "đoạn một"})()]
 
     def chat_fn(messages):
         calls["n"] += 1
         return json.dumps({"entities": [], "relationships": []})
 
-    cache = gb.ExtractionCache(str(tmp_path / "cache.json"))
+    cache_path = str(tmp_path / "cache.json")
     store = RecordingStore()
-    gb.build_extraction(store, [_doc(corpus)], chunk_fn, chat_fn, cache)
-    gb.build_extraction(store, [_doc(corpus)], chunk_fn, chat_fn, cache)  # 2nd run cached
-    assert calls["n"] == 1  # LLM called once; second run served from cache
+    gb.build_extraction(store, [_doc(corpus)], chunk_fn, chat_fn, gb.ExtractionCache(cache_path))
+    # 2nd run uses a freshly constructed cache instance to prove the on-disk
+    # JSON sidecar (not just the in-memory dict) is honored across processes.
+    gb.build_extraction(store, [_doc(corpus)], chunk_fn, chat_fn, gb.ExtractionCache(cache_path))
+    assert calls["n"] == 1  # LLM called once; second run served from disk cache

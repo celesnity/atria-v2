@@ -5,6 +5,7 @@ their structural edges — no LLM), and an optional LLM extraction pass that add
 Entity/MENTIONS/RELATED_TO. Extraction is cached by chunk-content hash so a
 rebuild re-upserts from cache without re-calling the (rate-limited) LLM.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,9 +22,13 @@ import extraction  # type: ignore[import-not-found]
 def doc_to_node(doc) -> dict:
     """Project a ``corpus.Document`` into the node dict ``upsert_document`` wants."""
     return {
-        "doc_id": doc.doc_id, "title": doc.title, "department": doc.department,
-        "classification": doc.classification, "owner": doc.owner,
-        "knowledge_space": doc.knowledge_space, "last_updated": doc.last_updated,
+        "doc_id": doc.doc_id,
+        "title": doc.title,
+        "department": doc.department,
+        "classification": doc.classification,
+        "owner": doc.owner,
+        "knowledge_space": doc.knowledge_space,
+        "last_updated": doc.last_updated,
         "tags": list(doc.tags),
     }
 
@@ -31,10 +36,14 @@ def doc_to_node(doc) -> dict:
 def chunk_to_node(rec) -> dict:
     """Project a ``chunking.ChunkRecord`` into the node dict ``upsert_chunk`` wants."""
     return {
-        "chunk_id": rec.chunk_id, "doc_id": rec.doc_id, "text": rec.text,
-        "title": rec.title, "department": rec.department,
+        "chunk_id": rec.chunk_id,
+        "doc_id": rec.doc_id,
+        "text": rec.text,
+        "title": rec.title,
+        "department": rec.department,
         "classification": rec.classification,
-        "knowledge_space": getattr(rec, "knowledge_space", ""), "citation": rec.citation,
+        "knowledge_space": getattr(rec, "knowledge_space", ""),
+        "citation": rec.citation,
     }
 
 
@@ -65,10 +74,11 @@ class ExtractionCache:
     def put(self, text: str, ext) -> None:
         """Cache ``ext`` for ``text`` and flush to disk."""
         self._data[self.key(text)] = {
-            "entities": [{"type": e.type, "key": e.key, "props": e.props}
-                         for e in ext.entities],
-            "edges": [{"type": x.type, "src_key": x.src_key, "dst_key": x.dst_key,
-                       "props": x.props} for x in ext.edges],
+            "entities": [{"type": e.type, "key": e.key, "props": e.props} for e in ext.entities],
+            "edges": [
+                {"type": x.type, "src_key": x.src_key, "dst_key": x.dst_key, "props": x.props}
+                for x in ext.edges
+            ],
         }
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(json.dumps(self._data, ensure_ascii=False), encoding="utf-8")
@@ -86,8 +96,9 @@ def build_backbone(store, docs, chunk_fn: Callable) -> dict:
     return {"documents": n_docs, "chunks": n_chunks}
 
 
-def build_extraction(store, docs, chunk_fn: Callable, chat_fn: Callable,
-                     cache: ExtractionCache) -> dict:
+def build_extraction(
+    store, docs, chunk_fn: Callable, chat_fn: Callable, cache: ExtractionCache
+) -> dict:
     """Extract Entity/RELATED_TO per chunk (LLM), cached by content hash."""
     n_chunks = n_llm = 0
     for doc in docs:
@@ -96,8 +107,7 @@ def build_extraction(store, docs, chunk_fn: Callable, chat_fn: Callable,
             ext = cache.get(rec.text)
             if ext is None:
                 ext = extraction.extract_graph(
-                    rec.text, chat_fn,
-                    {"source_doc": getattr(rec, "doc_id", ""), "page": rec.chunk_id}
+                    rec.text, chat_fn, {"source_doc": rec.doc_id, "page": rec.chunk_id}
                 )
                 cache.put(rec.text, ext)
                 n_llm += 1
