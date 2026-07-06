@@ -51,3 +51,12 @@ def test_generate_code_extracts_fenced_block():
     chat = lambda messages: "text\n```python\nprint('hi')\n```\n"
     code = mod.generate_code("seg", {"path": "d.csv", "columns": []}, chat)
     assert "print('hi')" in code
+
+
+def test_prompt_lists_roadmap_actions_and_severity():
+    mod = _load()
+    msgs = mod.build_messages("segment", {"path": "d.csv", "columns": []})
+    system = msgs[0]["content"]
+    assert "severity" in system
+    assert "Thu thập thêm dữ liệu hành vi" in system  # a roadmap action verbatim
+    assert "profile_attributes" in system
