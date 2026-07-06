@@ -72,7 +72,7 @@ asking for changes.
 3. On the user's reply, relay it as feedback:
    `python <modules>/data_copilot/scripts/copilot.py resume --thread <thread_id> --feedback "<their reply>"`
    - If they approved (or the feedback reads as approval), this prints the
-     final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "report": "...", "verdict": {...}, "figures": [...]}`.
+     final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "run_dir": "runs/run-...", "report": "...", "verdict": {...}, "figures": [...]}`.
    - If they asked for changes, this prints another
      `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}` — go back
      to step 2 with the new plan and the same `thread_id`.
@@ -91,10 +91,13 @@ asking for changes.
    asking first: for every file listed in `figures` (matplotlib PNGs saved to
    the run dir), call the `send_image` tool with its absolute path and a short
    caption. This is how the chart the analysis drew reaches the user — do not
-   just describe it or print the path; send the image. `send_image` renders
-   only in the web UI; in a plain terminal/CLI it returns
-   `"UI callback unavailable"` — in that case state that visuals need the web
-   UI rather than silently dropping them.
+   just describe it or print the path; send the image. Also call the
+   `send_report` tool with `run_dir` set to the `run_dir` field from the `done`
+   result, so the rendered report markdown reaches the chat as a report bubble
+   (in addition to — not instead of — summarizing it in your final message).
+   `send_image`/`send_report` render only in the web UI; in a plain
+   terminal/CLI they return `"UI callback unavailable"` — in that case state
+   that visuals need the web UI rather than silently dropping them.
 
    Run outputs (generated code, figures) and the audit trail are stored
    automatically in the per-session data_copilot folder, not the module
@@ -145,8 +148,9 @@ directory — see the SKILL block header in the system prompt):
   Flags: `--domain`, `--k`, `--out <dir>` (default: a fresh `runs/run-<timestamp>` dir), `--thread <id>` (default: derived from `--out`).
 - Resume a run's checkpoint with the human's reply to the plan:
   `python <modules>/data_copilot/scripts/copilot.py resume --thread <thread_id> --feedback "<their reply>"`
-  Prints the final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "report": "...", "verdict": {...}, "figures": [...]}`
+  Prints the final `{"status": "done", "thread_id": "...", "dataset": "...", "question": "...", "run_dir": "runs/run-...", "report": "...", "verdict": {...}, "figures": [...]}`
   or another `{"status": "awaiting_review", "thread_id": "...", "plan": "..."}` if the feedback asked for changes.
+  On `done`, call `send_report` with the returned `run_dir` to push the rendered report to the web UI chat.
 - Recent audit events:
   `python <modules>/data_copilot/scripts/copilot.py audit --limit 20`
 

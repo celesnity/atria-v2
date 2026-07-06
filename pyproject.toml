@@ -144,6 +144,12 @@ target-version = ["py39"]
 line-length = 100
 target-version = "py39"
 
+[tool.ruff.lint.per-file-ignores]
+# report_generator.py is a verbatim copy from .reference/data-agent — its
+# one-liner `if ...: x = y` statements and an unused local are preserved
+# byte-identical rather than reflowed to satisfy the linter.
+"modules/data_copilot/scripts/report_generator.py" = ["E701", "F841"]
+
 [tool.mypy]
 python_version = "3.9"
 strict = true

@@ -128,8 +128,10 @@ def run_graph(
     Returns:
         ``{"status": "awaiting_review", "thread_id", "plan"}`` when the graph
         pauses at the human-review interrupt, otherwise the final summary
-        ``{"status": "done", "thread_id", "dataset", "question", "report",
-        "verdict", "figures"}``.
+        ``{"status": "done", "thread_id", "dataset", "question", "run_dir",
+        "report", "verdict", "figures"}``. ``run_dir`` is the session-root-relative
+        form (``runs/<name>``) expected by ``send_report``/``read_report``. The
+        report is also persisted to ``<out_dir>/report.md`` on a best-effort basis.
     """
     from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore[import-not-found]
     from langgraph.types import Command  # type: ignore[import-not-found]
@@ -145,8 +147,10 @@ def run_graph(
         rc=rc, kernel=krn, profile=prof, dataset=dataset, domain=domain, k=k
     )
     cfg = {"configurable": {"thread_id": thread_id}}
+    checkpoint_db = paths_mod.checkpoint_db()
+    checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with SqliteSaver.from_conn_string(str(paths_mod.checkpoint_db())) as saver:
+        with SqliteSaver.from_conn_string(str(checkpoint_db)) as saver:
             compiled = graph_mod.build_graph(ctx, saver)
             if resume_feedback is None:
                 init = {
@@ -177,12 +181,21 @@ def run_graph(
                     "plan": interrupted.get("plan", ""),
                 }
             vals = snap.values
+            report = vals.get("final_report", "")
+            try:
+                (Path(out_dir) / "report.md").write_text(report, encoding="utf-8")
+            except OSError:
+                # Persisting the report is best-effort: a write failure (e.g. a
+                # read-only or vanished run dir) must not fail an otherwise
+                # successful run — the report is still returned in the payload.
+                pass
             return {
                 "status": "done",
                 "thread_id": thread_id,
                 "dataset": dataset,
                 "question": question,
-                "report": vals.get("final_report", ""),
+                "run_dir": f"runs/{Path(out_dir).name}",
+                "report": report,
                 "verdict": vals.get("verdict", {}),
                 "figures": vals.get("figures", []),
             }

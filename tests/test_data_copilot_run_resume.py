@@ -188,3 +188,71 @@ def test_cli_run_then_resume_end_to_end(tmp_path, monkeypatch, capsys):
     finished = json.loads(capsys.readouterr().out)
     assert finished["status"] == "done"
     assert finished["report"]
+
+
+def test_run_graph_persists_report_and_read_report_reads_it_back(tmp_path, monkeypatch):
+    """Proves the CRITICAL seam: run_graph must write report.md to out_dir on
+    `done`, and return a `run_dir` in the session-root-relative form
+    (`runs/<name>`) that `atria.core.modules.data_copilot_paths.read_report`
+    can resolve — the same seam `send_report` and the `/api/data-copilot/report`
+    route depend on. Neither this test nor run_graph hand-writes report.md
+    anywhere except through run_graph's own persistence code path.
+    """
+    from atria.core.modules import data_copilot_paths as dcp
+
+    cop = _load("copilot", "dc_run_graph_report_persist")
+    monkeypatch.setattr(cop, "RoleClient", _FakeRoleClient)
+    monkeypatch.setattr(cop.paths_mod, "checkpoint_db", lambda: tmp_path / "checkpoints.sqlite")
+
+    import kernel as kernel_mod
+
+    monkeypatch.setattr(kernel_mod, "CodeKernel", _FakeCodeKernel)
+
+    # Align data_copilot_paths.data_copilot_root(session_id, working_dir) with
+    # paths.conversation_root() (ATRIA_WORKSPACE + ATRIA_CONVERSATION_ID) so the
+    # writer (run_graph, driven by scripts/paths.py's conversation_root()) and the
+    # reader (data_copilot_paths.read_report) resolve to the *same* directory.
+    session_id = "sess-report-e2e"
+    working_dir = tmp_path / "workspace"
+    working_dir.mkdir()
+    monkeypatch.setenv("ATRIA_WORKSPACE", str(working_dir))
+    monkeypatch.setenv("ATRIA_CONVERSATION_ID", session_id)
+
+    root = dcp.data_copilot_root(session_id, str(working_dir))
+    out_dir = root / "runs" / "run-report-e2e"
+    out_dir.mkdir(parents=True)
+
+    dataset = tmp_path / "d.csv"
+    dataset.write_text("a,b\n1,2\n3,4\n", encoding="utf-8")
+
+    started = cop.run_graph(
+        str(dataset),
+        "count the rows",
+        out_dir=str(out_dir),
+        domain=None,
+        k=None,
+        thread_id="report-e2e-thread",
+    )
+    assert started["status"] == "awaiting_review"
+
+    finished = cop.run_graph(
+        str(dataset),
+        "count the rows",
+        out_dir=str(out_dir),
+        domain=None,
+        k=None,
+        thread_id="report-e2e-thread",
+        resume_feedback="approve",
+    )
+    assert finished["status"] == "done"
+    assert finished["run_dir"] == "runs/run-report-e2e"
+
+    report_file = out_dir / "report.md"
+    assert report_file.exists()
+    assert report_file.read_text(encoding="utf-8") == finished["report"]
+    assert finished["report"]
+
+    # The reader side: data_copilot_paths.read_report, pointed at the same
+    # session root via env, must read exactly what run_graph wrote.
+    read_back = dcp.read_report(session_id, str(working_dir), finished["run_dir"])
+    assert read_back["report"] == finished["report"]
