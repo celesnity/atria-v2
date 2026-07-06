@@ -36,3 +36,12 @@ def test_rejects_path_outside_root(tmp_path):
 def test_write_rejects_non_csv(tmp_path):
     with pytest.raises(ValueError):
         dcp.write_session_csv("sess4", str(tmp_path), "notcsv.txt", [{"name": "a"}], [])
+
+
+def test_read_report_reads_markdown(tmp_path):
+    root = dcp.data_copilot_root("1", str(tmp_path))
+    run = root / "runs" / "run-x"
+    run.mkdir(parents=True)
+    (run / "report.md").write_text("# R\nbody", encoding="utf-8")
+    out = dcp.read_report("1", str(tmp_path), "runs/run-x")
+    assert out["report"].startswith("# R")

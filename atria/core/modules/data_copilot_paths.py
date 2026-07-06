@@ -34,9 +34,14 @@ def _resolve_confined(session_id: str, working_dir: str, rel_or_abs: str) -> Pat
         rel = rel_or_abs.lstrip("/")
         if rel.startswith("./"):
             rel = rel[2:]
-        if rel == "data" or rel.startswith("data/"):
-            rel = rel[len("data") :].lstrip("/")
-        candidate = root / "data" / rel
+        if rel == "runs" or rel.startswith("runs/"):
+            # Run-dir artifacts (report.md, persona.json) live directly under
+            # the session root, not under data/.
+            candidate = root / rel
+        else:
+            if rel == "data" or rel.startswith("data/"):
+                rel = rel[len("data") :].lstrip("/")
+            candidate = root / "data" / rel
     resolved = candidate.resolve()
     if root != resolved and root not in resolved.parents:
         raise ValueError("path escapes the session data_copilot root")
@@ -155,3 +160,23 @@ def write_session_csv(
     target.parent.mkdir(parents=True, exist_ok=True)
     store._atomic_write_bytes(target, data)
     return {"written": rel_file, "rows": len(rows), "columns": header}
+
+
+def report_path(session_id: str, working_dir: str, run_dir: str) -> Path:
+    """Absolute path to a run's ``report.md``, confined to the session root."""
+    return _resolve_confined(session_id, working_dir, f"{run_dir.rstrip('/')}/report.md")
+
+
+def persona_json_path(session_id: str, working_dir: str, run_dir: str) -> Path:
+    """Absolute path to a run's ``persona.json``, confined to the session root."""
+    return _resolve_confined(session_id, working_dir, f"{run_dir.rstrip('/')}/persona.json")
+
+
+def read_report(session_id: str, working_dir: str, run_dir: str) -> Dict[str, Any]:
+    """Read a run's ``report.md`` -> ``{"report": str}``.
+
+    Raises:
+        FileNotFoundError: If the report file does not exist.
+    """
+    text = report_path(session_id, working_dir, run_dir).read_text(encoding="utf-8")
+    return {"report": text}
