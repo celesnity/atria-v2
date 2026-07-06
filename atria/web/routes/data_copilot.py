@@ -70,3 +70,14 @@ async def write_endpoint(body: WriteBody) -> dict:
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+
+
+@router.get("/report")
+async def report_endpoint(session_id: str = Query(...), run_dir: str = Query(...)) -> dict:
+    working_dir = await _working_dir_for_session(session_id)
+    try:
+        return dcp.read_report(session_id, working_dir, run_dir)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="report not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))

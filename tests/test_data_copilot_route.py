@@ -37,3 +37,20 @@ def test_read_missing_is_404(tmp_path, monkeypatch):
     client = _make_client(tmp_path, monkeypatch)
     r = client.get("/api/data-copilot/read", params={"session_id": "s1", "file": "nope.csv"})
     assert r.status_code == 404
+
+
+def test_report_endpoint_returns_markdown(tmp_path, monkeypatch):
+    client = _make_client(tmp_path, monkeypatch)
+    run_dir = tmp_path / ".artifacts" / "data_copilot" / "s1" / "runs" / "run1"
+    run_dir.mkdir(parents=True)
+    (run_dir / "report.md").write_text("# Report\n\nBody text.", encoding="utf-8")
+
+    r = client.get("/api/data-copilot/report", params={"session_id": "s1", "run_dir": "runs/run1"})
+    assert r.status_code == 200
+    assert r.json()["report"] == "# Report\n\nBody text."
+
+
+def test_report_endpoint_missing_is_404(tmp_path, monkeypatch):
+    client = _make_client(tmp_path, monkeypatch)
+    r = client.get("/api/data-copilot/report", params={"session_id": "s1", "run_dir": "runs/run1"})
+    assert r.status_code == 404
