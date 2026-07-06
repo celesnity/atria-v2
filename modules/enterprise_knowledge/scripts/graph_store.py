@@ -6,6 +6,7 @@ so unit tests supply a fake and never touch a server. Every EK node carries the
 scoped to EK data and never touch a co-located module's graph (the compose
 Neo4j is a single shared Community-edition database).
 """
+
 from __future__ import annotations
 
 import os
@@ -49,8 +50,12 @@ class EKGraphStore:
 
     def ensure_constraints(self) -> None:
         """One uniqueness constraint per EK node label on its key property."""
-        for label, key in ((_DOC, "doc_id"), (_CHUNK, "chunk_id"),
-                           (_ENTITY, "key"), (_TAG, "name")):
+        for label, key in (
+            (_DOC, "doc_id"),
+            (_CHUNK, "chunk_id"),
+            (_ENTITY, "key"),
+            (_TAG, "name"),
+        ):
             self._run(
                 f"CREATE CONSTRAINT ek_{label.lower()}_{key} IF NOT EXISTS "
                 f"FOR (n:{label}) REQUIRE n.{key} IS UNIQUE",
@@ -61,12 +66,17 @@ class EKGraphStore:
         """MERGE a Document node plus its Department and Tag edges."""
         self._run(
             f"MERGE (d:{_DOC}:{NS_LABEL} {{doc_id: $doc_id}}) SET d += $props",
-            {"doc_id": doc["doc_id"], "props": {
-                "title": doc["title"], "department": doc["department"],
-                "classification": doc["classification"], "owner": doc.get("owner", ""),
-                "knowledge_space": doc.get("knowledge_space", ""),
-                "last_updated": doc.get("last_updated", ""),
-            }},
+            {
+                "doc_id": doc["doc_id"],
+                "props": {
+                    "title": doc["title"],
+                    "department": doc["department"],
+                    "classification": doc["classification"],
+                    "owner": doc.get("owner", ""),
+                    "knowledge_space": doc.get("knowledge_space", ""),
+                    "last_updated": doc.get("last_updated", ""),
+                },
+            },
         )
         self._run(
             f"MERGE (dep:{_DEPT}:{NS_LABEL} {{department_id: $dept}}) "
@@ -86,13 +96,18 @@ class EKGraphStore:
         """MERGE a Chunk node (with passage text) and link it to its Document."""
         self._run(
             f"MERGE (c:{_CHUNK}:{NS_LABEL} {{chunk_id: $chunk_id}}) SET c += $props",
-            {"chunk_id": chunk["chunk_id"], "props": {
-                "doc_id": chunk["doc_id"], "text": chunk["text"],
-                "title": chunk["title"], "department": chunk["department"],
-                "classification": chunk["classification"],
-                "knowledge_space": chunk.get("knowledge_space", ""),
-                "citation": chunk["citation"],
-            }},
+            {
+                "chunk_id": chunk["chunk_id"],
+                "props": {
+                    "doc_id": chunk["doc_id"],
+                    "text": chunk["text"],
+                    "title": chunk["title"],
+                    "department": chunk["department"],
+                    "classification": chunk["classification"],
+                    "knowledge_space": chunk.get("knowledge_space", ""),
+                    "citation": chunk["citation"],
+                },
+            },
         )
         self._run(
             f"MATCH (c:{_CHUNK} {{chunk_id: $chunk_id}}), (d:{_DOC} {{doc_id: $doc_id}}) "
@@ -145,6 +160,50 @@ class EKGraphStore:
         """Delete every EK node and its relationships (never touches other modules)."""
         self._run(f"MATCH (n:{NS_LABEL}) DETACH DELETE n", {})
 
+    _ACL_WHERE = (
+        "(cand.classification IN $open OR $is_exec "
+        "OR (cand.classification = $conf AND cand.department = $dept))"
+    )
+
+    @staticmethod
+    def _return_chunk(var: str = "cand") -> str:
+        return (
+            f"RETURN DISTINCT {var}.chunk_id AS chunk_id, {var}.doc_id AS doc_id, "
+            f"{var}.text AS text, {var}.title AS title, {var}.department AS department, "
+            f"{var}.classification AS classification, "
+            f"{var}.knowledge_space AS knowledge_space, {var}.citation AS citation"
+        )
+
+    def neighbors_via_entities(self, seed_chunk_ids, hops, acl, limit) -> list[dict]:
+        """Candidate chunks reachable seed-chunk -> entity -> RELATED_TO* -> entity -> chunk."""
+        depth = max(0, int(hops))
+        cypher = (
+            f"MATCH (c:{_CHUNK})-[:MENTIONS]->(seed:{_ENTITY}) "
+            "WHERE c.chunk_id IN $seeds "
+            f"MATCH (seed)-[:RELATED_TO*0..{depth}]-(rel:{_ENTITY}) "
+            f"MATCH (rel)<-[:MENTIONS]-(cand:{_CHUNK}) "
+            "WHERE NOT cand.chunk_id IN $seeds AND "
+            + self._ACL_WHERE
+            + " "
+            + self._return_chunk()
+            + " LIMIT $limit"
+        )
+        return self._run(cypher, {"seeds": list(seed_chunk_ids), "limit": int(limit), **acl})
+
+    def neighbors_via_tags(self, seed_chunk_ids, acl, limit) -> list[dict]:
+        """Candidate chunks in documents sharing a tag with a seed chunk's document."""
+        cypher = (
+            f"MATCH (c:{_CHUNK})-[:PART_OF]->(:{_DOC})-[:TAGGED]->(t:{_TAG}) "
+            "WHERE c.chunk_id IN $seeds "
+            f"MATCH (t)<-[:TAGGED]-(:{_DOC})<-[:PART_OF]-(cand:{_CHUNK}) "
+            "WHERE NOT cand.chunk_id IN $seeds AND "
+            + self._ACL_WHERE
+            + " "
+            + self._return_chunk()
+            + " LIMIT $limit"
+        )
+        return self._run(cypher, {"seeds": list(seed_chunk_ids), "limit": int(limit), **acl})
+
 
 def neo4j_run_fn(driver) -> RunFn:
     """Build a run_fn that executes each statement in its own Neo4j session."""
@@ -164,6 +223,5 @@ def build_driver(env: Optional[Mapping[str, str]] = None):
     src = os.environ if env is None else env
     return GraphDatabase.driver(
         src.get("EK_NEO4J_URI", "bolt://localhost:7687"),
-        auth=(src.get("EK_NEO4J_USER", "neo4j"),
-              src.get("EK_NEO4J_PASSWORD", "atria-neo4j")),
+        auth=(src.get("EK_NEO4J_USER", "neo4j"), src.get("EK_NEO4J_PASSWORD", "atria-neo4j")),
     )
