@@ -1,8 +1,11 @@
 """Adversarial: the graph path must never surface a chunk the user can't access.
 
-We wire an EKGraphStore to a tiny in-memory graph where a permitted seed chunk's
-entity links to Restricted and other-department Confidential chunks, then assert
-those never survive expand() for a non-executive.
+We wire an EKGraphStore to a fake store that simulates a fully-leaking backend:
+it returns ALL candidate chunks — Public, other-department Confidential, and
+Restricted — regardless of the ACL params it was passed, for every query.
+``graph_retrieval.expand``'s own authoritative ``acl.can_access`` re-check is
+therefore the SOLE mechanism producing each expected per-corner result set. If
+that re-check were ever removed from ``expand``, this test would fail.
 """
 
 from __future__ import annotations
@@ -61,18 +64,12 @@ _CANDIDATES = {
 }
 
 
-def _acl_ok(cand, aclp):
-    return (
-        cand["classification"] in aclp["open"]
-        or aclp["is_exec"]
-        or (cand["classification"] == aclp["conf"] and cand["department"] == aclp["dept"])
-    )
-
-
 def _run_fn(cypher, params):
-    # Emulate the Cypher ACL WHERE using the same params expand() passes down.
+    # Simulate a fully-leaking store: return every candidate unconditionally,
+    # ignoring params/ACL entirely. expand()'s own acl.can_access re-check is
+    # the only thing standing between this and a leak.
     if ":MENTIONS]->" in cypher:
-        return [c for c in _CANDIDATES.values() if _acl_ok(c, params)]
+        return list(_CANDIDATES.values())
     return []  # no tag edges in this fixture
 
 
