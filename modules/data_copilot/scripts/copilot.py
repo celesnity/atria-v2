@@ -20,20 +20,68 @@ reimplementation of .reference/data-agent/langgraph_agent.
 from __future__ import annotations
 
 import argparse
+import csv as _csv
 import json
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import audit  # type: ignore[import-not-found]
+import charts as charts_mod  # type: ignore[import-not-found]
 import ingest as ingest_mod  # type: ignore[import-not-found]
 import paths as paths_mod  # type: ignore[import-not-found]
 import profile as profile_mod  # type: ignore[import-not-found]
 from client import RoleClient  # type: ignore[import-not-found]
 from config import load_config  # type: ignore[import-not-found]
+
+
+def _infer_type(values: List[str]) -> str:
+    """Return ``number`` if every non-empty value parses as float, else ``string``."""
+    saw = False
+    for v in values:
+        if v is None or v == "":
+            continue
+        saw = True
+        try:
+            float(v)
+        except (TypeError, ValueError):
+            return "string"
+    return "number" if saw else "string"
+
+
+def _load_result_table(out_dir: str):
+    """Read ``result.csv`` from *out_dir* → ``(columns, rows)`` or ``None``.
+
+    ``columns`` is ``[{"name", "type"}]``; numeric cells are coerced to float so
+    the chart renderer plots numbers rather than strings.
+    """
+    path = Path(out_dir) / "result.csv"
+    if not path.is_file():
+        return None
+    with path.open("r", encoding="utf-8", errors="replace", newline="") as fh:
+        reader = list(_csv.reader(fh))
+    if not reader:
+        return None
+    header = [h.strip() or f"column_{i + 1}" for i, h in enumerate(reader[0])]
+    body = reader[1:]
+    rows: List[dict] = [
+        {header[i]: (r[i] if i < len(r) else "") for i in range(len(header))} for r in body
+    ]
+    columns: List[dict] = []
+    for name in header:
+        col_vals = [r.get(name, "") for r in rows]
+        columns.append({"name": name, "type": _infer_type(col_vals)})
+    for col in columns:
+        if col["type"] == "number":
+            for r in rows:
+                try:
+                    r[col["name"]] = float(r[col["name"]])
+                except (TypeError, ValueError):
+                    r[col["name"]] = None
+    return columns, rows
 
 
 def _cmd_health() -> int:
@@ -129,9 +177,14 @@ def run_graph(
         ``{"status": "awaiting_review", "thread_id", "plan"}`` when the graph
         pauses at the human-review interrupt, otherwise the final summary
         ``{"status": "done", "thread_id", "dataset", "question", "run_dir",
-        "report", "verdict", "figures"}``. ``run_dir`` is the session-root-relative
-        form (``runs/<name>``) expected by ``send_report``/``read_report``. The
-        report is also persisted to ``<out_dir>/report.md`` on a best-effort basis.
+        "report", "verdict", "figures", "result_table", "suggestions"}``.
+        ``run_dir`` is the session-root-relative form (``runs/<name>``) expected
+        by ``send_report``/``read_report``. The report is also persisted to
+        ``<out_dir>/report.md`` on a best-effort basis. ``result_table`` is the
+        absolute path to ``<out_dir>/result.csv`` (or ``None`` if the generated
+        code did not write one); ``suggestions`` are heuristic chart specs
+        derived from it (empty list when there is no result table). Both are
+        also persisted to ``<out_dir>/result.meta.json`` alongside the columns.
     """
     from langgraph.checkpoint.sqlite import SqliteSaver  # type: ignore[import-not-found]
     from langgraph.types import Command  # type: ignore[import-not-found]
@@ -189,6 +242,16 @@ def run_graph(
                 # read-only or vanished run dir) must not fail an otherwise
                 # successful run — the report is still returned in the payload.
                 pass
+            loaded = _load_result_table(out_dir)
+            result_table = None
+            suggestions: list = []
+            if loaded is not None:
+                columns, rows = loaded
+                suggestions = charts_mod.detect_suggestions(columns, rows)
+                (Path(out_dir) / "result.meta.json").write_text(
+                    json.dumps({"columns": columns, "suggestions": suggestions}, default=str)
+                )
+                result_table = str((Path(out_dir) / "result.csv").resolve())
             return {
                 "status": "done",
                 "thread_id": thread_id,
@@ -198,6 +261,8 @@ def run_graph(
                 "report": report,
                 "verdict": vals.get("verdict", {}),
                 "figures": vals.get("figures", []),
+                "result_table": result_table,
+                "suggestions": suggestions,
             }
     finally:
         krn.shutdown()

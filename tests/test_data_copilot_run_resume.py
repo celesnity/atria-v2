@@ -190,6 +190,81 @@ def test_cli_run_then_resume_end_to_end(tmp_path, monkeypatch, capsys):
     assert finished["report"]
 
 
+class _FakeCodeKernelWithResult(_FakeCodeKernel):
+    """Like `_FakeCodeKernel`, but `run` also writes a `result.csv` into the
+    workdir — simulating generated analysis code that saves its result table
+    as a side effect of execution. Kept as an opt-in subclass (rather than
+    changing `_FakeCodeKernel` itself) so the existing report-only tests above
+    are unaffected."""
+
+    def run(self, code):
+        result = super().run(code)
+        Path(self.workdir).joinpath("result.csv").write_text(
+            "region,revenue\nNorth,100\nSouth,50\n", encoding="utf-8"
+        )
+        return result
+
+
+def test_run_graph_surfaces_result_table_and_suggestions(tmp_path, monkeypatch):
+    """When the generated code leaves a `result.csv` behind, `run_graph`'s
+    `done` payload must surface it (`result_table`) along with heuristic chart
+    `suggestions`, and persist both to `result.meta.json` — the seam
+    `send_table` depends on."""
+    import charts as charts_mod  # resolves to the real module under sys.modules["charts"]
+
+    cop = _load("copilot", "dc_run_graph_result_table")
+    monkeypatch.setattr(cop, "RoleClient", _FakeRoleClient)
+    monkeypatch.setattr(cop.paths_mod, "checkpoint_db", lambda: tmp_path / "checkpoints.sqlite")
+
+    import kernel as kernel_mod
+
+    monkeypatch.setattr(kernel_mod, "CodeKernel", _FakeCodeKernelWithResult)
+
+    dataset = tmp_path / "d.csv"
+    dataset.write_text("a,b\n1,2\n3,4\n", encoding="utf-8")
+    out_dir = tmp_path / "run"
+    out_dir.mkdir()
+
+    started = cop.run_graph(
+        str(dataset),
+        "count the rows",
+        out_dir=str(out_dir),
+        domain=None,
+        k=None,
+        thread_id="result-table-thread",
+    )
+    assert started["status"] == "awaiting_review"
+
+    finished = cop.run_graph(
+        str(dataset),
+        "count the rows",
+        out_dir=str(out_dir),
+        domain=None,
+        k=None,
+        thread_id="result-table-thread",
+        resume_feedback="approve",
+    )
+    assert finished["status"] == "done"
+
+    result_table = finished["result_table"]
+    assert isinstance(result_table, str) and result_table.endswith("result.csv")
+    assert Path(result_table).is_file()
+
+    suggestions = finished["suggestions"]
+    assert isinstance(suggestions, list) and suggestions
+    expected = charts_mod.detect_suggestions(
+        [{"name": "region", "type": "string"}, {"name": "revenue", "type": "number"}],
+        [{"region": "North", "revenue": 100.0}, {"region": "South", "revenue": 50.0}],
+    )
+    assert any(s["chart_type"] == "bar" for s in expected)
+    assert suggestions == expected
+
+    meta_file = out_dir / "result.meta.json"
+    assert meta_file.is_file()
+    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+    assert "columns" in meta and "suggestions" in meta
+
+
 def test_run_graph_persists_report_and_read_report_reads_it_back(tmp_path, monkeypatch):
     """Proves the CRITICAL seam: run_graph must write report.md to out_dir on
     `done`, and return a `run_dir` in the session-root-relative form
