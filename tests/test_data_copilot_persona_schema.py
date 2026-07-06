@@ -91,3 +91,28 @@ def test_validate_rejects_bad_confidence():
     p["confidence"] = "SORT-OF"
     with pytest.raises(ValueError):
         mod.validate([p])
+
+
+def test_validate_accepts_severity_and_rejects_bad_severity():
+    mod = _load()
+    good = _valid_persona()
+    good["severity"] = "EXTREME"
+    mod.validate([good])  # must not raise
+    bad = _valid_persona()
+    bad["severity"] = "SOMETIMES"
+    with pytest.raises(ValueError):
+        mod.validate([bad])
+
+
+def test_validate_rejects_non_dict_profile_attributes():
+    mod = _load()
+    p = _valid_persona()
+    p["profile_attributes"] = ["not", "a", "dict"]
+    with pytest.raises(ValueError):
+        mod.validate([p])
+
+
+def test_roadmap_actions_exposed():
+    mod = _load()
+    assert "Thu thập thêm dữ liệu hành vi" in mod.ROADMAP_ACTIONS
+    assert len(mod.ROADMAP_ACTIONS) == 10

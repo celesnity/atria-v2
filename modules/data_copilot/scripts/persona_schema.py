@@ -36,6 +36,23 @@ REQUIRED_FIELDS = (
 )
 _CONFIDENCE = {"HIGH", "MEDIUM", "LOW"}
 _RISK = {"HIGH", "MEDIUM", "LOW"}
+_SEVERITY = {"LOW", "MEDIUM", "HIGH", "EXTREME"}
+# The 10 valid primary actions — keys of report_generator.ROADMAP_METADATA.
+# Duplicated here (not imported) to keep schema validation import-light.
+ROADMAP_ACTIONS = frozenset(
+    {
+        "Outbound CSKH chủ động để xoa dịu khách hàng",
+        "Thu thập thêm dữ liệu hành vi",
+        "Thu thập thêm App usage logs",
+        "Khảo sát mức độ hài lòng qua Zalo/SMS",
+        "Phân tích nguyên nhân khiếu nại/liên hệ",
+        "Nghiên cứu nguyên nhân kỹ thuật",
+        "Tư vấn đổi gói cước phù hợp hành vi sử dụng",
+        "Khảo sát cơ hội upsell/cross-sell dịch vụ",
+        "Chủ động liên hệ trước nguy cơ hạ cấp dịch vụ",
+        "Phân tích nguyên nhân sử dụng dao động",
+    }
+)
 _BLOCK_RE = re.compile(
     re.escape(MARKER_START) + r"\s*(.*?)\s*" + re.escape(MARKER_END),
     re.DOTALL,
@@ -99,3 +116,7 @@ def validate(personas: List[dict]) -> None:
             raise ValueError(f"persona[{i}].feature_means must be an object")
         if "persona_type" in p and not isinstance(p["persona_type"], str):
             raise ValueError(f"persona[{i}].persona_type must be a string")
+        if "severity" in p and p["severity"] not in _SEVERITY:
+            raise ValueError(f"persona[{i}].severity must be one of {sorted(_SEVERITY)}")
+        if "profile_attributes" in p and not isinstance(p["profile_attributes"], dict):
+            raise ValueError(f"persona[{i}].profile_attributes must be an object")
