@@ -249,7 +249,8 @@ def run_graph(
                 columns, rows = loaded
                 suggestions = charts_mod.detect_suggestions(columns, rows)
                 (Path(out_dir) / "result.meta.json").write_text(
-                    json.dumps({"columns": columns, "suggestions": suggestions}, default=str)
+                    json.dumps({"columns": columns, "suggestions": suggestions}, default=str),
+                    encoding="utf-8",
                 )
                 result_table = str((Path(out_dir) / "result.csv").resolve())
             return {
