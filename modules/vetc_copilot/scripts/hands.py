@@ -13,8 +13,9 @@ import audit  # type: ignore[import-not-found]
 import mockapi  # type: ignore[import-not-found]
 from guardrails import ADVISORY_NOTE, consent_gate  # type: ignore[import-not-found]
 
-# Illustrative demo amounts (VND). Real pricing comes from the insurer partner.
-PRICES: dict[str, int] = {"SVC001": 500700, "SVC002": 300000, "SVC003": 0}
+# Illustrative demo amounts (VND). Real pricing comes from the insurer/inspection
+# partner. Must be > 0 — the VETC payment gateway rejects a 0-amount charge.
+PRICES: dict[str, int] = {"SVC001": 500700, "SVC002": 300000, "SVC003": 340000}
 
 # service id -> (expiry column it renews)
 _EXPIRY_COL = {"SVC001": "civil_liability_expiry", "SVC003": "inspection_expiry"}
