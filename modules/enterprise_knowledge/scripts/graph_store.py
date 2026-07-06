@@ -217,11 +217,19 @@ def neo4j_run_fn(driver) -> RunFn:
 
 
 def build_driver(env: Optional[Mapping[str, str]] = None):
-    """Construct a Neo4j driver from ``EK_NEO4J_URI|USER|PASSWORD``."""
+    """Construct a Neo4j driver from ``EK_NEO4J_URI|USER|PASSWORD``.
+
+    Server-side notifications are disabled: a graph built as backbone-only (no
+    entities/tags yet) has no ``MENTIONS``/``RELATED_TO``/``TAGGED`` relationship
+    types, so every ``--graph`` traversal would otherwise emit harmless
+    "relationship type does not exist" warnings on each query. The traversal
+    still returns no rows and the query degrades to vector-only regardless.
+    """
     from neo4j import GraphDatabase  # local import: heavy optional dep
 
     src = os.environ if env is None else env
     return GraphDatabase.driver(
         src.get("EK_NEO4J_URI", "bolt://localhost:7687"),
         auth=(src.get("EK_NEO4J_USER", "neo4j"), src.get("EK_NEO4J_PASSWORD", "atria-neo4j")),
+        notifications_min_severity="OFF",
     )
