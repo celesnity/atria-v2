@@ -100,6 +100,35 @@ class EKGraphStore:
             {"chunk_id": chunk["chunk_id"], "doc_id": chunk["doc_id"]},
         )
 
+    def upsert_extraction(self, chunk_id: str, ext) -> tuple[int, int]:
+        """MERGE entities, chunk->entity MENTIONS, and entity->entity RELATED_TO.
+
+        Args:
+            chunk_id: The source chunk whose entities these are.
+            ext: An ``extraction.GraphExtraction``.
+
+        Returns:
+            ``(entity_count, edge_count)`` upserted.
+        """
+        for ent in ext.entities:
+            self._run(
+                f"MERGE (n:{_ENTITY}:{NS_LABEL} {{key: $key}}) SET n += $props, "
+                "n.etype = $etype",
+                {"key": ent.key, "props": ent.props, "etype": ent.type},
+            )
+            self._run(
+                f"MATCH (c:{_CHUNK} {{chunk_id: $chunk_id}}), (n:{_ENTITY} {{key: $key}}) "
+                "MERGE (c)-[:MENTIONS]->(n)",
+                {"chunk_id": chunk_id, "key": ent.key},
+            )
+        for edge in ext.edges:
+            self._run(
+                f"MATCH (a:{_ENTITY} {{key: $src}}), (b:{_ENTITY} {{key: $dst}}) "
+                "MERGE (a)-[r:RELATED_TO]->(b) SET r += $props",
+                {"src": edge.src_key, "dst": edge.dst_key, "props": edge.props},
+            )
+        return len(ext.entities), len(ext.edges)
+
     def stats(self) -> dict:
         """Return EK node and edge counts."""
         rows = self._run(

@@ -71,3 +71,19 @@ def test_acl_params_executive_vs_employee():
     assert ex["is_exec"] is True
     assert emp["is_exec"] is False and emp["dept"] == "ENG"
     assert emp["open"] == ["Public", "Internal"] and emp["conf"] == "Confidential"
+
+
+def test_upsert_extraction_merges_entities_mentions_and_relations():
+    gs = _load("graph_store", "ek_gs_ext")
+    ext_mod = _load("extraction", "ek_ext_for_gs")
+    fake = FakeRun()
+    ext = ext_mod.GraphExtraction(
+        entities=[ext_mod.Entity("Policy", "leave", {"status": "unverified"})],
+        edges=[ext_mod.Edge("RELATED_TO", "leave", "handbook", {"confidence": 0.8})],
+    )
+    n, e = gs.EKGraphStore(fake).upsert_extraction("DOC001#0", ext)
+    assert (n, e) == (1, 1)
+    cyphers = " ".join(c for c, _ in fake.calls)
+    assert "MERGE (n:EKEntity:EKNode {key: $key})" in cyphers
+    assert ":MENTIONS]->" in cyphers
+    assert ":RELATED_TO]->" in cyphers
