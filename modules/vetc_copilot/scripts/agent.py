@@ -35,8 +35,8 @@ _TOOLS_DOC = (
     "lookup_regulation(question): tra cứu quy định/thủ tục sở hữu xe (kết quả có trích dẫn [Kxxx]).\n"
     "get_wallet(vehicle_id): xem ví giấy tờ số của một xe.\n"
     "renew_service(vehicle_id, service_id): GIA HẠN dịch vụ (thao tác chạm tiền, mô phỏng). "
-    'service_id phải là mã trong danh mục (vd "SVC001" = gia hạn bảo hiểm TNDS bắt buộc); '
-    "nếu người dùng chỉ nói 'gia hạn bảo hiểm' thì dùng SVC001. "
+    'service_id phải là mã trong danh mục: "SVC001" = bảo hiểm TNDS bắt buộc, '
+    '"SVC003" = đăng kiểm. Gia hạn bảo hiểm → SVC001; gia hạn/đặt lịch đăng kiểm → SVC003. '
     "CHỈ gọi sau khi người dùng đã xác nhận đồng ý gia hạn."
 )
 
