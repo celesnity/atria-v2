@@ -26,6 +26,7 @@ import acl  # type: ignore[import-not-found]
 import audit  # type: ignore[import-not-found]
 import graph_store  # type: ignore[import-not-found]
 import graph_build  # type: ignore[import-not-found]
+import graph_retrieval  # type: ignore[import-not-found]
 
 # Output dim of the embedding model. Default matches OpenAI text-embedding-3-small.
 EMBED_DIM = 1536
@@ -146,6 +147,23 @@ def _resolve_user(user_id: str, users_path: str | None) -> "identity.User":
     return identity.resolve(users, user_id)
 
 
+def _augment_with_graph(
+    text: str, user: "identity.User", hits: list[dict], k: int, graph_store_obj: object | None
+) -> list[dict]:
+    """Expand ``hits`` with ACL-safe graph neighbors; fall back to ``hits`` on error."""
+    try:
+        gs = graph_store_obj or _build_graph_store()
+        hops = int(_env("EK_GRAPH_HOPS", "1"))
+        max_neighbors = int(_env("EK_GRAPH_MAX_NEIGHBORS", "20"))
+        graph_hits = graph_retrieval.expand(gs, hits, user, hops, max_neighbors)
+        merged = graph_retrieval.merge_hits(hits, graph_hits, cap=max(k, len(hits)))
+        safe, _blocked = guard_accessible(user, merged)  # belt-and-suspenders re-check
+        return safe
+    except Exception as exc:  # noqa: BLE001 - graph is optional; never fail the query
+        print(f"[graph] disabled for this query: {exc}", file=sys.stderr)
+        return hits
+
+
 def _cmd_query(
     text: str,
     user_id: str,
@@ -154,12 +172,16 @@ def _cmd_query(
     synthesize: bool,
     users_path: str | None,
     store: IndexStore | None = None,
+    graph: bool = False,
+    graph_store_obj: object | None = None,
 ) -> int:
     user = _resolve_user(user_id, users_path)
     if store is None:
         store = _build_store()
     hits = store.query(text, k=k, acl_filter=acl.build_filter(user), department=department)
     hits, blocked = guard_accessible(user, hits)
+    if graph:
+        hits = _augment_with_graph(text, user, hits, k, graph_store_obj)
     payload: dict[str, object] = {
         "query": text,
         "user": {"user_id": user.user_id, "role": user.role, "department": user.department},
@@ -407,7 +429,13 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_ingest(args.samples or _samples_dir())
         if args.command == "query":
             return _cmd_query(
-                args.text, args.user, args.k, args.department, args.synthesize, args.users
+                args.text,
+                args.user,
+                args.k,
+                args.department,
+                args.synthesize,
+                args.users,
+                graph=args.graph,
             )
         if args.command == "whoami":
             return _cmd_whoami(args.user_id, args.users)

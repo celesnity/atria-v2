@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -132,3 +133,59 @@ def test_query_parser_has_graph_flag():
     knowledge = _load("knowledge", "ek_cli_graph3")
     args = knowledge.build_parser().parse_args(["query", "q", "--user", "U001", "--graph"])
     assert args.graph is True
+
+
+def test_cmd_query_graph_merges_safe_graph_hits(capsys, monkeypatch):
+    knowledge = _load("knowledge", "ek_cli_qgraph")
+
+    class FakeStore:
+        def query(self, text, k, acl_filter, department=None):
+            return [
+                {
+                    "score": 0.9,
+                    "citation": "[A]",
+                    "text": "a",
+                    "doc_id": "DOCA",
+                    "chunk_id": "DOCA#0",
+                    "title": "A",
+                    "department": "COMP",
+                    "classification": "Public",
+                    "knowledge_space": "Company Knowledge",
+                }
+            ]
+
+    class FakeGraphStore:
+        def neighbors_via_entities(self, seeds, hops, acl, limit):
+            return [
+                {
+                    "chunk_id": "DOCB#0",
+                    "doc_id": "DOCB",
+                    "text": "b",
+                    "title": "B",
+                    "department": "COMP",
+                    "classification": "Internal",
+                    "knowledge_space": "Company Knowledge",
+                    "citation": "[B]",
+                }
+            ]
+
+        def neighbors_via_tags(self, seeds, acl, limit):
+            return []
+
+    # Point the user resolver at a known user without touching the real CSV.
+    monkeypatch.setenv("EK_USERS_CSV", str(_MOD.parent / "access" / "users.csv"))
+    rc = knowledge._cmd_query(
+        "q",
+        "U001",
+        5,
+        None,
+        synthesize=False,
+        users_path=None,
+        store=FakeStore(),
+        graph=True,
+        graph_store_obj=FakeGraphStore(),
+    )
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    ids = {h["chunk_id"] for h in out["hits"]}
+    assert {"DOCA#0", "DOCB#0"} <= ids  # vector + safe graph hit both present
