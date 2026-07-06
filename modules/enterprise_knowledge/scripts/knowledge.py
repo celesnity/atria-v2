@@ -24,6 +24,8 @@ from index_store import IndexStore  # type: ignore[import-not-found]
 import identity  # type: ignore[import-not-found]
 import acl  # type: ignore[import-not-found]
 import audit  # type: ignore[import-not-found]
+import graph_store  # type: ignore[import-not-found]
+import graph_build  # type: ignore[import-not-found]
 
 # Output dim of the embedding model. Default matches OpenAI text-embedding-3-small.
 EMBED_DIM = 1536
@@ -56,6 +58,18 @@ def _synthesis_chat_fn() -> Callable[[list], str]:
     return lambda messages: rc.chat("synthesis", messages)
 
 
+def _build_graph_store(run_fn: Callable | None = None) -> "graph_store.EKGraphStore":
+    """Build an EKGraphStore from EK_NEO4J_* (or an injected run_fn for tests)."""
+    if run_fn is None:
+        run_fn = graph_store.neo4j_run_fn(graph_store.build_driver())
+    return graph_store.EKGraphStore(run_fn)
+
+
+def _kg_extract_chat_fn() -> Callable[[list], str]:
+    rc = RoleClient(load_config())
+    return lambda messages: rc.chat("kg_extract", messages)
+
+
 def guard_accessible(user: "identity.User", hits: list[dict]) -> tuple[list[dict], list[dict]]:
     """Split hits into (accessible, blocked) by re-running the ACL predicate.
 
@@ -86,6 +100,7 @@ def load_doc_meta(samples: str) -> dict[str, dict]:
 
 # --- commands ---------------------------------------------------------------
 
+
 def _cmd_health() -> int:
     cfg = load_config()
     rc = RoleClient(cfg)
@@ -101,8 +116,10 @@ def _cmd_health() -> int:
     probe("index_embed", lambda: rc.embed("index_embed", ["ping"]))
     # A tiny but non-trivial budget: reasoning models (gpt-5/o-series) 400 on a
     # 1-token cap ("could not finish"), so give the probe enough to reply.
-    probe("synthesis", lambda: rc.chat("synthesis", [{"role": "user", "content": "ping"}],
-                                       max_tokens=32))
+    probe(
+        "synthesis",
+        lambda: rc.chat("synthesis", [{"role": "user", "content": "ping"}], max_tokens=32),
+    )
 
     def qdrant_probe() -> None:
         from qdrant_client import QdrantClient
@@ -129,8 +146,15 @@ def _resolve_user(user_id: str, users_path: str | None) -> "identity.User":
     return identity.resolve(users, user_id)
 
 
-def _cmd_query(text: str, user_id: str, k: int, department: str | None,
-               synthesize: bool, users_path: str | None, store: IndexStore | None = None) -> int:
+def _cmd_query(
+    text: str,
+    user_id: str,
+    k: int,
+    department: str | None,
+    synthesize: bool,
+    users_path: str | None,
+    store: IndexStore | None = None,
+) -> int:
     user = _resolve_user(user_id, users_path)
     if store is None:
         store = _build_store()
@@ -142,31 +166,42 @@ def _cmd_query(text: str, user_id: str, k: int, department: str | None,
         "hits": hits,
     }
     if not hits:
-        payload["message"] = (
-            "Không tìm thấy tài liệu phù hợp trong phạm vi truy cập của bạn."
-        )
+        payload["message"] = "Không tìm thấy tài liệu phù hợp trong phạm vi truy cập của bạn."
     if synthesize and hits:
         from synthesis import synthesize as _synth  # local import
 
         answer = _synth(text, hits, _synthesis_chat_fn())
         payload["answer"] = answer
-    audit.append_event({
-        "type": "query", "user_id": user.user_id, "role": user.role,
-        "department": user.department, "query": text,
-        "returned_doc_ids": sorted({h["doc_id"] for h in hits}),
-        "blocked_doc_ids": sorted({h["doc_id"] for h in blocked}),
-    })
+    audit.append_event(
+        {
+            "type": "query",
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "query": text,
+            "returned_doc_ids": sorted({h["doc_id"] for h in hits}),
+            "blocked_doc_ids": sorted({h["doc_id"] for h in blocked}),
+        }
+    )
     print(json.dumps(payload, indent=2, ensure_ascii=False))
     return 0
 
 
 def _cmd_whoami(user_id: str, users_path: str | None) -> int:
     user = _resolve_user(user_id, users_path)
-    print(json.dumps({
-        "user_id": user.user_id, "full_name": user.full_name, "role": user.role,
-        "department": user.department,
-        "accessible_classifications": sorted(acl.accessible_classifications(user)),
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "user_id": user.user_id,
+                "full_name": user.full_name,
+                "role": user.role,
+                "department": user.department,
+                "accessible_classifications": sorted(acl.accessible_classifications(user)),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -177,16 +212,30 @@ def _cmd_can_access(user_id: str, doc_id: str, users_path: str | None, samples: 
         print(json.dumps({"error": f"unknown doc_id: {doc_id}"}, indent=2))
         return 1
     decision = acl.can_access(user, meta[doc_id])
-    print(json.dumps({
-        "user_id": user.user_id, "role": user.role, "department": user.department,
-        "doc_id": doc_id, "classification": meta[doc_id]["classification"],
-        "department_of_doc": meta[doc_id]["department"],
-        "allowed": decision.allowed, "reason": decision.reason,
-    }, indent=2, ensure_ascii=False))
-    audit.append_event({
-        "type": "can_access", "user_id": user.user_id, "doc_id": doc_id,
-        "permission_decision": "allow" if decision.allowed else "deny",
-    })
+    print(
+        json.dumps(
+            {
+                "user_id": user.user_id,
+                "role": user.role,
+                "department": user.department,
+                "doc_id": doc_id,
+                "classification": meta[doc_id]["classification"],
+                "department_of_doc": meta[doc_id]["department"],
+                "allowed": decision.allowed,
+                "reason": decision.reason,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    audit.append_event(
+        {
+            "type": "can_access",
+            "user_id": user.user_id,
+            "doc_id": doc_id,
+            "permission_decision": "allow" if decision.allowed else "deny",
+        }
+    )
     return 0
 
 
@@ -209,6 +258,33 @@ def _cmd_audit(limit: int) -> int:
     return 0
 
 
+def _cmd_graph_build(samples: str, extract: bool) -> int:
+    store = _build_graph_store()
+    store.ensure_constraints()
+    docs = load_corpus(samples)
+    stats = graph_build.build_backbone(store, docs, chunk_document)
+    if extract:
+        cache = graph_build.ExtractionCache(
+            str(Path(__file__).resolve().parent.parent / "data" / "graph_extract_cache.json")
+        )
+        stats["extraction"] = graph_build.build_extraction(
+            store, docs, chunk_document, _kg_extract_chat_fn(), cache
+        )
+    print(json.dumps(stats, indent=2, ensure_ascii=False))
+    return 0
+
+
+def _cmd_graph_stats() -> int:
+    print(json.dumps(_build_graph_store().stats(), indent=2, ensure_ascii=False))
+    return 0
+
+
+def _cmd_graph_reset() -> int:
+    _build_graph_store().reset()
+    print(json.dumps({"reset": True}, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI argument parser."""
     parser = argparse.ArgumentParser(prog="knowledge", description="Enterprise Knowledge CLI")
@@ -223,10 +299,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_query.add_argument("text")
     p_query.add_argument("--user", required=True, help="Querying user_id (RBAC scope).")
     p_query.add_argument("--k", type=int, default=5)
-    p_query.add_argument("--department", default=None,
-                         help="Narrow within accessible scope (canonical id).")
+    p_query.add_argument(
+        "--department", default=None, help="Narrow within accessible scope (canonical id)."
+    )
     p_query.add_argument("--synthesize", action="store_true")
     p_query.add_argument("--users", default=None, help="Path to users.csv override.")
+    p_query.add_argument(
+        "--graph", action="store_true", help="Expand retrieval with the knowledge graph (GraphRAG)."
+    )
 
     p_who = sub.add_parser("whoami", help="Show a user's resolved access identity.")
     p_who.add_argument("user_id")
@@ -242,6 +322,16 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("reset", help="Delete the index collection.")
     p_audit = sub.add_parser("audit", help="Show recent audit events.")
     p_audit.add_argument("--limit", type=int, default=50)
+
+    p_graph = sub.add_parser("graph", help="Knowledge-graph build/inspect (GraphRAG).")
+    gsub = p_graph.add_subparsers(dest="graph_command", required=True)
+    g_build = gsub.add_parser("build", help="Build backbone (+ optional LLM extraction).")
+    g_build.add_argument("--samples", default=None)
+    g_build.add_argument(
+        "--extract", action="store_true", help="Also run the LLM entity/relation pass."
+    )
+    gsub.add_parser("stats", help="Show graph node/edge counts.")
+    gsub.add_parser("reset", help="Delete all EK graph nodes.")
     return parser
 
 
@@ -279,7 +369,7 @@ def _parse_dotenv(text: str) -> dict[str, str]:
         key, _, value = line.partition("=")
         key = key.strip()
         if key.startswith("export "):
-            key = key[len("export "):].strip()
+            key = key[len("export ") :].strip()
         if key:
             out[key] = value.strip().strip('"').strip("'")
     return out
@@ -316,19 +406,29 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "ingest":
             return _cmd_ingest(args.samples or _samples_dir())
         if args.command == "query":
-            return _cmd_query(args.text, args.user, args.k, args.department,
-                              args.synthesize, args.users)
+            return _cmd_query(
+                args.text, args.user, args.k, args.department, args.synthesize, args.users
+            )
         if args.command == "whoami":
             return _cmd_whoami(args.user_id, args.users)
         if args.command == "can-access":
-            return _cmd_can_access(args.user_id, args.doc_id, args.users,
-                                   args.samples or _samples_dir())
+            return _cmd_can_access(
+                args.user_id, args.doc_id, args.users, args.samples or _samples_dir()
+            )
         if args.command == "list":
             return _cmd_list()
         if args.command == "reset":
             return _cmd_reset()
         if args.command == "audit":
             return _cmd_audit(args.limit)
+        if args.command == "graph":
+            if args.graph_command == "build":
+                return _cmd_graph_build(args.samples or _samples_dir(), args.extract)
+            if args.graph_command == "stats":
+                return _cmd_graph_stats()
+            if args.graph_command == "reset":
+                return _cmd_graph_reset()
+            return 2
         return 2
     except identity.UnknownUserError as exc:
         print(json.dumps({"error": str(exc)}, indent=2, ensure_ascii=False))

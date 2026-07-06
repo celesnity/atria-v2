@@ -1,4 +1,5 @@
 """CLI wiring tests for whoami / can-access / guard_accessible (no live services)."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -38,16 +39,17 @@ def test_can_access_command_denies(capsys, tmp_path, monkeypatch):
     # users.csv
     users = tmp_path / "users.csv"
     users.write_text(
-        "user_id,full_name,department,role,email,status\n"
-        "U004,n,ENG,Employee,e,Active\n", encoding="utf-8")
+        "user_id,full_name,department,role,email,status\n" "U004,n,ENG,Employee,e,Active\n",
+        encoding="utf-8",
+    )
     # a single sample doc
     docs = tmp_path / "docs"
     docs.mkdir()
     (docs / "DOC036.md").write_text(
         "---\ndoc_id: DOC036\ntitle: t\ndepartment: EXEC\nclassification: Restricted\n---\nx\n",
-        encoding="utf-8")
-    rc = k.main(["can-access", "U004", "DOC036",
-                 "--users", str(users), "--samples", str(docs)])
+        encoding="utf-8",
+    )
+    rc = k.main(["can-access", "U004", "DOC036", "--users", str(users), "--samples", str(docs)])
     out = capsys.readouterr().out
     assert rc == 0
     assert '"allowed": false' in out.lower() or '"allowed": false' in out
@@ -58,8 +60,9 @@ def test_whoami_unknown_user_returns_clean_error(capsys, tmp_path, monkeypatch):
     monkeypatch.setenv("EK_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
     users = tmp_path / "users.csv"
     users.write_text(
-        "user_id,full_name,department,role,email,status\n"
-        "U004,n,ENG,Employee,e,Active\n", encoding="utf-8")
+        "user_id,full_name,department,role,email,status\n" "U004,n,ENG,Employee,e,Active\n",
+        encoding="utf-8",
+    )
     rc = k.main(["whoami", "U999", "--users", str(users)])
     out = capsys.readouterr().out
     assert rc == 1
@@ -99,13 +102,33 @@ def test_whoami_utf8_output_survives_legacy_console(tmp_path):
     users.write_text(
         "user_id,full_name,department,role,email,status\n"
         "U001,Nguyễn Văn Phú,HR,Employee,e,Active\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "cp1252"
     proc = subprocess.run(
-        [sys.executable, str(_MOD / "knowledge.py"),
-         "whoami", "U001", "--users", str(users)],
-        capture_output=True, env=env,
+        [sys.executable, str(_MOD / "knowledge.py"), "whoami", "U001", "--users", str(users)],
+        capture_output=True,
+        env=env,
     )
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     assert "Nguyễn Văn Phú" in proc.stdout.decode("utf-8")
+
+
+def test_parser_accepts_graph_build_and_flags():
+    knowledge = _load("knowledge", "ek_cli_graph")
+    args = knowledge.build_parser().parse_args(["graph", "build", "--extract"])
+    assert args.command == "graph" and args.graph_command == "build" and args.extract is True
+
+
+def test_parser_accepts_graph_stats_and_reset():
+    knowledge = _load("knowledge", "ek_cli_graph2")
+    a = knowledge.build_parser().parse_args(["graph", "stats"])
+    b = knowledge.build_parser().parse_args(["graph", "reset"])
+    assert a.graph_command == "stats" and b.graph_command == "reset"
+
+
+def test_query_parser_has_graph_flag():
+    knowledge = _load("knowledge", "ek_cli_graph3")
+    args = knowledge.build_parser().parse_args(["query", "q", "--user", "U001", "--graph"])
+    assert args.graph is True
