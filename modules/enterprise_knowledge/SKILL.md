@@ -41,6 +41,20 @@ Public/Internal → all employees. Confidential → the owning department only
 (Executives see all). Restricted → Executives only. Enforcement is a
 pre-retrieval Qdrant filter plus a citation-time re-check.
 
+## GraphRAG (optional)
+
+For richer answers, the retrieval can be augmented with a knowledge graph.
+Build it once, then pass `--graph` on a query:
+
+- `python <modules>/enterprise_knowledge/scripts/knowledge.py graph build` — build the
+  metadata + tag backbone (no LLM). Add `--extract` to also run the LLM
+  entity/relation pass (cached; needs EK_KG_EXTRACT_* and is slower on free tiers).
+- `python <modules>/enterprise_knowledge/scripts/knowledge.py query "<Q>" --user U004 --graph --synthesize`
+  — expand retrieval with the graph. Access control is identical to the vector
+  path: every graph-surfaced passage is re-checked with the same permission rules,
+  so `--graph` never widens what a user can see. If the graph is unavailable, the
+  query silently falls back to vector-only.
+
 ## Status
 
 Core module — ingest, permission-aware search, grounded Vietnamese answers, and
