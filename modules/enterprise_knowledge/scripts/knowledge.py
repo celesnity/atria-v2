@@ -36,6 +36,11 @@ def _env(key: str, default: str) -> str:
     return os.environ.get(key, default)
 
 
+def _graph_enabled() -> bool:
+    """Query-time master switch for GraphRAG (EK_GRAPH_ENABLED, default off)."""
+    return _env("EK_GRAPH_ENABLED", "0").strip().lower() in ("1", "true", "yes")
+
+
 def _samples_dir() -> str:
     return str(Path(__file__).resolve().parent.parent / "sample_documents")
 
@@ -189,7 +194,7 @@ def _cmd_query(
         store = _build_store()
     hits = store.query(text, k=k, acl_filter=acl.build_filter(user), department=department)
     hits, blocked = guard_accessible(user, hits)
-    if graph:
+    if graph and _graph_enabled():
         hits = _augment_with_graph(text, user, hits, k, graph_store_obj)
     payload: dict[str, object] = {
         "query": text,
