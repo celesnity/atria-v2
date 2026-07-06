@@ -1,12 +1,13 @@
 """Module-local model-provider config for the enterprise_knowledge module.
 
-Maps two feature roles (index_embed, synthesis) to OpenAI-compatible endpoints.
-Defaults target a hosted API (OpenAI); every field is overridable per role via
-``EK_<ROLE>_<FIELD>``. When a role has no explicit ``EK_<ROLE>_API_KEY``, the key
-is chosen to match the endpoint host — an OpenRouter base_url gets
-OPENROUTER_API_KEY, an OpenAI base_url gets OPENAI_API_KEY — so a ``.env`` that
-carries both keys routes each provider correctly. This layer is self-contained
-and does not touch Atria's global provider system.
+Maps feature roles (index_embed, synthesis, kg_extract) to OpenAI-compatible
+endpoints. Defaults target a hosted API (OpenAI); every field is overridable
+per role via ``EK_<ROLE>_<FIELD>``. When a role has no explicit
+``EK_<ROLE>_API_KEY``, the key is chosen to match the endpoint host — an
+OpenRouter base_url gets OPENROUTER_API_KEY, an OpenAI base_url gets
+OPENAI_API_KEY — so a ``.env`` that carries both keys routes each provider
+correctly. This layer is self-contained and does not touch Atria's global
+provider system.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ import os
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional
 
-ROLES = ("index_embed", "synthesis")
+ROLES = ("index_embed", "synthesis", "kg_extract")
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,10 @@ _DEFAULTS: Dict[str, RoleConfig] = {
                               "https://api.openai.com/v1", ""),
     "synthesis": RoleConfig("openai", "gpt-4o-mini",
                             "https://api.openai.com/v1", ""),
+    # Entity/relation extraction for the knowledge graph. Any chat model works;
+    # override per deployment via EK_KG_EXTRACT_* (mirrors EK_SYNTHESIS_*).
+    "kg_extract": RoleConfig("openai", "gpt-4o-mini",
+                             "https://api.openai.com/v1", ""),
 }
 
 

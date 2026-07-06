@@ -20,10 +20,10 @@ def _load():
     return mod
 
 
-def test_config_has_exactly_two_roles():
+def test_config_has_exactly_three_roles():
     mod = _load()
     cfg = mod.load_config(env={})
-    assert set(cfg) == {"index_embed", "synthesis"}
+    assert set(cfg) == {"index_embed", "synthesis", "kg_extract"}
 
 
 def test_defaults_are_hosted_openai():
@@ -79,3 +79,16 @@ def test_explicit_role_api_key_overrides_routing():
            "EK_SYNTHESIS_API_KEY": "sk-explicit"}
     cfg = mod.load_config(env=env)
     assert cfg["synthesis"].api_key == "sk-explicit"
+
+
+def test_kg_extract_role_present_and_overridable():
+    mod = _load()
+    cfg = mod.load_config(env={
+        "EK_KG_EXTRACT_MODEL": "openai/gpt-4o-mini",
+        "EK_KG_EXTRACT_BASE_URL": "https://openrouter.ai/api/v1",
+        "OPENROUTER_API_KEY": "sk-or-x",
+    })
+    assert "kg_extract" in cfg
+    assert cfg["kg_extract"].model == "openai/gpt-4o-mini"
+    assert cfg["kg_extract"].base_url == "https://openrouter.ai/api/v1"
+    assert cfg["kg_extract"].api_key == "sk-or-x"  # host-matched fallback key
