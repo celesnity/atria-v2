@@ -15,6 +15,11 @@ from typing import List, Optional
 MARKER_START = "[JSON_START_PERSONA]"
 MARKER_END = "[JSON_END_PERSONA]"
 
+# Fields every persona must carry. ``sample_persona_text`` is intentionally NOT
+# required: the production clustering output omits it (it was only ever used for
+# a narrative snippet the report no longer reads), so requiring it would reject
+# otherwise-valid output. Extra fields the generator emits (persona_type,
+# severity, risk, feature_means) are validated leniently below when present.
 REQUIRED_FIELDS = (
     "cluster_id",
     "persona_name",
@@ -28,9 +33,9 @@ REQUIRED_FIELDS = (
     "evidence",
     "profile_attributes",
     "recommended_actions",
-    "sample_persona_text",
 )
 _CONFIDENCE = {"HIGH", "MEDIUM", "LOW"}
+_RISK = {"HIGH", "MEDIUM", "LOW"}
 _BLOCK_RE = re.compile(
     re.escape(MARKER_START) + r"\s*(.*?)\s*" + re.escape(MARKER_END),
     re.DOTALL,
@@ -87,3 +92,10 @@ def validate(personas: List[dict]) -> None:
             raise ValueError(f"persona[{i}].evidence must be an object")
         if not isinstance(p["recommended_actions"], list):
             raise ValueError(f"persona[{i}].recommended_actions must be a list")
+        # Lenient checks on optional fields the generator also emits.
+        if "risk" in p and p["risk"] not in _RISK:
+            raise ValueError(f"persona[{i}].risk must be one of {sorted(_RISK)}")
+        if "feature_means" in p and not isinstance(p["feature_means"], dict):
+            raise ValueError(f"persona[{i}].feature_means must be an object")
+        if "persona_type" in p and not isinstance(p["persona_type"], str):
+            raise ValueError(f"persona[{i}].persona_type must be a string")

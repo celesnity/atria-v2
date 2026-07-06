@@ -15,6 +15,16 @@ from atria.models.operation import Operation, OperationType
 class FileToolHandler:
     """Handles file read/write/edit operations."""
 
+    # Default number of lines to sample when a large tabular file is read
+    # without an explicit bound. Keeps the auto-degraded read useful (header +
+    # a chunk of rows) while staying small.
+    TABULAR_SAMPLE_LINES = 100
+
+    # Hard ceiling on read_file output characters, regardless of line count.
+    # ~24k tokens of file content — the real backstop against wide rows (e.g. a
+    # CSV with hundreds of columns) overflowing a small context window.
+    MAX_READ_OUTPUT_CHARS = 96 * 1024
+
     def __init__(self, file_ops: Any, write_tool: Any, edit_tool: Any) -> None:
         self._file_ops = file_ops
         self._write_tool = write_tool
@@ -184,33 +194,40 @@ class FileToolHandler:
 
         file_path = sanitize_path(args["file_path"])
 
-        # Guard large tabular reads — loading a 100k-row CSV into the agent's
-        # context window blows past the input-token limit.
+        offset = args.get("offset")
+        max_lines = args.get("max_lines")
+
+        # Large tabular files (a 100k-row CSV) would blow past the input-token
+        # limit if read in full. Rather than refusing — which leaves the agent
+        # unable to inspect the file at all — degrade to a bounded, truncated
+        # read: sample a default number of lines when the caller didn't already
+        # bound the read, then hard-clamp the output by characters below so even
+        # very wide rows can't overflow the context window.
+        auto_sampled = False
         suffix = Path(file_path).suffix.lower()
-        if suffix in {".csv", ".xlsx", ".tsv", ".parquet"} and args.get("offset") is None:
+        if (
+            suffix in {".csv", ".xlsx", ".tsv", ".parquet"}
+            and offset is None
+            and max_lines is None
+        ):
             try:
                 size = Path(file_path).stat().st_size
             except OSError:
                 size = 0
             # ~1 MB threshold — covers ~10k rows of a typical CSV.
             if size > 1_000_000:
-                return {
-                    "success": False,
-                    "error": (
-                        f"{Path(file_path).name} is {size // 1024} KB. Reading the whole file "
-                        f"would exceed the context window. Call read_file again with "
-                        f"max_lines=20 to sample the header, or use a dedicated tabular "
-                        f"analysis tool."
-                    ),
-                    "output": None,
-                }
+                max_lines = self.TABULAR_SAMPLE_LINES
+                auto_sampled = True
 
         try:
             content = self._file_ops.read_file(
                 file_path,
-                offset=args.get("offset"),
-                max_lines=args.get("max_lines"),
+                offset=offset,
+                max_lines=max_lines,
             )
+            # Backstop: clamp the returned text by characters, independent of
+            # line count, so a small number of very wide rows can't overflow.
+            content = self._clamp_read_output(content, auto_sampled=auto_sampled)
             # Record read timestamp for stale-read detection
             if context and context.file_time_tracker:
                 context.file_time_tracker.record_read(file_path)
@@ -226,6 +243,39 @@ class FileToolHandler:
             return result
         except Exception as exc:  # noqa: BLE001
             return {"success": False, "error": str(exc), "output": None}
+
+    def _clamp_read_output(self, content: str, auto_sampled: bool = False) -> str:
+        """Bound read output by characters so wide rows can't overflow context.
+
+        Args:
+            content: The line-numbered text returned by ``file_ops.read_file``.
+            auto_sampled: True when a large tabular read was auto-degraded to a
+                line sample (used only to phrase the note).
+
+        Returns:
+            The content, hard-clamped to ``MAX_READ_OUTPUT_CHARS`` with an
+            explanatory note appended when truncation occurred.
+        """
+        if not content:
+            return content
+
+        note_parts: list[str] = []
+        if auto_sampled:
+            note_parts.append(
+                f"large tabular file auto-sampled to first {self.TABULAR_SAMPLE_LINES} lines"
+            )
+
+        if len(content) > self.MAX_READ_OUTPUT_CHARS:
+            dropped = len(content) - self.MAX_READ_OUTPUT_CHARS
+            content = content[: self.MAX_READ_OUTPUT_CHARS]
+            note_parts.append(
+                f"output truncated by {dropped} chars to fit the context window "
+                f"(use offset/max_lines to page through, or a tabular analysis tool)"
+            )
+
+        if note_parts:
+            content += "\n\n... (" + "; ".join(note_parts) + ")"
+        return content
 
     def _get_file_instruction(self, file_path: str) -> str | None:
         """Check for instruction file paired with the target file."""

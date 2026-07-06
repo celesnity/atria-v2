@@ -111,6 +111,15 @@ class FileContentInjector:
     MAX_DIR_DEPTH = 3
     MAX_DIR_ITEMS = 50
 
+    # Hard caps on what actually gets injected into the prompt, independent of
+    # line count. Line-based truncation alone does not bound wide rows (e.g. a
+    # CSV with hundreds of columns can be ~1.6KB per line), so 150 head+tail
+    # lines could still blow past a small context window. These char budgets are
+    # the real backstop.
+    MAX_INJECT_CHARS = 24 * 1024  # ~6k tokens worth of file content per file
+    MAX_LINE_CHARS = 2000  # clip any single over-wide line (wide CSV rows)
+    MAX_TOTAL_INJECT_CHARS = 48 * 1024  # ceiling across ALL tagged files combined
+
     # Extension to language mapping for syntax highlighting hints
     LANG_MAP = {
         ".py": "python",
@@ -211,8 +220,23 @@ class FileContentInjector:
                 text_parts.append(f'<file_error path="{ref_str}" reason="{str(e)}" />')
                 errors.append(f"Error reading {ref_str}: {e}")
 
+        text_content = "\n\n".join(text_parts)
+
+        # Global backstop: even after per-file caps, tagging many files at once
+        # could exceed the context window. Hard-clamp the combined injection.
+        if len(text_content) > self.MAX_TOTAL_INJECT_CHARS:
+            dropped = len(text_content) - self.MAX_TOTAL_INJECT_CHARS
+            text_content = (
+                text_content[: self.MAX_TOTAL_INJECT_CHARS]
+                + '\n\n<injection_truncated reason="combined tagged-file content exceeded '
+                + f'{self.MAX_TOTAL_INJECT_CHARS} chars" dropped_chars="{dropped}" />'
+            )
+            errors.append(
+                f"Injected file content truncated by {dropped} chars (global cap)"
+            )
+
         return InjectionResult(
-            text_content="\n\n".join(text_parts),
+            text_content=text_content,
             image_blocks=image_blocks,
             errors=errors,
         )
@@ -462,7 +486,7 @@ class FileContentInjector:
 
         # Check if file needs truncation
         if size > self.MAX_FILE_SIZE or line_count > self.MAX_LINES:
-            return self._process_large_file(path, ref_str, content, lines)
+            return self._process_large_file(path, ref_str, lines)
 
         language = self._get_language(path)
         lang_attr = f' language="{language}"' if language else ""
@@ -484,7 +508,6 @@ class FileContentInjector:
         self,
         path: Path,
         ref_str: str,
-        content: str,
         lines: list[str],
     ) -> str:
         """Process a large file with head/tail truncation.
@@ -492,7 +515,6 @@ class FileContentInjector:
         Args:
             path: Absolute path to the file
             ref_str: Original reference string
-            content: Full file content
             lines: Content split into lines
 
         Returns:
@@ -501,28 +523,73 @@ class FileContentInjector:
         total_lines = len(lines)
         head = lines[: self.HEAD_LINES]
         tail = lines[-self.TAIL_LINES :]
-        omitted = total_lines - self.HEAD_LINES - self.TAIL_LINES
 
         language = self._get_language(path)
         lang_attr = f' language="{language}"' if language else ""
         abs_path = str(path)
 
-        head_content = "\n".join(head)
-        tail_content = "\n".join(tail)
+        # Bound the injected payload by characters, not just lines. Split the
+        # budget between head and tail, clipping over-wide individual lines so a
+        # single monstrous row (e.g. a wide CSV) can't overflow the context.
+        head_budget = (self.MAX_INJECT_CHARS * 2) // 3
+        tail_budget = self.MAX_INJECT_CHARS - head_budget
+        head_kept = self._take_within_budget(head, head_budget)
+        tail_kept = self._take_within_budget(tail, tail_budget, from_end=True)
+
+        omitted = total_lines - len(head_kept) - len(tail_kept)
+
+        head_content = "\n".join(head_kept)
+        tail_content = "\n".join(tail_kept)
 
         from atria.core.agents.prompts.reminders import get_reminder
 
         warning = get_reminder("file_exists_warning")
+        head_n = len(head_kept)
+        tail_n = len(tail_kept)
         return (
             f'<file_truncated path="{ref_str}" absolute_path="{abs_path}" exists="true" total_lines="{total_lines}"{lang_attr}>\n'
             f"{warning}\n"
-            f"=== HEAD (lines 1-{self.HEAD_LINES}) ===\n"
+            f"=== HEAD (lines 1-{head_n}) ===\n"
             f"{head_content}\n\n"
             f"=== TRUNCATED ({omitted} lines omitted) ===\n\n"
-            f"=== TAIL (lines {total_lines - self.TAIL_LINES + 1}-{total_lines}) ===\n"
+            f"=== TAIL (lines {total_lines - tail_n + 1}-{total_lines}) ===\n"
             f"{tail_content}\n"
             f"</file_truncated>"
         )
+
+    def _clip_line(self, line: str) -> str:
+        """Clip a single over-wide line (e.g. a wide CSV row) to a char cap."""
+        if len(line) > self.MAX_LINE_CHARS:
+            dropped = len(line) - self.MAX_LINE_CHARS
+            return line[: self.MAX_LINE_CHARS] + f" …[+{dropped} chars truncated]"
+        return line
+
+    def _take_within_budget(
+        self, lines: list[str], budget: int, from_end: bool = False
+    ) -> list[str]:
+        """Take clipped lines until the char budget is exhausted.
+
+        Args:
+            lines: Candidate lines (already sliced to head/tail window).
+            budget: Maximum characters to emit for this segment.
+            from_end: Walk from the end (for the tail segment) and restore order.
+
+        Returns:
+            The kept, per-line-clipped lines in original order.
+        """
+        seq = reversed(lines) if from_end else iter(lines)
+        kept: list[str] = []
+        used = 0
+        for line in seq:
+            clipped = self._clip_line(line)
+            cost = len(clipped) + 1  # + newline
+            if kept and used + cost > budget:
+                break
+            kept.append(clipped)
+            used += cost
+        if from_end:
+            kept.reverse()
+        return kept
 
     def _process_directory(self, path: Path, ref_str: str) -> str:
         """Process a directory and return tree-style listing.

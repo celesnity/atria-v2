@@ -439,3 +439,49 @@ class TestSizeFormatting:
     def test_format_megabytes(self, injector):
         """Test megabyte formatting."""
         assert injector._format_size(2 * 1024 * 1024) == "2.0MB"
+
+
+class TestCharBudgetTruncation:
+    """Injected content must be bounded by chars, not just line count.
+
+    Regression: a wide CSV (few lines, very wide rows) triggered line-based
+    truncation but the head/tail payload still overflowed the model context.
+    """
+
+    def test_wide_csv_is_bounded_by_char_budget(self, temp_workspace, injector):
+        # 200 rows, each ~4KB wide (500 columns) -> line count small enough that
+        # only the char budget can save us.
+        wide_row = ",".join(f"col{i}=value{i}" for i in range(500))
+        csv = "\n".join(wide_row for _ in range(200))
+        (temp_workspace / "wide.csv").write_text(csv)
+        assert len(csv) > injector.MAX_INJECT_CHARS  # would overflow unbounded
+
+        result = injector.inject_content("@wide.csv analyze this")
+
+        assert "<file_truncated" in result.text_content
+        # Injected payload must stay within the global ceiling with slack for tags.
+        assert len(result.text_content) <= injector.MAX_TOTAL_INJECT_CHARS + 512
+
+    def test_single_monster_line_is_clipped(self, temp_workspace, injector):
+        # One line far wider than MAX_LINE_CHARS, plus enough lines to truncate.
+        monster = "x" * (injector.MAX_LINE_CHARS * 10)
+        content = monster + "\n" + "\n".join(f"line {i}" for i in range(1500))
+        (temp_workspace / "monster.csv").write_text(content)
+
+        result = injector.inject_content("@monster.csv")
+
+        assert "truncated" in result.text_content.lower()
+        # The monster line itself must not survive intact.
+        assert monster not in result.text_content
+        assert "chars truncated" in result.text_content
+
+    def test_clip_line_leaves_short_lines_untouched(self, injector):
+        short = "a,b,c,d"
+        assert injector._clip_line(short) == short
+
+    def test_take_within_budget_respects_cap(self, injector):
+        lines = ["y" * 1000 for _ in range(100)]
+        kept = injector._take_within_budget(lines, budget=3000)
+        # ~3000 char budget over 1001-char lines -> only a few lines kept.
+        assert 0 < len(kept) < 100
+        assert sum(len(line) + 1 for line in kept) <= 3000 + injector.MAX_LINE_CHARS

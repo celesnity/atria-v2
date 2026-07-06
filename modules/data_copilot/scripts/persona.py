@@ -16,6 +16,7 @@ from typing import Callable, Dict, List, Optional
 import audit  # type: ignore[import-not-found]
 import charts as charts_mod  # type: ignore[import-not-found]
 import guardrails  # type: ignore[import-not-found]
+import persona_sanitize  # type: ignore[import-not-found]
 import persona_schema  # type: ignore[import-not-found]
 import profile as profile_mod  # type: ignore[import-not-found]
 import sandbox  # type: ignore[import-not-found]
@@ -147,7 +148,9 @@ def run_persona(
             }
             unverified = True
             break
-        personas = persona_schema.extract_personas(result["stdout"]) or []
+        personas = persona_sanitize.sanitize(
+            persona_schema.extract_personas(result["stdout"]) or []
+        )
         verdict = verify_fn(question, code, result["stdout"], personas)
         if verdict["status"] == "OK":
             unverified = False

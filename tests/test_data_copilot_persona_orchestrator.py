@@ -72,7 +72,13 @@ def test_run_persona_writes_persona_json_and_summary(tmp_path):
     assert persona_json.is_file()
     assert json.loads(persona_json.read_text())[0]["persona_name"] == "x"
     assert summary["persona_json"] == str(persona_json.resolve())
-    assert summary["personas"] == _PERSONAS
+    # personas pass through persona_sanitize: core fields preserved, and
+    # risk/risk_tier are re-derived from priority_score (0.5 -> LOW bucket).
+    persona = summary["personas"][0]
+    assert persona["persona_name"] == "x"
+    assert persona["evidence"] == {"a": 1.0}
+    assert persona["risk"] == "LOW"
+    assert persona["risk_tier"] == "Nhóm ổn định – theo dõi định kỳ"
     assert summary["verified"] is True
     assert summary["result_table"] == str((out / "result.csv").resolve())
     assert summary["suggestions"]  # bar chart from persona_name/support
