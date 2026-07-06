@@ -1,3 +1,4 @@
+
 """Advisory guardrails: mandatory citation, confidence thresholds, disclaimer.
 
 These are enforced in code, not left to the prompt: a synthesized answer has
@@ -18,7 +19,10 @@ ADVISORY_NOTE = (
 _DEFAULT_MIN_CONFIDENCE = 0.35
 # A sentence is a run up to terminal punctuation, OR a trailing run with none
 # (so an answer whose final sentence lacks a period is not silently dropped).
-_SENTENCE_RE = re.compile(r"[^.!?]*[.!?]+|[^.!?]+")
+# A '.' between two digits is a Vietnamese thousands/decimal separator
+# (e.g. 30.000.000 VND), NOT a sentence boundary — it is consumed into the
+# sentence body so amounts survive citation-enforcement intact.
+_SENTENCE_RE = re.compile(r"(?:[^.!?]|(?<=\d)\.(?=\d))+[.!?]*|[.!?]+")
 _MARKER_RE = re.compile(r"\[([^\[\]]+?)\]")
 
 
@@ -34,7 +38,11 @@ def default_min_confidence() -> float:
 
 
 def split_sentences(text: str) -> list[str]:
-    """Split text into sentences on ``.``/``!``/``?`` boundaries."""
+    """Split text into sentences on ``.``/``!``/``?`` boundaries.
+
+    A ``.`` between two digits (a Vietnamese thousands/decimal separator such as
+    ``30.000.000``) is treated as part of the number, not a sentence boundary.
+    """
     out = [m.group(0).strip() for m in _SENTENCE_RE.finditer(text)]
     return [s for s in out if s]
 

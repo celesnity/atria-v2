@@ -2,9 +2,11 @@
 
 Maps two feature roles (index_embed, synthesis) to OpenAI-compatible endpoints.
 Defaults target a hosted API (OpenAI); every field is overridable per role via
-``EK_<ROLE>_<FIELD>``. The api_key default falls back to OPENAI_API_KEY, then
-OPENROUTER_API_KEY, so the module runs against your existing keys unchanged.
-This layer is self-contained and does not touch Atria's global provider system.
+``EK_<ROLE>_<FIELD>``. When a role has no explicit ``EK_<ROLE>_API_KEY``, the key
+is chosen to match the endpoint host — an OpenRouter base_url gets
+OPENROUTER_API_KEY, an OpenAI base_url gets OPENAI_API_KEY — so a ``.env`` that
+carries both keys routes each provider correctly. This layer is self-contained
+and does not touch Atria's global provider system.
 """
 from __future__ import annotations
 
@@ -35,9 +37,18 @@ _DEFAULTS: Dict[str, RoleConfig] = {
 }
 
 
-def _default_api_key(src: Mapping[str, str]) -> str:
-    """Fallback API key: OPENAI_API_KEY, then OPENROUTER_API_KEY, else ''."""
-    return src.get("OPENAI_API_KEY") or src.get("OPENROUTER_API_KEY") or ""
+def _fallback_api_key(base_url: str, src: Mapping[str, str]) -> str:
+    """Pick the fallback API key that matches the endpoint host.
+
+    With both OPENAI_API_KEY and OPENROUTER_API_KEY set (a common ``.env``),
+    route by host so an OpenRouter base_url uses the OpenRouter key and an OpenAI
+    base_url uses the OpenAI key. Falls back to whichever key is present, else ''.
+    """
+    openai_key = src.get("OPENAI_API_KEY") or ""
+    openrouter_key = src.get("OPENROUTER_API_KEY") or ""
+    if "openrouter.ai" in base_url:
+        return openrouter_key or openai_key
+    return openai_key or openrouter_key
 
 
 def load_config(env: Optional[Mapping[str, str]] = None) -> Dict[str, RoleConfig]:
@@ -45,18 +56,19 @@ def load_config(env: Optional[Mapping[str, str]] = None) -> Dict[str, RoleConfig
 
     For each role, ``EK_<ROLE>_PROVIDER|MODEL|BASE_URL|API_KEY`` (role upper-
     cased) overrides the corresponding default field. When no explicit API key
-    is set, it falls back to OPENAI_API_KEY / OPENROUTER_API_KEY.
+    is set, it falls back to the key matching the resolved base_url's host
+    (see :func:`_fallback_api_key`).
     """
     src = os.environ if env is None else env
-    fallback_key = _default_api_key(src)
     resolved: Dict[str, RoleConfig] = {}
     for role in ROLES:
         d = _DEFAULTS[role]
         prefix = f"EK_{role.upper()}_"
+        base_url = src.get(f"{prefix}BASE_URL", d.base_url)
         resolved[role] = RoleConfig(
             provider=src.get(f"{prefix}PROVIDER", d.provider),
             model=src.get(f"{prefix}MODEL", d.model),
-            base_url=src.get(f"{prefix}BASE_URL", d.base_url),
-            api_key=src.get(f"{prefix}API_KEY", fallback_key),
+            base_url=base_url,
+            api_key=src.get(f"{prefix}API_KEY", _fallback_api_key(base_url, src)),
         )
     return resolved

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -62,3 +64,48 @@ def test_whoami_unknown_user_returns_clean_error(capsys, tmp_path, monkeypatch):
     out = capsys.readouterr().out
     assert rc == 1
     assert "error" in out.lower()
+
+
+def test_parse_dotenv_reads_pairs_and_ignores_noise():
+    """The .env parser must handle comments, blanks, export, quotes, and URLs."""
+    k = _load("knowledge", "ek_knowledge_dotenv")
+    text = (
+        "# a comment\n"
+        "\n"
+        "OPENROUTER_API_KEY=sk-or-abc\n"
+        "export EK_SYNTHESIS_MODEL=openai/gpt-4o-mini\n"
+        'EK_SYNTHESIS_BASE_URL="https://openrouter.ai/api/v1"\n'
+        "ATRIA_MODEL='openai/gpt-4o'\n"
+        "MALFORMED_NO_EQUALS\n"
+    )
+    parsed = k._parse_dotenv(text)
+    assert parsed["OPENROUTER_API_KEY"] == "sk-or-abc"
+    assert parsed["EK_SYNTHESIS_MODEL"] == "openai/gpt-4o-mini"
+    assert parsed["EK_SYNTHESIS_BASE_URL"] == "https://openrouter.ai/api/v1"
+    assert parsed["ATRIA_MODEL"] == "openai/gpt-4o"
+    assert "MALFORMED_NO_EQUALS" not in parsed
+
+
+def test_whoami_utf8_output_survives_legacy_console(tmp_path):
+    """Vietnamese CLI output must not crash when stdout uses a legacy codec.
+
+    Regression: on a cp1252 console (Windows default) ``json.dumps(ensure_ascii
+    =False)`` raised UnicodeEncodeError on Vietnamese names. The CLI now forces
+    UTF-8 on its own streams. Forcing ``PYTHONIOENCODING=cp1252`` reproduces the
+    legacy console deterministically on any platform (a piped stdout honours it
+    too), so this guards the fix cross-platform, not just on Windows.
+    """
+    users = tmp_path / "users.csv"
+    users.write_text(
+        "user_id,full_name,department,role,email,status\n"
+        "U001,Nguyễn Văn Phú,HR,Employee,e,Active\n",
+        encoding="utf-8")
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "cp1252"
+    proc = subprocess.run(
+        [sys.executable, str(_MOD / "knowledge.py"),
+         "whoami", "U001", "--users", str(users)],
+        capture_output=True, env=env,
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    assert "Nguyễn Văn Phú" in proc.stdout.decode("utf-8")

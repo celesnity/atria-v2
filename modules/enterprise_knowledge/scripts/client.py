@@ -65,7 +65,13 @@ class RoleClient:
         """
         rc = self._role(role)
         client = self._client_for(rc)
-        resp = client.embeddings.create(model=rc.model, input=texts)  # type: ignore[attr-defined]
+        # Request float arrays explicitly. The openai SDK otherwise defaults to
+        # encoding_format="base64" and decodes client-side; OpenAI-compatible
+        # providers that return plain float arrays (e.g. OpenRouter/NVIDIA) then
+        # yield "No embedding data received". "float" is universally accepted.
+        resp = client.embeddings.create(  # type: ignore[attr-defined]
+            model=rc.model, input=texts, encoding_format="float"
+        )
         return [item.embedding for item in resp.data]
 
     def chat(self, role: str, messages: List[dict], **kw) -> str:

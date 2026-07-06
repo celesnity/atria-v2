@@ -48,3 +48,34 @@ def test_env_overrides_win_per_role():
     assert cfg["synthesis"].base_url == "https://openrouter.ai/api/v1"
     assert cfg["synthesis"].model == "qwen/qwen-2.5-72b-instruct"
     assert cfg["index_embed"].base_url != "https://openrouter.ai/api/v1"
+
+
+def test_api_key_routed_by_endpoint_host_when_both_keys_present():
+    """With both keys set, each role uses the key matching its base_url host.
+
+    A ``.env`` carrying an OpenAI key and an OpenRouter key must not send the
+    OpenAI key to an OpenRouter endpoint (which would 401).
+    """
+    mod = _load()
+    env = {
+        "OPENAI_API_KEY": "sk-openai",
+        "OPENROUTER_API_KEY": "sk-or-router",
+        "EK_INDEX_EMBED_BASE_URL": "https://openrouter.ai/api/v1",
+        "EK_SYNTHESIS_BASE_URL": "https://openrouter.ai/api/v1",
+    }
+    cfg = mod.load_config(env=env)
+    assert cfg["index_embed"].api_key == "sk-or-router"
+    assert cfg["synthesis"].api_key == "sk-or-router"
+    # An OpenAI-hosted role (default base_url) still uses the OpenAI key.
+    cfg_openai = mod.load_config(env={k: v for k, v in env.items()
+                                      if not k.startswith("EK_")})
+    assert cfg_openai["index_embed"].api_key == "sk-openai"
+
+
+def test_explicit_role_api_key_overrides_routing():
+    mod = _load()
+    env = {"OPENROUTER_API_KEY": "sk-or-router",
+           "EK_SYNTHESIS_BASE_URL": "https://openrouter.ai/api/v1",
+           "EK_SYNTHESIS_API_KEY": "sk-explicit"}
+    cfg = mod.load_config(env=env)
+    assert cfg["synthesis"].api_key == "sk-explicit"
