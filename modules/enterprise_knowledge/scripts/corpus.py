@@ -34,11 +34,17 @@ class Document:
     language: str
     path: str
     text: str
+    tags: tuple[str, ...] = ()
 
 
 def knowledge_space_for(department: str) -> str:
     """Derive the knowledge space from a canonical department_id."""
     return _KNOWLEDGE_SPACE.get(department, _DEPARTMENT_KNOWLEDGE)
+
+
+def _parse_tags(raw: str) -> tuple[str, ...]:
+    """Split a comma-separated front-matter ``tags`` value into a clean tuple."""
+    return tuple(t.strip() for t in raw.split(",") if t.strip())
 
 
 def _split_frontmatter(raw: str) -> tuple[dict[str, str], str]:
@@ -89,6 +95,7 @@ def parse_document(path: str) -> Document:
         language=meta.get("language", "vi"),
         path=path,
         text=body,
+        tags=_parse_tags(meta.get("tags", "")),
     )
 
 
