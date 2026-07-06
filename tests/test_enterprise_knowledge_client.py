@@ -18,7 +18,15 @@ def _load(name, sentinel):
 
 
 class _FakeEmbeddings:
-    def create(self, model, input):
+    def __init__(self):
+        self.last_encoding_format = "UNSET"
+
+    def create(self, model, input, encoding_format=None):
+        # Record the wire format so tests can assert we request plain floats.
+        # OpenAI-compatible providers (e.g. OpenRouter/NVIDIA) return float
+        # arrays, not the SDK's default base64 — see client.embed().
+        self.last_encoding_format = encoding_format
+
         class _Item:
             def __init__(self, v): self.embedding = v
         class _Resp:
@@ -42,6 +50,10 @@ def test_embed_dispatches_and_reuses_client_per_endpoint():
     rc = client.RoleClient(config.load_config(env={}), client_factory=_FakeClient)
     out = rc.embed("index_embed", ["ab", "abc"])
     assert out == [[2.0], [3.0]]
+    # embed() must request float arrays explicitly (not the SDK's base64 default),
+    # else float-returning providers yield "No embedding data received".
+    underlying = next(iter(rc._clients.values()))
+    assert underlying.embeddings.last_encoding_format == "float"
     # Both roles share the same OpenAI base_url → one underlying client.
     rc.embed("synthesis", ["x"])
     assert _FakeClient.instances == 1

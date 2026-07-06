@@ -243,8 +243,70 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _force_utf8_output() -> None:
+    """Force UTF-8 on stdout/stderr so Vietnamese output survives legacy consoles.
+
+    On Windows ``sys.stdout`` binds to the console code page (e.g. cp1252),
+    which cannot encode Vietnamese diacritics; ``json.dumps(..., ensure_ascii=
+    False)`` then raises UnicodeEncodeError. Reconfiguring to UTF-8 keeps output
+    human-readable on every platform. No-op where a stream cannot be
+    reconfigured (e.g. a captured buffer under pytest).
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8")
+        except (ValueError, OSError):  # pragma: no cover - platform dependent
+            pass
+
+
+def _parse_dotenv(text: str) -> dict[str, str]:
+    """Parse ``KEY=VALUE`` pairs from ``.env`` text, ignoring comments/blanks.
+
+    Handles an optional ``export`` prefix and strips one layer of surrounding
+    single or double quotes. The first ``=`` separates key from value, so values
+    containing ``=`` (URLs, query strings) survive intact.
+    """
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if key.startswith("export "):
+            key = key[len("export "):].strip()
+        if key:
+            out[key] = value.strip().strip('"').strip("'")
+    return out
+
+
+def _load_dotenv() -> None:
+    """Populate the environment from the nearest ``.env`` without overriding.
+
+    The CLI is usually run as a bare script (``python knowledge.py ...``) with no
+    shell export step, so provider keys and ``EK_*`` overrides live in the repo's
+    ``.env``. Values already in the environment win, so an explicit export still
+    takes precedence. Skipped under pytest to keep unit tests hermetic.
+    """
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    for parent in Path(__file__).resolve().parents:
+        env_file = parent / ".env"
+        if env_file.is_file():
+            for key, value in _parse_dotenv(
+                env_file.read_text(encoding="utf-8", errors="ignore")
+            ).items():
+                os.environ.setdefault(key, value)
+            return
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point."""
+    _force_utf8_output()
+    _load_dotenv()
     args = build_parser().parse_args(argv)
     try:
         if args.command == "health":
