@@ -99,6 +99,16 @@ services:
       - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
       - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
       - EK_QDRANT_URL=http://qdrant:6333
+      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
+      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
+      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
+      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
+      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
+      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
+      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
+      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
+      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
       - AUTH_MODE=${AUTH_MODE:-keycloak}
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
@@ -118,6 +128,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      neo4j:
+        condition: service_started
 
   # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
   redis:
@@ -170,6 +182,16 @@ services:
       - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
       - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
       - EK_QDRANT_URL=http://qdrant:6333
+      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
+      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
+      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
+      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
+      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
+      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
+      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
+      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
+      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -192,6 +214,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      neo4j:
+        condition: service_started
 
   # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
   # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
