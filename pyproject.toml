@@ -80,6 +80,8 @@ dependencies = [
     "ddgs>=0.1.0",
     # Excel parsing for send_data tool
     "openpyxl>=3.1.0",
+    # Word document text extraction (read_file / search on uploaded .docx)
+    "python-docx>=1.1.0",
     # Analyze plugin tools
     "pandas>=2.0.0",
     "matplotlib>=3.8.0",
