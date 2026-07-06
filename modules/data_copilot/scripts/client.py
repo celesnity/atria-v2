@@ -68,4 +68,7 @@ class RoleClient:
         resp = client.chat.completions.create(  # type: ignore[attr-defined]
             model=rc.model, messages=messages, **kw
         )
-        return resp.choices[0].message.content
+        # Some models/endpoints return ``None`` content (e.g. when a response is
+        # empty or carries only tool calls). Coerce to "" so downstream parsers
+        # (code extraction, verdict parsing) never crash on a None.
+        return resp.choices[0].message.content or ""

@@ -58,6 +58,22 @@ def test_chat_dispatches_to_role_endpoint():
     assert made["args"] == ("https://api.openai.com/v1", "sk-test")
 
 
+def test_none_content_is_coerced_to_empty_string():
+    # Some models/endpoints return content=None; chat() must not propagate None
+    # (downstream code/verdict parsers would crash on it).
+    config = _load("config", "dc_config_none")
+    client = _load("client", "dc_client_none")
+
+    def factory(base_url, api_key):
+        c = _FakeClient(base_url, api_key)
+        c.chat = type("Chat", (), {"completions": _FakeCompletions(None)})()
+        return c
+
+    rc = client.RoleClient(config.load_config({"OPENAI_API_KEY": "k"}), client_factory=factory)
+    out = rc.chat("codegen", [{"role": "user", "content": "hi"}])
+    assert out == ""
+
+
 def test_unknown_role_raises():
     config = _load("config", "dc_config_for_client2")
     client = _load("client", "dc_client_uut2")

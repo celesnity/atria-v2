@@ -53,6 +53,44 @@ def test_collects_figures(tmp_path):
     assert any(f.endswith("chart.png") for f in res["figures"])
 
 
+def test_secrets_are_not_inherited_by_child(tmp_path, monkeypatch):
+    # A live API key in the parent must NOT reach LLM-generated code: it would be
+    # captured into stdout and fed into the report. The sandbox scrubs the env.
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-super-secret")
+    monkeypatch.setenv("DC_CODEGEN_API_KEY", "sk-also-secret")
+    sandbox = _load("sandbox", "dc_sandbox_scrub")
+    code = (
+        "import os\n"
+        "print('KEY:', os.environ.get('OPENAI_API_KEY'))\n"
+        "print('DC:', os.environ.get('DC_CODEGEN_API_KEY'))\n"
+    )
+    res = sandbox.run_code(code, str(tmp_path))
+    assert res["status"] == "text"
+    assert "KEY: None" in res["stdout"]
+    assert "DC: None" in res["stdout"]
+    assert "sk-super-secret" not in res["stdout"]
+
+
+def test_safe_env_keeps_path_and_forces_agg(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-secret")
+    monkeypatch.setenv("MPLBACKEND", "TkAgg")  # parent may set an interactive backend
+    sandbox = _load("sandbox", "dc_sandbox_safeenv")
+    env = sandbox._safe_env()
+    assert "OPENAI_API_KEY" not in env
+    assert "PATH" in env  # needed to launch/import cleanly
+    assert env["MPLBACKEND"] == "Agg"  # forced headless
+
+
+def test_explicit_env_override_is_respected(tmp_path):
+    sandbox = _load("sandbox", "dc_sandbox_envoverride")
+    res = sandbox.run_code(
+        "import os; print('V:', os.environ.get('MY_VAR'))",
+        str(tmp_path),
+        env={"MY_VAR": "present", "PATH": __import__("os").environ.get("PATH", "")},
+    )
+    assert "V: present" in res["stdout"]
+
+
 def test_output_is_capped(tmp_path):
     sandbox = _load("sandbox", "dc_sandbox_cap")
     res = sandbox.run_code("print('x' * 100000)", str(tmp_path), max_output=1000)

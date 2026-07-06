@@ -20,13 +20,35 @@ def _load(name: str, sentinel: str):
     return mod
 
 
-def _demo_csv() -> str:
-    return str(_MOD.parent / "sample_data" / "demo.csv")
+_DEMO_CSV = (
+    "region,product,units,revenue,date\n"
+    "North,Widget,10,100.0,2024-01-01\n"
+    "South,Widget,5,55.5,2024-01-02\n"
+    "North,Gadget,7,140.0,2024-01-03\n"
+    "East,Widget,3,30.0,2024-01-04\n"
+    "West,Gadget,12,240.0,2024-01-05\n"
+    "South,Gadget,8,160.0,2024-01-06\n"
+    "East,Widget,6,60.0,2024-01-07\n"
+    "West,Widget,9,90.0,2024-01-08\n"
+)
 
 
-def test_profile_csv_shape_and_columns():
+def _demo_csv(tmp_path) -> str:
+    """Write a small self-contained demo CSV (8 rows, 5 cols) and return its path.
+
+    Self-contained rather than a committed fixture: repo policy gitignores
+    ``modules/*`` data files, so a checked-in ``sample_data/demo.csv`` would be
+    absent on a fresh clone and the test would fail. Building it here keeps the
+    test hermetic.
+    """
+    p = tmp_path / "demo.csv"
+    p.write_text(_DEMO_CSV, encoding="utf-8")
+    return str(p)
+
+
+def test_profile_csv_shape_and_columns(tmp_path):
     profile = _load("profile", "dc_profile_csv")
-    prof = profile.profile_dataset(_demo_csv())
+    prof = profile.profile_dataset(_demo_csv(tmp_path))
     assert prof["n_rows"] == 8
     assert prof["n_cols"] == 5
     names = [c["name"] for c in prof["columns"]]

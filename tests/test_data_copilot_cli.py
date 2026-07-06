@@ -241,3 +241,32 @@ def test_cli_missing_dataset_json_error(capsys):
     out = capsys.readouterr().out
     assert rc == 1
     assert "a dataset is required" in out
+
+
+def test_cli_analyze_llm_error_is_clean_json(tmp_path, monkeypatch, capsys):
+    """A transient LLM/API failure yields a clean JSON error, not a crash.
+
+    The caller parses stdout as JSON; an uncaught traceback would break that
+    contract. analyze must catch loop failures and emit {"error": ...}.
+    """
+    import json
+
+    copilot = _load("copilot", "dc_cli_llm_err")
+    csv = tmp_path / "d.csv"
+    csv.write_text("a,b\n1,2\n", encoding="utf-8")
+
+    class _Boom:
+        def __init__(self, *a, **k):
+            pass
+
+        def chat(self, *a, **k):
+            raise RuntimeError("rate limit 429")
+
+    monkeypatch.setattr(copilot, "RoleClient", _Boom)
+    monkeypatch.setenv("DC_AUDIT_PATH", str(tmp_path / "audit.jsonl"))
+    rc = copilot.main(["analyze", str(csv), "sum of a?", "--out", str(tmp_path / "run")])
+    out = capsys.readouterr().out
+    assert rc == 1
+    payload = json.loads(out)
+    assert "error" in payload
+    assert "429" in payload["error"]

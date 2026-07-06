@@ -27,8 +27,12 @@ def test_parser_has_persona_subcommand():
     assert args.k == 4
 
 
-def test_persona_requires_question(capsys):
+def test_persona_defaults_question_when_omitted(capsys):
+    """persona no longer requires a question: it defaults one, so a missing
+    question is NOT the failure — dataset resolution is reached instead."""
     cop = _load_copilot()
     rc = cop._cmd_persona("data.csv", None, "out", 0, 0, None, None)
     assert rc == 1
-    assert "question is required" in json.loads(capsys.readouterr().out)["error"]
+    err = json.loads(capsys.readouterr().out)["error"]
+    assert "question is required" not in err
+    assert "dataset not found" in err

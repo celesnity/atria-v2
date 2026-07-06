@@ -288,7 +288,18 @@ def _cmd_health() -> int:
         return 1
 
 
-def _cmd_ingest(source: str, name: Optional[str]) -> int:
+def _cmd_ingest(source: Optional[str], name: Optional[str]) -> int:
+    if not source:
+        print(
+            json.dumps(
+                {
+                    "error": "no source given: pass a file path as the first argument, "
+                    'e.g. `ingest "<path>"` (or `--csv <path>`).'
+                },
+                indent=2,
+            )
+        )
+        return 1
     try:
         result = ingest_mod.ingest(source, name)
     except FileNotFoundError as exc:
@@ -350,20 +361,27 @@ def _cmd_analyze(
         print(json.dumps({"error": str(exc)}, indent=2))
         return 1
     rc = RoleClient(load_config())
-    summary = run_analysis(
-        dataset,
-        question,
-        out_dir=out_dir,
-        max_repair=max_repair,
-        max_verify=max_verify,
-        codegen_fn=lambda q, p, pe=None, hy=None: generate.generate_code(
-            q, p, _role_chat(rc, "codegen"), pe, hy
-        ),
-        verify_fn=lambda q, c, o: verify_mod.verify(q, c, o, _role_chat(rc, "verify")),
-        report_fn=lambda q, o, f, verified=True: report_mod.generate_report(
-            q, o, f, _role_chat(rc, "report"), verified=verified
-        ),
-    )
+    try:
+        summary = run_analysis(
+            dataset,
+            question,
+            out_dir=out_dir,
+            max_repair=max_repair,
+            max_verify=max_verify,
+            codegen_fn=lambda q, p, pe=None, hy=None: generate.generate_code(
+                q, p, _role_chat(rc, "codegen"), pe, hy
+            ),
+            verify_fn=lambda q, c, o: verify_mod.verify(q, c, o, _role_chat(rc, "verify")),
+            report_fn=lambda q, o, f, verified=True: report_mod.generate_report(
+                q, o, f, _role_chat(rc, "report"), verified=verified
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001 - surface any loop/LLM failure as clean JSON
+        # The caller parses stdout as JSON; an uncaught traceback (e.g. an LLM
+        # rate-limit/network error) would break that contract. Mirror the other
+        # subcommands and emit a structured error instead.
+        print(json.dumps({"error": f"analysis failed: {exc}"}, indent=2))
+        return 1
     print(json.dumps(summary, indent=2, default=str))
     return 0
 
@@ -401,24 +419,28 @@ def _cmd_persona(
         print(json.dumps({"error": str(exc)}, indent=2))
         return 1
     rc = RoleClient(load_config())
-    summary = persona_mod.run_persona(
-        dataset,
-        question,
-        out_dir=out_dir,
-        max_repair=max_repair,
-        max_verify=max_verify,
-        domain=domain,
-        k=k,
-        codegen_fn=lambda q, p, pe=None, hy=None: persona_generate.generate_code(
-            q, p, _role_chat(rc, "codegen"), k=k, domain=domain, prior_error=pe, hypotheses=hy
-        ),
-        verify_fn=lambda q, c, o, personas: persona_verify.verify_personas(
-            q, c, o, personas, domain=domain
-        ),
-        report_fn=lambda personas, q, verified=True: persona_report.render_report(
-            personas, q, _role_chat(rc, "report"), verified=verified
-        ),
-    )
+    try:
+        summary = persona_mod.run_persona(
+            dataset,
+            question,
+            out_dir=out_dir,
+            max_repair=max_repair,
+            max_verify=max_verify,
+            domain=domain,
+            k=k,
+            codegen_fn=lambda q, p, pe=None, hy=None: persona_generate.generate_code(
+                q, p, _role_chat(rc, "codegen"), k=k, domain=domain, prior_error=pe, hypotheses=hy
+            ),
+            verify_fn=lambda q, c, o, personas: persona_verify.verify_personas(
+                q, c, o, personas, domain=domain
+            ),
+            report_fn=lambda personas, q, verified=True: persona_report.render_report(
+                personas, q, _role_chat(rc, "report"), verified=verified
+            ),
+        )
+    except Exception as exc:  # noqa: BLE001 - surface any loop/LLM failure as clean JSON
+        print(json.dumps({"error": f"persona analysis failed: {exc}"}, indent=2))
+        return 1
     print(json.dumps(summary, indent=2, default=str))
     return 0
 
@@ -440,7 +462,19 @@ def build_parser() -> argparse.ArgumentParser:
         "ingest",
         help="Copy/convert a dataset into the module data/ dir (for editable tables + analysis).",
     )
-    p_ing.add_argument("source", help="Path to a CSV/Excel/Parquet file.")
+    # source is positional, but we also accept --csv/--file/--source as aliases and
+    # leave the positional optional so a missing/misflagged source yields a clean JSON
+    # error (the contract callers parse) rather than an argparse exit-2 usage dump.
+    # This makes the CLI tolerant of the common agent mistake of passing a flag.
+    p_ing.add_argument("source", nargs="?", default=None, help="Path to a CSV/Excel/Parquet file.")
+    p_ing.add_argument(
+        "--csv",
+        "--file",
+        "--source",
+        dest="source_opt",
+        default=None,
+        help="Source file path (alias for the positional source).",
+    )
     p_ing.add_argument(
         "--name", default=None, help="Base name for the stored CSV (default: source stem)."
     )
@@ -456,14 +490,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_an.add_argument("dataset", nargs="?", default=None)
     p_an.add_argument("question", nargs="?", default=None)
     p_an.add_argument(
-        "--file", "--dataset", dest="dataset_opt", default=None,
+        "--file",
+        "--dataset",
+        dest="dataset_opt",
+        default=None,
         help="Dataset path/name (alias for the positional dataset).",
     )
     p_an.add_argument(
-        "--question", "-q", dest="question_opt", default=None,
+        "--question",
+        "-q",
+        dest="question_opt",
+        default=None,
         help="Question (alias for the positional question).",
     )
-    p_an.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
+    p_an.add_argument(
+        "--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir)."
+    )
     p_an.add_argument("--max-repair", type=int, default=3)
     p_an.add_argument("--max-verify", type=int, default=2)
     p_per = sub.add_parser(
@@ -472,14 +514,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_per.add_argument("dataset", nargs="?", default=None)
     p_per.add_argument("question", nargs="?", default=None)
     p_per.add_argument(
-        "--file", "--dataset", dest="dataset_opt", default=None,
+        "--file",
+        "--dataset",
+        dest="dataset_opt",
+        default=None,
         help="Dataset path/name (alias for the positional dataset).",
     )
     p_per.add_argument(
-        "--question", "-q", dest="question_opt", default=None,
+        "--question",
+        "-q",
+        dest="question_opt",
+        default=None,
         help="Question/request (alias for the positional question; optional for persona).",
     )
-    p_per.add_argument("--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir).")
+    p_per.add_argument(
+        "--out", default=None, help="Run output dir (default: a fresh runs/run-<timestamp> dir)."
+    )
     p_per.add_argument("--max-repair", type=int, default=3)
     p_per.add_argument("--max-verify", type=int, default=2)
     p_per.add_argument("--domain", default=None, help="Optional domain pack (e.g. telecom).")
@@ -507,7 +557,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "health":
         return _cmd_health()
     if args.command == "ingest":
-        return _cmd_ingest(args.source, args.name)
+        return _cmd_ingest(args.source or args.source_opt, args.name)
     if args.command == "datasets":
         return _cmd_datasets()
     if args.command == "profile":
