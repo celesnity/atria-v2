@@ -48,8 +48,10 @@ The user's stated goal (chosen explicitly during brainstorming): **"Better retri
 - **Graph store:** Neo4j (best quality). Reuse the Neo4j service already in the compose
   stack (currently used by `maintenance_copilot`). The compose image is `neo4j:5`
   **Community edition, which supports only a single database (`neo4j`)** — so EK/MC
-  isolation is done via a **label prefix + `namespace="ek"` property** on all EK nodes and
-  edges (every EK query filters on it), **not** a separate database. (If the deployment ever
+  isolation is done via a shared **`:EKNode` label** on every EK node (every EK read/write/
+  reset scopes to it), **not** a separate database. (As-built refinement: the label alone
+  provides isolation and is cheaper to filter than a property, so the earlier
+  `namespace="ek"` *property* idea was dropped in favor of the label. If the deployment ever
   moves to Neo4j Enterprise, a dedicated `ek` database becomes the cleaner option.)
 - **Retrieval integration:** Approach A (entity-seeded, ACL-filtered expansion fed into
   synthesis) **plus** Approach B (graph-connectivity rerank boost). Approach C
@@ -101,7 +103,7 @@ Relevant sheets (validated against EK's `acl.py` — exact match):
 
 ## 6. Graph schema
 
-All EK nodes/edges additionally carry `namespace="ek"` (see §3) for isolation from MC.
+All EK nodes carry the shared `:EKNode` label (see §3) for isolation from MC.
 
 **Gated nodes (carry ACL — `department` + `classification`):**
 - `Document {doc_id, title, department, classification, owner, knowledge_space, last_updated}`

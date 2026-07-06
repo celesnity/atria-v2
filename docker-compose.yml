@@ -272,6 +272,13 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  # Shared knowledge-graph store for maintenance_copilot AND enterprise_knowledge.
+  # Community edition = a single database, so the two modules co-tenant here.
+  # enterprise_knowledge namespaces every node with an :EKNode label and scopes
+  # all its reads/writes/reset to it. WARNING: maintenance_copilot's own graph
+  # `reset` is an UNSCOPED `MATCH (n) DETACH DELETE n` — running it wipes the
+  # enterprise_knowledge graph too. Rebuild EK afterwards (`knowledge.py graph
+  # build`). Tracked follow-up: namespace maintenance_copilot's graph as well.
   neo4j:
     image: neo4j:5
     environment:
