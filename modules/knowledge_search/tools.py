@@ -88,6 +88,9 @@ def build_tool_spec(registry: SearchProviderRegistry) -> ToolSpec | None:
                 "error": f"Unknown source {source!r}. Known sources: {known}",
                 "output": None,
             }
+        # single-user env mechanism — never set per-request in a shared process
+        # (cross-user ACL identity race); web identity plumbing is a tracked
+        # follow-up
         context = SearchContext(user_id=os.environ.get("ATRIA_SEARCH_USER_ID") or None)
         try:
             bounded = max(1, min(int(limit), _MAX_LIMIT))

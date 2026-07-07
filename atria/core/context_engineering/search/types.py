@@ -66,6 +66,14 @@ class SearchContext:
     Providers resolve their own policy data (role, department, preferences)
     from it. Resolution source: ATRIA_SEARCH_USER_ID env var for CLI/demo
     runs; web-session identity mapping is a future extension.
+
+    Single-user limitation: the ATRIA_SEARCH_USER_ID env mechanism is only
+    safe for single-user contexts (CLI/demo). Process environment is shared
+    across threads, so per-request writes to it in a shared web process
+    would race between concurrent requests and could let one user's search
+    run under another user's ACL identity. Web deployments must thread
+    identity per-call (e.g. via SkillToolContext) instead of mutating
+    process env, never via the env var.
     """
 
     user_id: str | None = None
