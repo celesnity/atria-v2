@@ -227,3 +227,4 @@ tests/
 # ...but the real test suite at the repo root stays tracked.
 !/tests/
 !/tests/**
+/tests/**/__pycache__/

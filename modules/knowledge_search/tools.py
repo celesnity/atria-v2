@@ -79,6 +79,7 @@ def build_tool_spec(registry: SearchProviderRegistry) -> ToolSpec | None:
         limit: int = _DEFAULT_LIMIT,
         **_ignored: Any,
     ) -> dict[str, Any]:
+        """Execute a knowledge search with defensive limit parsing."""
         provider = registry.get(source)
         if provider is None:
             known = ", ".join(sorted(p.name for p in registry.all()))
@@ -87,10 +88,11 @@ def build_tool_spec(registry: SearchProviderRegistry) -> ToolSpec | None:
                 "error": f"Unknown source {source!r}. Known sources: {known}",
                 "output": None,
             }
-        context = SearchContext(
-            user_id=os.environ.get("ATRIA_SEARCH_USER_ID") or None
-        )
-        bounded = max(1, min(int(limit), _MAX_LIMIT))
+        context = SearchContext(user_id=os.environ.get("ATRIA_SEARCH_USER_ID") or None)
+        try:
+            bounded = max(1, min(int(limit), _MAX_LIMIT))
+        except (TypeError, ValueError):
+            bounded = _DEFAULT_LIMIT
         try:
             results = provider.search(query, filters or {}, bounded, context)
         except Exception as exc:  # noqa: BLE001
@@ -128,7 +130,6 @@ def register(ctx: SkillToolContext) -> list[ToolSpec]:
     registry = discover_module_providers(resolve_modules_root())
     spec = build_tool_spec(registry)
     if spec is None:
-        logger.info("knowledge_search: no providers discovered; "
-                    "tool not registered")
+        logger.info("knowledge_search: no providers discovered; " "tool not registered")
         return []
     return [spec]
