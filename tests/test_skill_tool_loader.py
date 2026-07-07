@@ -1,10 +1,8 @@
+import logging
 from pathlib import Path
-
-import pytest
 
 from atria.core.skill_tools import (
     SkillToolContext,
-    SkillToolError,
     SkillToolLoader,
 )
 
@@ -46,7 +44,7 @@ def test_skill_without_tools_declaration_ignored(tmp_path: Path):
     assert loader.discover_and_register(SkillToolContext()) == []
 
 
-def test_duplicate_tool_name_raises(tmp_path: Path):
+def test_duplicate_tool_name_skips_offending_skill(tmp_path: Path, caplog):
     body = (
         "from atria.core.skill_tools import ToolSpec\n"
         "def register(ctx):\n"
@@ -56,26 +54,67 @@ def test_duplicate_tool_name_raises(tmp_path: Path):
     _write_skill(tmp_path / "one", "one", body)
     _write_skill(tmp_path / "two", "two", body)
     loader = SkillToolLoader([tmp_path])
-    with pytest.raises(SkillToolError, match="Duplicate tool name 'dup'"):
-        loader.discover_and_register(SkillToolContext())
+    with caplog.at_level(logging.WARNING, logger="atria.core.skill_tools"):
+        specs = loader.discover_and_register(SkillToolContext())
+
+    # Exactly one of the two colliding skills registers 'dup'; the other is
+    # skipped without discarding the one that got there first.
+    assert [s.name for s in specs] == ["dup"]
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "Duplicate tool name 'dup'" in message
+    # The offending skill's SKILL.md and its colliding tools.py are both named.
+    assert "SKILL.md" in message
+    assert "tools.py" in message
 
 
-def test_missing_register_raises(tmp_path: Path):
+def test_missing_register_skips_and_logs_warning(tmp_path: Path, caplog):
     _write_skill(tmp_path / "no_reg", "no_reg", "# no register\n")
+    _write_skill(
+        tmp_path / "good",
+        "good",
+        "from atria.core.skill_tools import ToolSpec\n"
+        "def register(ctx):\n"
+        "    return [ToolSpec(name='good_tool', description='d',\n"
+        "                    parameters={}, handler=lambda **k: {'output': 'good'})]\n",
+    )
     loader = SkillToolLoader([tmp_path])
-    with pytest.raises(SkillToolError, match="missing required `register"):
-        loader.discover_and_register(SkillToolContext())
+    with caplog.at_level(logging.WARNING, logger="atria.core.skill_tools"):
+        specs = loader.discover_and_register(SkillToolContext())
+
+    assert [s.name for s in specs] == ["good_tool"]
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "missing required `register" in message
+    assert str((tmp_path / "no_reg" / "tools.py").resolve()) in message
 
 
-def test_register_must_return_list(tmp_path: Path):
+def test_register_non_list_return_skips_and_logs_warning(tmp_path: Path, caplog):
     _write_skill(
         tmp_path / "bad",
         "bad",
         "def register(ctx):\n    return 'not a list'\n",
     )
+    _write_skill(
+        tmp_path / "good",
+        "good",
+        "from atria.core.skill_tools import ToolSpec\n"
+        "def register(ctx):\n"
+        "    return [ToolSpec(name='good_tool', description='d',\n"
+        "                    parameters={}, handler=lambda **k: {'output': 'good'})]\n",
+    )
     loader = SkillToolLoader([tmp_path])
-    with pytest.raises(SkillToolError, match="must return list"):
-        loader.discover_and_register(SkillToolContext())
+    with caplog.at_level(logging.WARNING, logger="atria.core.skill_tools"):
+        specs = loader.discover_and_register(SkillToolContext())
+
+    assert [s.name for s in specs] == ["good_tool"]
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "must return list" in message
+    assert str((tmp_path / "bad" / "tools.py").resolve()) in message
 
 
 def test_skill_can_use_sibling_module(tmp_path: Path):
