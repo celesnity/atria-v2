@@ -4,8 +4,8 @@ Usage:
     python modules/enterprise_search/scripts/ingest.py \
         --xlsx mobility/track1/ai_workspace_dataset_vietnamese_participants.xlsx
 
-Reads corpus sheets only (Documents, Document_Metadata, Users). Never reads
-Public_Evaluation -- that sheet is a held-out test set.
+Reads corpus sheets only (Documents, Document_Metadata, Users). The held-out
+evaluation sheet is never opened here.
 """
 
 from __future__ import annotations
@@ -84,10 +84,12 @@ def main() -> None:
     Reads the `--xlsx` workbook's Documents, Document_Metadata, and Users
     sheets, creates the enterprise_* tables if missing, upserts users and
     documents, replaces each document's chunks, embeds the chunk texts, and
-    upserts them into the Qdrant `enterprise_chunks` collection. Safe to
-    re-run: all Postgres writes are upserts (or delete-then-insert for
-    chunks) and the Qdrant upsert is keyed by a stable id derived from the
-    chunk id, so repeated runs converge on the same state.
+    upserts them into the Qdrant `enterprise_chunks` collection, then deletes
+    any Qdrant points for chunk ids that no longer exist for a document (e.g.
+    the document shrank to fewer chunks). Safe to re-run: all Postgres writes
+    are upserts (or delete-then-insert for chunks) and the Qdrant upsert is
+    keyed by a stable id derived from the chunk id, so repeated runs converge
+    on the same state.
 
     Args:
         None. Arguments are parsed from `sys.argv` via argparse (`--xlsx`,
@@ -129,6 +131,7 @@ def main() -> None:
     chunk_ids: list[str] = []
     chunk_texts: list[str] = []
     chunk_payloads: list[dict[str, Any]] = []
+    previous_chunk_ids: set[str] = set()
 
     for doc in documents:
         doc_id = doc["document_id"]
@@ -153,6 +156,12 @@ def main() -> None:
                 str(meta.get("language", "vi")),
                 content,
             ],
+        )
+        previous_chunk_ids.update(
+            row["chunk_id"]
+            for row in pg.fetch_all(
+                "SELECT chunk_id FROM enterprise_chunks WHERE document_id = $1", [doc_id]
+            )
         )
         pg.execute("DELETE FROM enterprise_chunks WHERE document_id = $1", [doc_id])
         for index, chunk in enumerate(chunk_markdown(content)):
@@ -188,10 +197,14 @@ def main() -> None:
     index = DenseIndex(COLLECTION)
     index.ensure(dim=len(vectors[0]))
     index.upsert(chunk_ids, vectors, chunk_payloads)
+    stale = sorted(previous_chunk_ids - set(chunk_ids))
+    index.delete(stale)
     print(
         f"ingested {len(documents)} documents, {len(chunk_ids)} chunks, "
         f"{len(users)} users into pg + qdrant:{COLLECTION}"
     )
+    if stale:
+        print(f"removed {len(stale)} stale point(s) from qdrant:{COLLECTION}")
 
 
 if __name__ == "__main__":
