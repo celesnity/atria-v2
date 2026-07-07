@@ -55,7 +55,9 @@ class PlacesProvider(SearchProvider):
         },
         "radius_m": {
             "type": "number",
-            "description": f"Max distance from `near` in meters (default {int(_DEFAULT_RADIUS_M)}).",
+            "description": (
+                f"Max distance from `near` in meters (default {int(_DEFAULT_RADIUS_M)})."
+            ),
         },
     }
 
