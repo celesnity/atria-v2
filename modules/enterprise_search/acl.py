@@ -26,7 +26,9 @@ def is_allowed(
 
     Args:
         role: User's role (Employee, Manager, Director, Executive).
-        department: User's department or None if unknown.
+        department: User's department, or None/empty string if unknown. An
+            empty or blank string is treated the same as unknown (None) and
+            denies access to Confidential documents.
         doc_classification: Document classification (Public, Internal,
             Confidential, Restricted).
         doc_department: Document's owning department.
@@ -39,7 +41,7 @@ def is_allowed(
     if doc_classification in OPEN_CLASSIFICATIONS:
         return True
     if doc_classification == "Confidential":
-        return department is not None and department == doc_department
+        return bool(department) and department == doc_department
     return False  # Restricted (and anything unknown) is executive-only
 
 
