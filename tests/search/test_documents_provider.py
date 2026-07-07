@@ -102,3 +102,39 @@ def test_results_collapse_to_one_hit_per_document():
     results = _provider().search("chính sách", {}, 10, SearchContext(user_id=employee["user_id"]))
     doc_ids = [h.metadata["document_id"] for h in results.hits]
     assert len(doc_ids) == len(set(doc_ids))
+
+
+def test_non_executive_department_filter_still_enforces_acl():
+    # the merged must+should dense filter is only built on this path
+    doc = _confidential_doc()
+    outsider = pg.fetch_all(
+        "SELECT user_id, department FROM enterprise_users "
+        "WHERE department <> $1 AND role <> 'Executive' LIMIT 1",
+        [doc["department"]],
+    )[0]
+    provider = _provider()
+    # outsider explicitly targets the confidential doc's own department via the filter:
+    # Public/Internal docs of that department may appear; the confidential one must not.
+    results = provider.search(
+        doc["title"],
+        {"department": doc["department"]},
+        10,
+        SearchContext(user_id=outsider["user_id"]),
+    )
+    assert all(h.metadata["document_id"] != doc["document_id"] for h in results.hits)
+    assert all(h.metadata["classification"] != "Restricted" for h in results.hits)
+    assert all(h.metadata["department"] == doc["department"] for h in results.hits)
+    # sanity: an insider CAN see it through the same filtered path
+    insider_rows = pg.fetch_all(
+        "SELECT user_id FROM enterprise_users "
+        "WHERE department = $1 AND role <> 'Executive' LIMIT 1",
+        [doc["department"]],
+    )
+    if insider_rows:
+        insider_results = provider.search(
+            doc["title"],
+            {"department": doc["department"]},
+            10,
+            SearchContext(user_id=insider_rows[0]["user_id"]),
+        )
+        assert any(h.metadata["document_id"] == doc["document_id"] for h in insider_results.hits)
