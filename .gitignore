@@ -224,3 +224,6 @@ modules/item_flow_tracking/data/flow.db-*
 plans/
 report/
 tests/
+# ...but the real test suite at the repo root stays tracked.
+!/tests/
+!/tests/**
