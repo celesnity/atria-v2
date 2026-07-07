@@ -68,9 +68,7 @@ def _sheet_rows(workbook: Any, name: str) -> list[dict[str, Any]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--xlsx", required=True, help="Path to the Track 8 participants xlsx"
-    )
+    parser.add_argument("--xlsx", required=True, help="Path to the Track 8 participants xlsx")
     args = parser.parse_args()
 
     workbook = openpyxl.load_workbook(args.xlsx, read_only=True)
@@ -108,7 +106,16 @@ def main() -> None:
     ids: list[str] = []
     texts: list[str] = []
     payloads: list[dict[str, Any]] = []
+    skipped = 0
     for poi in pois:
+        try:
+            lat = float(poi["latitude"])
+            lon = float(poi["longitude"])
+        except (TypeError, ValueError, KeyError):
+            print(f"skipping {poi.get('poi_id', '<no id>')}: invalid coordinates")
+            skipped += 1
+            continue
+
         searchable = " ".join(
             str(poi.get(field) or "")
             for field in (
@@ -145,8 +152,8 @@ def main() -> None:
                 str(poi.get("city") or ""),
                 str(poi.get("district") or ""),
                 str(poi.get("address") or ""),
-                float(poi["latitude"]),
-                float(poi["longitude"]),
+                lat,
+                lon,
                 float(poi.get("rating") or 0.0),
                 int(float(poi.get("review_count") or 0)),
                 float(poi.get("popularity_score") or 0.0),
@@ -164,8 +171,8 @@ def main() -> None:
                 "category": str(poi.get("category") or ""),
                 "city": str(poi.get("city") or ""),
                 "district": str(poi.get("district") or ""),
-                "lat": float(poi["latitude"]),
-                "lon": float(poi["longitude"]),
+                "lat": lat,
+                "lon": lon,
                 "rating": float(poi.get("rating") or 0.0),
                 "popularity": float(poi.get("popularity_score") or 0.0),
             }
@@ -178,7 +185,7 @@ def main() -> None:
     index.upsert(ids, vectors, payloads)
     print(
         f"ingested {len(ids)} POIs, {len(profiles)} profiles into "
-        f"pg + qdrant:{COLLECTION}"
+        f"pg + qdrant:{COLLECTION} ({skipped} skipped for invalid coordinates)"
     )
 
 
