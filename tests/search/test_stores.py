@@ -61,3 +61,11 @@ def test_dense_index_upsert_query_and_filter():
     # idempotency: re-upsert same ids does not duplicate points
     idx.upsert(ids=["x"], vectors=[[1.0, 0.0, 0.0]], payloads=[{"kind": "a"}])
     assert len(idx.query([1.0, 0.0, 0.0], limit=10)) == 2
+    # delete removes exactly the requested point, leaving the rest findable
+    idx.delete(["y"])
+    remaining = idx.query([1.0, 0.0, 0.0], limit=10)
+    assert len(remaining) == 1
+    assert remaining[0][0] == "x"
+    # delete on an empty list is a no-op
+    idx.delete([])
+    assert len(idx.query([1.0, 0.0, 0.0], limit=10)) == 1

@@ -40,6 +40,23 @@ class DenseIndex:
         ]
         self._client.upsert(collection_name=self.collection, points=points)
 
+    def delete(self, ids: list[str]) -> None:
+        """Delete points by external id.
+
+        Args:
+            ids: External ids to remove, in the same id space as `upsert`.
+                Each is mapped to its point id via
+                `uuid.uuid5(uuid.NAMESPACE_URL, external_id)` before deletion.
+                An empty list is a no-op.
+        """
+        if not ids:
+            return
+        point_ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, external_id)) for external_id in ids]
+        self._client.delete(
+            collection_name=self.collection,
+            points_selector=models.PointIdsList(points=point_ids),
+        )
+
     def query(
         self,
         vector: list[float],
