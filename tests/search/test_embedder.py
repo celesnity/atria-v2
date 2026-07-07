@@ -40,7 +40,10 @@ def test_embed_empty_returns_empty():
     assert emb.embed([]) == []
 
 
-@pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="needs OPENAI_API_KEY")
+@pytest.mark.skipif(
+    not (os.environ.get("SEARCH_EMBED_API_KEY") or os.environ.get("OPENAI_API_KEY")),
+    reason="needs an embedding API key",
+)
 def test_embed_live_smoke():
     emb = Embedder()
     vecs = emb.embed(["quán cà phê yên tĩnh"])
