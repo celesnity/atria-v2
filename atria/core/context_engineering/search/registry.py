@@ -18,12 +18,30 @@ class SearchProviderRegistry:
         self._providers: dict[str, SearchProvider] = {}
 
     def register(self, provider: SearchProvider) -> None:
+        """Register a search provider by name.
+
+        Args:
+            provider: The SearchProvider instance to register.
+        """
         self._providers[provider.name] = provider
 
     def get(self, name: str) -> SearchProvider | None:
+        """Get a registered provider by name.
+
+        Args:
+            name: The provider name.
+
+        Returns:
+            The SearchProvider or None if not found.
+        """
         return self._providers.get(name)
 
     def all(self) -> list[SearchProvider]:
+        """Get all registered providers.
+
+        Returns:
+            List of all SearchProvider instances.
+        """
         return list(self._providers.values())
 
 
@@ -33,6 +51,13 @@ def discover_module_providers(modules_root: Path) -> SearchProviderRegistry:
     A module opts in by shipping a `search_provider.py` exposing
     `get_provider() -> SearchProvider`. Broken providers are logged and
     skipped; discovery never raises.
+
+    Args:
+        modules_root: Path to the modules directory root.
+
+    Returns:
+        A SearchProviderRegistry containing all successfully loaded
+        providers.
     """
     registry = SearchProviderRegistry()
     if not modules_root.is_dir():
@@ -42,6 +67,10 @@ def discover_module_providers(modules_root: Path) -> SearchProviderRegistry:
         try:
             spec = importlib.util.spec_from_file_location(module_name, provider_file)
             if spec is None or spec.loader is None:
+                logger.warning(
+                    "skipping search provider %s: could not build import spec",
+                    provider_file,
+                )
                 continue
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)

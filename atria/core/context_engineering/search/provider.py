@@ -11,7 +11,7 @@ from atria.core.context_engineering.search.types import SearchContext, SourceRes
 class SearchProvider(ABC):
     """A searchable domain source (documents, places, ...).
 
-    Class attributes:
+    Attributes:
         name: Stable source key exposed in the tool's `source` enum.
         description: One-to-three sentences for the tool description; tell the
             agent what lives in this source and when to pick it.
@@ -29,4 +29,14 @@ class SearchProvider(ABC):
     def search(
         self, query: str, filters: dict[str, Any], limit: int, context: SearchContext
     ) -> SourceResults:
-        """Run a search and return the uniform envelope."""
+        """Run a search and return the uniform envelope.
+
+        Args:
+            query: The search query string.
+            filters: Model-controllable relevance filters (schema-validated).
+            limit: Maximum number of results to return.
+            context: Search context with policy and identity information.
+
+        Returns:
+            SourceResults containing matching documents and metadata.
+        """
