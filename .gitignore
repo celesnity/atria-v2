@@ -218,6 +218,13 @@ testingData
 !modules/vetc_copilot/
 !modules/vetc_copilot/**
 
+# ai_workspace is tracked SOURCE (Tasco P1 secure department workspace module),
+# not a runtime data-module — re-include it and its access CSVs so normal
+# `git add` picks it up. Its own modules/ai_workspace/.gitignore still ignores
+# its runtime data/ dir.
+!modules/ai_workspace/
+!modules/ai_workspace/**
+
 .slide/
 
 # Warehouse module live SQLite store (bootstrapped at runtime)
