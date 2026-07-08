@@ -8,9 +8,12 @@ via the `agent_mode` config field (env: ATRIA_AGENT_MODE=assistant).
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from atria.core.agents.main_agent.agent import MainAgent, _build_skill_schemas
+
+logger = logging.getLogger(__name__)
 
 _BASE_TOOLS = ["ask_user"]
 
@@ -60,8 +63,9 @@ class AssistantAgent(MainAgent):
             from atria.core.modules.prompt import build_skill_block
             from atria.core.modules.registry import get_registry
 
-            block = build_skill_block(get_registry())
-        except Exception:  # modules must never break agent construction
+            block = build_skill_block(get_registry(), include_subagent_delegation=False)
+        except Exception as exc:  # modules must never break agent construction
+            logger.warning("Failed to build module SKILL block for assistant prompt: %s", exc)
             block = ""
         full = base + ("\n\n" + block if block else "")
         self._system_stable = full
