@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gazetteer  # noqa: E402 — data-derived place index (no hardcoded places)
 from _data import (  # noqa: E402
     emit,
     fold,
@@ -48,6 +49,31 @@ CATEGORY_SYNONYMS = {
     "attraction": ["diem du lich", "du lich", "tham quan", "attraction", "attractions",
                    "checkin", "check in", "dia diem checkin", "diem checkin", "song ao"],
 }
+
+
+# Query-hygiene constants (language-level, like fold()'s đ->d — NOT place data).
+LOCATION_STOPWORDS = frozenset({"o", "tai", "in", "at"})
+
+
+def _strip_noise(text: str) -> str:
+    """Drop location stopwords + tokens with no alphanumeric chars. Applied
+    only to the post-place string feeding category/location scoring — never
+    to the norm used for name scoring."""
+    return " ".join(
+        t for t in text.split()
+        if t not in LOCATION_STOPWORDS and any(ch.isalnum() for ch in t)
+    )
+
+
+_GAZ = None
+
+
+def _gazetteer() -> dict:
+    """Place gazetteer derived from the dataset (built once per process)."""
+    global _GAZ
+    if _GAZ is None:
+        _GAZ = gazetteer.build_from_data()
+    return _GAZ
 
 
 def _load():
@@ -151,19 +177,92 @@ def _public(p: dict, score: float | None = None, distance_km: float | None = Non
     return out
 
 
+def _dispatch(json_impl, db_name: str, args) -> dict:
+    """Route to the Postgres engine (search_db) when ATRIA_MAP_BACKEND=db,
+    silently falling back to the JSON engine on ANY db-side failure (stderr
+    warning only — stdout shape never changes)."""
+    import _db
+
+    if _db.backend() == "db":
+        try:
+            import search_db
+
+            return getattr(search_db, db_name)(args)
+        except Exception as exc:
+            print(f"WARN map-db unavailable, json fallback: {exc}", file=sys.stderr)
+    return json_impl(args)
+
+
 def cmd_search(args) -> dict:
+    return _dispatch(_cmd_search_json, "cmd_search_db", args)
+
+
+def cmd_near(args) -> dict:
+    return _dispatch(_cmd_near_json, "cmd_near_db", args)
+
+
+def cmd_geocode(args) -> dict:
+    return _dispatch(_cmd_geocode_json, "cmd_geocode_db", args)
+
+
+def cmd_pois(args) -> dict:
+    return _dispatch(_cmd_pois_json, "cmd_pois_db", args)
+
+
+def cmd_categories(args) -> dict:
+    return _dispatch(_cmd_categories_json, "cmd_categories_db", args)
+
+
+def _dispatch_db_only(db_name: str, args) -> dict:
+    """GeoRAG-only tools have no JSON counterpart: soft-fail JSON on any error
+    (same convention as the top-level handler — callers never crash)."""
+    import _db
+
+    if _db.backend() != "db":
+        return {"error": "requires db backend (set ATRIA_MAP_BACKEND=db)"}
+    try:
+        import search_db
+
+        return getattr(search_db, db_name)(args)
+    except Exception as exc:
+        return {"error": f"map-db unavailable: {type(exc).__name__}: {exc}"}
+
+
+def cmd_reverse_geocode(args) -> dict:
+    return _dispatch_db_only("cmd_reverse_geocode_db", args)
+
+
+def cmd_find_duplicates(args) -> dict:
+    return _dispatch_db_only("cmd_find_duplicates_db", args)
+
+
+def cmd_explain_match(args) -> dict:
+    return _dispatch_db_only("cmd_explain_match_db", args)
+
+
+def _cmd_search_json(args) -> dict:
     categories, pois, terms, max_ngram = _load()
     raw = fold(args.query)
     norm = normalize_query(args.query, terms, max_ngram)
+    gaz = _gazetteer()
+    # Place pre-pass: detect a city mention (data-derived variants), strip it
+    # plus noise tokens from the category/location string. Name scoring below
+    # still uses the full norm/raw.
+    place, rest = gazetteer.detect_place(norm, gaz)
+    rest = _strip_noise(rest)
     cat_idx = _category_index(categories)
-    cat_key, remainder = _detect_category(norm, cat_idx)
+    cat_key, remainder = _detect_category(rest, cat_idx)
     if args.category:
         cat_key = args.category
+    eff_city = (
+        gazetteer.resolve_place(args.city, gaz) if args.city
+        else (place["canonical"] if place else None)
+    )
 
     scored: list[tuple[float, dict]] = []
     for p in pois:
-        if args.city and args.city not in fold(p["city"]):
-            continue
+        if eff_city and eff_city not in fold(p["city"]):
+            continue  # HARD city filter — precision over recall
         keys = _poi_keys(p)
         # score both expanded and raw-folded query (aliases may match either)
         name_s = max(_score_text(norm, keys), _score_text(raw, keys) if raw != norm else 0,
@@ -187,12 +286,13 @@ def cmd_search(args) -> dict:
         "query": args.query,
         "normalized_query": norm,
         "category": cat_key,
+        "city": eff_city,
         "results": [_public(p, score=s) for s, p in top],
         "count": len(top),
     }
 
 
-def cmd_near(args) -> dict:
+def _cmd_near_json(args) -> dict:
     _, pois, _, _ = _load()
     rows = []
     for p in pois:
@@ -212,7 +312,7 @@ def cmd_near(args) -> dict:
     }
 
 
-def cmd_geocode(args) -> dict:
+def _cmd_geocode_json(args) -> dict:
     categories, pois, terms, max_ngram = _load()
     addresses = load_json("addresses.json")["addresses"]
     norm = normalize_query(args.query, terms, max_ngram)
@@ -247,11 +347,12 @@ def cmd_geocode(args) -> dict:
     }
 
 
-def cmd_pois(args) -> dict:
+def _cmd_pois_json(args) -> dict:
     categories, pois, terms, max_ngram = _load()
     rows = pois
     if args.city:
-        rows = [p for p in rows if args.city in fold(p["city"])]
+        city = gazetteer.resolve_place(args.city, _gazetteer())
+        rows = [p for p in rows if city in fold(p["city"])]
     if args.category:
         rows = [p for p in rows if p["category"] == args.category]
     # abbreviations ride along so the dashboard can mirror query expansion
@@ -259,7 +360,7 @@ def cmd_pois(args) -> dict:
             "abbreviations": {"terms": terms, "max_ngram": max_ngram}}
 
 
-def cmd_categories(args) -> dict:
+def _cmd_categories_json(args) -> dict:
     categories, pois, _, _ = _load()
     counts: dict[str, int] = {}
     for p in pois:
@@ -287,10 +388,25 @@ def main() -> None:
 
     sub.add_parser("categories")
 
+    rg = sub.add_parser("reverse_geocode")
+    rg.add_argument("--lat", type=float, required=True)
+    rg.add_argument("--lng", type=float, required=True)
+    rg.add_argument("--limit", type=int, default=3)
+
+    d = sub.add_parser("find_duplicates")
+    d.add_argument("--threshold", type=float, default=0.75)
+    d.add_argument("--radius-m", type=float, default=150.0)
+
+    e = sub.add_parser("explain_match"); e.add_argument("query")
+    e.add_argument("--poi-id", required=True)
+
     args = ap.parse_args()
     try:
         result = {"search": cmd_search, "near": cmd_near, "geocode": cmd_geocode,
-                  "pois": cmd_pois, "categories": cmd_categories}[args.cmd](args)
+                  "pois": cmd_pois, "categories": cmd_categories,
+                  "reverse_geocode": cmd_reverse_geocode,
+                  "find_duplicates": cmd_find_duplicates,
+                  "explain_match": cmd_explain_match}[args.cmd](args)
     except Exception as exc:  # soft-fail JSON for agent/dashboard callers
         result = {"error": f"{type(exc).__name__}: {exc}"}
     emit(result)

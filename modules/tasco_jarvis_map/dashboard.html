@@ -1,238 +1,494 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
   <title>Tasco · Jarvis Map</title>
   <link rel="stylesheet" href="__base.css" />
-  <link rel="preconnect" href="https://rsms.me" crossorigin />
-  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <style>
-    /* ── Token bridge (same convention as the warehouse dashboard) with the
-         Jarvis violet accent from the 1e Copilot Split wireframe. ── */
+    /* ── Marlow Bay design tokens (claude.ai/design "Modern map application
+         design"). Explicit data-theme beats the system preference: the media
+         block is guarded with :not([data-theme=light]) and the explicit dark
+         block is declared last. ── */
     :root {
-      --ink: 0 0% 0%;
-      --canvas: 0 0% 100%;
-      --surface-soft: 40 22% 96%;
-      --hairline: 0 0% 12%;
-      --hairline-soft: 0 0% 88%;
-      --muted-ink: 0 0% 38%;
-      --motion-fast: 160ms;
-      --motion-base: 240ms;
-      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-      /* Jarvis identity accent (violet, per design) */
-      --acc-hi: #9b82e8;
-      --acc: #7a5fd0;
-      --acc-lo: #5f47ab;
-      --acc-soft: 258 47% 96%;
+      --bg: #f6f1e8; --surface: #fffdf9; --surface2: #f4ecdf;
+      --ink: #43382e; --muted: #96897a; --line: #e8dfd0;
+      --accent: #e2683f; --accent-ink: #c4512b; --accent-soft: #fbe9e0;
+      --ai: #8b6fd8; --ai-ink: #6f54bd; --ai-soft: #f1ecfb;
+      --map: #f0e9da; --good: #4f9464; --warn: #c07f2c; --star: #dd9c33;
+      --sh: 0 12px 32px rgba(94, 72, 50, .14);
+      --sh2: 0 4px 14px rgba(94, 72, 50, .10);
+      --pin-border: #fff;
+      --tile-filter: sepia(.18) saturate(.82) brightness(1.03);
     }
     @media (prefers-color-scheme: dark) {
-      :root {
-        --ink: 0 0% 96%;
-        --canvas: 222 18% 11%;
-        --surface-soft: 222 14% 16%;
-        --hairline: 0 0% 70%;
-        --hairline-soft: 222 10% 26%;
-        --muted-ink: 220 8% 62%;
-        --acc-hi: #ab94f0;
-        --acc: #8a70dd;
-        --acc-lo: #6a52bd;
-        --acc-soft: 258 25% 20%;
+      :root:not([data-theme="light"]) {
+        --bg: #1f1b16; --surface: #2a241d; --surface2: #332c23;
+        --ink: #f2eadf; --muted: #a2937f; --line: #3d352a;
+        --accent: #f08159; --accent-ink: #f49a78; --accent-soft: #412e25;
+        --ai: #a78ee8; --ai-ink: #c0aef2; --ai-soft: #352c48;
+        --map: #252019; --good: #7fbf8e; --warn: #d89a4a; --star: #e5ad4d;
+        --sh: 0 12px 32px rgba(0, 0, 0, .45);
+        --sh2: 0 4px 14px rgba(0, 0, 0, .35);
+        --pin-border: #2a241d;
+        --tile-filter: brightness(.75) contrast(1.06) saturate(.7);
       }
     }
-    html[data-theme="light"] {
-      --ink: 0 0% 0%; --canvas: 0 0% 100%; --surface-soft: 40 22% 96%;
-      --hairline: 0 0% 12%; --hairline-soft: 0 0% 88%; --muted-ink: 0 0% 38%;
-      --acc-hi: #9b82e8; --acc: #7a5fd0; --acc-lo: #5f47ab; --acc-soft: 258 47% 96%;
-    }
-    html[data-theme="dark"] {
-      --ink: 0 0% 96%; --canvas: 222 18% 11%; --surface-soft: 222 14% 16%;
-      --hairline: 0 0% 70%; --hairline-soft: 222 10% 26%; --muted-ink: 220 8% 62%;
-      --acc-hi: #ab94f0; --acc: #8a70dd; --acc-lo: #6a52bd; --acc-soft: 258 25% 20%;
+    :root[data-theme="dark"] {
+      --bg: #1f1b16; --surface: #2a241d; --surface2: #332c23;
+      --ink: #f2eadf; --muted: #a2937f; --line: #3d352a;
+      --accent: #f08159; --accent-ink: #f49a78; --accent-soft: #412e25;
+      --ai: #a78ee8; --ai-ink: #c0aef2; --ai-soft: #352c48;
+      --map: #252019; --good: #7fbf8e; --warn: #d89a4a; --star: #e5ad4d;
+      --sh: 0 12px 32px rgba(0, 0, 0, .45);
+      --sh2: 0 4px 14px rgba(0, 0, 0, .35);
+      --pin-border: #2a241d;
+      --tile-filter: brightness(.75) contrast(1.06) saturate(.7);
     }
 
     * { box-sizing: border-box; }
-    html, body {
-      margin: 0; height: 100%;
-      font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
-      color: hsl(var(--ink));
-      background: hsl(var(--canvas));
+      color: var(--ink); background: var(--bg);
+      font-size: 13.5px;
+      transition: background-color .35s;
+    }
+    a { color: var(--accent); }
+    a:hover { color: var(--accent-ink); }
+    ::selection { background: var(--accent-soft); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    button { font-family: inherit; }
+    :focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(.88) translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes ping { from { transform: scale(.5); opacity: .8; } to { transform: scale(2.2); opacity: 0; } }
+    @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    @keyframes dots { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+    @keyframes pinDrop { from { opacity: 0; transform: translateY(-9px); } to { opacity: 1; transform: none; } }
+
+    .app { display: flex; width: 100vw; height: 100vh; background: var(--bg); }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    .sidebar {
+      width: 376px; flex: none; display: flex; flex-direction: column; min-height: 0;
+      background: var(--surface); border-right: 1px solid var(--line);
+      box-shadow: var(--sh2); z-index: 30;
+      transition: background-color .35s;
+    }
+    .brand-row { display: flex; align-items: center; gap: 9px; padding: 15px 16px 10px; }
+    .brand {
+      font: 700 25px 'Baloo 2', ui-rounded, system-ui; letter-spacing: .2px;
+      color: var(--ink); line-height: 1;
+    }
+    .brand em { font-style: normal; color: var(--accent); }
+    .locale-pill {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      background: var(--surface2); border: 1px solid var(--line);
+      border-radius: 999px; padding: 3px 10px;
     }
 
-    .app { display: grid; grid-template-columns: 1fr 320px; height: 100vh; }
-    @media (max-width: 760px) { .app { grid-template-columns: 1fr; } .copilot { display: none; } }
-
-    /* ── Map pane ─────────────────────────────────────────────────────── */
-    .map-pane { position: relative; min-width: 0; }
-    #map { position: absolute; inset: 0; background: #dfe7ea; }
-
-    .overlay {
-      position: absolute; z-index: 900; top: 12px; left: 12px;
-      display: flex; flex-direction: column; gap: 8px; width: 280px; max-width: calc(100% - 70px);
+    .omnibox {
+      display: flex; align-items: center; gap: 8px; margin: 4px 16px 10px;
+      background: var(--surface2); border: 1.5px solid var(--line);
+      border-radius: 999px; padding: 9px 14px;
+      transition: border-color .2s, background-color .35s;
     }
-    .search-box {
-      display: flex; align-items: center; gap: 8px;
-      background: hsl(var(--canvas)); border: 1.5px solid hsl(var(--hairline));
-      border-radius: 999px; padding: 8px 14px;
-      box-shadow: 0 3px 12px rgba(0,0,0,.12);
-    }
-    .search-box input {
+    .omnibox:focus-within { border-color: var(--ai); }
+    .omnibox .glyph { color: var(--ai); font-size: 14px; flex: none; }
+    .omnibox input {
       flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
-      font: inherit; font-size: 13.5px; color: hsl(var(--ink));
+      font: 600 13.5px 'Nunito', sans-serif; color: var(--ink);
     }
-    .search-box .clear-btn {
-      border: 0; background: transparent; color: hsl(var(--muted-ink));
-      font-size: 15px; cursor: pointer; padding: 0 2px; display: none;
+    .omnibox input::placeholder { color: var(--muted); font-weight: 400; }
+    .omnibox .clear-btn {
+      border: 0; background: transparent; color: var(--muted);
+      font-size: 14px; cursor: pointer; padding: 0 2px; display: none; line-height: 1;
     }
-    .legend {
-      display: flex; flex-wrap: wrap; gap: 4px; max-height: 132px; overflow-y: auto;
-      background: hsl(var(--canvas) / .92); border: 1px solid hsl(var(--hairline-soft));
-      border-radius: 12px; padding: 6px;
+    .omnibox .clear-btn:hover { color: var(--ink); }
+
+    .chips {
+      display: flex; flex-wrap: nowrap; gap: 6px; padding: 0 16px 10px;
+      overflow-x: auto; overflow-y: hidden;
     }
     .cat-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      border: 1.2px solid hsl(var(--hairline-soft)); border-radius: 999px;
-      padding: 1px 8px; font-size: 11.5px; cursor: pointer; user-select: none;
-      background: hsl(var(--canvas)); color: hsl(var(--ink));
-      transition: opacity var(--motion-fast);
+      display: inline-flex; align-items: center; gap: 5px; flex: none; white-space: nowrap;
+      border: 1.5px solid var(--line); border-radius: 999px;
+      padding: 4px 11px; font-size: 11.5px; font-weight: 700;
+      cursor: pointer; user-select: none;
+      background: var(--surface); color: var(--muted);
+      transition: transform .15s, background-color .2s, color .2s;
     }
-    .cat-chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-    .cat-chip.off { opacity: .38; }
-    .count-line {
-      font-size: 11.5px; color: hsl(var(--muted-ink));
-      background: hsl(var(--canvas) / .92); border-radius: 8px; padding: 3px 9px;
-      align-self: flex-start;
+    .cat-chip:hover { transform: translateY(-1px); }
+    .cat-chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .cat-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+    .divider { border-top: 1px solid var(--line); margin: 0 16px; }
+
+    .side-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+    .list-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 12px 16px 6px;
+    }
+    #listTitle { font: 700 15px 'Baloo 2', ui-rounded, system-ui; color: var(--ink); }
+    .count-line { font-size: 11px; color: var(--muted); }
+
+    .poi-card {
+      display: flex; gap: 11px; align-items: center;
+      padding: 9px 10px; margin: 0 8px; border-radius: 14px; cursor: pointer;
+      animation: fadeUp .3s ease both;
+      transition: background-color .15s;
+    }
+    .poi-card:hover { background: var(--surface2); }
+    .poi-thumb {
+      width: 54px; height: 54px; flex: none; border-radius: 12px;
+      border: 1px solid var(--line);
+      background: repeating-linear-gradient(45deg, var(--surface2) 0 7px, var(--bg) 7px 14px);
+      display: flex; align-items: center; justify-content: center; font-size: 21px;
+    }
+    .poi-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .poi-name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .poi-name {
+      font-weight: 800; font-size: 14.5px; color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .poi-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .poi-meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .poi-meta .star { color: var(--star); }
+    .poi-open { font-size: 11px; color: var(--good); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .poi-chevron { color: var(--muted); font-size: 15px; flex: none; }
+
+    .empty-card {
+      margin: 10px 16px; padding: 18px 14px; text-align: center;
+      border: 1.6px dashed var(--line); border-radius: 16px; color: var(--muted);
+      font-size: 12.5px; animation: fadeUp .3s ease both;
+    }
+    .empty-card button {
+      margin-top: 10px; border: 1.4px solid var(--ai); background: var(--surface);
+      color: var(--ai-ink); border-radius: 999px; padding: 6px 14px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: background-color .2s, color .2s;
+    }
+    .empty-card button:hover { background: var(--ai); color: #fff; }
+
+    /* Detail view */
+    #detailView { padding: 10px 16px 16px; animation: fadeUp .3s ease both; }
+    .back-pill {
+      border: 1.5px solid var(--line); background: var(--surface); color: var(--muted);
+      border-radius: 999px; padding: 4px 12px; font-size: 11.5px; font-weight: 700;
+      cursor: pointer; transition: color .2s, transform .15s;
+    }
+    .back-pill:hover { color: var(--ink); transform: translateY(-1px); }
+    .detail-hero {
+      height: 148px; border-radius: 18px; border: 1px solid var(--line);
+      background: repeating-linear-gradient(45deg, var(--surface2) 0 9px, var(--bg) 9px 18px);
+      display: flex; align-items: center; justify-content: center; font-size: 46px;
+      margin: 12px 0;
+    }
+    .detail-name { font: 700 23px 'Baloo 2', ui-rounded, system-ui; color: var(--ink); line-height: 1.2; }
+    .detail-name-en { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .detail-meta { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+    .detail-meta .star { color: var(--star); }
+    .detail-open { font-size: 12.5px; color: var(--good); margin-top: 5px; }
+    .detail-addr { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+    .tag-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 11px; }
+    .tag-chip {
+      background: var(--surface2); border: 1px solid var(--line); color: var(--muted);
+      border-radius: 999px; padding: 3px 10px; font-size: 10.5px; font-weight: 700;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .tag-chip.cat { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-soft); }
+    .detail-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-accent {
+      flex: 1; border: 0; background: var(--accent); color: #fff;
+      border-radius: 999px; padding: 9px 12px; font-size: 12.5px; font-weight: 800;
+      cursor: pointer; transition: background-color .2s, transform .15s;
+    }
+    .btn-accent:hover { background: var(--accent-ink); transform: translateY(-1px); }
+    .btn-ai {
+      flex: 1; border: 1.4px solid var(--ai); background: var(--ai-soft); color: var(--ai-ink);
+      border-radius: 999px; padding: 9px 12px; font-size: 12.5px; font-weight: 800;
+      cursor: pointer; transition: background-color .2s, color .2s, transform .15s;
+    }
+    .btn-ai:hover { background: var(--ai); color: #fff; transform: translateY(-1px); }
+
+    .side-foot {
+      flex: none; padding: 9px 16px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--muted);
     }
 
-    /* POI pin (ported from the MapMinder Leaflet app) */
+    /* ── Map pane ────────────────────────────────────────────────────── */
+    .map-pane { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+    #map { position: absolute; inset: 0; background: var(--map); }
+    .leaflet-tile { filter: var(--tile-filter); }
+    .leaflet-container { background: var(--map); font-family: 'Nunito', sans-serif; }
+
+    .map-btn {
+      width: 36px; height: 36px; border-radius: 12px;
+      border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+      box-shadow: var(--sh2); cursor: pointer; font-size: 16px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform .15s, background-color .2s;
+    }
+    .map-btn:hover { transform: translateY(-1px); background: var(--surface2); }
+    .map-ctl-top { position: absolute; top: 14px; right: 14px; z-index: 1001; }
+    .zoom-ctl {
+      position: absolute; right: 14px; bottom: 96px; z-index: 1001;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+
+    /* Leaflet chrome themed */
+    .leaflet-popup-content-wrapper {
+      background: var(--surface); color: var(--ink);
+      border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--sh);
+    }
+    .leaflet-popup-tip { background: var(--surface); }
+    .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+    .leaflet-control-attribution {
+      background: var(--surface); color: var(--muted); font-size: 10px;
+      border-radius: 8px 0 0 0;
+    }
+    .leaflet-control-attribution a { color: var(--accent-ink); }
+
+    .poi-popup { font-size: 12px; line-height: 1.5; font-family: 'Nunito', sans-serif; }
+    .poi-popup b { font-size: 13.5px; font-weight: 800; }
+    .poi-popup .rating { color: var(--star); font-weight: 700; }
+    .poi-popup .detail-link {
+      display: inline-block; margin-top: 6px; border: 1.3px solid var(--accent);
+      background: transparent; color: var(--accent-ink); border-radius: 999px;
+      padding: 2px 10px; font-size: 11px; font-weight: 800; cursor: pointer;
+      transition: background-color .2s, color .2s;
+    }
+    .poi-popup .detail-link:hover { background: var(--accent); color: #fff; }
+
+    /* POI teardrop pin (design: 27px, 50/50/50/4 radius) */
     .poi-divicon { background: transparent; border: 0; }
     .poi-pin {
-      width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg); border: 2px solid #fff;
-      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+      width: 27px; height: 27px; border-radius: 50% 50% 50% 4px;
+      transform: rotate(-45deg); border: 2.5px solid var(--pin-border);
+      box-shadow: 0 3px 9px rgba(0, 0, 0, .28);
       display: flex; align-items: center; justify-content: center;
+      transition: transform .15s;
     }
+    .poi-pin:hover { transform: rotate(-45deg) scale(1.15); }
     .poi-emoji { transform: rotate(45deg); font-size: 12px; line-height: 1; }
 
-    /* Numbered violet AI pin (design: violet pins = AI's picks) */
+    /* Numbered AI pin (Jarvis picks) */
     .ai-divicon { background: transparent; border: 0; }
+    .ai-wrap { position: relative; animation: pinDrop .45s ease both; }
     .ai-pin {
       width: 26px; height: 26px; border-radius: 50%;
-      background: var(--acc); border: 2px solid #fff; color: #fff;
+      background: var(--ai); border: 2px solid var(--pin-border); color: #fff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12.5px; font-weight: 600;
-      box-shadow: 0 2px 8px rgba(122, 95, 208, .5);
+      font-size: 12.5px; font-weight: 800;
+      box-shadow: 0 2px 8px rgba(139, 111, 216, .5);
     }
     .ai-pin-ring {
-      position: absolute; inset: -7px; border: 2px solid var(--acc);
-      border-radius: 50%; animation: jping 1.8s ease-out infinite; pointer-events: none;
+      position: absolute; inset: -7px; border: 2px solid var(--ai);
+      border-radius: 50%; animation: ping 1.8s ease-out infinite; pointer-events: none;
     }
-    @keyframes jping { from { transform: scale(.55); opacity: .8; } to { transform: scale(1.5); opacity: 0; } }
 
-    .poi-popup b { font-size: 13px; }
-    .poi-popup { font-size: 12px; line-height: 1.45; }
-    .poi-popup .rating { color: #b98f2e; }
+    /* ── Jarvis popover + FAB ───────────────────────────────────────── */
+    #jarvisFab {
+      position: absolute; right: 16px; bottom: 18px; z-index: 1002;
+      width: 56px; height: 56px; border-radius: 50%; border: 0;
+      background: var(--ai); color: #fff; font-size: 22px; cursor: pointer;
+      box-shadow: 0 10px 26px rgba(122, 95, 208, .45);
+      animation: bob 4s ease-in-out infinite;
+      transition: background-color .2s;
+    }
+    #jarvisFab:hover { background: var(--ai-ink); }
+    #jarvisFab .unread {
+      position: absolute; top: 3px; right: 4px; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--accent); border: 2px solid var(--surface);
+      display: none;
+    }
+    #jarvisFab.has-unread .unread { display: block; }
 
-    /* ── Copilot panel (1e: permanent right chat panel) ───────────────── */
-    .copilot {
-      display: flex; flex-direction: column; min-height: 0;
-      border-left: 1.5px solid var(--acc);
-      background: hsl(var(--canvas));
+    #jarvisPopover {
+      position: absolute; right: 16px; bottom: 88px; z-index: 1003;
+      width: 372px; max-width: calc(100% - 32px); height: 478px; max-height: calc(100% - 110px);
+      display: none; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 22px; box-shadow: var(--sh); overflow: hidden;
     }
-    .copilot-head {
-      flex: none; display: flex; align-items: center; gap: 8px;
-      padding: 12px 14px; border-bottom: 1px solid hsl(var(--hairline-soft));
-      color: var(--acc); font-weight: 600; font-size: 15px;
+    #jarvisPopover.open { display: flex; animation: scaleIn .25s ease both; }
+    .pop-head {
+      flex: none; display: flex; align-items: center; gap: 9px;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
     }
-    .copilot-head .status {
-      margin-left: auto; font-size: 10.5px; font-weight: 400;
-      color: hsl(var(--muted-ink));
+    .pop-avatar {
+      width: 30px; height: 30px; border-radius: 50%; flex: none;
+      background: var(--ai); color: #fff; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
     }
+    .pop-title { font: 700 15px 'Baloo 2', ui-rounded, system-ui; color: var(--ink); line-height: 1.1; }
+    .pop-sub { font-size: 10.5px; color: var(--muted); }
+    .pop-close {
+      margin-left: auto; border: 0; background: transparent; color: var(--muted);
+      font-size: 15px; cursor: pointer; padding: 4px; line-height: 1;
+    }
+    .pop-close:hover { color: var(--ink); }
+
     .msgs {
       flex: 1; min-height: 0; overflow-y: auto; padding: 12px;
       display: flex; flex-direction: column; gap: 10px;
     }
-    .msg { max-width: 88%; border-radius: 12px; padding: 8px 12px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+    .msg {
+      max-width: 88%; padding: 9px 12px; font-size: 13px; line-height: 1.5;
+      white-space: pre-wrap; word-wrap: break-word; animation: fadeUp .25s ease both;
+    }
     .msg.user {
-      align-self: flex-end; background: hsl(var(--ink)); color: hsl(var(--canvas));
-      border-bottom-right-radius: 3px;
+      align-self: flex-end; background: var(--ink); color: var(--bg);
+      border-radius: 16px 16px 4px 16px; font-weight: 600;
     }
     .msg.ai {
-      align-self: flex-start; background: hsl(var(--acc-soft)); color: hsl(var(--ink));
-      border-bottom-left-radius: 3px;
+      align-self: flex-start; background: var(--ai-soft); color: var(--ink);
+      border-radius: 16px 16px 16px 4px;
     }
     .msg.ai.offline { opacity: .75; }
-    .msg .src-tag { display: block; margin-top: 5px; font-size: 10px; color: hsl(var(--muted-ink)); }
-    .pin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .msg .src-tag { display: block; margin-top: 5px; font-size: 10px; color: var(--muted); }
+
+    .pin-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
     .pin-chip {
       display: inline-flex; align-items: center; gap: 5px;
-      border: 1.2px solid var(--acc); color: var(--acc); background: hsl(var(--canvas));
-      border-radius: 999px; padding: 2px 9px; font-size: 11.5px; cursor: pointer;
-      transition: background var(--motion-fast), color var(--motion-fast);
+      border: 1.3px solid var(--ai); color: var(--ai-ink); background: var(--surface);
+      border-radius: 999px; padding: 2px 9px; font-size: 11.5px; font-weight: 700; cursor: pointer;
+      transition: background-color .15s, color .15s;
     }
-    .pin-chip:hover { background: var(--acc); color: #fff; }
+    .pin-chip:hover { background: var(--ai); color: #fff; }
     .pin-chip .n {
-      width: 15px; height: 15px; border-radius: 50%; background: var(--acc); color: #fff;
+      width: 15px; height: 15px; border-radius: 50%; background: var(--ai); color: #fff;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 9.5px; font-weight: 700; flex: none;
+      font-size: 9.5px; font-weight: 800; flex: none;
     }
-    .pin-chip:hover .n { background: #fff; color: var(--acc); }
+    .pin-chip:hover .n { background: #fff; color: var(--ai); }
 
-    .typing { display: flex; gap: 4px; padding: 4px 8px; align-self: flex-start; }
-    .typing span {
-      width: 7px; height: 7px; border-radius: 50%; background: var(--acc);
-      animation: jdots 1.2s infinite;
+    .typing {
+      display: flex; gap: 4px; padding: 10px 12px; align-self: flex-start;
+      background: var(--ai-soft); border-radius: 16px 16px 16px 4px;
     }
+    .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--ai); animation: dots 1.2s infinite; }
     .typing span:nth-child(2) { animation-delay: .2s; }
     .typing span:nth-child(3) { animation-delay: .4s; }
-    @keyframes jdots { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+    .sug-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+    .sug-chip {
+      border: 1.3px solid var(--line); background: var(--surface2); color: var(--muted);
+      border-radius: 999px; padding: 4px 11px; font-size: 11.5px; font-weight: 700; cursor: pointer;
+      transition: color .2s, border-color .2s, transform .15s;
+    }
+    .sug-chip:hover { color: var(--ai-ink); border-color: var(--ai); transform: translateY(-1px); }
 
     .composer {
       flex: none; display: flex; gap: 8px; padding: 10px 12px;
-      border-top: 1px solid hsl(var(--hairline-soft));
+      border-top: 1px solid var(--line);
     }
     .composer input {
-      flex: 1; min-width: 0; border: 1.5px solid hsl(var(--hairline));
-      border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 13px;
-      background: hsl(var(--canvas)); color: hsl(var(--ink)); outline: none;
+      flex: 1; min-width: 0; border: 1.5px solid var(--line);
+      border-radius: 999px; padding: 8px 14px; font: 600 13px 'Nunito', sans-serif;
+      background: var(--surface2); color: var(--ink); outline: none;
+      transition: border-color .2s;
     }
-    .composer input:focus { border-color: var(--acc); }
+    .composer input::placeholder { color: var(--muted); font-weight: 400; }
+    .composer input:focus { border-color: var(--ai); }
     .composer button {
       flex: none; width: 38px; height: 38px; border-radius: 50%;
-      border: 1.6px solid var(--acc); background: var(--acc); color: #fff;
-      font-size: 16px; cursor: pointer; transition: background var(--motion-fast);
+      border: 0; background: var(--ai); color: #fff;
+      font-size: 16px; cursor: pointer; transition: background-color .2s;
     }
+    .composer button:hover { background: var(--ai-ink); }
     .composer button:disabled { opacity: .5; cursor: default; }
 
-    /* Leaflet chrome in dark mode: dim the tiles slightly */
-    html[data-theme="dark"] .leaflet-tile, body.theme-dark-auto .leaflet-tile { filter: brightness(.82) contrast(1.05); }
+    @media (max-width: 760px) {
+      .app { flex-direction: column; }
+      .sidebar { width: auto; height: 44vh; }
+      #jarvisPopover { width: calc(100vw - 24px); right: 12px; max-height: 60vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #jarvisFab { animation: none; }
+      .ai-pin-ring { animation: none; opacity: 0; }
+      .ai-wrap, .msg, .poi-card, #detailView, .empty-card { animation: none; }
+      #jarvisPopover.open { animation: none; }
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="map-pane">
-      <div id="map"></div>
-      <div class="overlay">
-        <div class="search-box">
-          <span style="color:hsl(var(--muted-ink));font-size:13px">&#128269;</span>
-          <input id="search" type="text" placeholder="Search a place… (vd: cafe q1)" autocomplete="off" />
-          <button id="clearSearch" class="clear-btn" title="Clear">&#10005;</button>
-        </div>
-        <div id="legend" class="legend"></div>
-        <div id="count" class="count-line">Loading map data…</div>
+    <aside class="sidebar">
+      <div class="brand-row">
+        <span class="brand">Jarvis Map<em>&deg;</em></span>
+        <span class="locale-pill">Vi&#7879;t Nam</span>
       </div>
-    </div>
 
-    <div class="copilot">
-      <div class="copilot-head">&#10022; Jarvis <span class="status" id="jarvisStatus"></span></div>
-      <div id="msgs" class="msgs">
-        <div class="msg ai">Xin ch&#224;o! T&#244;i l&#224; Jarvis &#8212; h&#7887;i t&#244;i v&#7873; &#273;&#7883;a &#273;i&#7875;m &#7903; TP.HCM, H&#224; N&#7897;i hay &#272;&#224; N&#7861;ng. / Ask me about places in Vietnam.</div>
+      <div class="omnibox">
+        <span class="glyph" aria-hidden="true">&#10022;</span>
+        <input id="search" type="text" placeholder="T&#236;m &#273;&#7883;a &#273;i&#7875;m&#8230; (vd: cafe q1)" autocomplete="off" />
+        <button id="clearSearch" class="clear-btn" aria-label="Clear search">&#10005;</button>
       </div>
-      <div class="composer">
-        <input id="chatInput" type="text" placeholder="Ask or type a place…" autocomplete="off" />
-        <button id="chatSend" title="Send">&#10022;</button>
+
+      <div id="legend" class="chips"></div>
+      <div class="divider"></div>
+
+      <div class="side-scroll">
+        <section id="exploreView">
+          <div class="list-head">
+            <span id="listTitle">Kh&#225;m ph&#225; / Explore</span>
+            <span id="count" class="count-line">Loading&#8230;</span>
+          </div>
+          <div id="poiList"></div>
+          <div id="emptyState" class="empty-card" style="display:none">
+            <div>Kh&#244;ng t&#236;m th&#7845;y &#273;&#7883;a &#273;i&#7875;m n&#224;o. / Nothing matches.</div>
+            <button id="emptyAsk">&#10022; H&#7887;i Jarvis / Ask Jarvis</button>
+          </div>
+        </section>
+
+        <section id="detailView" style="display:none">
+          <button id="detailBack" class="back-pill">&#8249; Quay l&#7841;i / Back</button>
+          <div id="detailBody"></div>
+        </section>
       </div>
+
+      <div class="side-foot">Tasco &middot; Jarvis Map &mdash; d&#7919; li&#7879;u b&#7843;n &#273;&#7891; &copy; OpenStreetMap</div>
+    </aside>
+
+    <div class="map-pane">
+      <div id="map" role="application" aria-label="Map of Vietnam places"></div>
+
+      <div class="map-ctl-top">
+        <button id="themeToggle" class="map-btn" aria-label="Toggle dark mode">&#9790;</button>
+      </div>
+      <div class="zoom-ctl">
+        <button id="zoomIn" class="map-btn" aria-label="Zoom in">+</button>
+        <button id="zoomOut" class="map-btn" aria-label="Zoom out">&#8722;</button>
+      </div>
+
+      <div id="jarvisPopover" role="dialog" aria-label="Jarvis chat">
+        <div class="pop-head">
+          <span class="pop-avatar" aria-hidden="true">&#10022;</span>
+          <span>
+            <span class="pop-title">Jarvis</span><br>
+            <span class="pop-sub" id="jarvisStatus">bi&#7871;t &#273;&#7883;a &#273;i&#7875;m Vi&#7879;t Nam</span>
+          </span>
+          <button class="pop-close" id="jarvisClose" aria-label="Close chat">&#10005;</button>
+        </div>
+        <div id="msgs" class="msgs" role="log" aria-live="polite">
+          <div class="msg ai">Xin ch&#224;o! T&#244;i l&#224; Jarvis &#8212; h&#7887;i t&#244;i v&#7873; &#273;&#7883;a &#273;i&#7875;m &#7903; TP.HCM, H&#224; N&#7897;i hay &#272;&#224; N&#7861;ng. / Ask me about places in Vietnam.</div>
+        </div>
+        <div id="sugChips" class="sug-chips"></div>
+        <div class="composer">
+          <input id="chatInput" type="text" placeholder="H&#7887;i v&#7873; &#273;&#7883;a &#273;i&#7875;m, &#273;&#432;&#7901;ng &#273;i&#8230;" autocomplete="off" />
+          <button id="chatSend" aria-label="Send">&#8594;</button>
+        </div>
+      </div>
+      <button id="jarvisFab" aria-label="M&#7903; Jarvis chat" aria-expanded="false">&#10022;<span class="unread"></span></button>
     </div>
   </div>
 
@@ -271,9 +527,13 @@
     var enabled = {};          // category -> bool
     var liveFilter = '';       // folded+expanded live search text
     var searchIds = null;      // Set(poi_id) from an authoritative Enter-search, or null
+    var searchOrder = null;    // [poi_id] in score order from the last Enter-search
     var aiLayer = null;        // numbered violet AI pins
     var sessionId = null;      // Jarvis chat session
     var busy = false;
+    var selectedPoi = null;    // poi shown in the detail view
+    var popoverOpen = false;
+    var themeMode = null;      // null = follow system; 'light'|'dark' = explicit
 
     var $ = function (id) { return document.getElementById(id); };
     var esc = function (s) {
@@ -281,70 +541,212 @@
       return d.innerHTML;
     };
 
-    /* ── Map (ported from MapMinder app.js, global build) ── */
+    /* ── Theme: explicit toggle beats prefers-color-scheme ── */
+    var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    function effectiveTheme() { return themeMode || (darkQuery.matches ? 'dark' : 'light'); }
+    function syncThemeIcon() {
+      $('themeToggle').innerHTML = effectiveTheme() === 'dark' ? '&#9788;' : '&#9790;';
+    }
+    function toggleTheme() {
+      themeMode = effectiveTheme() === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', themeMode);
+      syncThemeIcon();
+    }
+    $('themeToggle').addEventListener('click', toggleTheme);
+    if (darkQuery.addEventListener) {
+      darkQuery.addEventListener('change', function () { if (themeMode === null) syncThemeIcon(); });
+    }
+    syncThemeIcon();
+
+    /* ── Map (Leaflet global build) ── */
     var map = new L.LeafletMap('map', {
       center: [16.0, 106.5], zoom: 6, minZoom: 4, maxZoom: 19, zoomControl: false,
     });
-    new L.ZoomControl({ position: 'bottomright' }).addTo(map);
     new L.TileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     aiLayer = new L.LayerGroup().addTo(map);
+    $('zoomIn').addEventListener('click', function () { map.zoomIn(); });
+    $('zoomOut').addEventListener('click', function () { map.zoomOut(); });
 
     function makeIcon(cat) {
       var c = CATS[cat] || { color: '#555', emoji: '' };
       return new L.DivIcon({
         html: '<div class="poi-pin" style="background:' + c.color + '"><span class="poi-emoji">' + (c.emoji || '') + '</span></div>',
-        className: 'poi-divicon', iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24],
+        className: 'poi-divicon', iconSize: [27, 27], iconAnchor: [14, 27], popupAnchor: [0, -26],
       });
     }
     function makeAiIcon(n) {
       return new L.DivIcon({
-        html: '<div style="position:relative"><div class="ai-pin-ring"></div><div class="ai-pin">' + n + '</div></div>',
+        html: '<div class="ai-wrap"><div class="ai-pin-ring"></div><div class="ai-pin">' + n + '</div></div>',
         className: 'ai-divicon', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -16],
       });
     }
-    function popupHtml(p) {
+    /* DOM popup so the "Chi tiết" button gets a real listener. */
+    function popupNode(p) {
       var c = CATS[p.category] || { label: p.category };
+      var el = document.createElement('div');
+      el.className = 'poi-popup';
       var stars = p.rating ? '<span class="rating">&#9733; ' + esc(p.rating) + '</span> &middot; ' : '';
-      return '<div class="poi-popup"><b>' + esc(p.name) + '</b><br>' +
+      el.innerHTML = '<b>' + esc(p.name) + '</b><br>' +
         '<span>' + (c.emoji || '') + ' ' + esc(c.label || p.category) + '</span><br>' +
-        stars + '<small>' + esc(p.address || '') + (p.city ? ' &middot; ' + esc(p.city) : '') + '</small></div>';
+        stars + '<small>' + esc(p.address || '') + (p.city ? ' &middot; ' + esc(p.city) : '') + '</small><br>';
+      var btn = document.createElement('button');
+      btn.className = 'detail-link';
+      btn.textContent = 'Chi tiết ›';
+      btn.addEventListener('click', function () { openDetail(p); });
+      el.appendChild(btn);
+      return el;
     }
 
-    /* ── Visibility: category chips + live filter + authoritative search ── */
+    /* ── Visibility: category chips + live filter + authoritative search.
+         refresh() is the single authority — it also feeds the sidebar list,
+         so markers and cards can never disagree. ── */
     function refresh() {
-      var shown = 0;
+      var visible = [];
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
         var ok = enabled[it.poi.category];
         if (ok && searchIds) ok = searchIds.has(it.poi.poi_id);
         if (ok && liveFilter) ok = it.keyBlob.indexOf(liveFilter) !== -1;
-        if (ok) { shown++; if (!map.hasLayer(it.marker)) map.addLayer(it.marker); }
+        if (ok) { visible.push(it.poi); if (!map.hasLayer(it.marker)) map.addLayer(it.marker); }
         else if (map.hasLayer(it.marker)) { map.removeLayer(it.marker); }
       }
-      $('count').textContent = shown + (shown === 1 ? ' place' : ' places') + ' shown';
+      $('count').textContent = visible.length + ' địa điểm / places';
+      $('emptyState').style.display =
+        (visible.length === 0 && (liveFilter || searchIds)) ? '' : 'none';
+      renderList(visible);
     }
 
-    function buildLegend() {
+    var markerById = {};
+    function focusPoi(p) {
+      map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 16));
+      var m = markerById[p.poi_id];
+      if (m && map.hasLayer(m)) m.openPopup();
+    }
+
+    function renderList(visible) {
+      var rows = visible.slice();
+      if (searchOrder) {
+        var idx = {};
+        searchOrder.forEach(function (id, i) { idx[id] = i; });
+        rows.sort(function (a, b) { return (idx[a.poi_id] || 0) - (idx[b.poi_id] || 0); });
+      } else {
+        rows.sort(function (a, b) {
+          var ra = a.rating == null ? -1 : a.rating, rb = b.rating == null ? -1 : b.rating;
+          if (rb !== ra) return rb - ra;
+          return a.name.localeCompare(b.name);
+        });
+      }
+      var frag = document.createDocumentFragment();
+      rows.forEach(function (p) {
+        var c = CATS[p.category] || { color: '#555', emoji: '' };
+        var card = document.createElement('div');
+        card.className = 'poi-card';
+        var meta = (p.rating ? '<span class="star">&#9733;</span> ' + esc(p.rating) + ' &middot; ' : '') + esc(p.district || p.city || '');
+        card.innerHTML =
+          '<div class="poi-thumb">' + (c.emoji || '') + '</div>' +
+          '<div class="poi-body">' +
+            '<div class="poi-name-row"><span class="poi-name">' + esc(p.name) + '</span>' +
+              '<span class="poi-dot" style="background:' + c.color + '"></span></div>' +
+            '<span class="poi-meta">' + meta + '</span>' +
+            (p.opening_hours ? '<span class="poi-open">' + esc(p.opening_hours) + '</span>' : '') +
+          '</div><span class="poi-chevron">&#8250;</span>';
+        card.addEventListener('click', function () { focusPoi(p); });
+        frag.appendChild(card);
+      });
+      var list = $('poiList');
+      list.innerHTML = '';
+      list.appendChild(frag);
+    }
+
+    /* ── Sidebar detail view ── */
+    function openDetail(p) {
+      selectedPoi = p;
+      var c = CATS[p.category] || { label: p.category, emoji: '' };
+      var body = $('detailBody');
+      body.innerHTML =
+        '<div class="detail-hero">' + (c.emoji || '') + '</div>' +
+        '<div class="detail-name">' + esc(p.name) + '</div>' +
+        (p.name_en && p.name_en !== p.name ? '<div class="detail-name-en">' + esc(p.name_en) + '</div>' : '') +
+        '<div class="detail-meta">' +
+          (p.rating ? '<span class="star">&#9733;</span> ' + esc(p.rating) + ' &middot; ' : '') +
+          esc(p.district || '') + (p.city ? ' &middot; ' + esc(p.city) : '') + '</div>' +
+        (p.opening_hours ? '<div class="detail-open">' + esc(p.opening_hours) + '</div>' : '') +
+        (p.address ? '<div class="detail-addr">' + esc(p.address) + '</div>' : '') +
+        '<div class="tag-chips">' +
+          '<span class="tag-chip cat">' + (c.emoji || '') + ' ' + esc(c.label || p.category) + '</span>' +
+          (p.aliases || []).slice(0, 6).map(function (a) {
+            return '<span class="tag-chip">' + esc(a) + '</span>';
+          }).join('') +
+        '</div>';
+      var actions = document.createElement('div');
+      actions.className = 'detail-actions';
+      var btnFocus = document.createElement('button');
+      btnFocus.className = 'btn-accent';
+      btnFocus.textContent = '⌖ Xem trên bản đồ';
+      btnFocus.addEventListener('click', function () { focusPoi(p); });
+      var btnAsk = document.createElement('button');
+      btnAsk.className = 'btn-ai';
+      btnAsk.innerHTML = '&#10022; Hỏi Jarvis';
+      btnAsk.addEventListener('click', function () {
+        togglePopover(true);
+        $('chatInput').value = 'Giới thiệu về ' + p.name;
+        $('chatInput').focus();
+      });
+      actions.appendChild(btnFocus);
+      actions.appendChild(btnAsk);
+      body.appendChild(actions);
+      $('exploreView').style.display = 'none';
+      $('detailView').style.display = '';
+      $('detailView').parentElement.scrollTop = 0;
+    }
+    function closeDetail() {
+      selectedPoi = null;
+      $('detailView').style.display = 'none';
+      $('exploreView').style.display = '';
+    }
+    $('detailBack').addEventListener('click', closeDetail);
+
+    /* ── Category chips (multi-toggle, design skin) ── */
+    var chipEls = {};
+    function syncChips() {
+      var allOn = Object.keys(CATS).every(function (k) { return enabled[k]; });
+      if (chipEls.__all) chipEls.__all.classList.toggle('on', allOn);
+      Object.keys(chipEls).forEach(function (k) {
+        if (k !== '__all') chipEls[k].classList.toggle('on', !!enabled[k]);
+      });
+    }
+    function buildChips() {
       var legend = $('legend');
       legend.innerHTML = '';
+      chipEls = {};
+      var all = document.createElement('button');
+      all.className = 'cat-chip';
+      all.textContent = 'Tất cả / All';
+      all.addEventListener('click', function () {
+        Object.keys(CATS).forEach(function (k) { enabled[k] = true; });
+        syncChips(); refresh();
+      });
+      legend.appendChild(all);
+      chipEls.__all = all;
       Object.keys(CATS).forEach(function (key) {
-        enabled[key] = true;
+        if (!(key in enabled)) enabled[key] = true;
         var c = CATS[key];
-        var chip = document.createElement('span');
+        var chip = document.createElement('button');
         chip.className = 'cat-chip';
         chip.innerHTML = '<span class="dot" style="background:' + c.color + '"></span>' +
           (c.emoji || '') + ' ' + esc(c.label);
         chip.title = c.label_vi || c.label;
         chip.addEventListener('click', function () {
           enabled[key] = !enabled[key];
-          chip.classList.toggle('off', !enabled[key]);
-          refresh();
+          syncChips(); refresh();
         });
         legend.appendChild(chip);
+        chipEls[key] = chip;
       });
+      syncChips();
     }
 
     /* ── Authoritative search (Enter) ── */
@@ -353,7 +755,10 @@
         if (res.error) { AtriaDash.toast({ message: res.error, severity: 'error' }); return; }
         var results = res.results || [];
         searchIds = new Set(results.map(function (r) { return r.poi_id; }));
+        searchOrder = results.map(function (r) { return r.poi_id; });
         liveFilter = '';
+        $('listTitle').textContent = 'Kết quả / Results';
+        closeDetail();
         refresh();
         if (results.length) {
           var b = new L.LatLngBounds(results.map(function (r) { return [r.lat, r.lng]; }));
@@ -367,13 +772,15 @@
       });
     }
     function clearSearch() {
-      searchIds = null; liveFilter = '';
+      searchIds = null; searchOrder = null; liveFilter = '';
       $('search').value = '';
       $('clearSearch').style.display = 'none';
+      $('listTitle').textContent = 'Khám phá / Explore';
       refresh();
     }
     $('search').addEventListener('input', function (e) {
-      searchIds = null;
+      searchIds = null; searchOrder = null;
+      $('listTitle').textContent = 'Khám phá / Explore';
       $('clearSearch').style.display = e.target.value ? 'inline' : 'none';
       liveFilter = expandAbbrev(fold(e.target.value));
       refresh();
@@ -382,6 +789,12 @@
       if (e.key === 'Enter' && e.target.value.trim()) runSearch(e.target.value.trim());
     });
     $('clearSearch').addEventListener('click', clearSearch);
+    $('emptyAsk').addEventListener('click', function () {
+      togglePopover(true);
+      var q = $('search').value.trim();
+      $('chatInput').value = q ? 'Tìm giúp tôi ' + q : '';
+      $('chatInput').focus();
+    });
 
     /* ── AI pins + map actions ── */
     var activePins = [];       // [{n, poi_id, name}] — echoed back to jarvis_chat
@@ -413,7 +826,42 @@
       });
     }
 
-    /* ── Chat panel ── */
+    /* ── Jarvis popover ── */
+    function togglePopover(open) {
+      popoverOpen = open == null ? !popoverOpen : !!open;
+      $('jarvisPopover').classList.toggle('open', popoverOpen);
+      $('jarvisFab').setAttribute('aria-expanded', popoverOpen ? 'true' : 'false');
+      if (popoverOpen) {
+        $('jarvisFab').classList.remove('has-unread');
+        $('msgs').scrollTop = $('msgs').scrollHeight;
+        renderSuggestions();
+        $('chatInput').focus();
+      }
+    }
+    $('jarvisFab').addEventListener('click', function () { togglePopover(); });
+    $('jarvisClose').addEventListener('click', function () { togglePopover(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && popoverOpen) togglePopover(false);
+    });
+
+    var SUGGESTIONS = ['cafe gần đây', 'nhà thuốc quận 1', 'chỉ đường đến chợ Bến Thành'];
+    function renderSuggestions() {
+      var box = $('sugChips');
+      var hasUserMsg = $('msgs').querySelector('.msg.user') !== null;
+      if (hasUserMsg || busy) { box.innerHTML = ''; return; }
+      if (box.childElementCount) return;
+      SUGGESTIONS.forEach(function (label) {
+        var chip = document.createElement('button');
+        chip.className = 'sug-chip';
+        chip.textContent = label;
+        chip.addEventListener('click', function () {
+          box.innerHTML = '';
+          askJarvis(label);
+        });
+        box.appendChild(chip);
+      });
+    }
+
     function addMsg(kind, text, extra) {
       var div = document.createElement('div');
       div.className = 'msg ' + kind + (extra && extra.offline ? ' offline' : '');
@@ -441,6 +889,8 @@
       }
       $('msgs').appendChild(div);
       $('msgs').scrollTop = $('msgs').scrollHeight;
+      if (kind === 'ai' && !popoverOpen) $('jarvisFab').classList.add('has-unread');
+      renderSuggestions();
       return div;
     }
     function showTyping() {
@@ -456,6 +906,7 @@
       if (busy) return;
       busy = true;
       $('chatSend').disabled = true;
+      renderSuggestions();
       addMsg('user', text);
       showTyping();
       var c = map.getCenter();
@@ -505,11 +956,15 @@
 
     /* ── Boot: bridge context + dataset ── */
     AtriaDash.onTheme(function (theme) {
-      document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+      // dormant forward-compat: the host doesn't push theme to module
+      // dashboards today; a manual ☾/☀ choice always wins if it ever does.
+      if (themeMode === null) {
+        document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+        syncThemeIcon();
+      }
     });
     AtriaDash.onContext(function (ctx) {
       // dashboard context session — chat keeps its own dedicated session id
-      $('jarvisStatus').textContent = '';
     });
     AtriaDash.onChange(function () { /* data files changed -> reload dataset */ loadData(); });
 
@@ -521,13 +976,16 @@
         // rebuild markers
         items.forEach(function (it) { if (map.hasLayer(it.marker)) map.removeLayer(it.marker); });
         items = [];
+        markerById = {};
+        closeDetail();
         (data.pois || []).forEach(function (p) {
           var m = new L.Marker([p.lat, p.lng], { icon: makeIcon(p.category), title: p.name });
-          m.bindPopup(new L.Popup().setContent(popupHtml(p)));
+          m.bindPopup(new L.Popup().setContent(popupNode(p)));
           var blob = [p.q.name, p.q.name_en].concat(p.q.aliases || []).join(' | ');
           items.push({ marker: m, poi: p, keyBlob: blob });
+          markerById[p.poi_id] = m;
         });
-        buildLegend();
+        buildChips();
         refresh();
       }).catch(function (e) {
         $('count').textContent = 'Failed to load map data';
@@ -537,6 +995,7 @@
 
     AtriaDash.ready();
     loadData();
+    renderSuggestions();
     setTimeout(function () { map.invalidateSize(); }, 250);
     window.addEventListener('resize', function () { map.invalidateSize(); });
   })();
