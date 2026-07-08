@@ -310,6 +310,18 @@ class AppConfig(BaseModel):
     plan_mode_plan_agent_count: int = 1
     plan_mode_explore_variant: str = "enabled"  # "enabled" or "disabled"
 
+    # Prompt caching (OpenAI-compatible). When enabled, sends a stable
+    # per-session prompt_cache_key for KV-cache affinity; ignored by
+    # servers that do not support it.
+    prompt_cache_key_enabled: bool = False
+
+    # ReAct loop control. Behavior-changing flags default to prior behavior.
+    max_iterations_default: int = 25  # runaway guard when caller passes None
+    max_nudge_attempts: int = 3  # was hardcoded MAX_NUDGE_ATTEMPTS
+    max_todo_nudges: int = 4  # was hardcoded MAX_TODO_NUDGES
+    completion_nudge_enabled: bool = False  # off => skip extra completion round-trip
+    explore_first_enabled: bool = False  # off => do not force Code-Explorer first
+
     # Custom instructions (accumulated across config levels)
     instructions: Optional[str] = None
 
@@ -364,8 +376,7 @@ class AppConfig(BaseModel):
                 return key
 
         raise ValueError(
-            "No API key found. Set OPENAI_API_KEY or OPENROUTER_API_KEY "
-            "environment variable."
+            "No API key found. Set OPENAI_API_KEY or OPENROUTER_API_KEY " "environment variable."
         )
 
     def get_model_info(self):

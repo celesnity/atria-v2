@@ -63,13 +63,9 @@ class RuntimeService:
         write_tool: Union[Any, None],
         edit_tool: Union[Any, None],
         bash_tool: Union[Any, None],
-        web_fetch_tool: Union[Any, None],
-        web_search_tool: Union[Any, None] = None,
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
-        open_browser_tool: Union[Any, None] = None,
         vlm_tool: Union[Any, None] = None,
-        web_screenshot_tool: Union[Any, None] = None,
         mcp_manager: Union[Any, None] = None,
     ) -> RuntimeSuite:
         """Create a runtime suite containing the tool registry and agents."""
@@ -88,13 +84,9 @@ class RuntimeService:
                 write_tool=write_tool,
                 edit_tool=edit_tool,
                 bash_tool=bash_tool,
-                web_fetch_tool=web_fetch_tool,
-                web_search_tool=web_search_tool,
                 notebook_edit_tool=notebook_edit_tool,
                 ask_user_tool=ask_user_tool,
-                open_browser_tool=open_browser_tool,
                 vlm_tool=vlm_tool,
-                web_screenshot_tool=web_screenshot_tool,
                 app_config=self._config_manager.get_config(),
             )
         )

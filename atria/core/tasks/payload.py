@@ -27,3 +27,4 @@ class SubagentTaskPayload(BaseModel):
     config_snapshot: dict[str, Any]
     blackboard_task_id: str | None = None
     thread_id: int = 0
+    subagent_task_id: str | None = None

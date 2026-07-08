@@ -149,6 +149,7 @@ Thumbs.db
 
 # Atria specific
 .opencli/
+atria/web/static/*
 .atria/
 atria-home/
 .swecli/
@@ -178,7 +179,7 @@ ace/
 .ignore/
 docs/
 figures/
-.opendev/
+.atria/
 
 # Agent harness / eval scaffolding (do not push)
 .superpowers/

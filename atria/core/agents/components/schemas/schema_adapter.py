@@ -70,17 +70,8 @@ def _adapt_gemini(schemas: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], 
 
 
 def _adapt_xai(schemas: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:
-    """xAI/Grok has native web_search that conflicts with our tool."""
-    changed = False
-    filtered = []
-    for schema in schemas:
-        name = schema.get("function", {}).get("name", "")
-        if name == "web_search":
-            logger.info("Filtered out web_search tool for xAI provider (native conflict)")
-            changed = True
-            continue
-        filtered.append(schema)
-    return filtered, changed
+    """xAI/Grok currently needs no schema adaptation."""
+    return schemas, False
 
 
 def _adapt_mistral(schemas: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:

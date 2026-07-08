@@ -55,7 +55,7 @@ class DockerToolRegistry:
             "search": self.handler.search_sync,
         }
         # Tools that should always run locally (not in Docker)
-        self._local_only_tools = {"read_pdf", "analyze_image", "capture_screenshot"}
+        self._local_only_tools = {"read_pdf"}
         # Track last run_command result for todo verification (Layer 1 & 2)
         self._last_run_command_result: dict[str, Any] | None = None
 

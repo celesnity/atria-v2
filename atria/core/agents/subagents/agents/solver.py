@@ -1,4 +1,4 @@
-"""Solver subagent: one autonomous parallel solver (DeLM Phase 2b)."""
+"""Solver subagent: an autonomous coding-task solver that writes to the blackboard."""
 
 from atria.core.agents.prompts.loader import load_prompt
 from atria.core.agents.subagents.specs import SubAgentSpec
@@ -6,10 +6,10 @@ from atria.core.agents.subagents.specs import SubAgentSpec
 SOLVER_SUBAGENT = SubAgentSpec(
     name="solver",
     description=(
-        "Autonomous parallel solver. Attempts one task in an isolated git worktree, "
-        "shares verified notes with peer solvers via the blackboard, and emits a "
-        "PATCH_SUMMARY for the judge. USE FOR: the per-solver runs spawned by "
-        "solve(strategy='parallel') (not invoked directly)."
+        "Autonomous coding solver. Takes one self-contained task, implements the "
+        "smallest correct change, verifies it, and records a PATCH_SUMMARY note on "
+        "the shared blackboard. USE FOR: a focused fix or change that should be "
+        "implemented and verified end-to-end in an isolated context."
     ),
     system_prompt=load_prompt("subagents/subagent-solver"),
     tools=[

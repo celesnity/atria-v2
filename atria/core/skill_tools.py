@@ -40,7 +40,6 @@ class SkillToolContext:
     """
 
     working_dir: str | None = None
-    web_search: Any | None = None
     broadcaster: Callable[[dict[str, Any]], None] | None = None
     # (job_id, request_id, event_payload) -> result. The callback must
     # register pending state BEFORE emitting `event_payload` over the
@@ -57,7 +56,6 @@ class SkillToolContext:
     on_clarify_message: Callable[[dict[str, Any]], None] | None = None
     subagent_dispatcher: Callable[..., Any] | None = None
     on_artifact: Callable[[dict[str, Any]], None] | None = None
-    on_analyze_done: Callable[[dict[str, Any]], None] | None = None
     # Text-LLM call: (system, user) -> str. Wired from AppConfig so skills
     # reuse atria's configured api_key/api_base_url/model.
     llm_chat: Callable[[str, str], str] | None = None

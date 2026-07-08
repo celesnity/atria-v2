@@ -78,7 +78,7 @@ UI Layer
 Agent Layer (core/agents/)
   - main_agent.py: Main ReAct agent (full tool access)
   - planning_agent.py: Plan mode (read-only tools)
-  - subagents/agents/: ask_user, code_explorer, planner, web_clone, web_generator
+  - subagents/agents/: ask_user, code_explorer, planner, web_generator
        |
 Prompt System (core/agents/prompts/)
   - composition.py: PromptComposer — modular section-based prompt assembly

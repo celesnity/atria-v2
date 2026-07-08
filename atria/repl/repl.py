@@ -117,13 +117,7 @@ class REPL:
     def _init_tools(self):
         """Initialize file operation and command tools."""
         from atria.core.context_engineering.tools.implementations import (
-            WebFetchTool,
-            OpenBrowserTool,
             VLMTool,
-            WebScreenshotTool,
-        )
-        from atria.core.context_engineering.tools.implementations.web_search_tool import (
-            WebSearchTool,
         )
         from atria.core.context_engineering.tools.implementations.notebook_edit_tool import (
             NotebookEditTool,
@@ -141,13 +135,9 @@ class REPL:
         self.bash_tool = BashTool(
             self.config, self.config_manager.working_dir, task_manager=self.task_manager
         )
-        self.web_fetch_tool = WebFetchTool(self.config, self.config_manager.working_dir)
-        self.web_search_tool = WebSearchTool(self.config, self.config_manager.working_dir)
         self.notebook_edit_tool = NotebookEditTool(self.config_manager.working_dir)
         self.ask_user_tool = AskUserTool()  # Uses console fallback
-        self.open_browser_tool = OpenBrowserTool(self.config, self.config_manager.working_dir)
         self.vlm_tool = VLMTool(self.config, self.config_manager.working_dir)
-        self.web_screenshot_tool = WebScreenshotTool(self.config, self.config_manager.working_dir)
         self.mcp_manager = MCPManager(working_dir=self.config_manager.working_dir)
 
     def _init_managers(self):
@@ -168,13 +158,9 @@ class REPL:
             write_tool=self.write_tool,
             edit_tool=self.edit_tool,
             bash_tool=self.bash_tool,
-            web_fetch_tool=self.web_fetch_tool,
-            web_search_tool=self.web_search_tool,
             notebook_edit_tool=self.notebook_edit_tool,
             ask_user_tool=self.ask_user_tool,
-            open_browser_tool=self.open_browser_tool,
             vlm_tool=self.vlm_tool,
-            web_screenshot_tool=self.web_screenshot_tool,
             mcp_manager=self.mcp_manager,
         )
 

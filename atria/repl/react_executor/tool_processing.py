@@ -172,7 +172,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
         EXPLORE_EXEMPT_SUBAGENTS = {"Code-Explorer", "ask-user"}
         if not ctx.has_explored and not ctx.plan_approved_signal_injected:
             for tc in tool_calls:
-                if tc["function"]["name"] == "spawn_subagent":
+                if tc["function"]["name"] == "subagent":
                     try:
                         args = json.loads(tc["function"]["arguments"])
                     except (json.JSONDecodeError, KeyError):
@@ -200,7 +200,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
 
         # Mark explored / planner spawned
         for tc in tool_calls:
-            if tc["function"]["name"] == "spawn_subagent":
+            if tc["function"]["name"] == "subagent":
                 try:
                     args = json.loads(tc["function"]["arguments"])
                 except (json.JSONDecodeError, KeyError):
@@ -213,7 +213,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
                     ctx.planner_plan_path = args.get("plan_file_path", "")
 
         # Execute tools (parallel for spawn_subagent batches or read-only batches)
-        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "spawn_subagent"]
+        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "subagent"]
         is_all_spawn_agents = len(spawn_calls) == len(tool_calls) and len(spawn_calls) > 1
         is_all_parallelizable = len(tool_calls) > 1 and all(
             tc["function"]["name"] in self.PARALLELIZABLE_TOOLS for tc in tool_calls
@@ -265,7 +265,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
                 self._snapshot_manager.track()
 
         # Check if agent has subagent capability (for dynamic truncation hints)
-        _has_subagent = "spawn_subagent" in getattr(ctx.tool_registry, "_handlers", {})
+        _has_subagent = "subagent" in getattr(ctx.tool_registry, "_handlers", {})
 
         # Batch add all results after completion (maintains message order)
         for tool_call in tool_calls:

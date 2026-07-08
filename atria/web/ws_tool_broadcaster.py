@@ -36,9 +36,7 @@ class WebSocketToolBroadcaster:
 
     # Tools that emit their own custom UI events; skip the generic
     # tool_call / tool_result broadcasts so the UI shows only the custom event.
-    _SUPPRESSED_BROADCAST_TOOLS: frozenset[str] = frozenset(
-        {"send_image", "send_editable_table", "send_table"}
-    )
+    _SUPPRESSED_BROADCAST_TOOLS: frozenset[str] = frozenset({"send_image"})
 
     _PATH_ARGS: dict[str, str] = {
         "write_file": "file_path",
@@ -119,9 +117,6 @@ class WebSocketToolBroadcaster:
             payload = self._build_result_payload(call_id, tool_name, result, normalized_args)
             self._broadcast_tool_result(payload)
 
-        if tool_name == "web_search" and isinstance(result, dict) and result.get("success"):
-            self._broadcast_search_done(result)
-
         return result
 
     def _broadcast_tool_call(
@@ -171,36 +166,6 @@ class WebSocketToolBroadcaster:
             future.result(timeout=5)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to broadcast skill event: {e}")
-
-    def _broadcast_search_done(self, result: Dict[str, Any]) -> None:
-        """Broadcast search_done event with query and result list."""
-        try:
-            raw_results = result.get("results") or []
-            results_payload = [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("url", ""),
-                    "domain": r.get("domain", ""),
-                }
-                for r in raw_results
-            ]
-            payload = {
-                "type": WSMessageType.SEARCH_DONE,
-                "data": {
-                    "query": result.get("query", ""),
-                    "result_count": result.get("result_count", len(raw_results)),
-                    "results": results_payload,
-                    "provider": result.get("provider", ""),
-                    "session_id": self.session_id,
-                },
-            }
-            future = asyncio.run_coroutine_threadsafe(
-                self.ws_manager.broadcast(payload),
-                self.loop,
-            )
-            future.result(timeout=2)
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"❌ Failed to broadcast search_done: {e}")
 
     def _broadcast_tool_result(self, payload: Dict[str, Any]) -> None:
         """Broadcast tool result event."""
