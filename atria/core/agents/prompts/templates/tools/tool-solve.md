@@ -6,6 +6,11 @@ version: 1.0.0
 
 Dispatch a complex task to autonomous background workers using one of two strategies. Returns immediately with a `job_id`; call `get_solve_result(job_id)` to collect.
 
+Two non-negotiable rules:
+
+1. Do NOT dispatch single-step or quickly-answerable work (one question, one command, one lookup) — answer them directly with normal tools. `solve` is only for genuinely decomposable workloads.
+2. Dispatch is not an answer. After `solve` you MUST call `get_solve_result(job_id, block=true)` in the same turn and answer the user from its output. If the timeout expires, report the job's progress honestly and point the user to the Dispatch tab — never end the turn with only "job started/completed".
+
 Choose `strategy`:
 
 - `strategy="divide"` — Decompose a `request` into a DAG of discrete sub-tasks and fan them out over the active module's workflow. Sub-tasks run as autonomous subagents coordinated by the orchestrator, respecting dependencies between them, and all results are aggregated. Use for work that splits into independent or sequential units (processing many items, running checks across a data set, a multi-step pipeline). Pass `request` (the work to decompose) and optionally `module` (defaults to the active module).

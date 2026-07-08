@@ -28,7 +28,10 @@ SCHEMAS: list[dict[str, Any]] = [
                             "into a DAG of interdependent sub-tasks run across module "
                             "workers and collects every result. 'parallel' fans out N "
                             "independent solvers on isolated git worktrees, then judges "
-                            "the candidates and applies the winning diff."
+                            "the candidates and applies the winning diff. Only for "
+                            "genuinely decomposable work — never for a single question "
+                            "or one-step task; you must then call get_solve_result "
+                            "(block=true) and answer from its output."
                         ),
                     },
                     "task": {
