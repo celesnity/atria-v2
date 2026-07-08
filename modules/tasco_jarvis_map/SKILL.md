@@ -11,6 +11,14 @@ search engine understands Vietnamese query quirks: missing accents
 ("quan ca phe"), abbreviations ("q1" → "Quận 1", "tp hcm"), aliases and
 mixed EN/VN ("ben thanh market").
 
+Retrieval is GeoRAG-backed: PostgreSQL + PostGIS + pg_trgm + full-text +
+pgvector hybrid scoring (dedicated `map-db` container), with automatic
+fallback to the local JSON engine when the DB is down. City mentions
+("saigon", "sg", "tphcm", "hanoi", "hn", "danang"…) are detected via a
+gazetteer derived from the dataset at import time and applied as a HARD
+filter — results never leak from another city. Never answer map facts
+from memory — always call the tools below.
+
 ## When to use
 
 - The user asks to find a place, address, or category of places in Ho Chi
@@ -18,6 +26,10 @@ mixed EN/VN ("ben thanh market").
   hospitals, banks, cinemas, supermarkets, EV chargers…).
 - The user asks what is near a location or wants places within a radius.
 - The user wants an address located (geocoded) on the map.
+- The user gives coordinates and asks what place/address is there
+  (reverse geocoding).
+- The user wants a data-quality audit of the POI dataset (duplicate
+  detection) or asks WHY a search returned/ranked a specific place.
 
 ## How to use
 
@@ -36,6 +48,15 @@ python "D:/[Project]_atriaV2/modules/tasco_jarvis_map/scripts/search.py" geocode
 
 # Category keys + counts
 python "D:/[Project]_atriaV2/modules/tasco_jarvis_map/scripts/search.py" categories
+
+# What is at these coordinates? (nearest known place/address)
+python "D:/[Project]_atriaV2/modules/tasco_jarvis_map/scripts/search.py" reverse_geocode --lat 10.7726 --lng 106.6981
+
+# Audit the dataset for duplicate POIs
+python "D:/[Project]_atriaV2/modules/tasco_jarvis_map/scripts/search.py" find_duplicates --threshold 0.75
+
+# Explain why a POI matches (per-signal score breakdown)
+python "D:/[Project]_atriaV2/modules/tasco_jarvis_map/scripts/search.py" explain_match "cafe q1" --poi-id POI013
 ```
 
 Full flag reference and JSON shapes: sub-skill `tasco_jarvis_map:search`.

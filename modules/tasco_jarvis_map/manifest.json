@@ -14,7 +14,10 @@
       "near":    { "running": "Finding nearby…",    "done": "Nearby places found" },
       "geocode": { "running": "Locating address…",  "done": "Address located" },
       "pois":    { "running": "Loading map data…",  "done": "Map data loaded" },
-      "go":      { "running": "Calculating route…", "done": "Route ready" }
+      "go":      { "running": "Calculating route…", "done": "Route ready" },
+      "reverse_geocode": { "running": "Locating coordinates…", "done": "Location identified" },
+      "find_duplicates": { "running": "Auditing for duplicates…", "done": "Duplicate audit done" },
+      "explain_match":   { "running": "Explaining match…", "done": "Match explained" }
     }
   }
 }
