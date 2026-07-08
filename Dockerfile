@@ -26,6 +26,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr tesseract-ocr-vie \
     && rm -rf /var/lib/apt/lists/*
 
+# ── Layer 3c: LibreOffice (headless) so ai_workspace can render Word/PowerPoint/
+# Excel documents faithfully by converting them to PDF on demand. ─────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice-writer libreoffice-impress libreoffice-calc \
+    && rm -rf /var/lib/apt/lists/*
+
 # ── Layer 4: copy source and install the package itself ───────────────────────
 COPY . .
 RUN uv sync --frozen --no-dev

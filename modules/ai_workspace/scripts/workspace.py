@@ -329,6 +329,28 @@ def cmd_stats(user_id: str) -> int:
     return 0
 
 
+def _fill_text_preview(payload: dict, doc: dict) -> None:
+    """Populate ``payload`` with an extracted-text preview (fallback path)."""
+    mime = doc["mime_type"] or ""
+    name = doc["original_filename"] or ""
+    payload["render"] = "text"
+    sidecar = storage.sidecar_path(doc["file_path"])
+    if storage.exists(sidecar):
+        payload["content"] = storage.read_text(sidecar)
+    elif storage.is_text(mime, name):
+        payload["content"] = storage.read_text(doc["file_path"])
+    else:
+        import extract
+
+        try:
+            text = extract.extract_text(storage.abs_path(doc["file_path"]), name)
+        except Exception:  # noqa: BLE001
+            text = ""
+        payload["content"] = text
+        if not text:
+            payload["note"] = "Không xem trước được nội dung (tệp nhị phân hoặc cần OCR)."
+
+
 def cmd_read_document(user_id: str, doc_id: str) -> int:
     user = _require_user(user_id)
     doc = repo.get_document(doc_id)
@@ -353,33 +375,36 @@ def cmd_read_document(user_id: str, doc_id: str) -> int:
         "classification": doc["classification"], "department": doc["department"],
         "mime_type": mime, "original_filename": name, "size_bytes": doc["size_bytes"],
     }
+    import base64
+    import convert
+
     is_pdf = mime == "application/pdf" or name.lower().endswith(".pdf")
     is_img = mime.startswith("image/") or name.lower().endswith(
         (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp")
     )
-    render_limit = 8 * 1024 * 1024  # inline-render cap; larger files show text only
-    if (is_pdf or is_img) and doc["size_bytes"] <= render_limit and storage.exists(doc["file_path"]):
-        import base64
+    render_limit = 12 * 1024 * 1024  # inline-render cap; larger files show text only
+    exists = storage.exists(doc["file_path"])
 
+    if (is_pdf or is_img) and doc["size_bytes"] <= render_limit and exists:
         payload["render"] = "pdf" if is_pdf else "image"
         payload["file_b64"] = base64.b64encode(storage.read_bytes(doc["file_path"])).decode()
-    else:
-        payload["render"] = "text"
-        sidecar = storage.sidecar_path(doc["file_path"])
-        if storage.exists(sidecar):
-            payload["content"] = storage.read_text(sidecar)
-        elif storage.is_text(mime, name):
-            payload["content"] = storage.read_text(doc["file_path"])
+    elif convert.is_office(name) and exists:
+        # Render Word/PowerPoint/Excel faithfully by converting to PDF on demand,
+        # caching the result next to the source for instant repeat reads.
+        pdf_rel = storage.pdf_cache_path(doc["file_path"])
+        pdf = storage.read_bytes(pdf_rel) if storage.exists(pdf_rel) else None
+        if pdf is None:
+            pdf = convert.to_pdf(storage.abs_path(doc["file_path"]))
+            if pdf:
+                storage.write_pdf_cache(doc["file_path"], pdf)
+        if pdf and len(pdf) <= render_limit:
+            payload["render"] = "pdf"
+            payload["converted"] = True
+            payload["file_b64"] = base64.b64encode(pdf).decode()
         else:
-            import extract
-
-            try:
-                text = extract.extract_text(storage.abs_path(doc["file_path"]), name)
-            except Exception:  # noqa: BLE001
-                text = ""
-            payload["content"] = text
-            if not text:
-                payload["note"] = "Không xem trước được nội dung (tệp nhị phân hoặc cần OCR)."
+            _fill_text_preview(payload, doc)
+    else:
+        _fill_text_preview(payload, doc)
     _print(payload)
     return 0
 
