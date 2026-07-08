@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Atria — Agentic AI Coding Assistant">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Atria — Your AI Co-Worker">
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#2D44E0"/>
@@ -18,7 +18,7 @@
   </g>
   <!-- Wordmark -->
   <text x="150" y="470" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="112" font-weight="700" fill="#F4F6FF" letter-spacing="-3">Atria</text>
-  <text x="156" y="540" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B9C0E0">Agentic AI coding assistant</text>
+  <text x="156" y="540" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B9C0E0">Your AI co-worker</text>
   <!-- Accent bar -->
   <rect x="156" y="566" width="300" height="6" rx="3" fill="url(#brand)"/>
 </svg>

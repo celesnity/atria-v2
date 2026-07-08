@@ -84,13 +84,13 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
     >
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-hairline-soft/60">
-        <div className="flex items-center gap-1 flex-1 bg-ink/5 rounded px-1.5 py-0.5">
-          <Search className="w-3 h-3 text-ink/35 flex-shrink-0" />
+        <div className="flex items-center gap-1.5 flex-1 rounded-md border border-hairline-soft/40 bg-surface-soft/50 px-2 py-1 transition-colors focus-within:border-accent-cobalt/60 focus-within:bg-surface-soft/70">
+          <Search className="w-3 h-3 text-text-muted flex-shrink-0" />
           <input
             value={search}
             onChange={(e) => setSearch(scope, e.target.value)}
             placeholder="Search files…"
-            className="flex-1 bg-transparent text-[12px] font-mono text-ink placeholder:text-ink/35 outline-none min-w-0"
+            className="flex-1 bg-transparent text-[12px] font-mono text-ink placeholder:text-text-muted outline-none min-w-0"
           />
         </div>
         {canMutate && (
@@ -118,7 +118,7 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
             onClick={() => void setShowHidden(scope, !showHidden)}
             title={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
             aria-label={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
-            className={`p-1 rounded transition-colors cursor-pointer ${showHidden ? 'text-sky-400/80 hover:text-sky-400' : 'text-ink/35 hover:text-ink/65'}`}
+            className={`p-1 rounded transition-colors cursor-pointer ${showHidden ? 'text-accent-cobalt hover:text-accent-cobalt/80' : 'text-ink/35 hover:text-ink/65'}`}
           >
             {showHidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
           </button>

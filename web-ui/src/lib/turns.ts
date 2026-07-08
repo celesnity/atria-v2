@@ -74,12 +74,8 @@ export function serializeMessageForClipboard(m: Message): string {
     }
     case 'image_message':
       return m.image_caption || '[image]';
-    case 'data_message':
-      return `[data: ${m.data_title ?? m.data_message_id ?? ''}]`;
     case 'deep_research':
       return `[deep research: ${m.dr_topic ?? ''}]`;
-    case 'deep_analyze':
-      return `[deep analyze: ${m.da_job_id ?? ''}]`;
     case 'custom_block':
       return `[block: ${m.block_title ?? m.block_id ?? ''}]`;
     case 'system':

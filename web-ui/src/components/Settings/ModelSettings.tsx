@@ -12,7 +12,7 @@ export function ModelSettings() {
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Environment Configuration Banner (DESIGN.md: lime block) */}
-      <div className="rounded-lg p-6 bg-block-lime border border-lime-200">
+      <div className="rounded-md p-6 bg-block-lime border border-lime-200">
         <div className="flex gap-4">
           <div className="flex-shrink-0">
             <CircleCheck className="w-6 h-6 text-ink" />
@@ -40,7 +40,7 @@ export function ModelSettings() {
 
             <button
               onClick={() => window.open('/.env.example', '_blank')}
-              className="text-xs font-medium px-4 py-2 bg-surface-soft text-ink hover:bg-surface-soft rounded-full transition-colors active:scale-[0.98] whitespace-nowrap"
+              className="text-xs font-medium px-4 py-2 bg-surface-soft text-ink hover:bg-surface-soft rounded-md transition-colors active:scale-[0.98] whitespace-nowrap"
             >
               View .env.example
             </button>
@@ -49,7 +49,7 @@ export function ModelSettings() {
       </div>
 
       {/* Additional Info */}
-      <div className="border border-hairline rounded-lg p-4 bg-canvas">
+      <div className="border border-hairline rounded-md p-4 bg-canvas">
         <h4 className="text-sm font-semibold text-ink mb-3">Why in .env?</h4>
         <ul className="text-xs text-ink/70 space-y-2">
           <li className="flex gap-2">
@@ -68,7 +68,7 @@ export function ModelSettings() {
       </div>
 
       {/* Persona Settings Link */}
-      <div className="border border-hairline rounded-lg p-4 bg-canvas">
+      <div className="border border-hairline rounded-md p-4 bg-canvas">
         <p className="text-sm text-ink/70 mb-3">
           To customize agent behavior, system instructions, and communication style, see the <strong>Personas</strong> tab.
         </p>

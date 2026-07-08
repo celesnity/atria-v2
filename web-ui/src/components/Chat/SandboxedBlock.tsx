@@ -151,7 +151,7 @@ export const SandboxedBlock = memo(function SandboxedBlock({
 
   return (
     <div className="max-w-4.5xl mx-auto px-4 md:px-8 py-3">
-      <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden">
         {title ? (
           <div className="px-3 py-2 border-b border-border bg-muted/40 text-sm font-medium text-foreground">
             {title}

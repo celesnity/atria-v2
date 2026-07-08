@@ -138,7 +138,7 @@ export function ChannelSettings() {
       )}
 
       {/* Add a Telegram connection */}
-      <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+      <div className="rounded-md border border-gray-200 p-4 space-y-3">
         <p className="text-sm font-medium text-gray-900">Add Telegram bot</p>
         <input
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
@@ -169,7 +169,7 @@ export function ChannelSettings() {
       ) : (
         <div className="space-y-4">
           {connections.map((c) => (
-            <div key={c.id} className="rounded-lg border border-gray-200 p-4 space-y-3">
+            <div key={c.id} className="rounded-md border border-gray-200 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">

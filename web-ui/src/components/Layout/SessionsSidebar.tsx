@@ -314,7 +314,7 @@ export function SessionsSidebar() {
                         setExpandedWorkspaces(prev => new Set([...prev, workspace.path]));
                       }, 100);
                     }}
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    className={`w-10 h-10 rounded-md flex items-center justify-center ${
                       hasActiveSession
                         ? 'bg-amber-100 border-2 border-amber-400 shadow-sm'
                         : 'bg-surface-soft hover:bg-surface-soft border border-hairline-soft hover:shadow-md'
@@ -323,11 +323,11 @@ export function SessionsSidebar() {
                     <Folder className={`w-5 h-5 ${hasActiveSession ? 'text-amber-600' : 'text-text-muted'}`} />
                   </button>
                   {hasRunningSession && (
-                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-[1.5px] border-amber-200 border-t-amber-500 animate-spin" />
+                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-md border-[1.5px] border-amber-200 border-t-amber-500 animate-spin" />
                   )}
 
                   {/* Tooltip */}
-                  <div data-surface="dark" className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap opacity-60 group-hover:opacity-100 pointer-events-none z-50 shadow-soft">
+                  <div data-surface="dark" className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-xs rounded-md px-3 py-2 whitespace-nowrap opacity-60 group-hover:opacity-100 pointer-events-none z-50 shadow-soft">
                     <div className="font-medium text-sm mb-1">{projectName}</div>
                     <div className="text-gray-300 text-xs">{workspace.sessions.length} session{workspace.sessions.length !== 1 ? 's' : ''}</div>
                     {hasActiveSession && <div className="text-amber-300 text-xs mt-1">Active</div>}
@@ -345,7 +345,7 @@ export function SessionsSidebar() {
                 setTimeout(() => setIsNewSessionOpen(true), 100);
               }}
               disabled={currentSessionIsEmpty}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md transition-all ${
+              className={`w-10 h-10 rounded-md flex items-center justify-center text-white shadow-md transition-all ${
                 currentSessionIsEmpty
                   ? 'bg-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-br from-accent-cobalt to-accent-violet hover:from-accent-cobalt hover:to-accent-violet hover:shadow-lg'
@@ -375,7 +375,7 @@ export function SessionsSidebar() {
               onClick={currentSessionIsEmpty ? undefined : handleNewWorkspace}
               disabled={currentSessionIsEmpty}
               title={currentSessionIsEmpty ? 'Send a message before starting a new session' : undefined}
-              className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 px-3 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${
                 currentSessionIsEmpty
                   ? 'bg-gray-200 text-text-muted cursor-not-allowed'
                   : 'bg-gradient-to-r from-accent-cobalt to-accent-violet hover:from-accent-cobalt hover:to-accent-violet text-white shadow-sm hover:shadow-md'
@@ -441,7 +441,7 @@ export function SessionsSidebar() {
                               <span className="text-text-muted truncate" title={workspace.path}>
                                 {formatDate(workspace.mostRecent.updated_at)}
                               </span>
-                              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs flex-shrink-0 ${
+                              <span className={`ml-2 px-1.5 py-0.5 rounded-md text-xs flex-shrink-0 ${
                                 hasActiveSession
                                   ? 'bg-amber-100 text-amber-700 font-medium'
                                   : 'bg-gray-200 text-text-secondary'
@@ -479,7 +479,7 @@ export function SessionsSidebar() {
                             onClick={currentSessionIsEmpty ? undefined : (e) => handleNewSessionInWorkspace(workspace.path, e)}
                             disabled={currentSessionIsEmpty}
                             title={currentSessionIsEmpty ? 'Send a message before starting a new session' : undefined}
-                            className={`w-full px-4 py-3 rounded-lg text-left border-2 border-dashed flex items-center gap-2 ${
+                            className={`w-full px-4 py-3 rounded-md text-left border-2 border-dashed flex items-center gap-2 ${
                               currentSessionIsEmpty
                                 ? 'bg-surface-soft border-hairline-soft text-text-muted cursor-not-allowed'
                                 : 'cursor-pointer bg-amber-50/50 hover:bg-amber-50 border-amber-300 hover:border-amber-400 text-amber-700'
@@ -501,7 +501,7 @@ export function SessionsSidebar() {
                               <div key={session.id} className="relative group">
                                 <button
                                   onClick={(e) => handleSessionClick(session, e)}
-                                  className={`w-full px-4 py-3 pr-10 rounded-lg text-left cursor-pointer ${
+                                  className={`w-full px-4 py-3 pr-10 rounded-md text-left cursor-pointer ${
                                     isActiveSession
                                       ? 'bg-amber-50 border-l-4 animate-border-breathe'
                                       : 'bg-canvas border border-hairline-soft hover:border-amber-300 hover:bg-amber-50/30 hover:scale-[1.01] hover:shadow-sm transition-all duration-200'
@@ -509,21 +509,18 @@ export function SessionsSidebar() {
                                 >
                                   <div className="flex items-center gap-1.5">
                                     {isRunning && (
-                                      <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-200 border-t-amber-500 animate-spin flex-shrink-0" />
+                                      <div className="w-3.5 h-3.5 rounded-md border-2 border-amber-200 border-t-amber-500 animate-spin flex-shrink-0" />
                                     )}
                                     {needsAttention && !isRunning && (
-                                      <div className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
+                                      <div className="w-4 h-4 rounded-md bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
                                     )}
                                     <div className={`text-xs font-medium truncate ${
                                       isActiveSession ? 'text-amber-900' : 'text-ink'
                                     }`} title={session.title || session.id}>
                                       {sessionLabel}
                                     </div>
-                                    {needsAttention && isRunning && (
-                                      <div className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
-                                    )}
                                     {session.has_session_model && (
-                                      <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" title="Custom model" />
+                                      <span className="text-[9px] font-medium text-purple-400 flex-shrink-0" title="Custom model">model</span>
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between text-xs mt-1">
@@ -635,13 +632,13 @@ export function SessionsSidebar() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteSessionId(null)}
-                className="px-4 py-2 border border-hairline-soft bg-canvas rounded-lg text-sm font-medium text-text-secondary hover:bg-surface-soft transition-colors"
+                className="px-4 py-2 border border-hairline-soft bg-canvas rounded-md text-sm font-medium text-text-secondary hover:bg-surface-soft transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteSession}
-                className="px-4 py-2 bg-semantic-danger hover:bg-semantic-danger/90 text-white rounded-lg text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-semantic-danger hover:bg-semantic-danger/90 text-white rounded-md text-sm font-medium transition-colors"
               >
                 Delete
               </button>

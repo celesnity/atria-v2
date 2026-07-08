@@ -83,7 +83,7 @@ class BackgroundTaskManager:
         """Get output directory for background task output files.
 
         Returns:
-            Path like /tmp/atria/-Users-nghibui-codes-test-opencli/tasks/
+            Path like /tmp/atria/-Users-anlnm-codes-test-opencli/tasks/
         """
         # Convert path to safe directory name (replace path separators with -)
         cwd_str = str(self.working_dir.resolve())

@@ -1,12 +1,20 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
+import { ArrowRight } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Eyebrow } from '../components/ui/Eyebrow';
 import { AnimatedHeadline } from '../components/ui/AnimatedHeadline';
+import { CosmicField } from '../components/ui/CosmicField';
 import { MotionRise, transitions } from '../components/ui/motion';
 
 type AuthMode = 'keycloak' | 'none' | 'loading';
+
+// Capability spine for the trust marquee — plain nouns, no marketing cliches.
+const CAPABILITIES = [
+  'Canvas', 'Console', 'Collaborator', 'Plan mode', 'MCP servers',
+  'Artifacts', 'Deep research', 'Personas', 'Dispatch', 'Modules',
+];
 
 export function LoginPage() {
   const [mode, setMode] = useState<AuthMode>('loading');
@@ -44,164 +52,202 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-canvas grid grid-cols-1 md:grid-cols-2">
-      {/* Left: cosmic hero wash — the nebula always glows here, both themes. */}
-      <aside className="relative isolate bg-hero-wash text-white flex flex-col justify-between p-10 md:p-16 lg:p-20 md:min-h-screen overflow-hidden">
-        {/* Signature nebula glow — a soft off-canvas bloom. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 -left-24 w-[28rem] h-[28rem] rounded-full bg-gradient-brand opacity-40 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute bottom-[-10rem] right-[-6rem] w-[24rem] h-[24rem] rounded-full bg-gradient-brand opacity-25 blur-3xl"
-        />
+    <main
+      data-surface="dark"
+      className="surface-dark relative min-h-[100dvh] w-full overflow-hidden bg-canvas text-white"
+    >
+      {/* Cinematic cosmic backdrop — nebula wash + parallax starfield. */}
+      <CosmicField wash count={60} />
 
-        <MotionRise>
-          <Eyebrow className="!text-white/70">Atria · Build mode</Eyebrow>
-        </MotionRise>
+      {/* Oversized editorial watermark — bleeds off the bottom-left, barely there. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -bottom-24 -left-6 select-none font-sans leading-none text-white/[0.04]"
+        style={{ fontSize: 'clamp(180px, 26vw, 420px)', fontWeight: 340, letterSpacing: '-0.05em' }}
+      >
+        Atria
+      </span>
 
-        <div className="relative max-w-xl">
+      {/* Top brand row. */}
+      <div className="relative z-10 flex items-center justify-between px-8 md:px-14 lg:px-20 pt-8">
+        <div className="flex items-baseline gap-3">
+          <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">Atria</span>
+          <span className="eyebrow-mono text-white/40 hidden sm:inline">Co-worker mode</span>
+        </div>
+        <Eyebrow className="!text-white/40">v1 · 2026</Eyebrow>
+      </div>
+
+      {/* Hero grid — editorial copy left, floating form card right. Asymmetric. */}
+      <div className="relative z-10 mx-auto grid min-h-[calc(100dvh-13rem)] w-full max-w-content grid-cols-1 items-center gap-16 px-8 md:px-14 lg:grid-cols-[1.15fr_0.85fr] lg:px-20">
+        {/* ── Attention: the headline ── */}
+        <div className="max-w-2xl">
+          <MotionRise>
+            <Eyebrow className="!text-white/60">One editorial workspace</Eyebrow>
+          </MotionRise>
+
           <AnimatedHeadline
             text={'Where the work\ntakes shape.'}
-            className="text-[40px] md:text-display-lg lg:text-display-xl font-sans font-[600] leading-[1.02] tracking-[-0.03em] text-white"
-            step={18}
-            startDelay={120}
+            className="mt-6 max-w-[16ch] text-[48px] md:text-display-lg lg:text-display-xl font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-white"
           />
+
           <motion.p
             initial={reduce ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ ...transitions.editorial, delay: 0.65 }}
-            className="mt-8 text-body-lg max-w-md text-white/70"
+            transition={{ ...transitions.editorial, delay: 0.5 }}
+            className="mt-8 max-w-md text-body-lg leading-[1.6] text-white/65"
           >
-            A canvas, a console, and a collaborator — one editorial workspace for building software with Atria.
+            A canvas, a console, and a collaborator. Reason across your work,
+            dispatch tasks in parallel, and keep every artifact within reach.
           </motion.p>
+
+          {/* Interest: quiet proof row — real capabilities, no fake stats. */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...transitions.editorial, delay: 0.68 }}
+            className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4"
+          >
+            {[
+              ['Plan · Normal', 'Two reasoning modes'],
+              ['Parallel', 'Dispatch subagents'],
+              ['MCP', 'Bring your own tools'],
+            ].map(([big, small]) => (
+              <div key={big} className="min-w-[7rem]">
+                <div className="text-[22px] font-[600] tracking-[-0.02em] text-white">{big}</div>
+                <div className="mt-1 text-body-sm text-white/45">{small}</div>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
-        <MotionRise delay={0.9}>
-          <Eyebrow className="!text-white/45">v1 · 2026</Eyebrow>
-        </MotionRise>
-      </aside>
-
-      {/* Right: white form */}
-      <main className="flex items-center justify-center p-10 md:p-16">
+        {/* ── Action: the glass auth card ── */}
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 16 }}
+          initial={reduce ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...transitions.editorial, delay: 0.25 }}
-          className="w-full max-w-sm"
+          transition={{ ...transitions.editorial, delay: 0.3 }}
+          className="relative w-full"
         >
-          <Eyebrow className="text-text-secondary">Sign in</Eyebrow>
+          <div className="rounded-xl border border-white/12 bg-white/[0.04] p-8 backdrop-blur-xl shadow-cosmos md:p-10">
+            <Eyebrow className="!text-white/55">Sign in</Eyebrow>
 
-          {mode === 'loading' && (
-            <p className="mt-6 text-body-sm text-text-muted">Loading…</p>
-          )}
+            {mode === 'loading' && (
+              <div className="mt-8 space-y-3">
+                <div className="skeleton-shimmer h-6 w-2/3 rounded-md opacity-30" />
+                <div className="skeleton-shimmer h-4 w-full rounded-md opacity-20" />
+                <div className="skeleton-shimmer mt-6 h-12 w-full rounded-pill opacity-20" />
+              </div>
+            )}
 
-          {mode === 'keycloak' && (
-            <>
-              <h2 className="mt-4 text-headline tracking-[-0.26px] font-[600] text-ink">
-                Continue with SSO
-              </h2>
-              <p className="mt-3 text-body-sm text-text-secondary">
-                Authenticate through your organization&rsquo;s identity provider.
-              </p>
+            {mode === 'keycloak' && (
+              <>
+                <h2 className="mt-4 text-headline font-[600] tracking-[-0.02em] text-white">
+                  Continue with SSO
+                </h2>
+                <p className="mt-3 text-body-sm leading-[1.6] text-white/55">
+                  Authenticate through your organization&rsquo;s identity provider,
+                  then you&rsquo;ll land right back here.
+                </p>
 
-              <Eyebrow className="mt-10 block text-text-muted">
-                Identity provider · Keycloak
-              </Eyebrow>
-
-              {error && (
-                <p className="mt-3 text-body-sm text-semantic-danger font-[540]">{error}</p>
-              )}
-
-              <motion.button
-                type="button"
-                onClick={handleSso}
-                disabled={loading}
-                whileHover={reduce || loading ? undefined : { opacity: 0.92 }}
-                whileTap={reduce || loading ? undefined : { scale: 0.98 }}
-                transition={transitions.tactile}
-                style={{ minWidth: '240px' }}
-                className="mt-4 inline-flex items-center justify-center gap-2 rounded-pill bg-gradient-brand text-white shadow-glow-nebula text-btn px-6 py-3 whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <svg
-                      className="h-4 w-4 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeDasharray="14 42"
-                        opacity="0.9"
-                      />
-                    </svg>
-                    <span>Redirecting</span>
-                  </>
-                ) : (
-                  <span>Continue with Keycloak</span>
-                )}
-              </motion.button>
-
-              <p className="mt-12 text-body-sm text-text-muted">
-                You will be redirected to the identity provider, then returned here.
-              </p>
-            </>
-          )}
-
-          {mode === 'none' && (
-            <>
-              <h2 className="mt-4 text-headline tracking-[-0.26px] font-[600] text-ink">
-                Continue with email
-              </h2>
-              <p className="mt-3 text-body-sm text-text-secondary">
-                We&rsquo;ll send a magic link to your inbox.
-              </p>
-
-              <form onSubmit={handleSubmit} className="mt-10">
-                <label className="block">
-                  <Eyebrow className="mb-3 block text-text-secondary">Email address</Eyebrow>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    autoFocus
-                    className="w-full bg-surface-soft text-ink placeholder:text-text-muted rounded-sm border border-hairline-soft px-4 py-3 text-body-sm outline-none transition-shadow focus:border-accent-cobalt focus:shadow-focus-ring"
-                  />
-                </label>
+                <Eyebrow className="mt-10 block !text-white/40">
+                  Identity provider · Keycloak
+                </Eyebrow>
 
                 {error && (
-                  <p className="mt-3 text-body-sm text-semantic-danger font-[540]">{error}</p>
+                  <p className="mt-3 text-body-sm font-[540] text-block-coral">{error}</p>
                 )}
 
                 <motion.button
-                  type="submit"
-                  disabled={loading || !email}
-                  whileHover={reduce || loading || !email ? undefined : { scale: 1.01 }}
-                  whileTap={reduce || loading || !email ? undefined : { scale: 0.98 }}
+                  type="button"
+                  onClick={handleSso}
+                  disabled={loading}
+                  whileHover={reduce || loading ? undefined : { scale: 1.015 }}
+                  whileTap={reduce || loading ? undefined : { scale: 0.98 }}
                   transition={transitions.tactile}
-                  className="mt-8 w-full rounded-pill bg-gradient-brand text-white shadow-glow-nebula text-btn px-6 py-3 active:scale-[0.98] whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="group mt-5 inline-flex w-full items-center justify-center gap-2 rounded-pill bg-gradient-brand px-6 py-[15px] text-btn text-white shadow-glow-nebula disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? 'Signing in…' : 'Continue'}
+                  {loading ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
+                      <span>Redirecting</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Continue with Keycloak</span>
+                      <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" strokeWidth={2} />
+                    </>
+                  )}
                 </motion.button>
-              </form>
+              </>
+            )}
 
-              <p className="mt-12 text-body-sm text-text-muted">
-                New here? An account will be created automatically.
-              </p>
-            </>
-          )}
+            {mode === 'none' && (
+              <>
+                <h2 className="mt-4 text-headline font-[600] tracking-[-0.02em] text-white">
+                  Continue with email
+                </h2>
+                <p className="mt-3 text-body-sm leading-[1.6] text-white/55">
+                  Enter your address and we&rsquo;ll take you straight in. New
+                  accounts are created automatically.
+                </p>
+
+                <form onSubmit={handleSubmit} className="mt-9">
+                  <label className="block">
+                    <Eyebrow className="mb-3 block !text-white/50">Email address</Eyebrow>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@studio.dev"
+                      required
+                      autoFocus
+                      className="w-full rounded-sm border border-white/15 bg-white/[0.06] px-4 py-3 text-body-sm text-white placeholder:text-white/35 outline-none transition-shadow focus:border-accent-magenta focus:shadow-[0_0_0_3px_hsl(var(--accent-magenta)/0.35)]"
+                    />
+                  </label>
+
+                  {error && (
+                    <p className="mt-3 text-body-sm font-[540] text-block-coral">{error}</p>
+                  )}
+
+                  <motion.button
+                    type="submit"
+                    disabled={loading || !email}
+                    whileHover={reduce || loading || !email ? undefined : { scale: 1.015 }}
+                    whileTap={reduce || loading || !email ? undefined : { scale: 0.98 }}
+                    transition={transitions.tactile}
+                    className="group mt-8 inline-flex w-full items-center justify-center gap-2 rounded-pill bg-gradient-brand px-6 py-[15px] text-btn text-white shadow-glow-nebula disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
+                        <span>Signing in</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Continue</span>
+                        <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" strokeWidth={2} />
+                      </>
+                    )}
+                  </motion.button>
+                </form>
+              </>
+            )}
+          </div>
         </motion.div>
-      </main>
-    </div>
+      </div>
+
+      {/* Desire: continuous capability marquee — the workspace at a glance. */}
+      <div className="relative z-10 mt-4 border-t border-white/10 py-6">
+        <div className="flex overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
+          <div className="flex shrink-0 animate-marquee items-center gap-10 pr-10">
+            {[...CAPABILITIES, ...CAPABILITIES].map((c, i) => (
+              <span key={i} className="whitespace-nowrap text-body-sm font-[500] tracking-[-0.01em] text-white/35">
+                {c}
+                <span className="ml-10 text-white/15">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }

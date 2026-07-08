@@ -9,6 +9,7 @@ import {
   Pin,
   MoreHorizontal,
   RefreshCw,
+  Box,
   type LucideIcon,
 } from 'lucide-react';
 import { useArtifactsStore } from '../../stores/artifacts';
@@ -26,7 +27,7 @@ const TYPE_META: Record<string, { Icon: LucideIcon; color: string; label: string
   image:  { Icon: ImageIcon, color: 'text-pink-400',   label: 'Image'  },
   data:   { Icon: BarChart3, color: 'text-green-400',  label: 'Data'   },
   web:    { Icon: Globe,     color: 'text-orange-400', label: 'Web'    },
-  file:   { Icon: Paperclip, color: 'text-text-400',   label: 'File'   },
+  file:   { Icon: Paperclip, color: 'text-text-muted', label: 'File'   },
 };
 
 function getFilename(ref: string | null): string {
@@ -110,13 +111,16 @@ function ArtifactRow({
       onClick={openable && !renaming ? handleOpen : undefined}
       onKeyDown={onKey}
       aria-label={openable ? `Open ${name}` : undefined}
-      className={`group flex items-center gap-1.5 px-2 py-1 hover:bg-bg-200/40 rounded transition-colors ${
-        openable && !renaming ? 'cursor-pointer' : ''
+      className={`group flex items-center gap-2 rounded-md px-2 py-1.5 transition-all duration-fast hover:bg-surface-soft/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt ${
+        openable && !renaming ? 'cursor-pointer hover:translate-x-0.5' : ''
       }`}
     >
-      <TypeIcon className={`w-3.5 h-3.5 flex-shrink-0 ${meta.color}`} aria-label={meta.label} />
+      {/* Type glyph in a tinted chip — consistent alignment + a premium app feel. */}
+      <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-md border border-hairline-soft/40 bg-surface-soft/50">
+        <TypeIcon className={`h-3.5 w-3.5 ${meta.color}`} aria-label={meta.label} />
+      </span>
 
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         {renaming ? (
           <input
             ref={inputRef}
@@ -134,15 +138,18 @@ function ArtifactRow({
                 setRenaming(false);
               }
             }}
-            className="w-full bg-canvas border border-hairline-soft rounded px-1 text-[11px] text-text-200 font-mono outline-none focus:border-accent-main-100"
+            className="w-full rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[11px] text-ink outline-none focus:border-accent-cobalt focus:ring-1 focus:ring-accent-cobalt/40"
           />
         ) : (
           <>
-            <p className="text-[11px] text-text-200 font-mono truncate leading-tight" title={artifact.payload_ref ?? ''}>
+            <p
+              className="truncate font-mono text-[11px] leading-tight text-text-secondary transition-colors group-hover:text-ink"
+              title={artifact.payload_ref ?? ''}
+            >
               {name}
             </p>
             {artifact.payload_ref && (
-              <p className="text-[10px] text-text-500 font-mono truncate leading-none mt-0.5">
+              <p className="mt-0.5 truncate font-mono text-[10px] leading-none text-text-muted">
                 {artifact.payload_ref.replace(/^.*\/([^/]+\/[^/]+)$/, '$1')}
               </p>
             )}
@@ -150,19 +157,22 @@ function ArtifactRow({
         )}
       </div>
 
+      {artifact.pinned && !renaming && (
+        <Pin
+          className="h-2.5 w-2.5 flex-shrink-0 fill-current text-amber-400 opacity-70 group-hover:opacity-0"
+          aria-label="Pinned"
+        />
+      )}
+
       {!renaming && (
         <button
           onClick={openMenu}
-          className="p-0.5 rounded cursor-pointer text-text-500 hover:text-text-200 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="rounded p-0.5 text-text-muted opacity-0 transition-colors hover:bg-surface-soft hover:text-ink focus:outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-accent-cobalt group-hover:opacity-100"
           title="Actions"
           aria-label="Artifact actions"
         >
-          <MoreHorizontal className="w-3.5 h-3.5" />
+          <MoreHorizontal className="h-3.5 w-3.5" />
         </button>
-      )}
-
-      {artifact.pinned && !renaming && (
-        <Pin className="w-2.5 h-2.5 text-amber-400 flex-shrink-0 opacity-60 fill-current" />
       )}
 
       {menu && (
@@ -202,38 +212,51 @@ export function ArtifactsPanel() {
   const isLoading = loading[currentSessionId] ?? false;
 
   return (
-    <div className="border-t border-border-300/10 flex flex-col min-h-0">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5">
-        <span className="text-[11px] font-mono font-semibold text-text-400 uppercase tracking-wider">
+    <div className="flex min-h-0 flex-col border-t border-hairline-soft/25">
+      {/* Section header — eyebrow + count on the left, scan control on the right. */}
+      <div className="flex items-center gap-2 px-3 pb-2 pt-3">
+        <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-text-muted">
           Artifacts
-          {items.length > 0 && (
-            <span className="ml-1.5 text-text-500 font-normal normal-case">{items.length}</span>
-          )}
         </span>
+        {items.length > 0 && (
+          <span className="rounded-md bg-surface-soft px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+            {items.length}
+          </span>
+        )}
+        <span className="h-px flex-1 bg-hairline-soft/40" aria-hidden />
         <button
           onClick={() => scanArtifacts(currentSessionId)}
           disabled={scanning}
           title="Scan working directory"
-          className="p-0.5 rounded text-text-500 hover:text-text-200 disabled:opacity-40 transition-colors"
+          className="rounded p-1 text-text-muted transition-colors hover:bg-surface-soft hover:text-ink disabled:opacity-40 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
         >
-          <RefreshCw className={`w-3 h-3 ${scanning ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-3 w-3 ${scanning ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Content */}
-      <div className="overflow-y-auto max-h-48 pb-1">
+      <div className="max-h-48 space-y-0.5 overflow-y-auto px-2 pb-1.5">
         {isLoading && items.length === 0 && (
-          <p className="text-[11px] text-text-500 font-mono px-3 py-1">Loading…</p>
+          <p className="px-1 py-1 font-mono text-[11px] text-text-muted">Loading…</p>
         )}
         {!isLoading && items.length === 0 && (
-          <div className="px-3 py-2 text-center">
-            <p className="text-[11px] text-text-500 font-mono">No artifacts yet</p>
+          <div className="px-3 py-4 text-center">
+            <div className="relative mx-auto mb-3 grid h-11 w-11 place-items-center">
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-md bg-gradient-brand opacity-20 blur-lg"
+              />
+              <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-hairline-soft/40 bg-surface-soft/60">
+                <Box className="h-4 w-4 text-text-secondary" />
+              </span>
+            </div>
+            <p className="mb-2.5 font-mono text-[11px] text-text-muted">No artifacts yet</p>
             <button
               onClick={() => scanArtifacts(currentSessionId)}
-              className="text-[11px] text-accent-main-100 hover:text-accent-main-100/80 font-mono mt-1"
+              className="inline-flex items-center gap-1.5 rounded-md border border-hairline-soft/40 px-2.5 py-1.5 font-mono text-[11px] text-text-secondary transition-colors hover:border-accent-cobalt/40 hover:text-accent-cobalt focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
             >
-              <span className="inline-flex items-center gap-1">Scan workspace <RefreshCw className="w-3 h-3" /></span>
+              Scan workspace
+              <RefreshCw className="h-3 w-3" />
             </button>
           </div>
         )}

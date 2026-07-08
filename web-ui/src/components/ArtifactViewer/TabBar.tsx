@@ -43,9 +43,9 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
             onMouseDown={(e) => {
               if (e.button === 1) { e.preventDefault(); closeTab(convId, tab.id); }
             }}
-            className={`group inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md text-[12px] font-mono cursor-pointer transition-colors whitespace-nowrap ${
+            className={`group relative inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md rounded-b-none text-[12px] font-mono cursor-pointer transition-colors whitespace-nowrap ${
               isActive
-                ? 'bg-ink/10 text-ink border-b-2 border-b-sky-400/70 rounded-b-none'
+                ? 'bg-gradient-to-b from-accent-cobalt/12 to-transparent text-ink'
                 : 'text-ink/55 hover:bg-surface-soft hover:text-ink/80'
             }`}
             role="tab"
@@ -58,16 +58,25 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
                   : `module: ${tab.name}`
             }
           >
-            <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-sky-400/80' : 'text-ink/40'}`} />
+            {/* Active tab spine — gradient-brand underline matching the app accent. */}
+            {isActive && (
+              <span
+                aria-hidden
+                className="absolute inset-x-0 -bottom-px h-0.5 rounded-md bg-gradient-brand"
+              />
+            )}
+            <Icon className={`w-3 h-3 flex-shrink-0 ${isActive ? 'text-accent-cobalt' : 'text-ink/40'}`} />
             <span className="truncate max-w-[140px]">{tab.name}</span>
             {isDirty && (
               <span
                 aria-label="Unsaved changes"
                 title="Unsaved changes"
-                className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                  isActive ? 'bg-sky-400/80' : 'bg-ink/50'
+                className={`flex-shrink-0 text-[13px] leading-none ${
+                  isActive ? 'text-accent-cobalt' : 'text-ink/50'
                 }`}
-              />
+              >
+                *
+              </span>
             )}
             <button
               onClick={(e) => { e.stopPropagation(); closeTab(convId, tab.id); }}

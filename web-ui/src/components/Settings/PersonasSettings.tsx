@@ -69,7 +69,7 @@ export function PersonasSettings() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-2 text-ink/50">
-          <div className="w-4 h-4 border-2 border-ink/20 border-t-ink rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-ink/20 border-t-ink rounded-md animate-spin" />
           <span className="text-sm">Loading personas...</span>
         </div>
       </div>
@@ -85,14 +85,14 @@ export function PersonasSettings() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-semantic-danger text-semantic-danger px-4 py-3 rounded-lg text-sm">
+        <div className="bg-red-50 border border-semantic-danger text-semantic-danger px-4 py-3 rounded-md text-sm">
           {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Left: Personas List */}
-        <div className="lg:col-span-1 border border-hairline rounded-lg bg-canvas flex flex-col">
+        <div className="lg:col-span-1 border border-hairline rounded-md bg-canvas flex flex-col">
           <div className="bg-surface-soft px-4 py-3 border-b border-hairline flex items-center justify-between rounded-t-lg">
             <h3 className="font-medium text-ink text-sm">All Personas</h3>
             <button
@@ -100,7 +100,7 @@ export function PersonasSettings() {
                 setSelectedPersona(null);
                 setIsEditing(true);
               }}
-              className="px-3 py-1.5 bg-ink text-inverse-ink text-xs rounded-full hover:bg-ink/90 font-medium transition-colors active:scale-[0.98] whitespace-nowrap"
+              className="px-3 py-1.5 bg-ink text-inverse-ink text-xs rounded-md hover:bg-ink/90 font-medium transition-colors active:scale-[0.98] whitespace-nowrap"
             >
               + New
             </button>
@@ -136,7 +136,7 @@ export function PersonasSettings() {
 
         {/* Right: Editor or View */}
         {(selectedPersona || isEditing) && (
-          <div className="lg:col-span-2 border border-hairline rounded-lg bg-canvas flex flex-col">
+          <div className="lg:col-span-2 border border-hairline rounded-md bg-canvas flex flex-col">
             <div className="bg-surface-soft px-4 py-3 border-b border-hairline flex items-center justify-between rounded-t-lg">
               <h3 className="font-medium text-ink text-sm inline-flex items-center gap-1.5">
                 {isEditing ? (
@@ -148,7 +148,7 @@ export function PersonasSettings() {
               {!isEditing && selectedPersona && (
                 <button
                   onClick={() => handleDeletePersona(selectedPersona.name)}
-                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-full hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
+                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-md hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
                 >
                   Delete
                 </button>
@@ -170,7 +170,7 @@ export function PersonasSettings() {
                   </div>
                   <div>
                     <h4 className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-3">System Prompt</h4>
-                    <div className="bg-surface-soft border border-hairline rounded-lg p-4 overflow-auto max-h-96">
+                    <div className="bg-surface-soft border border-hairline rounded-md p-4 overflow-auto max-h-96">
                       <pre className="text-xs text-ink whitespace-pre-wrap font-mono leading-relaxed">
                         {selectedPersona.system_prompt}
                       </pre>
@@ -178,7 +178,7 @@ export function PersonasSettings() {
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="w-full px-4 py-2 bg-ink text-inverse-ink rounded-full hover:bg-ink/90 font-medium text-sm transition-colors active:scale-[0.98] whitespace-nowrap"
+                    className="w-full px-4 py-2 bg-ink text-inverse-ink rounded-md hover:bg-ink/90 font-medium text-sm transition-colors active:scale-[0.98] whitespace-nowrap"
                   >
                     Edit Persona
                   </button>

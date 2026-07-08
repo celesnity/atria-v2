@@ -52,7 +52,6 @@ class WSMessageType(str, Enum):
     THINKING_TOKEN = "thinking"
     THINKING_DONE = "thinking_done"
     IMAGE_MESSAGE = "image_message"
-    DATA_MESSAGE = "data_message"
     CUSTOM_BLOCK = "custom_block"
     CUSTOM_BLOCK_UPDATE = "custom_block_update"
     CUSTOM_BLOCK_REMOVE = "custom_block_remove"

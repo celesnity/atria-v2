@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo, DataColumn, ChartSuggestion } from '../types';
+import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
 import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
 import { apiClient } from '../api/client';
@@ -66,33 +66,6 @@ function expandToolCalls(
       timestamp,
       depth: depth > 0 ? depth : undefined,
     });
-    // Reconstruct the chart bubble from persisted send_data tool calls so
-    // it survives session reload (the live WS data_message event isn't
-    // replayed from DB).
-    if (
-      (tc.name === 'send_table' || tc.name === 'send_data' || tc.name === 'send_editable_table') &&
-      !tc.error &&
-      depth === 0
-    ) {
-      const payload = extractDataPayload(tc.result);
-      if (payload) {
-        messages.push({
-          role: 'data_message',
-          content: payload.title || '',
-          // Key on the stable chart_id (matches the live event) so persisted
-          // overrides restore; fall back to the tool-call id for old sessions.
-          data_message_id: (payload.chart_id as string | undefined) || `data-${tc.id}`,
-          data_title: payload.title,
-          data_columns: payload.columns as DataColumn[] | undefined,
-          data_rows: payload.rows as Record<string, any>[] | undefined,
-          data_suggestions: payload.suggestions as ChartSuggestion[] | undefined,
-          data_warning: payload.warning as string | undefined,
-          data_editable: payload.editable as boolean | undefined,
-          data_source: payload.source as { module: string; file: string } | undefined,
-          timestamp,
-        });
-      }
-    }
     // Recurse into nested tool calls
     if (tc.nested_tool_calls && tc.nested_tool_calls.length > 0) {
       messages.push(...expandToolCalls(tc.nested_tool_calls, timestamp, depth + 1));
@@ -101,80 +74,10 @@ function expandToolCalls(
   return messages;
 }
 
-function extractDataPayload(result: unknown): {
-  chart_id?: unknown;
-  title?: string;
-  columns?: unknown;
-  rows?: unknown;
-  suggestions?: unknown;
-  warning?: unknown;
-  editable?: unknown;
-  source?: unknown;
-} | null {
-  if (!result) return null;
-  let parsed: any = result;
-  if (typeof parsed === 'string') {
-    try {
-      parsed = JSON.parse(parsed);
-    } catch {
-      return null;
-    }
-  }
-  if (!parsed || typeof parsed !== 'object') return null;
-  const payload = parsed.data_payload;
-  if (!payload || typeof payload !== 'object') return null;
-  return payload;
-}
-
 /** Expand raw API messages (with tool_calls arrays) into flat message list. */
 function expandMessages(rawMessages: Message[]): Message[] {
   const expanded: Message[] = [];
   for (const msg of rawMessages) {
-    // Reconstruct deep_analyze block from persisted metadata
-    if (msg.metadata?.type === 'deep_analyze') {
-      const m = msg.metadata;
-      expanded.push({
-        role: 'deep_analyze',
-        content: m.file_name || '',
-        da_job_id: m.job_id,
-        da_status: m.da_status || 'done',
-        da_phases: m.da_phases,
-        da_subtables: m.da_subtables || [],
-        da_plan_subtables: m.da_subtables?.length,
-        da_report_path: m.da_report_path,
-        timestamp: msg.timestamp,
-      });
-      // Reconstruct chart image + insight blocks from saved chart metadata
-      for (const chart of (m.da_charts || [])) {
-        if (!chart.png_path) continue;
-        expanded.push({
-          role: 'data_message',
-          content: chart.title || chart.name || '',
-          data_message_id: `da_chart_${chart.name}`,
-          data_title: chart.title || chart.name || '',
-          data_image_path: chart.png_path,
-          data_sql: chart.sql || undefined,
-          timestamp: msg.timestamp,
-        });
-        if (chart.insight_md) {
-          expanded.push({
-            role: 'assistant',
-            content: `**${chart.title || chart.name}**\n\n${chart.insight_md}`,
-            timestamp: msg.timestamp,
-          });
-        }
-      }
-      // Restore final agent summary message
-      if (m.da_agent_message) {
-        expanded.push({
-          role: 'assistant',
-          content: m.da_agent_message,
-          timestamp: msg.timestamp,
-        });
-      }
-      continue;
-    }
-
     // Emit thinking traces before content (matches TUI hydration order)
     if (msg.thinking_trace && msg.thinking_trace.trim()) {
       expanded.push({
@@ -283,11 +186,6 @@ interface ChatState {
   toggleMobileSidebar: () => void;
   setSelectedPersona: (personaName: string | null) => void;
   setDraft: (sessionId: string, text: string) => void;
-  updateDataMessageRows: (
-    dataMessageId: string,
-    columns: DataColumn[],
-    rows: Record<string, any>[],
-  ) => void;
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
   openCommandPalette: () => void;
@@ -328,22 +226,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setDraft: (sessionId: string, text: string) => {
     if (!sessionId) return;
     set(state => ({ ...patchSession(state, sessionId, { draft: text }) }));
-  },
-  // After an editable table saves, fold the saved rows back into the stored
-  // data_message so the snapshot stays in sync — switching away to a module and
-  // back no longer reverts to the pre-edit values.
-  updateDataMessageRows: (dataMessageId, columns, rows) => {
-    const sessionId = get().currentSessionId;
-    if (!sessionId || !dataMessageId) return;
-    set(state => ({
-      ...patchSession(state, sessionId, prev => ({
-        messages: prev.messages.map(m =>
-          m.data_message_id === dataMessageId
-            ? { ...m, data_columns: columns, data_rows: rows }
-            : m,
-        ),
-      })),
-    }));
   },
   openSettingsModal: () => set({ settingsModalOpen: true }),
   closeSettingsModal: () => set({ settingsModalOpen: false }),
@@ -901,41 +783,6 @@ wsClient.on('image_message', (message) => {
   });
 });
 
-wsClient.on('data_message', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-
-  // Prefer the backend's stable chart_id so overrides key the same across the
-  // live event and a later reload; fall back to a random id for non-chart data.
-  const dataMessageId =
-    (message.data.chart_id as string | undefined) ||
-    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `data-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
-
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, {
-      messages: [
-        ...sessionState.messages,
-        {
-          role: 'data_message' as const,
-          content: message.data.title || '',
-          data_message_id: dataMessageId,
-          data_title: message.data.title,
-          data_columns: message.data.columns,
-          data_rows: message.data.rows,
-          data_suggestions: message.data.suggestions,
-          data_warning: message.data.warning,
-          data_editable: message.data.editable,
-          data_source: message.data.source,
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    });
-  });
-});
-
 wsClient.on('custom_block', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
@@ -1474,259 +1321,6 @@ wsClient.on('thinking_done', (message) => {
     }
     return {};
   });
-});
-
-// ─── Deep Analyze Events ──────────────────────────────────────────────────────
-
-const DA_PHASES = ['load', 'profile', 'explore', 'plan', 'extract', 'synthesize', 'report'] as const;
-
-/** Find the deep_analyze message for a given job_id (searching backwards). */
-function findDeepAnalyzeIdx(msgs: Message[], jobId: string): number {
-  for (let i = msgs.length - 1; i >= 0; i--) {
-    if (msgs[i].role === 'deep_analyze' && msgs[i].da_job_id === jobId) return i;
-  }
-  return -1;
-}
-
-/** Upsert the deep_analyze message and apply a patch. Creates the message on first event. */
-function upsertDeepAnalyzeMessage(
-  sid: string,
-  jobId: string,
-  patch: (prev: Message) => Message,
-) {
-  useChatStore.setState(state => {
-    const ss = getSessionState(state.sessionStates, sid);
-    const idx = findDeepAnalyzeIdx(ss.messages, jobId);
-    if (idx === -1) {
-      const initial: Message = {
-        role: 'deep_analyze',
-        content: '',
-        da_job_id: jobId,
-        da_status: 'running',
-        da_phases: { explore: 'pending', load: 'pending', profile: 'pending',
-                     plan: 'pending', extract: 'pending',
-                     synthesize: 'pending', report: 'pending' },
-        da_subtables: [],
-        timestamp: new Date().toISOString(),
-      };
-      const created = patch(initial);
-      return patchSession(state, sid, { messages: [...ss.messages, created] });
-    }
-    const updated = [...ss.messages];
-    updated[idx] = patch(updated[idx]);
-    return patchSession(state, sid, { messages: updated });
-  });
-}
-
-wsClient.on('analyze.started', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, file_name } = message.data;
-  if (!job_id) return;
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({
-    ...prev,
-    content: file_name || prev.content || '',
-  }));
-});
-
-wsClient.on('analyze.phase', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, phase, status, rows, cols, sub_tables, charts } = message.data;
-  if (!job_id || !DA_PHASES.includes(phase)) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => {
-    const phases = { ...(prev.da_phases || {}) };
-    phases[phase as typeof DA_PHASES[number]] = status === 'done' ? 'done' : 'running';
-    const next: Message = { ...prev, da_phases: phases };
-    if (phase === 'load' && status === 'done') {
-      next.da_load_rows = rows;
-      next.da_load_cols = cols;
-    } else if (phase === 'plan' && status === 'done') {
-      next.da_plan_subtables = sub_tables;
-      next.da_plan_charts = charts;
-    }
-    return next;
-  });
-});
-
-wsClient.on('analyze.subtable', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, name, rows, status, error } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => {
-    const subtables = [...(prev.da_subtables || []), { name, rows, status, error }];
-    return { ...prev, da_subtables: subtables };
-  });
-});
-
-wsClient.on('analyze.plan_ready', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, plan, request_id } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({
-    ...prev,
-    da_status: 'plan_reviewing',
-    da_plan: plan,
-    da_plan_review_request_id: request_id,
-  }));
-});
-
-wsClient.on('analyze.clarify', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, request_id, questions, iteration, domain_brief } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({
-    ...prev,
-    da_status: 'clarifying',
-    da_clarify_request_id: request_id,
-    da_clarify_questions: questions ?? [],
-    da_clarify_iteration: iteration,
-    da_domain_brief: domain_brief,
-  }));
-});
-
-wsClient.on('analyze.chart_image', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { name, title, sql, src, columns, rows, suggestions } = message.data;
-
-  useChatStore.setState(state => {
-    const ss = getSessionState(state.sessionStates, sid);
-    const existing = ss.messages.find(m => m.data_message_id === `da_chart_${name}`);
-
-    if (existing) {
-      // Merge image + table data into the existing data_message (preserve what's already there)
-      const messages = ss.messages.map(m =>
-        m.data_message_id === `da_chart_${name}`
-          ? {
-              ...m,
-              data_image_src: src,
-              data_sql: sql || m.data_sql,
-              // Only fill columns/rows if the chart_data event didn't already set them
-              data_columns: m.data_columns?.length ? m.data_columns : (columns ?? []),
-              data_rows: m.data_rows?.length ? m.data_rows : (rows ?? []),
-              data_suggestions: m.data_suggestions?.length ? m.data_suggestions : (suggestions ?? []),
-            }
-          : m
-      );
-      return patchSession(state, sid, { messages });
-    }
-
-    // No prior chart_data message — create a full one now
-    const dataMsg: Message = {
-      role: 'data_message',
-      content: title || name || '',
-      data_message_id: `da_chart_${name}`,
-      data_title: title || name || '',
-      data_image_src: src,
-      data_sql: sql || undefined,
-      data_columns: columns ?? [],
-      data_rows: rows ?? [],
-      data_suggestions: suggestions ?? [],
-      timestamp: new Date().toISOString(),
-    };
-    return patchSession(state, sid, { messages: [...ss.messages, dataMsg] });
-  });
-});
-
-wsClient.on('analyze.section_synthesized', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, status } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => {
-    const phases = { ...(prev.da_phases || {}) };
-    if (status === 'done') phases['synthesize'] = 'done';
-    return { ...prev, da_phases: phases };
-  });
-});
-
-wsClient.on('analyze.chart_insight', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { title, insight } = message.data;
-  if (!insight) return;
-
-  const insightMsg: Message = {
-    role: 'assistant',
-    content: `**${title || 'Chart insight'}**\n\n${insight}`,
-    timestamp: new Date().toISOString(),
-  };
-
-  useChatStore.setState(state => {
-    const ss = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...ss.messages, insightMsg] });
-  });
-});
-
-wsClient.on('analyze.agent_message', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { content } = message.data;
-  if (!content) return;
-
-  const agentMsg: Message = {
-    role: 'assistant',
-    content,
-    timestamp: new Date().toISOString(),
-  };
-
-  useChatStore.setState(state => {
-    const ss = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...ss.messages, agentMsg] });
-  });
-});
-
-wsClient.on('analyze.report', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, pdf_path } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({ ...prev, da_report_path: pdf_path }));
-});
-
-wsClient.on('analyze.done', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => {
-    const phases = { ...(prev.da_phases || {}) };
-    for (const p of DA_PHASES) {
-      if (phases[p] !== 'done') phases[p] = 'done';
-    }
-    return { ...prev, da_status: 'done', da_phases: phases };
-  });
-});
-
-wsClient.on('analyze.failed', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id, phase, error } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({
-    ...prev, da_status: 'error', da_failed_phase: phase, da_error: error,
-  }));
-});
-
-wsClient.on('analyze.cancelled', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { job_id } = message.data;
-  if (!job_id) return;
-
-  upsertDeepAnalyzeMessage(sid, job_id, prev => ({ ...prev, da_status: 'cancelled' }));
 });
 
 // File-based modules: refresh the modules store when SKILL.md / script.py

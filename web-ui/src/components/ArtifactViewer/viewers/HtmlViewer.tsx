@@ -201,7 +201,7 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
   const externalUrl = apiClient.readFsUrl(scope, path);
 
   const segBtn = (active: boolean) =>
-    `inline-flex items-center gap-1 px-2 py-0.5 text-[12px] font-mono rounded cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60 ${
+    `inline-flex items-center gap-1 px-2 py-0.5 text-[12px] font-mono rounded cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60 ${
       active ? 'bg-ink/10 text-ink' : 'text-ink/55 hover:bg-surface-soft hover:text-ink/80'
     }`;
 
@@ -241,7 +241,7 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
             onClick={() => setReloadKey(k => k + 1)}
             title="Reload preview"
             aria-label="Reload preview"
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
+            className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
           >
             <RefreshCw className="w-3 h-3" />
           </button>
@@ -252,7 +252,7 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
           rel="noopener noreferrer"
           title="Open in new tab"
           aria-label="Open in new tab"
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/60"
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
         >
           <ExternalLink className="w-3 h-3" />
         </a>

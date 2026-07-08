@@ -1,7 +1,7 @@
 {
-  "name": "Atria — Agentic AI Coding Assistant",
+  "name": "Atria — Your AI Co-Worker",
   "short_name": "Atria",
-  "description": "Atria is an agentic AI coding assistant that plans, writes, and ships code — with a live web workspace for chat, files, and data.",
+  "description": "Atria is an AI co-worker that helps you think, plan, research, and get work done — with a live web workspace for chat, brainstorming, and analysis.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

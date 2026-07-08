@@ -1,8 +1,8 @@
-"""Module-worker subagent: one autonomous worker in a divide-work job (DeLM Phase 2c).
+"""Module-worker subagent: an autonomous worker operating a single module.
 
 Generic and always-registered so background workers resolve subagent_type
-"module_worker" headlessly. The per-module gateway block + the concrete subtask
-+ upstream results are injected by the coordinator into the run prompt.
+"module_worker" headlessly. The per-module gateway block + the concrete task are
+injected into the run prompt when a module workflow is delegated.
 """
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ _FALLBACK = (
 MODULE_WORKER_SUBAGENT: SubAgentSpec = {
     "name": "module_worker",
     "description": (
-        "Autonomous worker for one subtask of a divide-work job on a module. "
-        "Shares a blackboard with peer workers; returns a result summary."
+        "Autonomous worker for one task on a module, using the module's documented "
+        "commands. Shares a blackboard with peer workers; returns a result summary."
     ),
     "system_prompt": load_prompt("subagents/subagent-module-worker", fallback=_FALLBACK),
     "tools": ["run_command", "invoke_skill", "read_file", "write_file"],

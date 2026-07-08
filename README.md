@@ -3,7 +3,7 @@
 ## Repo Layout
 
 ```
-opendev-py/
+atria-py/
 ├── atria/                  # Main py pkg
 │   ├── cli/                # CLI entry + cmds
 │   ├── config/             # Cfg load + models

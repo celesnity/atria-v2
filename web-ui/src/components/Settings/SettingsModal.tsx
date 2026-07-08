@@ -110,29 +110,38 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-canvas sm:rounded-lg shadow-modal w-full sm:max-w-content h-full sm:h-[85vh] flex flex-col overflow-hidden sm:border border-hairline-soft">
+            className="relative bg-canvas sm:rounded-lg shadow-modal w-full sm:max-w-content h-full sm:h-[85vh] flex flex-col overflow-hidden sm:border border-hairline-soft">
+        {/* Ambient brand wash bleeding down from the header — barely-there depth. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.06]"
+          style={{ background: 'radial-gradient(120% 100% at 20% 0%, hsl(232 74% 53%), transparent 70%)' }}
+        />
+
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-hairline-soft">
-          <div>
-            <h2 className="text-xl font-semibold text-ink">Settings</h2>
+        <div className="relative flex items-center justify-between px-5 sm:px-7 py-4 border-b border-hairline-soft">
+          <div className="min-w-0">
+            <h2 className="text-[22px] leading-none font-[600] tracking-[-0.02em] text-gradient-brand">
+              Settings
+            </h2>
             {activeTabConfig && (
-              <p className="text-xs text-text-muted mt-0.5">{activeTabConfig.description}</p>
+              <p className="mt-1.5 text-xs text-text-muted truncate">{activeTabConfig.description}</p>
             )}
           </div>
           <button
             aria-label="Close dialog"
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface-soft rounded-lg transition-colors"
+            className="flex-shrink-0 grid h-9 w-9 place-items-center rounded-md text-text-muted transition-all hover:bg-surface-soft hover:text-ink active:scale-95"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
         {/* Main Content Area with Sidebar (horizontal tab bar on mobile) */}
-        <div className="flex-1 flex flex-col sm:flex-row overflow-hidden min-h-0">
+        <div className="relative flex-1 flex flex-col sm:flex-row overflow-hidden min-h-0">
           {/* Navigation — vertical sidebar at sm+, horizontal scroll bar on mobile */}
-          <div className="flex-shrink-0 w-full sm:w-56 border-b sm:border-b-0 sm:border-r border-hairline-soft bg-surface-soft overflow-x-auto sm:overflow-y-auto">
-            <nav className="flex sm:flex-col gap-1 p-2 sm:p-3">
+          <div className="flex-shrink-0 w-full sm:w-60 border-b sm:border-b-0 sm:border-r border-hairline-soft bg-surface-soft/40 overflow-x-auto sm:overflow-y-auto sm:flex sm:flex-col">
+            <nav className="flex sm:flex-col gap-1 p-2.5 sm:p-3 sm:flex-1">
               {tabs.map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -141,55 +150,82 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-shrink-0 sm:w-full flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 rounded-lg text-left whitespace-nowrap cursor-pointer transition-colors ${
-                      isActive
-                        ? 'bg-surface-soft text-ink shadow-sm'
-                        : 'text-text-secondary hover:bg-surface-soft hover:text-ink'
+                    className={`group relative flex-shrink-0 sm:w-full flex items-center gap-2.5 sm:gap-3 pl-3.5 pr-3 py-2 sm:py-2.5 rounded-md text-left whitespace-nowrap cursor-pointer transition-colors duration-200 ${
+                      isActive ? 'text-ink' : 'text-text-secondary hover:text-ink'
                     }`}
                   >
-                    <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-ink' : 'text-text-muted'}`} />
-                    <span className="text-sm font-medium">{tab.label}</span>
+                    {/* Shared-element active surface — slides between tabs. */}
+                    {isActive && (
+                      <motion.span
+                        layoutId="settingsActiveTab"
+                        aria-hidden
+                        className="absolute inset-0 rounded-md bg-gradient-to-r from-accent-cobalt/[0.14] to-accent-violet/[0.08] ring-1 ring-inset ring-accent-cobalt/20"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    {/* Accent rail — desktop only, animates with the surface. */}
+                    {isActive && (
+                      <motion.span
+                        layoutId="settingsActiveRail"
+                        aria-hidden
+                        className="absolute left-0 top-1/2 hidden sm:block h-5 w-[3px] -translate-y-1/2 rounded-r-pill bg-gradient-brand"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <Icon className={`relative z-10 w-[18px] h-[18px] flex-shrink-0 transition-colors ${isActive ? 'text-accent-cobalt' : 'text-text-muted group-hover:text-text-secondary'}`} />
+                    <span className="relative z-10 text-sm font-[540] tracking-[-0.01em]">{tab.label}</span>
                   </button>
                 );
               })}
             </nav>
 
             {/* Sidebar Footer — hidden on the mobile horizontal bar */}
-            <div className="hidden sm:block p-4 mt-4 border-t border-hairline-soft">
-              <p className="text-xs text-text-muted">
-                Atria v0.1.7
-              </p>
+            <div className="hidden sm:flex items-center gap-2 px-4 py-3.5 border-t border-hairline-soft/70">
+              <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-gradient-brand text-[10px] font-[700] text-white shadow-glow-accent">A</span>
+              <p className="text-[11px] font-mono text-text-muted">Atria v0.1.7</p>
             </div>
           </div>
 
           {/* Content Area */}
           <div className="flex-1 min-w-0 overflow-y-auto bg-canvas">
-            <div className="p-4 sm:p-6">
-              {activeTab === 'model' && <ModelSettings />}
-              {activeTab === 'mcp' && <MCPSettings />}
-              {activeTab === 'tools' && <ToolsSettings />}
-              {activeTab === 'connect' && <ChannelSettings />}
-              {activeTab === 'personas' && <PersonasSettings />}
-              {activeTab === 'general' && (
-                <div className="text-center py-12">
-                  <Cog6ToothIcon className="w-12 h-12 mx-auto text-text-muted mb-3" />
-                  <p className="text-sm text-text-secondary font-medium mb-1">General Settings</p>
-                  <p className="text-xs text-text-muted">
-                    General settings coming soon...
-                  </p>
-                </div>
-              )}
-            </div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={reduce ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="p-5 sm:p-7"
+              >
+                {activeTab === 'model' && <ModelSettings />}
+                {activeTab === 'mcp' && <MCPSettings />}
+                {activeTab === 'tools' && <ToolsSettings />}
+                {activeTab === 'connect' && <ChannelSettings />}
+                {activeTab === 'personas' && <PersonasSettings />}
+                {activeTab === 'general' && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="grid h-14 w-14 place-items-center rounded-xl bg-surface-soft ring-1 ring-inset ring-hairline-soft">
+                      <Cog6ToothIcon className="w-7 h-7 text-text-muted" />
+                    </div>
+                    <p className="mt-4 text-[15px] font-[540] text-ink">General settings</p>
+                    <p className="mt-1 text-xs text-text-muted">More controls are on the way.</p>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t border-hairline-soft bg-surface-soft">
+        <div className="relative flex items-center justify-between gap-3 px-5 sm:px-7 py-3.5 border-t border-hairline-soft bg-surface-soft/40">
+          <p className="hidden sm:block text-[11px] text-text-muted">
+            <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> to close
+          </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-ink hover:bg-surface-soft rounded-lg transition-colors"
+            className="ml-auto rounded-pill bg-gradient-brand px-5 py-2 text-sm font-[540] text-white shadow-glow-nebula transition-all hover:brightness-110 active:scale-[0.97]"
           >
-            Close
+            Done
           </button>
         </div>
           </motion.div>

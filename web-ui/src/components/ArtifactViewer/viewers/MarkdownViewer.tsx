@@ -47,23 +47,25 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId, location 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-hairline-soft">
-        <button
-          onClick={() => setMode('preview')}
-          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer transition-colors ${
-            mode === 'preview' ? 'bg-ink/8 text-ink' : 'text-ink/65 hover:bg-surface-soft'
-          }`}
-        >
-          <Eye className="w-3 h-3" /> Preview
-        </button>
-        <button
-          onClick={() => setMode('source')}
-          className={`inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer transition-colors ${
-            mode === 'source' ? 'bg-ink/8 text-ink' : 'text-ink/65 hover:bg-surface-soft'
-          }`}
-        >
-          <FileCode2 className="w-3 h-3" /> Source
-        </button>
+      <div className="flex items-center px-2 py-1.5 border-b border-hairline-soft/60 bg-surface-soft/30">
+        <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
+          <button
+            onClick={() => setMode('preview')}
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[4px] cursor-pointer transition-all duration-fast ${
+              mode === 'preview' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
+            }`}
+          >
+            <Eye className="w-3 h-3" /> Preview
+          </button>
+          <button
+            onClick={() => setMode('source')}
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[12px] font-mono rounded-[4px] cursor-pointer transition-all duration-fast ${
+              mode === 'source' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
+            }`}
+          >
+            <FileCode2 className="w-3 h-3" /> Source
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-auto">
         {mode === 'preview' ? (

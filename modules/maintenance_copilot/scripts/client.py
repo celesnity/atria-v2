@@ -15,13 +15,39 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 try:  # Import lazily so unit tests can inject a fake factory without openai.
     from openai import OpenAI as _OpenAI
+    from openai import APIConnectionError as _APIConnectionError
 except ImportError:  # pragma: no cover - openai installed in real env
     _OpenAI = None  # type: ignore[assignment]
+
+    class _APIConnectionError(Exception):  # type: ignore[no-redef]
+        """Fallback so ``except`` clauses stay valid when openai is absent."""
+
 
 import budget  # type: ignore[import-not-found]
 from config import RoleConfig  # type: ignore[import-not-found]
 
 ClientFactory = Callable[[str, str], object]
+
+
+class EndpointUnreachable(RuntimeError):
+    """A role's OpenAI-compatible endpoint could not be reached.
+
+    Raised in place of the raw ``openai.APIConnectionError`` so callers get an
+    actionable message naming the role, endpoint, and model instead of a bare
+    socket traceback. Carries the offending ``role``/``base_url``/``model`` as
+    attributes for structured error reporting.
+    """
+
+    def __init__(self, role: str, base_url: str, model: str, cause: Exception) -> None:
+        self.role = role
+        self.base_url = base_url
+        self.model = model
+        super().__init__(
+            f"cannot reach the {role!r} endpoint at {base_url} (model {model!r}): "
+            f"{cause}. Check that the service is running and the "
+            f"MC_{role.upper()}_BASE_URL is reachable from here "
+            f"(inside Docker, host services need host.docker.internal, not localhost)."
+        )
 
 
 def _default_factory(base_url: str, api_key: str) -> object:
@@ -65,7 +91,10 @@ class RoleClient:
         """
         rc = self._role(role)
         client = self._client_for(rc)
-        resp = client.embeddings.create(model=rc.model, input=texts)  # type: ignore[attr-defined]
+        try:
+            resp = client.embeddings.create(model=rc.model, input=texts)  # type: ignore[attr-defined]
+        except _APIConnectionError as exc:
+            raise EndpointUnreachable(role, rc.base_url, rc.model, exc) from exc
         return [item.embedding for item in resp.data]
 
     def chat(
@@ -95,9 +124,10 @@ class RoleClient:
         # output and overflow the model context (input + output must both fit).
         # An explicit caller-supplied max_tokens always wins.
         kw.setdefault("max_tokens", budget.output_tokens(role))
-        if response_format is not None:
-            kw["response_format"] = response_format
-        resp = client.chat.completions.create(  # type: ignore[attr-defined]
-            model=rc.model, messages=messages, **kw
-        )
+        try:
+            resp = client.chat.completions.create(  # type: ignore[attr-defined]
+                model=rc.model, messages=messages, **kw
+            )
+        except _APIConnectionError as exc:
+            raise EndpointUnreachable(role, rc.base_url, rc.model, exc) from exc
         return resp.choices[0].message.content

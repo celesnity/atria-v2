@@ -70,16 +70,6 @@ export interface MaintenanceCitation {
 }
 
 // Message types
-export type DeepAnalyzePhase = 'explore' | 'load' | 'profile' | 'plan' | 'extract' | 'synthesize' | 'report';
-export type DeepAnalyzePhaseStatus = 'pending' | 'running' | 'done';
-export type DeepAnalyzeItemStatus = 'done' | 'failed';
-
-export interface DeepAnalyzeSubtable {
-  name: string;
-  rows: number;
-  status: DeepAnalyzeItemStatus;
-  error?: string;
-}
 
 
 // Structured todo item (mirrors backend TodoHandler.to_payload())
@@ -93,7 +83,7 @@ export interface Todo {
 }
 
 export interface Message {
-  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'maintenance_answer' | 'deep_research' | 'deep_analyze' | 'image_message' | 'data_message' | 'custom_block' | 'todos';
+  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'maintenance_answer' | 'deep_research' | 'image_message' | 'custom_block' | 'todos';
   // live todo list (role === 'todos')
   todos?: Todo[];
   // custom_block fields
@@ -155,104 +145,10 @@ export interface Message {
   dr_error?: string;
   dr_review_request_id?: string;
   dr_report_path?: string;
-  // deep_analyze fields
-  da_job_id?: string;
-  da_status?: 'running' | 'clarifying' | 'plan_reviewing' | 'done' | 'error' | 'cancelled';
-  da_phases?: Partial<Record<DeepAnalyzePhase, DeepAnalyzePhaseStatus>>;
-  da_load_rows?: number;
-  da_load_cols?: number;
-  da_plan_subtables?: number;
-  da_plan_charts?: number;
-  da_subtables?: DeepAnalyzeSubtable[];
-  da_report_path?: string;
-  da_error?: string;
-  da_failed_phase?: string;
-  da_plan?: {
-    summary?: string;
-    sections: Array<{
-      name: string;
-      key_question?: string;
-      description?: string;
-      chart_names: string[];
-      analysis_angles?: string[];
-    }>;
-    charts: Array<{
-      name: string;
-      source_table: string;
-      type: string;
-      x: string;
-      y: string[];
-      title: string;
-      insight?: string;
-    }>;
-    sub_tables: Array<{
-      name: string;
-      sql: string;
-      why?: string;
-    }>;
-  };
-  da_plan_review_request_id?: string;
-  // EXPLORE-phase clarify Q&A
-  da_clarify_request_id?: string;
-  da_clarify_iteration?: number;
-  da_clarify_questions?: Array<{
-    id: string;
-    text: string;
-    kind: 'intent' | 'ambiguity';
-    column?: string;
-  }>;
-  da_domain_brief?: string;
   // image_message fields
   image_src?: string;
   image_mime?: string;
   image_caption?: string;
-  // data_message fields
-  data_message_id?: string;
-  data_title?: string;
-  data_columns?: DataColumn[];
-  data_rows?: Record<string, any>[];
-  data_suggestions?: ChartSuggestion[];
-  data_warning?: string;
-  data_sql?: string;
-  // editable-table fields (send_editable_table): when set, the data bubble
-  // renders an editable grid that saves back to the module's CSV.
-  data_editable?: boolean;
-  data_source?: { module?: string; file: string; session?: string };
-  // lazy-load fallback: fetch rows via /api/analyze/table-data
-  data_db_path?: string;
-  data_table_name?: string;
-  // pre-rendered chart image from the pipeline (live base64 from WS event)
-  data_image_src?: string;
-  // server-side PNG path: fetched via /api/analyze/chart-image on reload
-  data_image_path?: string;
-}
-
-export interface ChartSuggestion {
-  chart_type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'combo' | 'radar';
-  x: string;
-  y: string[];
-  title?: string;
-  reason?: string;
-  /** One-line explanation shown as a caption under the chart. */
-  description?: string;
-  /** Series key → display name (legend/series label). */
-  labels?: Record<string, string>;
-  /** Series key → short unit label (e.g. '%', 'triệu VND'); drives axis + tooltip suffix. */
-  units?: Record<string, string>;
-  /** Series key → per-series render type; makes a mixed (combo) chart. */
-  combo?: Record<string, 'bar' | 'line'>;
-  /** Series keys bound to the right-hand (secondary) y-axis. */
-  secondaryAxis?: string[];
-  /** True when numeric values are 0–100 normalized (radar). */
-  normalized?: boolean;
-}
-
-export type DataColumnType = 'number' | 'string' | 'date' | 'bool';
-export interface DataColumn {
-  name: string;
-  type: DataColumnType;
-  /** When false, this column is read-only in the editable grid (default true). */
-  editable?: boolean;
 }
 
 // Session types
@@ -317,7 +213,7 @@ export interface ParallelSolverDoneData {
 
 // WebSocket event types
 export interface WSMessage {
-  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'analyze.started' | 'analyze.phase' | 'analyze.subtable' | 'analyze.plan_ready' | 'analyze.clarify' | 'analyze.chart_data' | 'analyze.chart_image' | 'analyze.chart_insight' | 'analyze.section_synthesized' | 'analyze.report' | 'analyze.done' | 'analyze.failed' | 'analyze.cancelled' | 'analyze.agent_message' | 'image_message' | 'data_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note' | 'maintenance_answer';
+  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'image_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note'  | 'maintenance_answer';
   data: any;
 }
 

@@ -28,3 +28,29 @@ class Note:
     def from_dict(cls, d: dict) -> "Note":
         return cls(type=d["type"], content=d["content"],
                    thread_id=int(d["thread_id"]), ts=float(d["ts"]))
+
+
+TASK_STATUSES: tuple[str, ...] = ("pending", "claimed", "done", "failed")
+
+
+@dataclass(frozen=True)
+class Task:
+    """One unit of delegated work on the blackboard task channel."""
+
+    id: str
+    subagent_type: str
+    prompt: str
+    status: str = "pending"
+    result: str = ""
+    ts: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "subagent_type": self.subagent_type,
+                "prompt": self.prompt, "status": self.status,
+                "result": self.result, "ts": self.ts}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Task":
+        return cls(id=d["id"], subagent_type=d["subagent_type"], prompt=d["prompt"],
+                   status=d.get("status", "pending"), result=d.get("result", ""),
+                   ts=float(d.get("ts", 0.0)))

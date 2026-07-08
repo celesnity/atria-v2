@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { Message } from '../../types';
 
 interface Props {
@@ -118,7 +118,7 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
   if (view.kind === 'running') {
     return (
       <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-ink/70">
-        <span className="inline-block w-3 h-3 border-[1.5px] border-ink/30 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+        <span className="inline-block w-3 h-3 border-[1.5px] border-ink/30 border-t-transparent rounded-md animate-spin flex-shrink-0" />
         <span>{view.text}</span>
       </div>
     );
@@ -126,7 +126,7 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-semantic-success">
-      <span aria-hidden>✅</span>
+      <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} aria-hidden="true" />
       <span>{view.text}</span>
     </div>
   );

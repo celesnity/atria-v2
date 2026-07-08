@@ -16,14 +16,14 @@ import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
 import { MaintenanceAnswerBlock } from './MaintenanceAnswer/MaintenanceAnswerBlock';
 import { DeepResearchBlock } from './DeepResearchBlock';
-import { DeepAnalyzeBlock } from './DeepAnalyzeBlock';
 import { ImageMessage } from './ImageMessage';
-import { DataMessage } from './DataMessage/DataMessage';
 import { SandboxedBlock } from './SandboxedBlock';
 import { THINKING_VERBS } from '../../constants/spinner';
 import { computeTurns, type TurnInfo } from '../../lib/turns';
 import { MessageActions } from './MessageActions';
 import { useMessageActions } from '../../hooks/useMessageActions';
+import { CosmicField } from '../ui/CosmicField';
+import { Eyebrow } from '../ui/Eyebrow';
 
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
@@ -105,13 +105,22 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
+// Signature Atria avatar — nebula-gradient disc with a soft glow and the mark.
+// Shared by assistant turns and the loading spinner so the agent reads as one
+// consistent presence in the thread.
+function AtriaAvatar() {
+  return (
+    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
+      <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
+    </div>
+  );
+}
+
 const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content: string }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-[18px] h-[18px] rounded-full bg-ink flex items-center justify-center flex-shrink-0">
-          <span className="text-[8px] text-canvas font-[700] leading-none tracking-tight">A</span>
-        </div>
+        <AtriaAvatar />
         <span className="font-mono text-[11px] uppercase tracking-[0.54px] text-ink/40">Atria</span>
       </div>
       <div className="prose max-w-none code-hover pl-[26px]">
@@ -127,8 +136,8 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
       <div className="max-w-[80%] md:max-w-[70%]">
-        <div className="bg-surface-soft rounded-[18px] rounded-tr-[6px] px-4 py-3">
-          <div className="text-[15px] text-ink whitespace-pre-wrap leading-relaxed">
+        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-4 py-3 shadow-soft">
+          <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
             {content}
           </div>
         </div>
@@ -140,9 +149,7 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
 function LoadingSpinner({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2.5 py-1">
-      <div className="w-[18px] h-[18px] rounded-full bg-ink flex items-center justify-center flex-shrink-0">
-        <span className="text-[8px] text-canvas font-[700] leading-none tracking-tight">A</span>
-      </div>
+      <AtriaAvatar />
       <span className="braille-spinner text-sm text-ink/40" aria-hidden="true" />
       <span className="text-sm text-ink/45">{label}</span>
     </div>
@@ -162,31 +169,16 @@ function ThinkingSpinner() {
 
 function WelcomeScreen() {
   return (
-    <div className="relative flex items-center justify-center h-full px-6 bg-canvas overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span
-          className="font-sans select-none"
-          style={{
-            fontSize: 'clamp(140px, 20vw, 280px)',
-            fontWeight: 340,
-            letterSpacing: '-0.06em',
-            color: 'hsl(var(--surface-soft))',
-            lineHeight: 1,
-          }}
-        >
-          Atria
-        </span>
-      </div>
-      <div className="relative z-10 max-w-xl w-full">
-        <div className="glass-card rounded-xl px-8 py-9 md:px-12 md:py-10 text-center">
-          <span className="font-sans uppercase tracking-[0.24em] text-[13px] font-[500] text-text-muted block mb-4">
-            Welcome
-          </span>
-          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.02] tracking-[-0.03em] text-gradient-brand">
+    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-6">
+      <CosmicField count={34} className="opacity-70" />
+      <div className="relative z-10 w-full max-w-xl">
+        <div className="glass-card rounded-xl px-8 py-9 text-center md:px-12 md:py-10">
+          <Eyebrow className="mb-4 block text-text-muted">Welcome</Eyebrow>
+          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand">
             Let&rsquo;s get to work.
           </h2>
-          <p className="mt-5 text-body-sm text-text-secondary">
-            Start a conversation with your AI coding assistant.
+          <p className="mt-5 text-body-sm leading-[1.6] text-text-secondary">
+            Start a conversation with your AI co-worker.
           </p>
         </div>
       </div>
@@ -239,7 +231,6 @@ function MessageBody({
   }
   if (message.role === 'search_result') return <SearchResultBlock message={message} />;
   if (message.role === 'maintenance_answer') return <MaintenanceAnswerBlock message={message} />;
-  if (message.role === 'data_message') return <DataMessage message={message} />;
   if (message.role === 'image_message') return <ImageMessage message={message} />;
   if (message.role === 'custom_block' && message.block_id && message.block_src) {
     return (
@@ -253,7 +244,6 @@ function MessageBody({
     );
   }
   if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
-  if (message.role === 'deep_analyze') return <DeepAnalyzeBlock message={message} />;
   return message.role === 'user'
     ? <UserTurn content={message.content} />
     : <AssistantMarkdown content={message.content} />;
@@ -495,7 +485,7 @@ export function MessageList() {
         computeItemKey={(_index, item) =>
           item.kind === 'activity'
             ? item.key
-            : (item.message.tool_call_id ?? item.message.data_message_id ?? `${item.message.role}:${item.index}`)
+            : (item.message.tool_call_id ?? `${item.message.role}:${item.index}`)
         }
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
         itemContent={(itemIndex, item, ctx) => (
@@ -521,7 +511,7 @@ export function MessageList() {
         <button
           onClick={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })}
           data-surface="dark"
-          className="absolute bottom-4 right-6 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ink text-inverse-ink text-xs font-medium shadow-soft hover:shadow-hover hover:bg-ink/80 transition-colors active:scale-[0.98] whitespace-nowrap"
+          className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
           aria-label="Jump to latest message"
         >
           <ChevronDown className="w-3.5 h-3.5" />

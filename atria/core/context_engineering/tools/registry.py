@@ -16,33 +16,19 @@ if TYPE_CHECKING:
 from atria.core.context_engineering.tools.handlers.file_handlers import FileToolHandler
 from atria.core.context_engineering.mcp.handler import McpToolHandler
 from atria.core.context_engineering.tools.handlers.process_handlers import ProcessToolHandler
-from atria.core.context_engineering.tools.handlers.web_handlers import WebToolHandler
-from atria.core.context_engineering.tools.handlers.web_search_handler import WebSearchHandler
 from atria.core.context_engineering.tools.handlers.notebook_edit_handler import (
     NotebookEditHandler,
 )
 from atria.core.context_engineering.tools.handlers.ask_user_handler import AskUserHandler
-from atria.core.context_engineering.tools.handlers.screenshot_handler import ScreenshotToolHandler
 from atria.core.context_engineering.tools.handlers.todo_handler import TodoHandler
 from atria.core.context_engineering.tools.handlers.thinking_handler import ThinkingHandler
 from atria.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
 from atria.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
 from atria.core.context_engineering.tools.implementations.note_tool import execute_note
-from atria.core.context_engineering.tools.handlers.memory_handlers import MemoryToolHandler
 from atria.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
-from atria.core.context_engineering.tools.handlers.browser_handlers import BrowserToolHandler
 from atria.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from atria.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from atria.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
-from atria.core.context_engineering.tools.implementations.send_editable_table_tool import (
-    SendEditableTableHandler,
-)
-from atria.core.context_engineering.tools.implementations.send_table_tool import (
-    SendTableHandler,
-)
-from atria.core.context_engineering.tools.implementations.render_component_tool import (
-    RenderComponentHandler,
-)
 from atria.core.context_engineering.tools.implementations.md_to_pdf_tool import (
     MarkdownToPdfHandler,
 )
@@ -76,12 +62,11 @@ from atria.core.context_engineering.tools.symbol_tools import (
 from atria.core.context_engineering.tools.registry_mixins import (
     InlineToolsMixin,
     OrchestrationOpsMixin,
-    SubagentOpsMixin,
 )
 from atria.core.context_engineering.tools.registry_mixins.llm_wiring import _wire_llm_into_ctx
 
 
-class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
+class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
     """Dispatches tool invocations to dedicated handlers."""
 
     def __init__(
@@ -90,13 +75,9 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         write_tool: Union[Any, None] = None,
         edit_tool: Union[Any, None] = None,
         bash_tool: Union[Any, None] = None,
-        web_fetch_tool: Union[Any, None] = None,
-        web_search_tool: Union[Any, None] = None,
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
-        open_browser_tool: Union[Any, None] = None,
         vlm_tool: Union[Any, None] = None,
-        web_screenshot_tool: Union[Any, None] = None,
         mcp_manager: Union[Any, None] = None,
         app_config: Union[Any, None] = None,
     ) -> None:
@@ -105,18 +86,12 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self.write_tool = write_tool
         self.edit_tool = edit_tool
         self.bash_tool = bash_tool
-        self.web_fetch_tool = web_fetch_tool
-        self.web_search_tool = web_search_tool
         self.notebook_edit_tool = notebook_edit_tool
         self.ask_user_tool = ask_user_tool
-        self.open_browser_tool = open_browser_tool
         self.vlm_tool = vlm_tool
-        self.web_screenshot_tool = web_screenshot_tool
 
         self._file_handler = FileToolHandler(file_ops, write_tool, edit_tool)
         self._process_handler = ProcessToolHandler(bash_tool)
-        self._web_handler = WebToolHandler(web_fetch_tool)
-        self._web_search_handler = WebSearchHandler(web_search_tool)
         _skill_working_dir = (
             str(file_ops.working_dir)
             if file_ops and hasattr(file_ops, "working_dir") and file_ops.working_dir
@@ -124,7 +99,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         )
         self.skill_ctx = SkillToolContext(
             working_dir=_skill_working_dir,
-            web_search=web_search_tool,
         )
         _wire_llm_into_ctx(self.skill_ctx, app_config)
         _paths = get_paths()
@@ -182,7 +156,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
         self._ask_user_handler = AskUserHandler(ask_user_tool)
         self._mcp_handler = McpToolHandler(mcp_manager)
-        self._screenshot_handler = ScreenshotToolHandler()
         self.todo_handler = TodoHandler()
         self.thinking_handler = ThinkingHandler()
         self._pdf_tool = PDFTool()
@@ -191,7 +164,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
         self._subagent_manager: Union[Any, None] = None
-        self._parallel_orchestrator: Union[Any, None] = None  # built lazily per run
+        self._subagent_orchestrator: Union[Any, None] = None  # built lazily per run
         self._hook_manager: Union["HookManager", None] = None
         self._skill_loader: Union["SkillLoader", None] = None
 
@@ -208,15 +181,10 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             mcp_manager=mcp_manager,
             on_discover=self.discover_mcp_tool,
         )
-        self._browser_handler = BrowserToolHandler()
         self._schedule_handler = ScheduleToolHandler()
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
-        self._send_editable_table_handler = SendEditableTableHandler()
-        self._send_table_handler = SendTableHandler()
-        self._render_component_handler = RenderComponentHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
-        self._memory_handler = MemoryToolHandler()
         self._session_handler = SessionToolHandler()
         self._artifacts_handler = ArtifactsToolHandler()
         self._batch_handler: Union[BatchToolHandler, None] = None  # Lazy init after registry ready
@@ -233,15 +201,9 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "list_processes": lambda args, ctx: self._process_handler.list_processes(),
             "get_process_output": self._process_handler.get_process_output,
             "kill_process": self._process_handler.kill_process,
-            "fetch_url": self._web_handler.fetch_url,
-            "web_search": self._web_search_handler.search,
             "md_to_pdf": self._md_to_pdf_handler_new.md_to_pdf,
             "notebook_edit": self._notebook_edit_handler.edit_cell,
             "ask_user": self._ask_user_handler.ask_questions,
-            "open_browser": self._open_browser,
-            "capture_screenshot": self._screenshot_handler.capture_screenshot,
-            "analyze_image": self._analyze_image,
-            "capture_web_screenshot": self._capture_web_screenshot,
             "write_todos": self._write_todos,
             "update_todo": self._update_todo,
             "complete_todo": self._complete_todo,
@@ -254,13 +216,9 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "insert_after_symbol": lambda args: handle_insert_after_symbol(args),
             "replace_symbol_body": lambda args: handle_replace_symbol_body(args),
             "rename_symbol": lambda args: handle_rename_symbol(args),
-            # Subagent spawning tool
-            "spawn_subagent": self._execute_spawn_subagent,
-            # Get output from background subagent
-            "get_subagent_output": self._get_subagent_output,
-            # Unified solver tools (divide + parallel behind a strategy param)
-            "solve": self._execute_solve,
-            "get_solve_result": self._execute_get_solve_result,
+            # Unified subagent delegation (blackboard task channel)
+            "subagent": self._execute_subagent_fanout,
+            "get_subagent_output": self._execute_get_subagent_output,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
             # MCP tool discovery (token-efficient)
@@ -271,27 +229,14 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "present_plan": self._execute_present_plan,
             # Skills system tool
             "invoke_skill": self._handle_invoke_skill,
-            # Browser automation
-            "browser": self._browser_handler.handle,
             # Schedule tool
             "schedule": self._schedule_handler.handle,
             # Message tool
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
-            # Editable dataset push tool (web UI)
-            "send_editable_table": self._send_editable_table_handler.send,
-            # Read-only result table + chart push tool (web UI)
-            "send_table": self._send_table_handler.send,
-            # Module block render tool (web UI)
-            "render_component": self._render_component_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
-            # Memory tools
-            "memory_search": self._memory_handler.search,
-            "memory_write": self._memory_handler.write,
             # Session inspection tools
-            "list_sessions": self._session_handler.list_sessions,
-            "get_session_history": self._session_handler.get_session_history,
             "list_subagents": self._session_handler.list_subagents,
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
@@ -433,8 +378,6 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         is_subagent: bool = False,
         tool_call_id: Union[str, None] = None,
         blackboard: Union[Any, None] = None,
-        divide_orchestrator: Union[Any, None] = None,
-        parallel_orchestrator: Union[Any, None] = None,
     ) -> dict[str, Any]:
         """Execute a tool by delegating to registered handlers."""
         if tool_name.startswith("mcp__"):
@@ -494,32 +437,23 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             is_subagent=is_subagent,
             file_time_tracker=self._file_time_tracker,
             blackboard=blackboard,
-            divide_orchestrator=divide_orchestrator,
-            parallel_orchestrator=parallel_orchestrator,
         )
 
         handler = self._handlers[tool_name]
         try:
-            if tool_name == "spawn_subagent":
-                # spawn_subagent needs tool_call_id for parent context tracking
-                result = self._execute_spawn_subagent(arguments, context, tool_call_id)
-            elif tool_name in {
+            if tool_name in {
                 "write_file",
                 "edit_file",
                 "read_file",
                 "run_command",
                 "batch_tool",
                 "present_plan",
-                "list_sessions",
-                "get_session_history",
                 "send_image",
-                "send_editable_table",
-                "send_table",
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",
-                "solve",
-                "get_solve_result",
+                "subagent",
+                "get_subagent_output",
                 "write_todos",
                 "update_todo",
                 "complete_todo",

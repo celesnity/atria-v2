@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { CloudUpload } from 'lucide-react';
+import { CloudUpload, X } from 'lucide-react';
 import { useArtifactUpload, type UploadScope } from '../hooks/useArtifactUpload';
 import { formatFileSize } from '../utils/fileUtils';
 
@@ -137,7 +137,7 @@ export function FileUploadWidget({
 
         {/* File Input with Drag and Drop */}
         <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${
+          className={`border-2 border-dashed rounded-md p-6 text-center transition-all cursor-pointer ${
             isDragging
               ? 'border-blue-400 bg-blue-50 shadow-soft'
               : 'border-hairline-soft hover:border-hairline'
@@ -174,7 +174,7 @@ export function FileUploadWidget({
                     <p className="text-xs text-text-muted">{formatFileSize(file.size)}</p>
                   </div>
                   {progress[file.name] !== undefined && (
-                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-md overflow-hidden">
                       <div
                         className="h-full bg-blue-500 transition-all duration-base"
                         style={{ width: `${progress[file.name]}%` }}
@@ -185,9 +185,10 @@ export function FileUploadWidget({
                     <button
                       onClick={() => handleRemoveFile(index)}
                       disabled={uploading}
-                      className="flex-shrink-0 ml-2 p-1 text-text-muted hover:text-semantic-danger disabled:opacity-50"
+                      className="flex-shrink-0 ml-2 p-1 text-text-muted hover:text-semantic-danger disabled:opacity-50 cursor-pointer"
+                      aria-label="Remove file"
                     >
-                      ✕
+                      <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -201,15 +202,16 @@ export function FileUploadWidget({
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-semantic-danger rounded-lg p-3 flex items-start justify-between">
+          <div className="bg-red-50 border border-semantic-danger rounded-md p-3 flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-semantic-danger">{error}</p>
             </div>
             <button
               onClick={clearError}
-              className="text-semantic-danger hover:opacity-80"
+              className="text-semantic-danger hover:opacity-80 cursor-pointer"
+              aria-label="Dismiss error"
             >
-              ✕
+              <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -220,14 +222,14 @@ export function FileUploadWidget({
             <button
               onClick={handleUpload}
               disabled={!isValid}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {uploading ? 'Uploading...' : 'Upload'}
             </button>
             <button
               onClick={() => setSelectedFiles([])}
               disabled={uploading}
-              className="flex-1 px-4 py-2 border border-hairline-soft text-text-secondary rounded-lg font-medium hover:bg-surface-soft disabled:opacity-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-hairline-soft text-text-secondary rounded-md font-medium hover:bg-surface-soft disabled:opacity-50 transition-colors"
             >
               Clear
             </button>

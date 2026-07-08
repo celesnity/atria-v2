@@ -38,7 +38,7 @@ export function EmptyState({
     >
       <div
         className={cn(
-          'rounded-full bg-surface-soft flex items-center justify-center mb-4 text-text-muted',
+          'rounded-md bg-surface-soft flex items-center justify-center mb-4 text-text-muted',
           compact ? 'w-14 h-14' : 'w-16 h-16',
         )}
         aria-hidden="true"

@@ -18,10 +18,6 @@ PARALLELIZABLE_TOOLS = frozenset(
         "read_file",
         "list_files",
         "search",
-        "fetch_url",
-        "web_search",
-        "capture_web_screenshot",
-        "analyze_image",
         "list_processes",
         "get_process_output",
         "list_todos",
@@ -225,9 +221,9 @@ class RunLoopMixin:
             messages = ValidatedMessageList(messages)
 
         if not messages or messages[0].get("role") != "system":
-            # Use stable part as system content; dynamic part goes via _system_dynamic
-            system_content = getattr(self, "_system_stable", None) or self.system_prompt
-            messages.insert(0, {"role": "system", "content": system_content})
+            # Combine stable prefix + dynamic tail so dynamic context is
+            # delivered AND the stable prefix stays byte-identical (cacheable).
+            messages.insert(0, {"role": "system", "content": self._compose_system_content()})
 
         messages.append({"role": "user", "content": message})
 
@@ -243,12 +239,16 @@ class RunLoopMixin:
 
         iteration = 0
         consecutive_no_tool_calls = 0
-        MAX_NUDGE_ATTEMPTS = 3  # After this many nudges, treat as implicit completion
+        MAX_NUDGE_ATTEMPTS = self.config.max_nudge_attempts
         todo_nudge_count = 0
-        MAX_TODO_NUDGES = 4  # After this many todo nudges, allow completion anyway
+        MAX_TODO_NUDGES = self.config.max_todo_nudges
         completion_nudge_sent = False
         interrupted = False
         has_explored = False  # Track whether Code-Explorer has been spawned
+
+        effective_max_iterations = (
+            max_iterations if max_iterations is not None else self.config.max_iterations_default
+        )
 
         try:
             while True:
@@ -258,7 +258,7 @@ class RunLoopMixin:
                 iteration += 1
 
                 # Safety limit only if explicitly set
-                if max_iterations is not None and iteration > max_iterations:
+                if iteration > effective_max_iterations:
                     return {
                         "content": "Max iterations reached without completion",
                         "messages": messages,
@@ -301,10 +301,12 @@ class RunLoopMixin:
                     **build_max_tokens_param(model_id, self.config.max_tokens),
                 }
 
-                # Pass dynamic system content for prompt caching (Anthropic)
-                system_dynamic = getattr(self, "_system_dynamic", "")
-                if system_dynamic:
-                    payload["_system_dynamic"] = system_dynamic
+                if getattr(self.config, "prompt_cache_key_enabled", False):
+                    session_id = getattr(self, "_session_id", None) or getattr(
+                        deps, "session_id", None
+                    )
+                    if session_id:
+                        payload["prompt_cache_key"] = str(session_id)
 
                 # Use provided task_monitor, or create WebInterruptMonitor for web UI
                 monitor = task_monitor
@@ -344,7 +346,8 @@ class RunLoopMixin:
                     response = result.response
                     if response.status_code == 200:
                         break  # Success
-                    elif response.status_code in (429, 500, 502, 503, 504):
+                    # 429/503 are retried inside http_client.post_json; avoid double backoff.
+                    elif response.status_code in (500, 502, 504):
                         last_api_error = f"API Error {response.status_code}: {response.text}"
                         if api_attempt < MAX_API_RETRIES - 1:
                             import time as _time_mod
@@ -429,7 +432,7 @@ class RunLoopMixin:
                                 continue
 
                             # Before accepting implicit completion, remind of original task (once)
-                            if not completion_nudge_sent:
+                            if self.config.completion_nudge_enabled and not completion_nudge_sent:
                                 completion_nudge_sent = True
                                 messages.append(
                                     {
@@ -471,7 +474,7 @@ class RunLoopMixin:
                         continue
 
                     # Before accepting implicit completion, remind of original task (once)
-                    if not completion_nudge_sent:
+                    if self.config.completion_nudge_enabled and not completion_nudge_sent:
                         completion_nudge_sent = True
                         messages.append(
                             {
@@ -547,9 +550,9 @@ class RunLoopMixin:
                 # Code-Explorer has run
                 _EXPLORE_EXEMPT = {"Code-Explorer", "ask-user"}
                 _explore_blocked = False
-                if not has_explored:
+                if self.config.explore_first_enabled and not has_explored:
                     for tc in tool_calls:
-                        if tc["function"]["name"] == "spawn_subagent":
+                        if tc["function"]["name"] == "subagent":
                             tc_args = json.loads(tc["function"]["arguments"])
                             subagent_type = tc_args.get("subagent_type", "")
                             if subagent_type not in _EXPLORE_EXEMPT:
@@ -577,7 +580,7 @@ class RunLoopMixin:
 
                 # Mark explored when Code-Explorer is being spawned
                 for tc in tool_calls:
-                    if tc["function"]["name"] == "spawn_subagent":
+                    if tc["function"]["name"] == "subagent":
                         tc_args = json.loads(tc["function"]["arguments"])
                         if tc_args.get("subagent_type", "") == "Code-Explorer":
                             has_explored = True

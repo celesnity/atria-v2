@@ -36,7 +36,7 @@ function ModelInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-lg bg-canvas font-mono"
+        className="w-full px-3 py-2 text-sm border border-hairline-soft rounded-md bg-canvas font-mono"
       />
     </div>
   );
@@ -145,12 +145,12 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
             <button
               aria-label="Close dialog"
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-surface-soft text-text-muted hover:text-text-secondary"
+              className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-surface-soft text-text-muted hover:text-text-secondary"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs text-amber-800">
               Override models for this session only. Changes don't affect global settings.
             </p>
@@ -162,7 +162,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-2 text-text-secondary">
-                <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-600 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-600 rounded-md animate-spin" />
                 <span className="text-sm">Loading...</span>
               </div>
             </div>
@@ -185,7 +185,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
                 <button
                   onClick={handleClear}
                   disabled={saving}
-                  className="px-4 py-2.5 border border-semantic-danger/40 text-semantic-danger rounded-lg hover:bg-semantic-danger/10 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
+                  className="px-4 py-2.5 border border-semantic-danger/40 text-semantic-danger rounded-md hover:bg-semantic-danger/10 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
                 >
                   Clear Overrides
                 </button>
@@ -193,11 +193,11 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-soft hover:shadow-hover"
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-soft hover:shadow-hover"
               >
                 {saving ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-md animate-spin" />
                     Saving...
                   </span>
                 ) : 'Save'}
