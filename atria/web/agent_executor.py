@@ -345,6 +345,11 @@ class AgentExecutor:
 
         # Get agent
         agent = runtime_suite.agents.normal
+        if (
+            getattr(config, "agent_mode", "normal") == "assistant"
+            and getattr(runtime_suite.agents, "assistant", None) is not None
+        ):
+            agent = runtime_suite.agents.assistant
         agent.tool_registry = wrapped_registry
         agent._cost_tracker = cost_tracker
 
@@ -408,7 +413,7 @@ class AgentExecutor:
             logger.warning("Failed to build module SKILL block: %s", _mod_err)
             _modules_block = ""
 
-        if _modules_block:
+        if _modules_block and _modules_block not in system_content:
             skill_block = "\n\n" + _modules_block
             system_content += skill_block
             if hasattr(agent, "_system_stable") and agent._system_stable:

@@ -265,6 +265,7 @@ class AppConfig(BaseModel):
 
     api_key: Optional[str] = None
     api_base_url: Optional[str] = None  # defaults to https://api.openai.com/v1/chat/completions
+    agent_mode: str = "normal"  # "normal" | "assistant" — which suite agent serves chats
     max_tokens: int = 8192
     temperature: float = 0.6
 
