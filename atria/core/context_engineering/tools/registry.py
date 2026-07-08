@@ -37,6 +37,9 @@ from atria.core.context_engineering.tools.implementations.send_image_tool import
 from atria.core.context_engineering.tools.implementations.send_editable_table_tool import (
     SendEditableTableHandler,
 )
+from atria.core.context_engineering.tools.implementations.send_table_tool import (
+    SendTableHandler,
+)
 from atria.core.context_engineering.tools.implementations.render_component_tool import (
     RenderComponentHandler,
 )
@@ -129,10 +132,51 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             Path.cwd() / ".atria" / "skills",
             _paths.global_skills_dir,
         ]
-        self._skill_specs: dict[str, ToolSpec] = {
-            spec.name: spec
-            for spec in SkillToolLoader(_skill_dirs).discover_and_register(self.skill_ctx)
-        }
+        # Also discover code-bearing skills shipped inside modules (e.g.
+        # maintenance_copilot ships a tools.py). Modules declare `tools:` in their
+        # SKILL.md frontmatter; modules without it are silently skipped.
+        _modules_root = None
+        try:
+            from atria.core.modules.registry import resolve_modules_root
+
+            _modules_root = resolve_modules_root()
+            if _modules_root.is_dir():
+                _skill_dirs.append(_modules_root)
+        except Exception:  # module discovery is best-effort; never block registry init
+            pass
+        # Discovery must never take down registry construction: a broken skill
+        # tools.py (e.g. an import-time failure in a leaner deploy image) degrades
+        # to "no skill tools", not a failed startup.
+        try:
+            self._skill_specs: dict[str, ToolSpec] = {
+                spec.name: spec
+                for spec in SkillToolLoader(_skill_dirs).discover_and_register(self.skill_ctx)
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("skill-tool discovery failed; continuing without skill tools: %s", exc)
+            self._skill_specs = {}
+        # Protected-path guard: denies tool access to configured corpus roots
+        # (defaults protect modules/*/sample_manuals even without a settings
+        # file — ProtectedPathGuard falls back to defaults on a missing or
+        # mocked config).
+        from atria.core.context_engineering.tools.protected_paths import ProtectedPathGuard
+
+        _protected_entries = None
+        try:
+            _protected_entries = app_config.permissions.protected_paths  # type: ignore[union-attr]
+        except AttributeError:
+            pass
+        self._protected_guard = ProtectedPathGuard(
+            _protected_entries, _skill_working_dir, _modules_root
+        )
+        # Let broad searches skip protected roots instead of surfacing their
+        # content (registry guard denies direct targeting; this closes the
+        # traversal side).
+        if file_ops is not None and hasattr(file_ops, "protected_roots"):
+            try:
+                file_ops.protected_roots = self._protected_guard.roots
+            except Exception:  # noqa: BLE001 — guard wiring must never block init
+                pass
         self._md_to_pdf_tool = MdToPdfTool()
         self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
@@ -169,6 +213,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
         self._send_editable_table_handler = SendEditableTableHandler()
+        self._send_table_handler = SendTableHandler()
         self._render_component_handler = RenderComponentHandler()
         self._markdown_to_pdf_handler = MarkdownToPdfHandler()
         self._memory_handler = MemoryToolHandler()
@@ -236,6 +281,8 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             "send_image": self._send_image_handler.send,
             # Editable dataset push tool (web UI)
             "send_editable_table": self._send_editable_table_handler.send,
+            # Read-only result table + chart push tool (web UI)
+            "send_table": self._send_table_handler.send,
             # Module block render tool (web UI)
             "render_component": self._render_component_handler.render,
             "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
@@ -432,6 +479,11 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
             working_dir = str(self.file_ops.working_dir) if self.file_ops.working_dir else None
         arguments = normalize_params(tool_name, arguments, working_dir)
 
+        # --- Protected-path guard (RAG corpora etc.) ---
+        denial = self._protected_guard.check_tool_call(tool_name, arguments)
+        if denial:
+            return {"success": False, "error": denial, "output": None, "denied": True}
+
         context = ToolExecutionContext(
             mode_manager=mode_manager,
             approval_manager=approval_manager,
@@ -462,6 +514,7 @@ class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):
                 "get_session_history",
                 "send_image",
                 "send_editable_table",
+                "send_table",
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",

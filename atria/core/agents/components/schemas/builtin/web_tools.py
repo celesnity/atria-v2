@@ -195,6 +195,97 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
+    # ===== Send Table Tool (web UI, read-only) =====
+    {
+        "type": "function",
+        "function": {
+            "name": "send_table",
+            "description": (
+                "Send a READ-ONLY result table to the web UI chat as an interactive "
+                "table + chart. Provide `file` (absolute path to a CSV the analysis "
+                "wrote — e.g. the `result_table` from data_copilot analyze — or a name "
+                "relative to the session's data_copilot data/ dir) and a `title`. "
+                "Optionally pass `suggestions` (chart specs) so the UI renders an "
+                "interactive chart. Normally forward the `suggestions` returned by "
+                "analyze verbatim — they already carry the rich fields below. Each "
+                "suggestion has: `chart_type` (bar|line|area|pie|doughnut|scatter|combo|"
+                "radar), `x` (category column), `y` (list of numeric columns), `title`, "
+                "and optionally `description` (one line under the chart), `labels` "
+                "(series key → display name), `units` (series key → unit e.g. '%', 'triệu "
+                "VND'), `combo` (series key → 'bar'|'line' for a mixed chart), "
+                "`secondaryAxis` (series keys on the right-hand y-axis), and `normalized` "
+                "(true for 0–100 radar). Whenever the data is chartable (a category "
+                "column plus one or more numeric columns), include at least one "
+                "suggestion so the user gets a chart, not just a table. Use this to "
+                "show computed results; it is NOT editable. Only works in the web UI."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "description": (
+                            "CSV to display. May be: a name under the session "
+                            "data_copilot data/ dir (e.g. 'result.csv'), any path "
+                            "inside the workspace (e.g. 'modules/data_copilot/data/"
+                            "sales_data.csv'), or an absolute path within the "
+                            "workspace. Pass `module` instead for a module dataset."
+                        ),
+                    },
+                    "module": {
+                        "type": "string",
+                        "description": (
+                            "Optional module name to read the CSV from that module's "
+                            "data/ dir (modules/<module>/data/<file>). When set, `file` "
+                            "is relative to that module's data/ dir."
+                        ),
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title shown above the table.",
+                    },
+                    "suggestions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "chart_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "bar", "line", "area", "pie", "doughnut",
+                                        "scatter", "combo", "radar",
+                                    ],
+                                },
+                                "x": {"type": "string"},
+                                "y": {"type": "array", "items": {"type": "string"}},
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                                "labels": {"type": "object"},
+                                "units": {"type": "object"},
+                                "combo": {"type": "object"},
+                                "secondaryAxis": {
+                                    "type": "array", "items": {"type": "string"},
+                                },
+                                "normalized": {"type": "boolean"},
+                            },
+                            "required": ["chart_type", "x", "y"],
+                        },
+                        "description": (
+                            "Optional chart specs to render an interactive chart above "
+                            "the table. Forward the `suggestions` from analyze verbatim "
+                            "to keep their rich fields (description, labels, units, "
+                            "combo, secondaryAxis, normalized)."
+                        ),
+                    },
+                    "max_rows": {
+                        "type": "integer",
+                        "description": "Optional cap on rows sent to the UI.",
+                    },
+                },
+                "required": ["file", "title"],
+            },
+        },
+    },
     # Skill-owned schemas live in their skill folders and are merged in via
     # ToolSchemaBuilder(extra_schemas=...).
     {

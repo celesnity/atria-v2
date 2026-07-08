@@ -12,6 +12,7 @@ When a tool fails, read the error message carefully and apply the matching resol
 - **"Permission denied"** — Insufficient permissions. Check file permissions or try a different approach.
 - **"old_content not found"** — The file has changed since you last read it, or your memory of the content is wrong. Re-read the file and retry with the correct content.
 - **Rate limit errors** — Too many requests. The system retries automatically; if it persists, reduce concurrency.
+- **"Access denied" / "protected path"** — The path is deliberately off-limits; the error names the tool to use instead. Use that tool or report to the user. Never try another access method (bash, search, glob) on the same path.
 
 **Process**:
 1. Read the error message carefully
@@ -24,3 +25,4 @@ When a tool fails, read the error message carefully and apply the matching resol
 - Retry the same failing command repeatedly without changes
 - Ignore error messages
 - Continue without fixing the root cause
+- Work around a failing tool by reading its underlying data files directly or answering from memory — when a tool that implements a mandated pipeline (retrieval, validation, citation) fails, report the failure to the user and stop

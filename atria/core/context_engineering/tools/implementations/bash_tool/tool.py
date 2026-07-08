@@ -32,12 +32,20 @@ from atria.core.context_engineering.tools.implementations.bash_tool.constants im
 )
 
 
-def _build_exec_env(working_dir: Union[str, Path]) -> dict[str, str]:
+def _build_exec_env(
+    working_dir: Union[str, Path],
+    overrides: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
     """Compose the subprocess environment for bash tool calls.
 
     Adds Atria-specific vars (session/conversation id, project slug,
     workspace, API base) on top of os.environ. Pre-existing values
     in os.environ take precedence so explicit overrides win.
+
+    ``overrides`` are applied last and win unconditionally. The background
+    worker uses this to inject the session id / workspace from the task payload,
+    since it has no UI callback to read them from and mutating os.environ would
+    race across concurrently-running jobs.
     """
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
@@ -60,6 +68,11 @@ def _build_exec_env(working_dir: Union[str, Path]) -> dict[str, str]:
     )
     env.setdefault("ATRIA_WORKSPACE", str(working_dir))
     env.setdefault("ATRIA_SESSION_DIR", str(working_dir))
+
+    if overrides:
+        for key, value in overrides.items():
+            if value:
+                env[key] = str(value)
     return env
 
 
@@ -106,17 +119,28 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
         """Tool description."""
         return "Execute a bash command safely"
 
-    def __init__(self, config: AppConfig, working_dir: Path, task_manager: Optional[Any] = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        working_dir: Path,
+        task_manager: Optional[Any] = None,
+        env_overrides: Optional[dict[str, str]] = None,
+    ):
         """Initialize bash tool.
 
         Args:
             config: Application configuration
             working_dir: Working directory for command execution
             task_manager: Optional BackgroundTaskManager for tracking background tasks
+            env_overrides: Optional env vars injected into every command's
+                subprocess environment (winning over os.environ). The background
+                worker uses this to pass the session id / workspace from the task
+                payload since it has no UI callback.
         """
         self.config = config
         self.working_dir = working_dir
         self._task_manager = task_manager
+        self._env_overrides = env_overrides or {}
         # Track background processes: {pid: {process, command, start_time, stdout_lines, stderr_lines}}
         self._background_processes = {}
 
@@ -159,7 +183,7 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
         r"jekyll\s+serve",
         # Go
         r"go\s+run.*server",
-        r"air",  # Go live reload
+        r"(?:^|[;&|]\s*)air\b",  # Go live reload (anchored: only as a command, not the substring "air")
         # Rust
         r"cargo\s+watch",
         # Java
@@ -175,6 +199,245 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
     def _is_server_command(self, command: str) -> bool:
         """Check if command is a server/daemon that should run in background."""
         return any(re.search(pattern, command, re.IGNORECASE) for pattern in self._SERVER_PATTERNS)
+
+    def _execute_foreground_windows(
+        self,
+        *,
+        exec_command: str,
+        command: str,
+        work_dir: Path,
+        exec_env: dict,
+        capture_output: bool,
+        output_callback: Optional[Any],
+        operation: Optional[Operation],
+        start_time: float,
+        use_stdin_confirm: bool,
+    ) -> BashResult:
+        """Synchronous foreground execution on Windows.
+
+        The POSIX path streams output by select()-polling pipe file descriptors,
+        which Windows does not support (select() there works only on sockets), so
+        that loop captures nothing. Foreground commands are short-lived CLIs --
+        servers already route to the background branch -- so here we capture with
+        communicate() under the same MAX_TIMEOUT, killing and draining on timeout.
+        Output is delivered to output_callback line-by-line after completion
+        (no live streaming or ESC-interrupt on Windows).
+        """
+        process = subprocess.Popen(
+            exec_command,
+            shell=True,
+            stdin=subprocess.PIPE if use_stdin_confirm else None,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.PIPE if capture_output else None,
+            text=True,
+            bufsize=1,
+            cwd=str(work_dir),
+            env=exec_env,
+        )
+
+        # Windows can't use the `yes |` wrapper; feed confirmations via stdin.
+        confirm_input = "y\ny\ny\ny\ny\n" if use_stdin_confirm else None
+
+        timed_out = False
+        try:
+            stdout_text, stderr_text = process.communicate(input=confirm_input, timeout=MAX_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.kill()
+            try:
+                stdout_text, stderr_text = process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                stdout_text, stderr_text = "", ""
+
+        stdout_text = (stdout_text or "").rstrip() if capture_output else ""
+        stderr_text = (stderr_text or "").rstrip() if capture_output else ""
+
+        # Deliver captured output post-hoc (Windows has no live streaming here).
+        if capture_output and output_callback:
+            for _line in stdout_text.splitlines():
+                try:
+                    output_callback(_line, is_stderr=False)
+                except Exception:
+                    pass
+            for _line in stderr_text.splitlines():
+                try:
+                    output_callback(_line, is_stderr=True)
+                except Exception:
+                    pass
+
+        duration = time.time() - start_time
+
+        if timed_out:
+            error = f"Command exceeded maximum runtime of {MAX_TIMEOUT} seconds"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout=stdout_text,
+                stderr=stderr_text or error,
+                duration=duration,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        success = process.returncode == 0
+        if operation:
+            if success:
+                operation.mark_success()
+            else:
+                operation.mark_failed(f"Command failed with exit code {process.returncode}")
+
+        return BashResult(
+            success=success,
+            command=command,
+            exit_code=process.returncode,
+            stdout=stdout_text,
+            stderr=stderr_text,
+            duration=duration,
+            operation_id=operation.id if operation else None,
+        )
+
+    def _execute_background_windows(
+        self,
+        *,
+        exec_command: str,
+        command: str,
+        work_dir: Path,
+        exec_env: dict,
+        capture_output: bool,
+        output_callback: Optional[Any],
+        operation: Optional[Operation],
+        start_time: float,
+    ) -> BashResult:
+        """Background execution on Windows, where pty/termios do not exist.
+
+        Mirrors the POSIX PTY branch in execute(): launch the process, capture
+        startup output for a short window, then either return the completed
+        output (fast-exiting commands such as CLI scripts) or register a
+        still-running process as a background task. A daemon drainer thread
+        feeds captured lines through a queue because select() cannot poll
+        pipes on Windows.
+        """
+        import queue as _queue
+        import threading as _threading
+
+        process = subprocess.Popen(
+            exec_command,
+            shell=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.STDOUT if capture_output else None,  # merge into stdout
+            text=True,
+            bufsize=1,
+            cwd=str(work_dir),
+            env=exec_env,
+        )
+
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []  # merged into stdout on Windows; kept for parity
+
+        if capture_output and process.stdout is not None:
+            line_q: "_queue.Queue[Optional[str]]" = _queue.Queue()
+
+            def _drain(stream: Any) -> None:
+                try:
+                    for line in stream:
+                        line_q.put(line)
+                finally:
+                    line_q.put(None)  # sentinel: stdout closed (process exited)
+
+            _threading.Thread(target=_drain, args=(process.stdout,), daemon=True).start()
+
+            max_capture_time = 20.0  # Maximum time to wait for startup output
+            idle_timeout = 3.0  # Stop if no output for this long
+            start_capture = time.time()
+            last_output_time = start_capture
+
+            while time.time() - start_capture < max_capture_time:
+                try:
+                    line = line_q.get(timeout=0.1)
+                except _queue.Empty:
+                    if process.poll() is not None:
+                        break
+                    elapsed = time.time() - start_capture
+                    idle_time = time.time() - last_output_time
+                    if elapsed > 1.0 and idle_time >= idle_timeout:
+                        break
+                    continue
+                if line is None:  # drainer sentinel: process closed stdout
+                    break
+                last_output_time = time.time()
+                stdout_lines.append(line if line.endswith("\n") else line + "\n")
+                if output_callback:
+                    try:
+                        output_callback(line.rstrip("\n"), is_stderr=False)
+                    except Exception:
+                        pass
+
+        exit_code = process.poll()
+
+        # Fast-exiting command: return its real output (e.g. inventory.py CLI).
+        if exit_code is not None and exit_code != 0:
+            if operation:
+                operation.mark_failed(f"Command failed with exit code {exit_code}")
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=exit_code,
+                stdout="".join(stdout_lines).rstrip(),
+                stderr="".join(stderr_lines).rstrip(),
+                duration=time.time() - start_time,
+                operation_id=operation.id if operation else None,
+            )
+
+        if exit_code == 0:
+            if operation:
+                operation.mark_success()
+            return BashResult(
+                success=True,
+                command=command,
+                exit_code=0,
+                stdout="".join(stdout_lines).rstrip(),
+                stderr="".join(stderr_lines).rstrip(),
+                duration=time.time() - start_time,
+                operation_id=operation.id if operation else None,
+            )
+
+        # Still running: register as a background process (real server, etc.).
+        self._background_processes[process.pid] = {
+            "process": process,
+            "command": command,
+            "start_time": start_time,
+            "stdout_lines": stdout_lines,
+            "stderr_lines": stderr_lines,
+        }
+        if operation:
+            operation.mark_success()
+
+        stdout_text = "".join(stdout_lines).rstrip()
+        background_task_id = None
+        if self._task_manager:
+            task = self._task_manager.register_task(
+                command=command,
+                pid=process.pid,
+                process=process,
+                pty_master_fd=None,  # no PTY on Windows
+                initial_output=stdout_text,
+            )
+            background_task_id = task.task_id
+
+        return BashResult(
+            success=True,
+            command=command,
+            exit_code=0,  # Process started
+            stdout=stdout_text,
+            stderr="".join(stderr_lines).rstrip(),
+            duration=time.time() - start_time,
+            operation_id=operation.id if operation else None,
+            background_task_id=background_task_id,
+        )
 
     def execute(
         self,
@@ -267,7 +530,7 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
             background = True
 
         # Build subprocess environment with Atria-specific vars injected.
-        exec_env = _build_exec_env(work_dir)
+        exec_env = _build_exec_env(work_dir, getattr(self, "_env_overrides", None))
         if env:
             exec_env.update(env)
 
@@ -286,7 +549,20 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
                 # Insert -u flag after python/python3
                 exec_command = re.sub(r"^(python3?)\s+", r"\1 -u ", command)
 
-            # Handle background execution
+            # Handle background execution. Windows has no pty/termios, so it
+            # uses a pipe + drainer-thread capture path instead of a PTY.
+            if background and platform.system() == "Windows":
+                return self._execute_background_windows(
+                    exec_command=exec_command,
+                    command=command,
+                    work_dir=work_dir,
+                    exec_env=exec_env,
+                    capture_output=capture_output,
+                    output_callback=output_callback,
+                    operation=operation,
+                    start_time=start_time,
+                )
+
             if background:
                 # Use PTY (pseudo-terminal) for background execution
                 # This makes the subprocess think it's connected to a terminal,
@@ -467,6 +743,22 @@ class BashTool(SecurityMixin, ProcessMixin, BaseTool):
                 else:
                     # Windows: will use stdin.write() approach
                     use_stdin_confirm = True
+
+            # Windows can't select()-poll pipe fds (the streaming loop below is a
+            # no-op there and captures nothing), so capture via communicate().
+            # Foreground commands are short-lived CLIs; servers route to background.
+            if platform.system() == "Windows":
+                return self._execute_foreground_windows(
+                    exec_command=exec_command,
+                    command=command,
+                    work_dir=work_dir,
+                    exec_env=exec_env,
+                    capture_output=capture_output,
+                    output_callback=output_callback,
+                    operation=operation,
+                    start_time=start_time,
+                    use_stdin_confirm=use_stdin_confirm,
+                )
 
             # Regular synchronous execution with interrupt support
             process = subprocess.Popen(

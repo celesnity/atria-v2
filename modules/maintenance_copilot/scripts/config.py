@@ -15,6 +15,23 @@ from typing import Dict, Mapping, Optional
 
 ROLES = ("chunk_embed", "index_embed", "synthesis", "kg_extract")
 
+# How synthesis constrains the LLM to JSON output, strongest first:
+# "schema" (server-side schema-guided decoding), "json_object" (JSON mode
+# without a schema), "prompt" (instruction-only; parse + retry do the work).
+JSON_MODES = ("schema", "json_object", "prompt")
+_DEFAULT_JSON_MODE = "schema"
+
+
+def synthesis_json_mode(env: Optional[Mapping[str, str]] = None) -> str:
+    """Resolve ``MC_SYNTHESIS_JSON_MODE``, defaulting to ``"schema"``.
+
+    Unknown values fall back to the default rather than erroring, matching the
+    forgiving style of the other env knobs.
+    """
+    src = os.environ if env is None else env
+    raw = src.get("MC_SYNTHESIS_JSON_MODE", _DEFAULT_JSON_MODE).strip().lower()
+    return raw if raw in JSON_MODES else _DEFAULT_JSON_MODE
+
 
 @dataclass(frozen=True)
 class RoleConfig:

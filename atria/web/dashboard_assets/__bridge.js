@@ -117,6 +117,14 @@
     },
     openChat: function () { send({ type: "openChat" }); },
 
+    // Close the dashboard and open a specific conversation in the main chat
+    // (refreshing the history sidebar so a newly-saved chat + its project show).
+    openHistory: function (sessionId, projectId) {
+      send({ type: "openHistory",
+             sessionId: String(sessionId == null ? "" : sessionId),
+             projectId: projectId == null ? null : Number(projectId) });
+    },
+
     resize: function (height) { send({ type: "resize", height: height | 0 }); },
   };
 

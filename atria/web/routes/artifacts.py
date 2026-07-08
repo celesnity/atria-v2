@@ -54,6 +54,47 @@ def _infer_type(path: str) -> str:
     return _EXT_TO_TYPE.get(ext, "file")
 
 
+async def _resolve_working_dir(sm: Any, artifact: dict) -> Optional[str]:
+    """Return the base working directory an artifact's files live under.
+
+    Conversation artifacts resolve against the conversation ``working_directory``;
+    project artifacts against the project ``workspace_path``. Returns ``None`` when
+    the owner record or its directory is missing.
+    """
+    conversation_id = artifact.get("conversation_id")
+    project_id = artifact.get("project_id")
+    if conversation_id:
+        conv = await ConversationRepository(sm).get_by_id(conversation_id)
+        return conv.get("working_directory") if conv else None
+    if project_id:
+        proj = await ProjectRepository(sm).get_by_id(project_id)
+        return proj.get("workspace_path", "/tmp") if proj else None
+    return None
+
+
+def _resolve_artifact_file(working_dir: str, artifact: dict) -> Optional[Path]:
+    """Resolve the on-disk file for an artifact, safely (no path traversal).
+
+    Prefers ``payload_ref`` (relative to the working dir, as the viewer uses), and
+    falls back to the legacy ``.artifacts/local_path`` layout for uploaded files.
+    Returns ``None`` if neither ref is set or the resolved path escapes the root.
+    """
+    base = Path(working_dir).resolve()
+    for candidate in (
+        artifact.get("payload_ref") and base / artifact["payload_ref"],
+        artifact.get("local_path") and base / ".artifacts" / artifact["local_path"],
+    ):
+        if not candidate:
+            continue
+        resolved = Path(candidate).resolve()
+        try:
+            resolved.relative_to(base)
+        except ValueError:
+            continue  # traversal attempt — skip
+        return resolved
+    return None
+
+
 def _serialize(row: Any) -> dict:
     preview = row["preview"]
     if isinstance(preview, str):
@@ -158,6 +199,60 @@ async def update_artifact(
     row = await repo.get_by_id(artifact_id)
     if not row:
         raise HTTPException(status_code=404, detail="Artifact not found")
+    return _serialize(row)
+
+
+class RenameArtifactRequest(BaseModel):
+    new_name: str
+
+
+@router.post("/{artifact_id}/rename")
+async def rename_artifact(
+    artifact_id: int,
+    request: RenameArtifactRequest,
+    user=Depends(require_authenticated_user),
+) -> dict:
+    """Rename the physical file backing an artifact and update its DB record.
+
+    Renames within the same parent directory, updates ``payload_ref`` and ``title``.
+    Rejects traversal, empty names, and collisions with an existing file.
+    """
+    sm = await get_sessionmaker()
+    repo = ArtifactRepository(sm)
+
+    artifact = await repo.get_by_id(artifact_id)
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Sanitize to a bare basename — no directory components, no traversal.
+    new_name = Path(request.new_name.strip()).name
+    if not new_name or new_name in (".", ".."):
+        raise HTTPException(status_code=422, detail="Invalid file name")
+
+    working_dir = await _resolve_working_dir(sm, artifact)
+    if not working_dir:
+        raise HTTPException(status_code=400, detail="Artifact has no working directory")
+
+    src = _resolve_artifact_file(working_dir, artifact)
+    if not src or not src.exists():
+        raise HTTPException(status_code=404, detail="Artifact file not found on disk")
+
+    dst = src.with_name(new_name)
+    if dst == src:
+        return _serialize(artifact)
+    if dst.exists():
+        raise HTTPException(status_code=409, detail="A file with that name already exists")
+
+    try:
+        src.rename(dst)
+    except OSError as e:
+        logger.error(f"Failed to rename artifact {artifact_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to rename file: {e}") from e
+
+    # payload_ref stays relative to the working dir, matching how the viewer reads it.
+    new_ref = str(dst.relative_to(Path(working_dir).resolve()))
+    await repo.update(artifact_id, title=new_name, payload_ref=new_ref)
+    row = await repo.get_by_id(artifact_id)
     return _serialize(row)
 
 
@@ -307,37 +402,16 @@ async def delete_artifact(
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     if hard_delete:
-        # Hard delete: remove file from disk
-        local_path = artifact.get("local_path")
-        if local_path:
-            # Reconstruct full path from conversation or project
-            conversation_id = artifact.get("conversation_id")
-            project_id = artifact.get("project_id")
-
-            # Get working directory
-            if conversation_id:
-                conv_repo = ConversationRepository(sm)
-                conv = await conv_repo.get_by_id(conversation_id)
-                if conv:
-                    working_dir = conv.get("working_directory")
-                    if working_dir:
-                        full_path = Path(working_dir) / ".artifacts" / local_path
-                        try:
-                            if full_path.exists():
-                                full_path.unlink()
-                        except Exception as e:
-                            logger.error(f"Failed to delete file {full_path}: {str(e)}")
-            elif project_id:
-                proj_repo = ProjectRepository(sm)
-                proj = await proj_repo.get_by_id(project_id)
-                if proj:
-                    working_dir = proj.get("workspace_path", "/tmp")
-                    full_path = Path(working_dir) / ".artifacts" / local_path
-                    try:
-                        if full_path.exists():
-                            full_path.unlink()
-                    except Exception as e:
-                        logger.error(f"Failed to delete file {full_path}: {str(e)}")
+        # Hard delete: remove file from disk. Resolve via payload_ref (viewer path)
+        # with a fallback to the legacy .artifacts/local_path layout.
+        working_dir = await _resolve_working_dir(sm, artifact)
+        if working_dir:
+            full_path = _resolve_artifact_file(working_dir, artifact)
+            if full_path and full_path.exists():
+                try:
+                    full_path.unlink()
+                except Exception as e:
+                    logger.error(f"Failed to delete file {full_path}: {str(e)}")
 
         # Delete from database
         await repo.hard_delete(artifact_id)

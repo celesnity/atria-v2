@@ -73,8 +73,9 @@ class WebState:
         # Pending ask-user requests
         self._pending_ask_users: Dict[str, Dict[str, Any]] = {}
 
-        # Thinking level (matches TUI: Off, Low, Medium, High)
-        self._thinking_level: str = "Medium"
+        # Thinking level (matches TUI: Off, Low, Medium, High).
+        # Default OFF: fast, data-based answers; users can raise it in the UI.
+        self._thinking_level: str = "Off"
 
         # Pending plan approval requests
         self._pending_plan_approvals: Dict[str, Dict[str, Any]] = {}
