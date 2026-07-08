@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -63,7 +64,7 @@ class DivideOrchestrator:
         return self._run_async(self.start_async(request, module, module_skill))
 
     def collect(self, job_id: str, block: bool = True, timeout_ms: int = 30000) -> dict:
-        return self._run_async(self.collect_async(job_id))
+        return self._run_async(self.collect_async(job_id, block=block, timeout_ms=timeout_ms))
 
     async def start_async(self, request: str, module: Any, module_skill: str) -> str:
         """Decompose + persist + emit ``started``. Schedule workers as a
@@ -196,8 +197,26 @@ class DivideOrchestrator:
             logger.warning("divide read digest failed for %s: %s", bb_id, exc)
             return ""
 
-    async def collect_async(self, job_id: str) -> dict:
-        rec = await self._js.load(job_id)
-        if rec is None:
-            return {"status": "unknown", "error": f"no such job {job_id}"}
-        return rec
+    async def collect_async(
+        self,
+        job_id: str,
+        block: bool = False,
+        timeout_ms: int = 30000,
+        poll_s: float = 1.0,
+    ) -> dict:
+        """Return the job record; with ``block=True`` poll until terminal or timeout.
+
+        Terminal statuses are ``done`` and ``failed``. On timeout the latest
+        snapshot is returned as-is (``status`` still ``running``/``decomposing``)
+        so the caller can report honest progress — never an exception.
+        """
+        deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
+        while True:
+            rec = await self._js.load(job_id)
+            if rec is None:
+                return {"status": "unknown", "error": f"no such job {job_id}"}
+            if not block or rec.get("status") in ("done", "failed"):
+                return rec
+            if time.monotonic() >= deadline:
+                return rec
+            await asyncio.sleep(min(poll_s, max(0.0, deadline - time.monotonic())))

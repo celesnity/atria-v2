@@ -164,5 +164,66 @@ def test_orchestrator_redecompose_disabled_when_rounds_zero():
     assert len(enqueued) == 1  # no second round
 
 
+# --------------------------------------------------------------------------- #
+# collect_async — block/timeout must be honored (get_solve_result contract)
+# --------------------------------------------------------------------------- #
+class _ScriptedJobStore:
+    """load() returns queued snapshots in order, repeating the last one."""
+
+    def __init__(self, snapshots):
+        self._snaps = list(snapshots)
+        self.loads = 0
+
+    async def load(self, job_id):
+        self.loads += 1
+        snap = self._snaps[0] if len(self._snaps) == 1 else self._snaps.pop(0)
+        return snap
+
+    async def save(self, job_id, rec, ttl=None):  # pragma: no cover - not used here
+        pass
+
+
+def _orch_for_collect(js):
+    cfg = SimpleNamespace(max_tasks=8, max_parallel=3, max_redecompose_rounds=1, pjob_ttl=3600)
+    orch = _orch(lambda system, user: "", cfg, [], [])
+    orch._js = js
+    return orch
+
+
+def test_collect_async_blocks_until_done():
+    running = {"job_id": "j1", "status": "running", "summary": None}
+    done = {"job_id": "j1", "status": "done", "summary": "2/2 tasks done, 0 failed."}
+    js = _ScriptedJobStore([running, running, done])
+    orch = _orch_for_collect(js)
+    rec = asyncio.run(orch.collect_async("j1", block=True, timeout_ms=5000, poll_s=0.01))
+    assert rec["status"] == "done"
+    assert js.loads >= 3  # polled through the running snapshots
+
+
+def test_collect_async_times_out_returns_latest_state():
+    running = {"job_id": "j2", "status": "running", "summary": None}
+    js = _ScriptedJobStore([running])
+    orch = _orch_for_collect(js)
+    rec = asyncio.run(orch.collect_async("j2", block=True, timeout_ms=50, poll_s=0.01))
+    assert rec["status"] == "running"  # honest state on timeout, no exception
+
+
+def test_collect_async_nonblocking_returns_immediately():
+    running = {"job_id": "j3", "status": "running", "summary": None}
+    js = _ScriptedJobStore([running])
+    orch = _orch_for_collect(js)
+    rec = asyncio.run(orch.collect_async("j3", block=False))
+    assert rec["status"] == "running"
+    assert js.loads == 1
+
+
+def test_collect_async_failed_is_terminal():
+    js = _ScriptedJobStore([{"job_id": "j4", "status": "failed", "summary": "boom"}])
+    orch = _orch_for_collect(js)
+    rec = asyncio.run(orch.collect_async("j4", block=True, timeout_ms=5000, poll_s=0.01))
+    assert rec["status"] == "failed"
+    assert js.loads == 1  # terminal on first load, no extra polling
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
