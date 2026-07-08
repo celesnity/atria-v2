@@ -184,6 +184,21 @@ The agent has access to two tools for managing uploaded files and images:
 
 **CRITICAL:** When crafting system prompts, never use table format. Tables are poorly parsed by LLMs and waste tokens. Use plain prose, bullet lists, or structured sections instead.
 
+## Maintenance-Knowledge Questions — Always Use the RAG Skill
+
+Aircraft-maintenance knowledge questions (AMM, MEL, CDL, TSM, engineering
+orders, defect assessment, dispatch-readiness, reference validation, ATA-chapter
+lookups) MUST be answered via the maintenance copilot pipeline — run
+`python copilot.py query "<question in English>" --synthesize` from
+`modules/maintenance_copilot/scripts/` (inside the Atria agent, the equivalent
+is the `maintenance_copilot_query` tool). Do NOT answer from your own
+knowledge and do NOT read or grep `modules/maintenance_copilot/sample_manuals/`
+directly: the manual files are the RAG corpus, and reading them bypasses the
+retrieval, citations, revision-awareness, and guardrails the copilot enforces
+(Atria's tool layer also denies those paths). If the pipeline reports a service
+unreachable, report the outage instead of answering another way. A licensed
+engineer stays in the loop for every dispatch decision.
+
 ## Code Style
 
 - Line length: 100 characters (Black + Ruff)

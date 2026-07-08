@@ -210,6 +210,27 @@
   }
 }
 
+/* ── Theme crossfade ─────────────────────────────────────────────────
+   The `.cosmos`/`.daybreak` swap is an instant class flip. `theme.ts` adds
+   `.theme-transition` to <html> for the duration of a toggle so surfaces ease
+   between skies instead of snapping. Scoped to the flip window so we never pay
+   the transition cost on every paint. Auto-disabled under reduced-motion by the
+   global rule above. */
+html.theme-transition,
+html.theme-transition * {
+  transition:
+    background-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    fill 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 320ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+/* Don't animate transform/opacity-driven UI (spinners, menus) during the flip. */
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition-property: background-color, border-color, color !important;
+}
+
 /* ── braille spinner — CSS-only, zero JS timer ───────────────────── */
 
 @keyframes braille-spin {
@@ -613,3 +634,9 @@ code {
 .daybreak .glow-accent,
 .daybreak .glow-nebula,
 .daybreak .glow-magenta { box-shadow: 0 8px 24px hsl(var(--ink) / 0.10), 0 24px 48px hsl(var(--ink) / 0.10); }
+
+/* Citation click-through highlight in Monaco (see MonacoViewer location prop). */
+.citation-highlight {
+  background: rgba(250, 204, 21, 0.28);
+  border-radius: 2px;
+}

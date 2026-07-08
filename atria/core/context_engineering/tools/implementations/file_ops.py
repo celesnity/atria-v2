@@ -1,5 +1,6 @@
 """File operation tools for reading, searching, and navigating codebases."""
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -31,6 +32,20 @@ class FileOperations:
         self.config = config
         self.working_dir = working_dir
         self._gitignore = None
+        # Absolute directories search must never descend into (set by the tool
+        # registry from permissions.protected_paths; see protected_paths.py).
+        self.protected_roots: list[Path] = []
+
+    def _is_protected(self, path: Path) -> bool:
+        """True when *path* lies under a protected root (RAG corpora etc.)."""
+        if not self.protected_roots:
+            return False
+        parts = Path(os.path.normcase(os.path.normpath(str(path)))).parts
+        for root in self.protected_roots:
+            root_parts = Path(os.path.normcase(str(root))).parts
+            if parts[: len(root_parts)] == root_parts:
+                return True
+        return False
 
     @property
     def gitignore(self):
@@ -378,6 +393,11 @@ class FileOperations:
                 else:
                     cmd.extend(["--glob", f"!{exclude}/**"])
 
+            # Protected roots (RAG corpora): a broad search from the repo root
+            # must not surface corpus content the agent is barred from reading.
+            for root in self.protected_roots:
+                cmd.extend(["--glob", f"!**/{root.name}/**"])
+
             if include_glob:
                 cmd.extend(["--glob", include_glob])
             if file_type:
@@ -544,6 +564,8 @@ class FileOperations:
 
         for path in search_root.glob(glob_pattern):
             if not path.is_file():
+                continue
+            if self._is_protected(path):
                 continue
 
             # Skip excluded and gitignored paths

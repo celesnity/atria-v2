@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo, DataColumn, ChartSuggestion } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
+import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -68,13 +69,19 @@ function expandToolCalls(
     // Reconstruct the chart bubble from persisted send_data tool calls so
     // it survives session reload (the live WS data_message event isn't
     // replayed from DB).
-    if ((tc.name === 'send_data' || tc.name === 'send_editable_table') && !tc.error && depth === 0) {
+    if (
+      (tc.name === 'send_table' || tc.name === 'send_data' || tc.name === 'send_editable_table') &&
+      !tc.error &&
+      depth === 0
+    ) {
       const payload = extractDataPayload(tc.result);
       if (payload) {
         messages.push({
           role: 'data_message',
           content: payload.title || '',
-          data_message_id: `data-${tc.id}`,
+          // Key on the stable chart_id (matches the live event) so persisted
+          // overrides restore; fall back to the tool-call id for old sessions.
+          data_message_id: (payload.chart_id as string | undefined) || `data-${tc.id}`,
           data_title: payload.title,
           data_columns: payload.columns as DataColumn[] | undefined,
           data_rows: payload.rows as Record<string, any>[] | undefined,
@@ -95,6 +102,7 @@ function expandToolCalls(
 }
 
 function extractDataPayload(result: unknown): {
+  chart_id?: unknown;
   title?: string;
   columns?: unknown;
   rows?: unknown;
@@ -664,6 +672,71 @@ wsClient.on('message_start', (message) => {
   }));
 });
 
+// ── Streaming token coalescing ────────────────────────────────────────────
+// Applying every streamed token straight to the store rebuilds the message
+// array and re-parses the whole markdown per token, so the virtuoso list keeps
+// re-measuring the growing last item and its followOutput jitters. Instead we
+// buffer incoming text per session and flush at most once per animation frame.
+const _chunkBuffers = new Map<string, { turnId: string; text: string }>();
+let _flushRaf: number | null = null;
+
+function _applyBufferedChunks() {
+  _flushRaf = null;
+  if (_chunkBuffers.size === 0) return;
+  const entries = Array.from(_chunkBuffers.entries());
+  _chunkBuffers.clear();
+  useChatStore.setState(state => {
+    const sessionStates = { ...state.sessionStates };
+    for (const [sid, buf] of entries) {
+      const sessionState = getSessionState(sessionStates, sid);
+      const msgs = sessionState.messages;
+      // Find the assistant bubble for this turn (may sit above interleaved
+      // tool_call/tool_result messages), searching from the end.
+      let idx = -1;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'assistant' && msgs[i].turnId === buf.turnId) {
+          idx = i;
+          break;
+        }
+      }
+      let newMessages: Message[];
+      if (idx !== -1) {
+        const target = msgs[idx];
+        newMessages = [
+          ...msgs.slice(0, idx),
+          { ...target, content: target.content + buf.text },
+          ...msgs.slice(idx + 1),
+        ];
+      } else {
+        newMessages = [
+          ...msgs,
+          { role: 'assistant' as const, content: buf.text, turnId: buf.turnId },
+        ];
+      }
+      sessionStates[sid] = { ...sessionState, messages: newMessages };
+    }
+    return { sessionStates };
+  });
+}
+
+function _scheduleChunkFlush() {
+  if (_flushRaf !== null) return;
+  if (typeof requestAnimationFrame === 'undefined') {
+    _applyBufferedChunks();
+    return;
+  }
+  _flushRaf = requestAnimationFrame(_applyBufferedChunks);
+}
+
+/** Flush buffered streaming text immediately (called on turn end). */
+export function flushStreamingChunks() {
+  if (_flushRaf !== null) {
+    if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(_flushRaf);
+    _flushRaf = null;
+  }
+  _applyBufferedChunks();
+}
+
 wsClient.on('message_chunk', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
@@ -676,43 +749,24 @@ wsClient.on('message_chunk', (message) => {
     activeTurnBySession.set(sid, turnId);
   }
 
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    const msgs = sessionState.messages;
-
-    // Find the assistant bubble for the current turn (may sit above interleaved
-    // tool_call/tool_result messages), searching from the end for the latest turn.
-    let idx = -1;
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role === 'assistant' && msgs[i].turnId === turnId) {
-        idx = i;
-        break;
-      }
-    }
-
-    let newMessages: Message[];
-    if (idx !== -1) {
-      const target = msgs[idx];
-      newMessages = [
-        ...msgs.slice(0, idx),
-        { ...target, content: target.content + message.data.content },
-        ...msgs.slice(idx + 1),
-      ];
-    } else {
-      newMessages = [
-        ...msgs,
-        { role: 'assistant' as const, content: message.data.content, turnId },
-      ];
-    }
-
-    return patchSession(state, sid, { messages: newMessages });
-  });
+  const buf = _chunkBuffers.get(sid);
+  if (buf && buf.turnId === turnId) {
+    buf.text += message.data.content;
+  } else {
+    // A new turn started before the previous buffer flushed — apply it first.
+    if (buf) flushStreamingChunks();
+    _chunkBuffers.set(sid, { turnId, text: message.data.content });
+  }
+  _scheduleChunkFlush();
 });
 
 wsClient.on('message_complete', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
   console.log('[Frontend] Received message_complete');
+  // Apply any buffered streaming text before closing the turn so no trailing
+  // tokens are dropped.
+  flushStreamingChunks();
   // End the turn: next agent turn starts a fresh bubble.
   activeTurnBySession.delete(sid);
   useChatStore.setState(state => ({
@@ -851,10 +905,13 @@ wsClient.on('data_message', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
+  // Prefer the backend's stable chart_id so overrides key the same across the
+  // live event and a later reload; fall back to a random id for non-chart data.
   const dataMessageId =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    (message.data.chart_id as string | undefined) ||
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? crypto.randomUUID()
-      : `data-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      : `data-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
@@ -1185,6 +1242,19 @@ wsClient.on('search_done', (message) => {
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
     return patchSession(state, sid, { messages: [...sessionState.messages, searchMsg] });
+  });
+});
+
+// ─── Maintenance Copilot Answer Card ──────────────────────────────────────────
+
+wsClient.on('maintenance_answer', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const maMsg = mapMaintenanceAnswer(message.data);
+
+  useChatStore.setState(state => {
+    const sessionState = getSessionState(state.sessionStates, sid);
+    return patchSession(state, sid, { messages: [...sessionState.messages, maMsg] });
   });
 });
 

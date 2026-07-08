@@ -10,7 +10,14 @@ from copy import deepcopy
 from typing import Any, Sequence, Union
 
 from .definitions import NOTE_SCHEMA, _BUILTIN_TOOL_SCHEMAS
+from .disabled_tools import DEFAULT_DISABLED_TOOLS, load_disabled_tools
 from atria.core.agents.components.schemas.schema_adapter import adapt_for_provider
+
+
+# Backwards-compatible alias. The disabled set is now dynamic (read per build via
+# load_disabled_tools()) so the web UI can toggle tools without a restart; this
+# frozenset is only the seed default used until the UI writes an explicit list.
+_DISABLED_TOOL_NAMES: frozenset[str] = DEFAULT_DISABLED_TOOLS
 
 
 class ToolSchemaBuilder:
@@ -91,6 +98,17 @@ class ToolSchemaBuilder:
         # Apply provider-specific schema adaptations
         if self._provider:
             schemas = adapt_for_provider(schemas, self._provider)
+
+        # Drop disabled tools last, so it also strips any MCP/task/extra schemas
+        # that happen to share a disabled name. Read fresh each build so web-UI
+        # toggles take effect on the next LLM call without a restart.
+        disabled = load_disabled_tools()
+        if disabled:
+            schemas = [
+                schema
+                for schema in schemas
+                if schema.get("function", {}).get("name") not in disabled
+            ]
 
         return schemas
 

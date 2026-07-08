@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -212,6 +213,66 @@ async def write_file_binary(
 
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": path,
+        }
+    )
+    return None
+
+
+class _RenameBody(BaseModel):
+    from_: str = Field(..., alias="from", min_length=1)
+    to: str = Field(..., min_length=1)
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/{conversation_id}/fs/rename", status_code=204)
+async def rename_path(
+    conversation_id: int,
+    body: _RenameBody,
+) -> None:
+    """Rename/move a file or directory within the conversation's working directory."""
+    base = await _conv_working_dir(conversation_id)
+    src = _resolve_safe(base, body.from_)
+    dst = _resolve_safe(base, body.to)
+    if not src.exists():
+        raise HTTPException(status_code=404, detail="source not found")
+    if dst.exists():
+        raise HTTPException(status_code=409, detail="destination already exists")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    src.rename(dst)
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": body.to,
+        }
+    )
+    return None
+
+
+@router.delete("/{conversation_id}/fs/file", status_code=204)
+async def delete_path(
+    conversation_id: int,
+    path: str = Query(..., min_length=1),
+) -> None:
+    """Delete a file (unlink) or directory (recursive) within the working directory."""
+    base = await _conv_working_dir(conversation_id)
+    target = _resolve_safe(base, path)
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    if target.is_dir():
+        shutil.rmtree(target)
+    else:
+        target.unlink()
 
     await _safe_broadcast(
         {

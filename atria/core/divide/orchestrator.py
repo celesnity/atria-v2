@@ -32,6 +32,7 @@ class DivideOrchestrator:
         modules_root: str,
         owner_id: str,
         session_id: str,
+        working_dir: str = "",
         progress_cb: Callable[[str, dict], None] | None = None,
     ) -> None:
         self._js = job_store
@@ -42,6 +43,9 @@ class DivideOrchestrator:
         self._enqueue = enqueue_worker
         self._await = await_worker
         self._root = modules_root
+        # Where workers execute: the conversation workspace so artifacts land in the
+        # session-scoped folder the main agent reads. Falls back to modules_root.
+        self._working_dir = working_dir or modules_root
         self._owner = owner_id
         self._session = session_id
         self._cb = progress_cb
@@ -132,7 +136,7 @@ class DivideOrchestrator:
                 payload = SubagentTaskPayload(
                     session_id=self._session, owner_id=self._owner,
                     subagent_type="module_worker", prompt=prompt,
-                    working_dir=self._root, config_snapshot={},
+                    working_dir=self._working_dir, config_snapshot={},
                     blackboard_task_id=bb_id, thread_id=int(t.id.lstrip("t") or 0)
                     if t.id.lstrip("t").isdigit() else 0,
                 )

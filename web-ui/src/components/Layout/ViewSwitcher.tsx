@@ -1,4 +1,5 @@
 import { MessageSquare, Network } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import { runningSolverCount, useSolverJobsStore } from "../../stores/solverJobs";
@@ -47,6 +48,7 @@ const VIEWS: ViewDef[] = [
 export function ViewSwitcher({ className }: { className?: string }) {
   const location = useLocation();
   const runningJobs = useSolverJobsStore(runningSolverCount);
+  const reduce = useReducedMotion();
 
   return (
     <nav
@@ -66,17 +68,27 @@ export function ViewSwitcher({ className }: { className?: string }) {
               showBadge ? `${label}, ${runningJobs} running` : label
             }
             className={cn(
-              "relative inline-flex items-center gap-1.5 h-8 border-b-2",
+              "relative inline-flex items-center gap-1.5 h-8 pb-0.5",
               "text-[13px] font-[480] tracking-[-0.1px] select-none cursor-pointer",
               "transition-colors duration-200",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas rounded-sm",
-              active
-                ? "text-ink border-ink"
-                : "text-ink/55 hover:text-ink border-transparent",
+              active ? "text-ink" : "text-ink/55 hover:text-ink",
             )}
           >
             <Icon className="w-3.5 h-3.5" strokeWidth={1.75} aria-hidden="true" />
             <span>{label}</span>
+            {active && (
+              <motion.span
+                layoutId="viewswitcher-active"
+                className="absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-ink"
+                transition={
+                  reduce
+                    ? { duration: 0 }
+                    : { type: "spring", stiffness: 480, damping: 34 }
+                }
+                aria-hidden="true"
+              />
+            )}
             {showBadge && (
               <span
                 className="ml-0.5 inline-flex items-center gap-1 pl-1.5 pr-1.5 h-4 rounded-full bg-amber-400/15 text-amber-500 text-[10px] font-mono font-[600] leading-none"

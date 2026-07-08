@@ -49,6 +49,26 @@ export interface SearchResultItem {
   domain: string;
 }
 
+// Maintenance-copilot structured answer (from the maintenance_answer event)
+export type MaintenanceAnswerType = 'extractive' | 'synthesized' | 'clarification_needed';
+
+export interface MaintenanceCitation {
+  chunk_id: string;
+  doc: string;
+  revision: string;
+  ata: string;
+  citation: string;          // human-readable locator (chip tooltip)
+  source_id: string;
+  source_name: string;       // filename, e.g. amm_ata32.md
+  page_number: number | null; // null until page-bearing (PDF/OCR) ingestion
+  confidence_score: number;  // 0..1 retrieval score of the cited chunk
+  // Click-through target: module-relative source path + offsets of the
+  // verified quote within the cited chunk's text.
+  source_path?: string;
+  char_start?: number | null;
+  char_end?: number | null;
+}
+
 // Message types
 export type DeepAnalyzePhase = 'explore' | 'load' | 'profile' | 'plan' | 'extract' | 'synthesize' | 'report';
 export type DeepAnalyzePhaseStatus = 'pending' | 'running' | 'done';
@@ -73,7 +93,7 @@ export interface Todo {
 }
 
 export interface Message {
-  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'deep_research' | 'deep_analyze' | 'image_message' | 'data_message' | 'custom_block' | 'todos';
+  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'maintenance_answer' | 'deep_research' | 'deep_analyze' | 'image_message' | 'data_message' | 'custom_block' | 'todos';
   // live todo list (role === 'todos')
   todos?: Todo[];
   // custom_block fields
@@ -110,6 +130,20 @@ export interface Message {
   search_result_count?: number;
   search_results?: SearchResultItem[];
   search_provider?: string;
+  // maintenance_answer fields (from the maintenance_copilot skill tool)
+  ma_answer?: string;               // response.primary_answer
+  ma_answer_type?: MaintenanceAnswerType;
+  ma_exact_quote?: string | null;   // verbatim substring of the cited source
+  ma_is_sensitive?: boolean;
+  ma_citations?: MaintenanceCitation[];
+  ma_related_suggestions?: string[];
+  ma_needs_user_input?: boolean;
+  ma_missing_fields?: string[];
+  ma_confidence?: number;
+  ma_confidence_band?: 'high' | 'medium' | 'low';
+  ma_review_required?: boolean;
+  ma_advisory_note?: string;
+  ma_validation_warnings?: string[];
   // deep_research fields
   dr_job_id?: string;
   dr_topic?: string;
@@ -183,7 +217,7 @@ export interface Message {
   // editable-table fields (send_editable_table): when set, the data bubble
   // renders an editable grid that saves back to the module's CSV.
   data_editable?: boolean;
-  data_source?: { module: string; file: string };
+  data_source?: { module?: string; file: string; session?: string };
   // lazy-load fallback: fetch rows via /api/analyze/table-data
   data_db_path?: string;
   data_table_name?: string;
@@ -194,11 +228,23 @@ export interface Message {
 }
 
 export interface ChartSuggestion {
-  chart_type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter';
+  chart_type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut' | 'scatter' | 'combo' | 'radar';
   x: string;
   y: string[];
   title?: string;
   reason?: string;
+  /** One-line explanation shown as a caption under the chart. */
+  description?: string;
+  /** Series key → display name (legend/series label). */
+  labels?: Record<string, string>;
+  /** Series key → short unit label (e.g. '%', 'triệu VND'); drives axis + tooltip suffix. */
+  units?: Record<string, string>;
+  /** Series key → per-series render type; makes a mixed (combo) chart. */
+  combo?: Record<string, 'bar' | 'line'>;
+  /** Series keys bound to the right-hand (secondary) y-axis. */
+  secondaryAxis?: string[];
+  /** True when numeric values are 0–100 normalized (radar). */
+  normalized?: boolean;
 }
 
 export type DataColumnType = 'number' | 'string' | 'date' | 'bool';
@@ -271,7 +317,7 @@ export interface ParallelSolverDoneData {
 
 // WebSocket event types
 export interface WSMessage {
-  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'analyze.started' | 'analyze.phase' | 'analyze.subtable' | 'analyze.plan_ready' | 'analyze.clarify' | 'analyze.chart_data' | 'analyze.chart_image' | 'analyze.chart_insight' | 'analyze.section_synthesized' | 'analyze.report' | 'analyze.done' | 'analyze.failed' | 'analyze.cancelled' | 'analyze.agent_message' | 'image_message' | 'data_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note';
+  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'analyze.started' | 'analyze.phase' | 'analyze.subtable' | 'analyze.plan_ready' | 'analyze.clarify' | 'analyze.chart_data' | 'analyze.chart_image' | 'analyze.chart_insight' | 'analyze.section_synthesized' | 'analyze.report' | 'analyze.done' | 'analyze.failed' | 'analyze.cancelled' | 'analyze.agent_message' | 'image_message' | 'data_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note' | 'maintenance_answer';
   data: any;
 }
 
@@ -392,6 +438,19 @@ export interface FsListResponse {
   entries: FsEntry[];
 }
 
+// A location to reveal/highlight when a viewer tab opens. `text` is the most
+// robust anchor (searched in the opened file, immune to CRLF/front-matter
+// offset drift); `start`/`end`/`line` are used when offsets are exact. `nonce`
+// changes on every request so re-clicking the same citation re-triggers the
+// reveal.
+export interface ViewerLocation {
+  start?: number;
+  end?: number;
+  line?: number;
+  text?: string;
+  nonce?: number;
+}
+
 export type ViewerTab =
   | {
       kind: 'file';
@@ -399,6 +458,7 @@ export type ViewerTab =
       path: string;     // relative to working_directory
       name: string;
       ext: string;
+      location?: ViewerLocation;
     }
   | {
       kind: 'module';
@@ -412,6 +472,7 @@ export type ViewerTab =
       path: string;     // relative to module folder
       name: string;
       ext: string;
+      location?: ViewerLocation;
     };
 
 // File-tree / fs-API scope. Either a conversation working directory or a module folder.

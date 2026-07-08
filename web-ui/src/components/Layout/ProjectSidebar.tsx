@@ -102,6 +102,19 @@ export function ProjectSidebar() {
     }
   }, [workspaceProjectId, activeProjectId]);
 
+  // Follow the open conversation: when a session is opened that lives in a
+  // different project (e.g. a Minder chat surfaced via the module dashboard),
+  // switch the sidebar to that project so the chat is visible/highlighted.
+  useEffect(() => {
+    if (!currentSessionId) return;
+    for (const [pid, convs] of Object.entries(conversations)) {
+      if (pid !== activeProjectId && convs.some((c) => c.id === currentSessionId)) {
+        setActiveProjectId(pid);
+        break;
+      }
+    }
+  }, [currentSessionId, conversations, activeProjectId]);
+
   // Close the switcher dropdown on outside click.
   useEffect(() => {
     if (!switcherOpen) return;
