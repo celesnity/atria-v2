@@ -73,7 +73,7 @@ def main() -> None:
             f"{pct(sum(1 for s in t1 if s['called_knowledge_search']), len(t1))}"
         )
         add(
-            f"- Allow answers judged correct: "
+            f"- Allow pass (compound gate: search used + retrieval hit + answer correct): "
             f"{pct(sum(1 for s in allow if s['pass']), len(allow))}"
         )
         add(
@@ -81,11 +81,11 @@ def main() -> None:
             f"{pct(sum(1 for s in allow if s['retrieval_hit']), len(allow))}"
         )
         add(
-            f"- Deny handled correctly (raw): "
+            f"- Deny pass (compound gate: search used + refused + no leak) (raw): "
             f"{pct(sum(1 for s in deny if s['pass']), len(deny))}"
         )
         add(
-            f"- Deny handled correctly (adjusted for P035 dataset conflict): "
+            f"- Deny pass (compound gate, adjusted for P035 dataset conflict): "
             f"{pct(sum(1 for s in deny_adj if s['pass']), len(deny_adj))}"
         )
         leaks = [s["question_id"] for s in deny if s.get("judge", {}).get("leaked")]
@@ -125,7 +125,10 @@ def main() -> None:
         add("## Track 8 — Maps Assistant (30 cases)")
         add("")
         add(f"- Retrieval-only baseline: {RETRIEVAL_BASELINE['track2']}")
-        add(f"- Pass (intent + behavior): {pct(sum(1 for s in t8 if s['pass']), len(t8))}")
+        add(
+            f"- Pass (compound gate: places search used + intent + behavior): "
+            f"{pct(sum(1 for s in t8 if s['pass']), len(t8))}"
+        )
         add(
             f"- knowledge_search called: "
             f"{pct(sum(1 for s in t8 if s['called_knowledge_search']), len(t8))}"
@@ -167,6 +170,36 @@ def main() -> None:
                     f"- {s['eval_id']} [{s['category']}] ks={s['called_knowledge_search']} "
                     f"rec={s['rec_hit']}/{s['rec_total']} err={bool(s['run_error'])}: {reason}"
                 )
+        add("")
+
+    run1_t1 = load("run1/track1_scores.jsonl")
+    run1_t8 = load("run1/track8_scores.jsonl")
+    if run1_t1 and t1:
+        add("## Run 1 → Run 2 (compound gates apply to run 2 only)")
+        add("")
+        r1_ks = sum(1 for s in run1_t1 if s["called_knowledge_search"])
+        r2_ks = sum(1 for s in t1 if s["called_knowledge_search"])
+        add(
+            f"- T1 knowledge_search adoption: {pct(r1_ks, len(run1_t1))} → "
+            f"{pct(r2_ks, len(t1))}"
+        )
+        r1_pass = sum(1 for s in run1_t1 if s["pass"])
+        r2_pass = sum(1 for s in t1 if s["pass"])
+        add(
+            f"- T1 pass (run1 lenient vs run2 compound): "
+            f"{pct(r1_pass, len(run1_t1))} → {pct(r2_pass, len(t1))}"
+        )
+        if run1_t8 and t8:
+            r1_places = sum(1 for s in run1_t8 if s["used_places_source"])
+            r2_places = sum(1 for s in t8 if s.get("gate", {}).get("used_places_search"))
+            add(
+                f"- T8 places-search adoption: {pct(r1_places, len(run1_t8))} → "
+                f"{pct(r2_places, len(t8))}"
+            )
+            add(
+                f"- T8 pass: {pct(sum(1 for s in run1_t8 if s['pass']), len(run1_t8))} → "
+                f"{pct(sum(1 for s in t8 if s['pass']), len(t8))}"
+            )
         add("")
 
     if t1_raw or t8_raw:
