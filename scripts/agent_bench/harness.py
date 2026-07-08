@@ -173,7 +173,7 @@ class BenchHarness:
             from atria.core.modules.prompt import build_skill_block
             from atria.core.modules.registry import get_registry
 
-            modules_block = build_skill_block(get_registry())
+            modules_block = build_skill_block(get_registry(), include_subagent_delegation=False)
         except Exception:
             modules_block = ""
         if modules_block and modules_block not in system_content:
