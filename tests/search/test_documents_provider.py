@@ -138,3 +138,29 @@ def test_non_executive_department_filter_still_enforces_acl():
             SearchContext(user_id=insider_rows[0]["user_id"]),
         )
         assert any(h.metadata["document_id"] == doc["document_id"] for h in insider_results.hits)
+
+
+def test_withheld_note_signals_permission_denial_to_agent():
+    """A non-executive querying content locked to another department gets a
+    count-only withheld note — enabling refusal — with nothing disclosed."""
+    doc = _confidential_doc()
+    outsider = pg.fetch_all(
+        "SELECT user_id FROM enterprise_users "
+        "WHERE department <> $1 AND role <> 'Executive' LIMIT 1",
+        [doc["department"]],
+    )[0]
+    provider = _provider()
+    results = provider.search(doc["title"], {}, 10, SearchContext(user_id=outsider["user_id"]))
+    assert all(h.metadata["document_id"] != doc["document_id"] for h in results.hits)
+    assert results.note and "withheld" in results.note
+    # count only: neither the title nor the document id may leak into the note
+    assert doc["document_id"] not in results.note
+    assert str(doc["title"]) not in results.note
+
+
+def test_executive_never_gets_withheld_note():
+    doc = _confidential_doc()
+    executive = _any_user("Executive")
+    provider = _provider()
+    results = provider.search(doc["title"], {}, 10, SearchContext(user_id=executive["user_id"]))
+    assert not (results.note and "withheld" in results.note)
