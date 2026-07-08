@@ -17,7 +17,7 @@ from atria.core.context_engineering.search import pg
 from atria.core.context_engineering.search.registry import discover_module_providers
 from atria.core.modules.registry import resolve_modules_root
 from atria.core.context_engineering.search.types import SearchContext, SearchHit
-from atria.web.facade.common import error_response
+from atria.web.facade.common import error_response, facade_guard
 
 maps_facade_router = APIRouter(tags=["maps-facade"])
 
@@ -73,6 +73,7 @@ def _run_search(
 @maps_facade_router.get("/v1/search")
 @maps_facade_router.get("/search")
 @maps_facade_router.get("/v1/geocode-search")
+@facade_guard
 def search(
     request: Request,
     q: str | None = None,
@@ -91,6 +92,7 @@ def search(
 
 @maps_facade_router.get("/v1/autocomplete")
 @maps_facade_router.get("/autocomplete")
+@facade_guard
 def autocomplete(
     request: Request,
     q: str | None = None,
@@ -112,6 +114,7 @@ def autocomplete(
 
 @maps_facade_router.get("/v1/nearby-search")
 @maps_facade_router.get("/nearby-search")
+@facade_guard
 def nearby_search(
     request: Request,
     lat: float | None = None,
@@ -137,6 +140,7 @@ def nearby_search(
 
 @maps_facade_router.get("/v1/poi/{poi_id}")
 @maps_facade_router.get("/poi/{poi_id}")
+@facade_guard
 def poi_detail(poi_id: str, request: Request, lang: str = "vi", include: str | None = None) -> Any:
     raw_id = poi_id.removeprefix("poi:")
     rows = pg.fetch_all(
