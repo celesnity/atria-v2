@@ -248,13 +248,15 @@ def cmd_geocode(args) -> dict:
 
 
 def cmd_pois(args) -> dict:
-    categories, pois, _, _ = _load()
+    categories, pois, terms, max_ngram = _load()
     rows = pois
     if args.city:
         rows = [p for p in rows if args.city in fold(p["city"])]
     if args.category:
         rows = [p for p in rows if p["category"] == args.category]
-    return {"categories": categories, "pois": rows, "count": len(rows)}
+    # abbreviations ride along so the dashboard can mirror query expansion
+    return {"categories": categories, "pois": rows, "count": len(rows),
+            "abbreviations": {"terms": terms, "max_ngram": max_ngram}}
 
 
 def cmd_categories(args) -> dict:
