@@ -23,6 +23,7 @@ from chunking import chunk_document  # type: ignore[import-not-found]
 from index_store import IndexStore  # type: ignore[import-not-found]
 import identity  # type: ignore[import-not-found]
 import acl  # type: ignore[import-not-found]
+import bm25  # type: ignore[import-not-found]
 import audit  # type: ignore[import-not-found]
 import graph_store  # type: ignore[import-not-found]
 import graph_build  # type: ignore[import-not-found]
@@ -39,6 +40,12 @@ def _env(key: str, default: str) -> str:
 def _graph_enabled() -> bool:
     """Query-time master switch for GraphRAG (EK_GRAPH_ENABLED, default off)."""
     return _env("EK_GRAPH_ENABLED", "0").strip().lower() in ("1", "true", "yes")
+
+
+def _default_mode() -> str:
+    """Resolve the default search mode from EK_SEARCH_MODE (fallback hybrid)."""
+    mode = _env("EK_SEARCH_MODE", "hybrid").strip().lower()
+    return mode if mode in ("dense", "bm25", "hybrid") else "hybrid"
 
 
 def _samples_dir() -> str:
@@ -146,12 +153,15 @@ def _cmd_health() -> int:
     return 0 if all(v == "ok" for v in out.values()) else 1
 
 
-def _cmd_ingest(samples: str) -> int:
-    store = _build_store()
+def _cmd_ingest(samples: str, store: IndexStore | None = None) -> int:
+    if store is None:
+        store = _build_store()
     docs = load_corpus(samples)
-    total = 0
+    records: list = []
     for doc in docs:
-        total += store.upsert_chunks(chunk_document(doc))
+        records.extend(chunk_document(doc))
+    avgdl = bm25.average_length([r.text for r in records])
+    total = store.upsert_chunks(records, avgdl=avgdl)
     print(json.dumps({"documents": len(docs), "chunks": total}, indent=2))
     return 0
 
@@ -188,11 +198,14 @@ def _cmd_query(
     store: IndexStore | None = None,
     graph: bool = False,
     graph_store_obj: object | None = None,
+    mode: str = "hybrid",
 ) -> int:
     user = _resolve_user(user_id, users_path)
     if store is None:
         store = _build_store()
-    hits = store.query(text, k=k, acl_filter=acl.build_filter(user), department=department)
+    hits = store.query(
+        text, k=k, acl_filter=acl.build_filter(user), department=department, mode=mode
+    )
     hits, blocked = guard_accessible(user, hits)
     if graph and _graph_enabled():
         hits = _augment_with_graph(text, user, hits, k, graph_store_obj)
@@ -343,6 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_query.add_argument(
         "--graph", action="store_true", help="Expand retrieval with the knowledge graph (GraphRAG)."
     )
+    p_query.add_argument(
+        "--mode",
+        choices=["dense", "bm25", "hybrid"],
+        default=None,
+        help="Retrieval mode (default: EK_SEARCH_MODE or hybrid).",
+    )
 
     p_who = sub.add_parser("whoami", help="Show a user's resolved access identity.")
     p_who.add_argument("user_id")
@@ -450,6 +469,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.synthesize,
                 args.users,
                 graph=args.graph,
+                mode=args.mode or _default_mode(),
             )
         if args.command == "whoami":
             return _cmd_whoami(args.user_id, args.users)

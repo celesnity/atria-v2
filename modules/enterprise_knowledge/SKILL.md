@@ -28,7 +28,11 @@ Questions and answers are in Vietnamese (the corpus is Vietnamese).
 - **Answer a question for a user** — `query "<câu hỏi>" --user U004 --synthesize`.
   Retrieval is filtered to the user's (role, department); `--synthesize` composes
   a cited Vietnamese answer. Add `--k N` to change hit count, `--department DEPT`
-  to narrow within the user's accessible scope.
+  to narrow within the user's accessible scope. Add `--mode {dense|bm25|hybrid}` to pick the retrieval signal (default `hybrid`
+  = dense meaning + BM25 keywords fused). On first deploy, run `ingest` once to
+  populate the BM25 sparse vectors; after a schema change (an existing pre-hybrid
+  index), run `reset` then `ingest` — `ingest` alone cannot convert an old
+  collection.
 - **Check a user's access identity** — `whoami U004`.
 - **Explain an access decision** — `can-access U004 DOC036` → Allow/Deny + reason.
 - **Show the audit trail** — `audit --limit 10`.

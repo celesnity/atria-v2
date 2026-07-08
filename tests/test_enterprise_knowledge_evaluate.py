@@ -55,6 +55,63 @@ def test_run_case_scores_permission_and_recall():
     assert r_deny["permission_ok"] and not r_deny["doc_recall_hit"]
 
 
+def test_run_case_deny_passes_when_other_docs_returned():
+    """ACL-filtered retrieval may return other accessible docs on a Deny case."""
+    ev = _load("evaluate", "ek_eval_deny_other")
+
+    def query_fn(question, user_id):
+        return {"hits": [{"doc_id": "DOC002"}]}
+
+    deny_case = {
+        "question_id": "P009",
+        "user_id": "U004",
+        "expected_permission": "Deny",
+        "expected_document_id": "DOC007",
+        "question_vi": "?",
+    }
+    result = ev.run_case(deny_case, query_fn)
+    assert result["permission_ok"] is True
+    assert result["doc_recall_hit"] is False
+
+
+def test_run_case_deny_fails_when_forbidden_doc_leaks():
+    """A Deny case must fail if the forbidden document surfaces among hits."""
+    ev = _load("evaluate", "ek_eval_deny_leak")
+
+    def query_fn(question, user_id):
+        return {"hits": [{"doc_id": "DOC002"}, {"doc_id": "DOC007"}]}
+
+    deny_case = {
+        "question_id": "P009",
+        "user_id": "U004",
+        "expected_permission": "Deny",
+        "expected_document_id": "DOC007",
+        "question_vi": "?",
+    }
+    result = ev.run_case(deny_case, query_fn)
+    assert result["permission_ok"] is False
+    assert result["doc_recall_hit"] is False
+
+
+def test_run_case_deny_passes_when_no_hits():
+    """An empty result also satisfies a Deny case: the forbidden id is absent."""
+    ev = _load("evaluate", "ek_eval_deny_empty")
+
+    def query_fn(question, user_id):
+        return {"hits": []}
+
+    deny_case = {
+        "question_id": "P009",
+        "user_id": "U004",
+        "expected_permission": "Deny",
+        "expected_document_id": "DOC007",
+        "question_vi": "?",
+    }
+    result = ev.run_case(deny_case, query_fn)
+    assert result["permission_ok"] is True
+    assert result["doc_recall_hit"] is False
+
+
 def test_summarize_counts_regressions():
     ev = _load("evaluate", "ek_eval_sum")
     results = [

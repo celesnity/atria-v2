@@ -1,7 +1,10 @@
 """Offline evaluation over the dataset's Public_Evaluation cases.
 
 For each labeled case, checks two things against a ``query_fn``:
-- permission_ok: an Allow case returns >=1 hit; a Deny case returns none.
+- permission_ok: an Allow case returns >=1 hit; a Deny case only requires that
+  the forbidden expected_document_id is absent from the hits — ACL-filtered
+  retrieval may legitimately return other accessible documents instead of an
+  empty result.
 - doc_recall_hit: the expected_document_id appears among returned hits (Allow only).
 
 Used to prove graph-augmented retrieval keeps every Allow/Deny outcome and does
@@ -26,7 +29,12 @@ def run_case(case: dict, query_fn: Callable[[str, str], dict]) -> dict:
     hits = result.get("hits", [])
     doc_ids = {h.get("doc_id") for h in hits}
     is_allow = case["expected_permission"] == "Allow"
-    permission_ok = bool(hits) == is_allow
+    if is_allow:
+        permission_ok = bool(hits)
+    else:
+        # Deny labels are single doc ids in the dataset; if multi-id labels
+        # ("DOC001; DOC002") are ever added, split like the recall check does.
+        permission_ok = case["expected_document_id"] not in doc_ids
     doc_recall_hit = is_allow and case.get("expected_document_id") in doc_ids
     return {
         "question_id": case.get("question_id"),
