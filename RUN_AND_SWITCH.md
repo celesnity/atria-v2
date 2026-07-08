@@ -24,7 +24,7 @@ internally, so you can also just call them by full path from anywhere, e.g.
 
 ```powershell
 Set-Location -LiteralPath 'D:\[Project]_atriaV2'   # go to project
-.\switch-llm.ps1 qwen        # use Qwen via DashScope (default; OpenAI is out of quota)
+.\switch-llm.ps1 openai      # use OpenAI (gpt-5.4-mini / fallback gpt-5-mini)
 .\run-backend.ps1            # Terminal 1  -> API  http://127.0.0.1:8080
 .\run-frontend.ps1           # Terminal 2  -> Web  http://localhost:5173  (open this)
 ```
@@ -88,12 +88,14 @@ Then open **http://localhost:5173** in a browser and chat.
 
 The switch rewrites four lines in `.env` (`OPENAI_API_KEY`, `ATRIA_MODEL`,
 `ATRIA_FALLBACK_MODEL`, `ATRIA_API_BASE_URL`). Atria reads the active provider's
-key via `OPENAI_API_KEY` regardless of provider; both keys are stored (commented)
-in the `.env` key vault.
+key via `OPENAI_API_KEY` regardless of provider. **Everything — keys AND models —
+lives in the `.env` vault** (commented `LLM_KEY_/LLM_MODEL_/LLM_FALLBACK_/LLM_BASE_<PROVIDER>`
+lines); nothing is hardcoded in the script. To change a model or fallback, edit
+its `LLM_MODEL_*` / `LLM_FALLBACK_*` line in `.env` and re-run the switch.
 
 ```powershell
-.\switch-llm.ps1 qwen      # Qwen via DashScope  (qwen3.5-122b-a10b / fallback qwen3.5-flash)
-.\switch-llm.ps1 openai    # OpenAI               (gpt-5.5 / fallback gpt-5.4)
+.\switch-llm.ps1 qwen      # Qwen via DashScope  (models from LLM_*_QWEN in .env)
+.\switch-llm.ps1 openai    # OpenAI              (models from LLM_*_OPENAI in .env)
 .\switch-llm.ps1 status    # show what's active now
 ```
 
@@ -126,8 +128,10 @@ Expect a JSON response with `choices[0].message.content = "OK"`.
   quota). Avoid `qwen-max` / `qwen3-max` / `qwen-plus` / `qwen-turbo` — their free
   tier is exhausted (HTTP 403 `FreeTierOnly`) and qwen-max garbles tool output.
   `qwen3.5-flash` is the cheap fallback (free quota, "nearly out").
-- **OpenAI side needs quota** — the saved OpenAI key was returning HTTP 429
-  `insufficient_quota`; top up the account before `switch-llm.ps1 openai` will work.
+- **OpenAI** — active key is a project key (`proj_Zkh4…`) with live quota,
+  verified via a real `gpt-5.4-mini` call (HTTP 200). If it ever returns 429
+  `insufficient_quota` again, top up that project's credit or swap `LLM_KEY_OPENAI`
+  in the `.env` vault.
 - **qwen3.5 is a thinking model** — it spends some `reasoning_tokens` per reply;
   Atria's `max_tokens=8192` leaves plenty of room.
 - `.env` is git-ignored; both API keys live only there (in the key vault comments).

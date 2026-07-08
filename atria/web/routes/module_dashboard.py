@@ -78,6 +78,25 @@ class RpcBody(BaseModel):
     timeout_ms: int = Field(default=30000, ge=1, le=120000)
 
 
+class ChatBody(BaseModel):
+    message: str = Field(min_length=1)
+    chat_session_id: str | None = None
+    # The caller's ACTIVE chat session (from $ATRIA_SESSION_ID): used only to
+    # attribute a newly created Minder session to the same user, so it shows
+    # up in that user's history list.
+    context_session_id: str | None = None
+    # Preferred identity: the browser user resolved by /run and forwarded via
+    # $ATRIA_USER_ID (context_session_id remains as fallback).
+    user_id: int | None = None
+
+
+class ChatSaveBody(BaseModel):
+    chat_session_id: str = Field(min_length=1)
+    create_workspace: bool = False
+    context_session_id: str | None = None
+    user_id: int | None = None
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -89,6 +108,24 @@ def _resolve_session_id(request: Request) -> str:
     if sid:
         return sid
     return "default"
+
+
+async def _optional_user_id(request: Request) -> int | None:
+    """Resolve the browser's logged-in user, or None (never raises).
+
+    The module router is deliberately ungated, but dashboard fetches carry the
+    ``atria_session`` cookie — resolving it lets module subprocesses (via
+    ``ATRIA_USER_ID``) attribute sessions/projects to the real user.
+    """
+    from atria.web.dependencies.auth import require_authenticated_user
+
+    try:
+        user = await require_authenticated_user(request)
+        return user.id or None  # anonymous user id 0 -> None
+    except HTTPException:
+        return None
+    except Exception:
+        return None
 
 
 def _resolve_script(module_dir: Path, script: str) -> Path:
@@ -179,6 +216,7 @@ def run_script(
     body: RunBody,
     request: Request,
     reg: ModuleRegistry = Depends(get_modules_registry),
+    user_id: int | None = Depends(_optional_user_id),
 ) -> RunResponse:
     try:
         module = reg.get(name)
@@ -229,7 +267,13 @@ def run_script(
         env = os.environ.copy()
         env["ATRIA_SESSION_ID"] = session_id
         env["ATRIA_MODULE_ROOT"] = str(module_dir)
+        if user_id is not None:
+            env["ATRIA_USER_ID"] = str(user_id)
         env.setdefault("ATRIA_API_BASE", "http://127.0.0.1:8000")
+        # Force UTF-8 on both sides of the pipe: Windows otherwise falls back
+        # to the ANSI code page and non-ASCII payloads (e.g. Vietnamese CSV
+        # imports) raise UnicodeEncodeError before the script even runs.
+        env.setdefault("PYTHONIOENCODING", "utf-8")
 
         cmd = [sys.executable, str(target), *body.args]
         timeout_s = body.timeout_ms / 1000.0
@@ -240,6 +284,8 @@ def run_script(
                 input=body.stdin,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout_s,
                 env=env,
                 cwd=str(module_dir),
@@ -287,6 +333,367 @@ def module_rpc(
         return run_module_rpc(reg, name, body.method, body.payload, session_id, body.timeout_ms)
     finally:
         _release(session_id, name)
+
+
+# ── Module dashboard chat (real agent, synchronous reply) ───────────────────
+
+
+@router.post("/{name}/chat")
+async def module_chat(
+    name: str,
+    body: ChatBody,
+    reg: ModuleRegistry = Depends(get_modules_registry),
+) -> dict:
+    """Run one turn of the REAL main-chat agent for a module dashboard.
+
+    Module iframes cannot open WebSockets (sandboxed, bridge-only), so this
+    route awaits ``AgentExecutor.execute_query`` — the same pipeline behind
+    ``/ws`` and ``/api/chat/query`` — and returns the final reply in the
+    response body. Each dashboard conversation runs in its own dedicated
+    session (auto-titled from the first message, visible in history); the
+    app's "current session" pointer is preserved so the open chat UI is
+    never hijacked. Lives on the ungated module router by design (same
+    posture as ``/{name}/run``).
+    """
+    # Inline imports mirror chat.py/websocket.py to avoid module-load-order
+    # issues between sibling web modules.
+    from atria.models.message import ChatMessage, Role
+    from atria.web.agent_executor import AgentExecutor
+    from atria.web.state import get_state
+    from atria.web.websocket import ws_manager
+
+    try:
+        module = reg.get(name)
+    except KeyError:
+        raise HTTPException(
+            status_code=404,
+            detail={"kind": "unknown-module", "message": f"module {name!r} not found"},
+        ) from None
+
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(
+            status_code=400,
+            detail={"kind": "bad-request", "message": "message cannot be empty"},
+        )
+
+    state = get_state()
+    sm = state.session_manager
+
+    session = None
+    session_id = body.chat_session_id
+    if session_id:
+        if state.is_session_running(session_id):
+            raise HTTPException(
+                status_code=409,
+                detail={"kind": "busy", "message": "session is already running"},
+            )
+        try:
+            session = await sm.get_session_by_id(session_id)
+        except FileNotFoundError:
+            session = None
+    try:
+        if session is None:
+            # Attribute the new session to the browser's logged-in user
+            # (forwarded via ATRIA_USER_ID), else the caller's active chat
+            # session's owner; else the provisioned default.
+            owner_id = None
+            user_id = None
+            if body.user_id:
+                user_id = int(body.user_id)
+                owner_id = str(user_id)
+            elif body.context_session_id:
+                try:
+                    ctx = await sm.get_session_by_id(body.context_session_id)
+                    if ctx is not None and ctx.owner_id and str(ctx.owner_id).isdigit():
+                        owner_id = str(ctx.owner_id)
+                        user_id = int(ctx.owner_id)
+                except (FileNotFoundError, ValueError):
+                    pass
+
+            # Start the chat "on the warehouse": the session's working
+            # directory IS the module folder, so the agent's bash cwd holds
+            # scripts/inventory.py + data/warehouse.db — it reads live data
+            # directly (python scripts/inventory.py snapshot) instead of
+            # exploring an empty folder, and any report it writes lands here
+            # and shows in the conversation's Files tab.
+            try:
+                working_directory = str(module.dir)
+            except Exception:
+                working_directory = None
+            # Keep the user's workspace project for history visibility + Save.
+            project_id = None
+            if user_id is not None:
+                from atria.web.dependencies.workspace import ensure_user_workspace
+
+                try:
+                    ws = await ensure_user_workspace(user_id)
+                    project_id = ws.project_id
+                except Exception:  # workspace provisioning is best-effort
+                    project_id = None
+
+            prev_current = await sm.get_current_session()
+            session = await sm.create_session(
+                working_directory=working_directory,
+                channel="web",
+                owner_id=owner_id,
+                user_id=user_id,
+                project_id=project_id,
+            )
+            sm.current_session = prev_current
+            session_id = session.id
+
+        session.add_message(ChatMessage(role=Role.USER, content=message))
+        await sm.save_session(session)
+
+        if not hasattr(state, "_agent_executor") or state._agent_executor is None:
+            state._agent_executor = AgentExecutor(state)
+
+        if not _try_acquire(session_id, name):
+            raise HTTPException(
+                status_code=429,
+                detail={"kind": "rate-limited", "message": "too many in-flight runs"},
+            )
+        try:
+            # Thinking OFF: the warehouse chat should give fast, data-based
+            # answers (read the CLI, reply) without a separate reasoning pass.
+            result = await state._agent_executor.execute_query(
+                message, ws_manager, session_id=session_id, session=session,
+                thinking_level_override="Off",
+            )
+        finally:
+            _release(session_id, name)
+    except HTTPException:
+        raise
+    except Exception as exc:  # surface the cause — this gateway has no UI logs
+        import logging
+
+        logging.getLogger("atria.web").exception("module chat failed")
+        raise HTTPException(
+            status_code=500,
+            detail={"kind": "chat-failed", "message": f"{type(exc).__name__}: {exc}"},
+        ) from exc
+
+    if result is None:
+        result = {"summary": "", "error": "agent execution failed (see server log)"}
+
+    # ReactExecutor's "summary" is the last operation label (e.g. a tool call
+    # description) — the actual answer is the final assistant message the run
+    # persisted to the session transcript.
+    reply = ""
+    try:
+        fresh = await sm.get_session_by_id(session_id)
+    except FileNotFoundError:
+        fresh = session
+    for m in reversed(list(getattr(fresh, "messages", None) or [])):
+        role = getattr(m, "role", None)
+        role_val = str(getattr(role, "value", role) or "").lower()
+        content = getattr(m, "content", None)
+        if role_val == "assistant" and content and str(content).strip():
+            reply = str(content).strip()
+            break
+    if not reply:
+        reply = result.get("summary") or ""
+
+    return {
+        "reply": reply,
+        "error": result.get("error"),
+        "latency_ms": result.get("latency_ms"),
+        "session_id": session_id,
+    }
+
+
+def _strip_minder_preamble(text: str) -> str:
+    """Drop the widget's grounding preamble from a user message (for titles).
+
+    The preamble ends with a ``\\nUser: `` marker; the real question follows it.
+    """
+    stripped = text.lstrip()
+    if stripped.startswith("[You are Minder") or stripped.startswith(
+        "[Warehouse assistant"
+    ) or stripped.startswith("[You are answering inside"):
+        marker = "\nUser: "
+        idx = text.rfind(marker)
+        if idx != -1:
+            return text[idx + len(marker):]
+        _, sep, rest = text.partition("]\n\n")
+        if sep:
+            return rest
+    return text
+
+
+def _summary_title_prompt(messages: list) -> list[dict]:
+    """Build the LLM messages for summarizing a chat into a short title."""
+    lines = []
+    for m in messages[-6:]:
+        role = str(getattr(getattr(m, "role", None), "value", getattr(m, "role", "")) or "")
+        content = _strip_minder_preamble(str(getattr(m, "content", "") or "")).strip()
+        if not content or role not in ("user", "assistant"):
+            continue
+        lines.append(f"{role}: {content[:300]}")
+    convo = "\n".join(lines) or "(empty conversation)"
+    return [
+        {
+            "role": "user",
+            "content": (
+                "Summarize this warehouse-assistant conversation into a short "
+                "title of at most 50 characters, in the same language the user "
+                "wrote in. Reply with the title only — no quotes, no period.\n\n"
+                + convo
+            ),
+        }
+    ]
+
+
+def _generate_title_sync(messages: list) -> str | None:
+    """Call the configured LLM for a title. Returns None on any failure."""
+    try:
+        from atria.core.agents.components.api.configuration import create_http_client
+        from atria.core.runtime import ConfigManager
+
+        cfg = ConfigManager(os.getcwd()).get_config()
+        client = create_http_client(cfg)
+        payload = {
+            "model": cfg.model,
+            "messages": _summary_title_prompt(messages),
+            "max_tokens": 60,
+            "temperature": 0,
+        }
+        data = client.post_json(payload)
+        text = (data.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+        text = text.strip().strip('"').strip()
+        # Strip qwen-style chat-template artifacts, keep it single-line.
+        text = text.split("\n")[0].strip()
+        return text[:50] or None
+    except Exception:
+        return None
+
+
+@router.post("/{name}/chat/save")
+async def module_chat_save(
+    name: str,
+    body: ChatSaveBody,
+    reg: ModuleRegistry = Depends(get_modules_registry),
+) -> dict:
+    """Store a Minder conversation in the module's workspace project.
+
+    Ensures a project titled after the module (manifest display_name, e.g.
+    "Warehouse") for the conversation's owner — creating it only when the
+    widget passes ``create_workspace: true`` (the user confirmed) — moves the
+    conversation into it, and re-titles the conversation by LLM-summarizing
+    the recent messages (heuristic fallback if the LLM is unavailable).
+    """
+    import asyncio
+
+    from atria.core.workspace.manager import ensure_path, project_path, slugify
+    from atria.db.connection import get_sessionmaker
+    from atria.db.repositories.conversation_repo import ConversationRepository
+    from atria.db.repositories.project_repo import ProjectRepository
+    from atria.db.repositories.user_repo import UserRepository
+    from atria.web.state import get_state
+
+    try:
+        module = reg.get(name)
+    except KeyError:
+        raise HTTPException(
+            status_code=404,
+            detail={"kind": "unknown-module", "message": f"module {name!r} not found"},
+        ) from None
+
+    state = get_state()
+    sm = state.session_manager
+
+    try:
+        try:
+            session = await sm.get_session_by_id(body.chat_session_id)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=404,
+                detail={"kind": "unknown-session",
+                        "message": f"session {body.chat_session_id!r} not found"},
+            ) from None
+
+        # Resolve the owning user: browser user (via /run) wins, then the
+        # session's owner, then the caller's context session.
+        user_id = int(body.user_id) if body.user_id else None
+        for candidate in (getattr(session, "owner_id", None), body.context_session_id):
+            if user_id is not None:
+                break
+            if candidate is None:
+                continue
+            if str(candidate).isdigit():
+                user_id = int(candidate)
+            else:
+                try:
+                    ctx = await sm.get_session_by_id(str(candidate))
+                    if ctx is not None and str(ctx.owner_id or "").isdigit():
+                        user_id = int(ctx.owner_id)
+                except FileNotFoundError:
+                    pass
+        if user_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail={"kind": "no-user",
+                        "message": "cannot resolve the conversation's owner"},
+            )
+
+        manifest = getattr(module, "manifest", None)
+        workspace_name = (getattr(manifest, "display_name", None) or name.capitalize()).strip()
+
+        db = await get_sessionmaker()
+        project_repo = ProjectRepository(db)
+        projects = await project_repo.list_by_user(user_id)
+        target = next(
+            (p for p in projects
+             if str(p.get("title", "")).strip().lower() == workspace_name.lower()),
+            None,
+        )
+
+        if target is None:
+            if not body.create_workspace:
+                return {"ok": False, "needs_workspace": True,
+                        "workspace_name": workspace_name}
+            user_row = await UserRepository(db).get_by_id(user_id)
+            email = str(user_row["email"]) if user_row else f"user-{user_id}"
+            user_slug = slugify(email.split("@")[0])
+            path = project_path(user_slug, workspace_name)
+            ensure_path(path)
+            project_id = await project_repo.create(
+                user_id=user_id, title=workspace_name, workspace_path=str(path)
+            )
+        else:
+            project_id = int(target["id"])
+
+        conv_repo = ConversationRepository(db)
+        await conv_repo.set_project(int(body.chat_session_id), project_id)
+
+        # LLM title with heuristic fallback (first user message, 50 chars).
+        loop = asyncio.get_event_loop()
+        messages = list(getattr(session, "messages", None) or [])
+        title = await loop.run_in_executor(None, _generate_title_sync, messages)
+        if not title:
+            last_user = next(
+                (_strip_minder_preamble(str(getattr(m, "content", "") or ""))
+                 for m in reversed(messages)
+                 if str(getattr(getattr(m, "role", None), "value",
+                                getattr(m, "role", "")) or "") == "user"),
+                "",
+            )
+            title = (last_user.strip()[:50] or f"{workspace_name} chat").strip()
+        await sm.set_title(body.chat_session_id, title)
+
+        return {"ok": True, "workspace": workspace_name, "title": title,
+                "project_id": project_id, "session_id": body.chat_session_id}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("atria.web").exception("module chat save failed")
+        raise HTTPException(
+            status_code=500,
+            detail={"kind": "save-failed", "message": f"{type(exc).__name__}: {exc}"},
+        ) from exc
 
 
 # ── Virtual platform assets ─────────────────────────────────────────────────
