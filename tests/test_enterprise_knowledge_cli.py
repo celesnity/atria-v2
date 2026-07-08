@@ -140,7 +140,7 @@ def test_cmd_query_graph_merges_safe_graph_hits(capsys, monkeypatch):
     monkeypatch.setenv("EK_GRAPH_ENABLED", "1")
 
     class FakeStore:
-        def query(self, text, k, acl_filter, department=None):
+        def query(self, text, k, acl_filter, department=None, mode="hybrid"):
             return [
                 {
                     "score": 0.9,
@@ -197,7 +197,7 @@ def test_cmd_query_graph_noop_when_master_switch_off(capsys, monkeypatch):
     monkeypatch.setenv("EK_GRAPH_ENABLED", "0")
 
     class FakeStore:
-        def query(self, text, k, acl_filter, department=None):
+        def query(self, text, k, acl_filter, department=None, mode="hybrid"):
             return [
                 {
                     "score": 0.9,
@@ -256,3 +256,63 @@ def test_health_reports_neo4j_key(capsys, monkeypatch):
     knowledge._cmd_health()
     out = json.loads(capsys.readouterr().out)
     assert "neo4j" in out
+
+
+def test_query_parser_has_mode_choices():
+    knowledge = _load("knowledge", "ek_cli_mode")
+    args = knowledge.build_parser().parse_args(["query", "q", "--user", "U001", "--mode", "bm25"])
+    assert args.mode == "bm25"
+    default = knowledge.build_parser().parse_args(["query", "q", "--user", "U001"])
+    assert default.mode is None  # resolved to _default_mode() at dispatch
+
+
+def test_default_mode_reads_env(monkeypatch):
+    knowledge = _load("knowledge", "ek_cli_defmode")
+    monkeypatch.setenv("EK_SEARCH_MODE", "bm25")
+    assert knowledge._default_mode() == "bm25"
+    monkeypatch.setenv("EK_SEARCH_MODE", "garbage")
+    assert knowledge._default_mode() == "hybrid"
+    monkeypatch.delenv("EK_SEARCH_MODE", raising=False)
+    assert knowledge._default_mode() == "hybrid"
+
+
+def test_cmd_query_passes_mode_to_store(capsys, monkeypatch):
+    knowledge = _load("knowledge", "ek_cli_modepass")
+
+    class FakeStore:
+        def __init__(self):
+            self.seen_mode = None
+
+        def query(self, text, k, acl_filter, department=None, mode="hybrid"):
+            self.seen_mode = mode
+            return []
+
+    monkeypatch.setenv("EK_USERS_CSV", str(_MOD.parent / "access" / "users.csv"))
+    fs = FakeStore()
+    knowledge._cmd_query(
+        "q", "U001", 5, None, synthesize=False, users_path=None, store=fs, mode="bm25"
+    )
+    assert fs.seen_mode == "bm25"
+
+
+def test_cmd_ingest_computes_corpus_avgdl(tmp_path, capsys):
+    knowledge = _load("knowledge", "ek_cli_ingest_avgdl")
+    doc = tmp_path / "DOC001.md"
+    doc.write_text(
+        "---\ndoc_id: DOC001\ntitle: T\ndepartment: COMP\nclassification: Public\n---\n"
+        "alpha beta gamma\n",
+        encoding="utf-8",
+    )
+
+    class FakeStore:
+        def __init__(self):
+            self.avgdl = None
+
+        def upsert_chunks(self, records, avgdl=None):
+            self.avgdl = avgdl
+            return len(records)
+
+    fs = FakeStore()
+    rc = knowledge._cmd_ingest(str(tmp_path), store=fs)
+    assert rc == 0
+    assert fs.avgdl is not None and fs.avgdl > 0

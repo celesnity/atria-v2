@@ -109,6 +109,9 @@ services:
       - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
       - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
       - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
+      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
+      - EK_BM25_K1=${EK_BM25_K1:-1.5}
+      - EK_BM25_B=${EK_BM25_B:-0.75}
       - AUTH_MODE=${AUTH_MODE:-keycloak}
       - KEYCLOAK_URL=http://keycloak:8080
       - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
@@ -192,6 +195,9 @@ services:
       - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
       - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
       - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
+      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
+      - EK_BM25_K1=${EK_BM25_K1:-1.5}
+      - EK_BM25_B=${EK_BM25_B:-0.75}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

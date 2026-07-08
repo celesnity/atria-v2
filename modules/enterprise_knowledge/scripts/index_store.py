@@ -5,15 +5,22 @@ via the ``index_embed`` role) and stores one point per chunk with its full
 metadata payload — including ``classification`` and canonical ``department`` —
 so retrieval can be constrained by an access-control filter.
 """
+
 from __future__ import annotations
 
+import sys
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from qdrant_client import QdrantClient, models
 
 if TYPE_CHECKING:
     from chunking import ChunkRecord  # type: ignore[import-not-found]
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import bm25  # type: ignore[import-not-found]  # noqa: E402
 
 COLLECTION = "enterprise_chunks"
 
@@ -32,41 +39,52 @@ class IndexStore:
         self._collection = collection
 
     def ensure_collection(self, dim: int) -> None:
-        """Create the collection with cosine distance if it does not exist."""
+        """Create the collection (named ``dense`` + BM25 ``bm25`` sparse) if absent."""
         if self._q.collection_exists(self._collection):
             return
         self._q.create_collection(
             collection_name=self._collection,
-            vectors_config=models.VectorParams(size=dim, distance=models.Distance.COSINE),
+            vectors_config={
+                "dense": models.VectorParams(size=dim, distance=models.Distance.COSINE),
+            },
+            sparse_vectors_config={
+                "bm25": models.SparseVectorParams(modifier=models.Modifier.IDF),
+            },
         )
 
-    def upsert_chunks(self, records: list["ChunkRecord"]) -> int:
+    def upsert_chunks(self, records: list["ChunkRecord"], avgdl: float | None = None) -> int:
         """Embed and upsert one point per record. Returns the number stored.
 
-        Point ids are a stable ``uuid5`` of the citation, so re-indexing the same
-        chunk updates in place rather than duplicating.
+        Always writes the ``dense`` vector. When ``avgdl`` (corpus average token
+        length) is given, also writes a ``bm25`` sparse vector for keyword/hybrid
+        search. Point ids are a stable ``uuid5`` of the citation (idempotent).
         """
         if not records:
             return 0
         vectors = self._embed([r.text for r in records])
-        points = [
-            models.PointStruct(
-                id=str(uuid.uuid5(_POINT_NS, rec.citation)),
-                vector=vec,
-                payload={
-                    "doc_id": rec.doc_id,
-                    "chunk_id": rec.chunk_id,
-                    "text": rec.text,
-                    "title": rec.title,
-                    "department": rec.department,
-                    "classification": rec.classification,
-                    "knowledge_space": rec.knowledge_space,
-                    "owner": rec.owner,
-                    "citation": rec.citation,
-                },
+        points = []
+        for rec, vec in zip(records, vectors):
+            named: dict[str, object] = {"dense": vec}
+            if avgdl is not None:
+                indices, values = bm25.doc_sparse(bm25.tokenize(rec.text), avgdl)
+                named["bm25"] = models.SparseVector(indices=indices, values=values)
+            points.append(
+                models.PointStruct(
+                    id=str(uuid.uuid5(_POINT_NS, rec.citation)),
+                    vector=named,
+                    payload={
+                        "doc_id": rec.doc_id,
+                        "chunk_id": rec.chunk_id,
+                        "text": rec.text,
+                        "title": rec.title,
+                        "department": rec.department,
+                        "classification": rec.classification,
+                        "knowledge_space": rec.knowledge_space,
+                        "owner": rec.owner,
+                        "citation": rec.citation,
+                    },
+                )
             )
-            for rec, vec in zip(records, vectors)
-        ]
         self._q.upsert(collection_name=self._collection, points=points, wait=True)
         return len(points)
 
@@ -76,8 +94,14 @@ class IndexStore:
         k: int = 5,
         acl_filter: models.Filter | None = None,
         department: str | None = None,
+        mode: str = "hybrid",
     ) -> list[dict]:
-        """Embed ``text`` and return the top-``k`` access-filtered hits.
+        """Return the top-``k`` access-filtered hits for ``text``.
+
+        ``mode`` selects the retrieval signal: ``dense`` (vector), ``bm25``
+        (sparse keyword), or ``hybrid`` (both, fused server-side with RRF).
+        The ACL filter is applied to every path — in ``hybrid`` on each
+        prefetch — so no mode can widen access.
 
         Args:
             text: The query text.
@@ -86,18 +110,54 @@ class IndexStore:
                 ``None`` means no access restriction (executive).
             department: Optional narrowing to a single canonical department_id
                 *within* the accessible scope. Never widens access.
+            mode: ``dense`` | ``bm25`` | ``hybrid`` (default). Unknown modes
+                raise ``ValueError``.
 
         Returns:
             Hit dicts with score, citation, text, and metadata.
         """
-        query_filter = self._combine(acl_filter, department)
-        vector = self._embed([text])[0]
-        result = self._q.query_points(
-            collection_name=self._collection,
-            query=vector,
-            limit=k,
-            query_filter=query_filter,
-        )
+        flt = self._combine(acl_filter, department)
+        if mode == "dense":
+            result = self._q.query_points(
+                collection_name=self._collection,
+                query=self._embed([text])[0],
+                using="dense",
+                limit=k,
+                query_filter=flt,
+            )
+        elif mode == "bm25":
+            indices, values = bm25.query_sparse(bm25.tokenize(text))
+            result = self._q.query_points(
+                collection_name=self._collection,
+                query=models.SparseVector(indices=indices, values=values),
+                using="bm25",
+                limit=k,
+                query_filter=flt,
+            )
+        elif mode == "hybrid":
+            prefetch_limit = max(k * 4, 20)
+            indices, values = bm25.query_sparse(bm25.tokenize(text))
+            result = self._q.query_points(
+                collection_name=self._collection,
+                prefetch=[
+                    models.Prefetch(
+                        query=self._embed([text])[0],
+                        using="dense",
+                        filter=flt,
+                        limit=prefetch_limit,
+                    ),
+                    models.Prefetch(
+                        query=models.SparseVector(indices=indices, values=values),
+                        using="bm25",
+                        filter=flt,
+                        limit=prefetch_limit,
+                    ),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                limit=k,
+            )
+        else:
+            raise ValueError(f"unknown search mode: {mode!r}")
         return [
             {
                 "score": point.score,
@@ -114,9 +174,7 @@ class IndexStore:
         ]
 
     @staticmethod
-    def _combine(
-        acl_filter: models.Filter | None, department: str | None
-    ) -> models.Filter | None:
+    def _combine(acl_filter: models.Filter | None, department: str | None) -> models.Filter | None:
         """Combine the ACL filter with an optional department narrowing."""
         if department is None:
             return acl_filter
@@ -138,10 +196,10 @@ class IndexStore:
                 collection_name=self._collection, with_payload=True, limit=256, offset=offset
             )
             for r in recs:
-                by_class[r.payload["classification"]] = by_class.get(
-                    r.payload["classification"], 0) + 1
-                by_dept[r.payload["department"]] = by_dept.get(
-                    r.payload["department"], 0) + 1
+                by_class[r.payload["classification"]] = (
+                    by_class.get(r.payload["classification"], 0) + 1
+                )
+                by_dept[r.payload["department"]] = by_dept.get(r.payload["department"], 0) + 1
             if offset is None:
                 break
         return {"count": count, "by_classification": by_class, "by_department": by_dept}
