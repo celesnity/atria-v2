@@ -24,6 +24,13 @@ sys.path.insert(0, str(REPO_ROOT))
 from scripts.agent_bench.harness import load_env  # noqa: E402
 from scripts.agent_bench.judge import judge  # noqa: E402
 from atria.core.context_engineering.search.normalize import normalize_for_search  # noqa: E402
+from atria.core.context_engineering.search import pg  # noqa: E402
+
+
+def _poi_names_norm() -> set[str]:
+    rows = pg.fetch_all("SELECT name FROM pois", [])
+    return {normalize_for_search(str(r["name"])) for r in rows}
+
 
 OUT_DIR = REPO_ROOT / "_local" / "agent_bench_2026-07-08"
 TRANSCRIPTS = OUT_DIR / "track8_transcripts.jsonl"
@@ -55,7 +62,7 @@ def name_recall(expected_raw: str, answer: str) -> tuple[int, int]:
     return hit, len(expected)
 
 
-def score_record(record: dict) -> dict:
+def score_record(record: dict, poi_names: set[str]) -> dict:
     case = record["case"]
     eid = record["eval_id"]
     answer = record["final_answer"] or ""
@@ -69,8 +76,6 @@ def score_record(record: dict) -> dict:
             used_places = used_places or '"places"' in c["args"]
     profile_calls = [c for c in record["tool_calls"] if c["tool"] == "get_user_profile"]
 
-    rec_hit, rec_total = name_recall(case.get("expected_recommendations", ""), answer)
-
     score: dict = {
         "eval_id": eid,
         "category": case["conversation_category"],
@@ -80,10 +85,14 @@ def score_record(record: dict) -> dict:
         "used_places_source": used_places,
         "used_profile_tool": bool(profile_calls),
         "n_tool_calls": len(record["tool_calls"]),
-        "rec_hit": rec_hit,
-        "rec_total": rec_total,
-        "rec_any": rec_hit > 0 if rec_total else None,
     }
+
+    expected = [e.strip() for e in case.get("expected_recommendations", "").split(";") if e.strip()]
+    real = [e for e in expected if normalize_for_search(e) in poi_names]
+    score["rec_generic"] = len(expected) - len(real)
+    rec_hit = sum(1 for e in real if normalize_for_search(e) in normalize_for_search(answer))
+    score["rec_hit"], score["rec_total"] = rec_hit, len(real)
+    score["rec_any"] = rec_hit > 0 if real else None
 
     if record["error"] or not answer:
         score["judge"] = {"skipped": "run error or empty answer"}
@@ -110,7 +119,12 @@ def score_record(record: dict) -> dict:
         f"Assistant reply:\n{answer[:6000]}",
     )
     score["judge"] = verdict
-    score["pass"] = bool(verdict.get("intent_ok")) and bool(verdict.get("behavior_ok"))
+    score["gate"] = {
+        "used_places_search": used_places,
+        "intent_ok": bool(verdict.get("intent_ok")),
+        "behavior_ok": bool(verdict.get("behavior_ok")),
+    }
+    score["pass"] = all(score["gate"].values())
     return score
 
 
@@ -118,11 +132,12 @@ def main() -> None:
     load_env()
     records = [json.loads(line) for line in TRANSCRIPTS.read_text().splitlines()]
     print(f"Scoring {len(records)} Track 8 transcripts...")
+    poi_names = _poi_names_norm()
 
     scores = []
     with SCORES.open("w") as fh:
         for i, record in enumerate(records):
-            s = score_record(record)
+            s = score_record(record, poi_names)
             scores.append(s)
             fh.write(json.dumps(s, ensure_ascii=False) + "\n")
             fh.flush()
@@ -137,7 +152,7 @@ def main() -> None:
         return f"{n}/{len(xs)}"
 
     print("\n=== Track 8 agent-level summary ===")
-    print(f"pass (intent+behavior):   {rate(scores, lambda s: s['pass'])}")
+    print(f"pass (compound gate):     {rate(scores, lambda s: s['pass'])}")
     print(f"knowledge_search called:  {rate(scores, lambda s: s['called_knowledge_search'])}")
     print(f"places source used:       {rate(scores, lambda s: s['used_places_source'])}")
     scored_rec = [s for s in scores if s["rec_total"]]
@@ -145,6 +160,8 @@ def main() -> None:
     total_hit = sum(s["rec_hit"] for s in scored_rec)
     total_names = sum(s["rec_total"] for s in scored_rec)
     print(f"rec name-recall (names):  {total_hit}/{total_names}")
+    total_generic = sum(s["rec_generic"] for s in scores)
+    print(f"rec expected (generic):   {total_generic}  [excluded from recall, not real POI names]")
     print(
         f"map_action_ok:            "
         f"{rate(scores, lambda s: s.get('judge', {}).get('map_action_ok'))}"
