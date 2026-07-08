@@ -64,8 +64,22 @@ services:
       - "8080:8080"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
+      # vetc_copilot (VETC Auto-Pilot) Brain — override in .env
+      - VA_BRAIN_PROVIDER=${VA_BRAIN_PROVIDER:-openrouter}
+      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
+      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
+      # vetc_copilot real VETC Mini App integration (credentials from .env)
+      - VETC_ENV=${VETC_ENV:-uat}
+      - VETC_CLIENT_ID=${VETC_CLIENT_ID:-}
+      - VETC_CLIENT_SECRET=${VETC_CLIENT_SECRET:-}
+      - VETC_TERMINAL_ID=${VETC_TERMINAL_ID:-com.vetc.charging}
+      - VETC_MINI_APP_ID=${VETC_MINI_APP_ID:-}
+      - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
+      - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
+      - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
@@ -136,8 +150,22 @@ services:
     build: .
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
+      # vetc_copilot (VETC Auto-Pilot) Brain — override in .env
+      - VA_BRAIN_PROVIDER=${VA_BRAIN_PROVIDER:-openrouter}
+      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
+      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
+      # vetc_copilot real VETC Mini App integration (credentials from .env)
+      - VETC_ENV=${VETC_ENV:-uat}
+      - VETC_CLIENT_ID=${VETC_CLIENT_ID:-}
+      - VETC_CLIENT_SECRET=${VETC_CLIENT_SECRET:-}
+      - VETC_TERMINAL_ID=${VETC_TERMINAL_ID:-com.vetc.charging}
+      - VETC_MINI_APP_ID=${VETC_MINI_APP_ID:-}
+      - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
+      - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
+      - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
@@ -171,6 +199,39 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
+  # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
+  vetc-sandbox:
+    build: .
+    entrypoint: []
+    command: ["python", "modules/vetc_copilot/tools/vetc_sandbox.py"]
+    environment:
+      - SANDBOX_CLIENT_ID=${SANDBOX_CLIENT_ID:-sandbox-client}
+      - SANDBOX_CLIENT_SECRET=${SANDBOX_CLIENT_SECRET:-sandbox-secret}
+      - SANDBOX_HMAC_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
+      - SANDBOX_AUTOCOMPLETE_SECONDS=${SANDBOX_AUTOCOMPLETE_SECONDS:-2}
+      - SANDBOX_PORT=9099
+    expose:
+      - "9099"
+    volumes:
+      - ./modules:/app/modules
+
+  # vetc_copilot module `serve`, run persistently as the /ipn receiver so the
+  # sandbox can push signed payment-completion callbacks back to the module.
+  vetc-copilot:
+    build: .
+    entrypoint: []
+    command: ["python", "modules/vetc_copilot/scripts/autopilot.py", "serve", "--port", "8770"]
+    environment:
+      - VETC_IPN_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
+      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
+      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    expose:
+      - "8770"
+    volumes:
+      - ./modules:/app/modules
 
   # Opt-in only (profile "embed-tei"). Embeddings default to an external
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
