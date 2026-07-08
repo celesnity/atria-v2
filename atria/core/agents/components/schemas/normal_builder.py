@@ -40,6 +40,15 @@ _DISABLED_TOOL_NAMES: frozenset[str] = frozenset(
         "insert_after_symbol",
         "insert_before_symbol",
         "notebook_edit",
+        # Background-dispatch orchestration. No installed module uses subagents
+        # (enterprise_knowledge sets subagent.enabled=false; maintenance_copilot
+        # has none), and small models dispatched trivial lookups to `solve` then
+        # ended the turn without answering. Removing the tools is more reliable
+        # than the "don't dispatch / answer in-turn" prompt rules, which did not
+        # hold. Re-enable by removing these names if a module ever needs them.
+        "solve",
+        "get_solve_result",
+        "spawn_subagent",
     }
 )
 
