@@ -37,12 +37,19 @@ def build_tool_spec(registry: SearchProviderRegistry) -> ToolSpec | None:
     filter_docs = {p.name: p.filter_schema for p in providers}
     description = (
         "Hybrid (lexical + semantic) search over domain knowledge sources. "
+        "This tool is the ONLY valid source for these domains — always use it "
+        "for questions about them and never answer from general knowledge, "
+        "repository files, or shell output instead. "
         "Choose `source` by intent:\n"
         + "\n".join(source_lines)
-        + "\n\nPer-source `filters` properties:\n"
+        + "\n\nThe `filters` argument is a FLAT object whose allowed keys depend "
+        "on `source` — do not nest filters under the source name:\n"
         + json.dumps(filter_docs, ensure_ascii=False, indent=1)
         + "\n\nResults include `facets` (valid filter values) and `top_margin` "
-        "(low margin across distinct candidates => ask the user to clarify)."
+        "(low margin across distinct candidates => ask the user to clarify). "
+        "Results are permission-filtered; a result `note` saying documents were "
+        "withheld means the user lacks access — tell them so and do not answer "
+        "from other sources."
     )
 
     parameters: dict[str, Any] = {
