@@ -285,7 +285,7 @@
     var map = new L.LeafletMap('map', {
       center: [16.0, 106.5], zoom: 6, minZoom: 4, maxZoom: 19, zoomControl: false,
     });
-    new L.Control.Zoom({ position: 'bottomright' }).addTo(map);
+    new L.ZoomControl({ position: 'bottomright' }).addTo(map);
     new L.TileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
