@@ -9,17 +9,19 @@
      The persona login is a demo gate (password 12345678), not core Atria auth. -->
 <style>
   :root{
-    --bg:#F7F6F3; --panel:#FFFFFF; --ink:#1B1A17; --muted:#6B6A64; --faint:#9B9A93;
-    --line:#E7E5DF; --line2:#F0EEE9; --accent:#8A4B2E; --accent-ink:#6E3A22; --soft:#F3ECE6;
-    --green:#1E9E64; --green-bg:#E7F6EE; --blue:#2E6BD6; --blue-bg:#E8EEFC;
-    --amber:#B7791F; --amber-bg:#FBF1DC; --red:#CB2E4A; --red-bg:#FCE8EC;
+    /* Atria "Celesnity" Daybreak palette — cobalt → violet → magenta brand. */
+    --bg:#F5F6FE; --panel:#FFFFFF; --ink:#1C2333; --muted:#556089; --faint:#8B93AD;
+    --line:#E5E2F3; --line2:#F1EFFB; --accent:#6E1FC6; --accent-ink:#4A1596; --soft:#EFECFB;
+    --brand-grad:linear-gradient(120deg,#2D44E0 0%,#8739E0 52%,#BC67D5 100%);
+    --green:#1E9E64; --green-bg:#E6F5EE; --blue:#2D44E0; --blue-bg:#E7EAFD;
+    --amber:#B07817; --amber-bg:#FAF0D9; --red:#C6293D; --red-bg:#FBE7EA;
     --radius:12px;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.5}
   .hide{display:none !important}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 13px}
-  button.primary{background:var(--accent);color:#fff;border:none;font-weight:600}
+  button.primary{background:var(--brand-grad);color:#fff;border:none;font-weight:600}
   button.ghost{background:#fff}
   button.tab{border:none;background:none;color:var(--muted);padding:8px 4px;border-bottom:2px solid transparent;border-radius:0;font-weight:500}
   button.tab.active{color:var(--accent-ink);border-bottom-color:var(--accent)}
@@ -68,7 +70,7 @@
   .badge{display:inline-block;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600}
   .badge.Public{background:var(--green-bg);color:var(--green)} .badge.Internal{background:var(--blue-bg);color:var(--blue)}
   .badge.Confidential{background:var(--amber-bg);color:var(--amber)} .badge.Restricted{background:var(--red-bg);color:var(--red)}
-  .badge.dept{background:#EEEDE8;color:var(--muted)}
+  .badge.dept{background:#ECEAF7;color:var(--muted)}
   .k-PDF{background:var(--red-bg);color:var(--red)} .k-DOC{background:var(--blue-bg);color:var(--blue)}
   .k-PPT{background:#FBEBDF;color:#B5541F} .k-XLS{background:var(--green-bg);color:var(--green)}
   .k-IMG{background:#EDE7FA;color:#6B4BC0} .k-TXT{background:#EBEEF2;color:#586274} .k-FILE{background:#EBEEF2;color:#586274}
