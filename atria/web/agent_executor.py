@@ -63,7 +63,8 @@ class AgentExecutor:
         session_id: str,
         session: Any,
         persona_name: str | None = None,
-    ) -> None:
+        thinking_level_override: str | None = None,
+    ) -> Dict[str, Any] | None:
         """Execute query and stream results via WebSocket.
 
         Args:
@@ -72,6 +73,15 @@ class AgentExecutor:
             session_id: Session ID for scoping this execution
             session: Pre-loaded Session object (avoids mutating current_session)
             persona_name: Optional persona name to prepend its system prompt
+            thinking_level_override: Force this run's thinking level (e.g. "Off"
+                for the warehouse quick-chat) instead of the global web state;
+                per-run, so other chats are unaffected.
+
+        Returns:
+            The agent result dict ``{"summary", "error", "latency_ms"}`` from
+            ``_run_agent_sync`` (None if execution failed before the run).
+            WS-driven callers ignore this; the module-dashboard chat route
+            relies on it for its synchronous reply.
         """
         try:
             # Mark session as running
@@ -109,6 +119,7 @@ class AgentExecutor:
                     session_id,
                     session,
                     persona_name=persona_name,
+                    thinking_level_override=thinking_level_override,
                 ),
             )
 
@@ -131,6 +142,8 @@ class AgentExecutor:
                 )
             except Exception as e:
                 logger.error(f"Failed to broadcast message_complete: {e}")
+
+            return response
 
         except Exception as e:
             # Broadcast structured error
@@ -199,6 +212,7 @@ class AgentExecutor:
         session: Any,
         *,
         persona_name: str | None = None,
+        thinking_level_override: str | None = None,
     ) -> Dict[str, Any]:
         """Run agent synchronously in thread pool using ReactExecutor.
 
@@ -209,6 +223,7 @@ class AgentExecutor:
             session_id: Session ID for scoping
             session: Pre-loaded Session object
             persona_name: Optional persona name to prepend its system prompt
+            thinking_level_override: Force this run's thinking level (per-run)
 
         Returns:
             Dict with summary, error, latency_ms
@@ -304,7 +319,7 @@ class AgentExecutor:
         # Set thinking level from web state
         from atria.core.context_engineering.tools.handlers.thinking_handler import ThinkingLevel
 
-        thinking_level_str = self.state.get_thinking_level()
+        thinking_level_str = thinking_level_override or self.state.get_thinking_level()
         try:
             thinking_level = ThinkingLevel(thinking_level_str)
         except ValueError:

@@ -98,6 +98,16 @@ class ConversationRepository(BaseRepository):
             )
             await session.commit()
 
+    async def set_project(self, conversation_id: int, project_id: int) -> None:
+        """Move a conversation into a project (used by module-chat save)."""
+        async with self._sessionmaker() as session:
+            await session.execute(
+                update(Conversation)
+                .where(Conversation.id == conversation_id)
+                .values(project_id=project_id, updated_at=func.now())
+            )
+            await session.commit()
+
     async def soft_delete(self, conversation_id: int) -> None:
         async with self._sessionmaker() as session:
             await session.execute(

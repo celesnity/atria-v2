@@ -53,7 +53,9 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
   const searchTerm = search.trim().toLowerCase();
   const searchActive = searchTerm.length > 0;
 
-  const canMutate = scope.kind === 'module';
+  // Conversation-scope mutation uses the same fs.py write/rename/delete
+  // routes as module scope — users can create files in a chat's workspace.
+  const canMutate = true;
 
   const buildRootMenu = (): Array<MenuItem | 'divider'> => ([
     { label: 'New File', onSelect: () => beginCreate(scope, '', 'file') },

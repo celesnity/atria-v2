@@ -22,17 +22,15 @@ class WebSocketClient {
 
     this.intentionalClose = false;
 
-    // Use proxy in development, or direct connection in production
-    const isDev = import.meta.env.DEV;
+    // Always connect to the same host the app was served from and let the
+    // server (prod) or the Vite dev proxy (dev, `/ws` with ws:true) forward to
+    // the backend. Avoids a second hard-coded port: dev previously pinned
+    // ws://localhost:8080, which strands the tab whenever the backend lands on
+    // a different port (find_available_port bumps to :8081+ if :8080 is busy).
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-    // In dev, connect directly to backend to avoid Vite HMR WebSocket conflicts
-    // In prod, use the same host (since static files are served by backend)
-    const wsUrl = isDev
-      ? 'ws://localhost:8080/ws'  // Direct connection in dev
-      : `${protocol}//${window.location.host}/ws`;  // Relative in prod
-
-    console.log('Connecting to WebSocket:', wsUrl, `(dev mode: ${isDev})`);
+    console.log('Connecting to WebSocket:', wsUrl);
 
     try {
       this.ws = new WebSocket(wsUrl);
