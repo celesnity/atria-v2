@@ -26,7 +26,7 @@ from atria.core.context_engineering.search.types import (  # noqa: E402
 )
 
 _RECALL = 30
-_SNIPPET_CHARS = 350
+_SNIPPET_CHARS = 700
 _COLLECTION = "enterprise_chunks"
 
 
@@ -103,7 +103,8 @@ class DocumentsProvider(SearchProvider):
             SourceResults with one hit per accessible document (best chunk
             each), department/classification facets over the returned hits,
             a top_margin ambiguity signal, and a `note` when no accessible
-            document matched the query.
+            document matched and/or when matching documents were withheld by
+            the role-based ACL (count only; nothing about them is revealed).
         """
         role, user_department = _resolve_identity(context.user_id)
         department_filter = filters.get("department")
@@ -162,6 +163,27 @@ class DocumentsProvider(SearchProvider):
             if doc_id not in best_per_doc or score > best_per_doc[doc_id][0]:
                 best_per_doc[doc_id] = (score, row)
 
+        # --- withheld-results signal (RBAC transparency without disclosure) ---
+        # Count matching documents the ACL excluded, so the agent can tell the
+        # user access was denied instead of concluding the information does not
+        # exist. Count only — titles and content are never revealed. Lexical
+        # channel only: a cheap proxy that misses dense-only matches.
+        withheld = 0
+        if role != "Executive":
+            wparams: list[Any] = [normalize_for_search(query)]
+            wwhere = ["tsv @@ websearch_to_tsquery('simple', $1)"]
+            wparams.append(user_department or "")
+            wwhere.append(f"NOT ({allowed_clause(role, len(wparams))})")
+            if department_filter:
+                wparams.append(department_filter)
+                wwhere.append(f"department = ${len(wparams)}")
+            wrows = pg.fetch_all(
+                "SELECT COUNT(DISTINCT document_id) AS n FROM enterprise_chunks "
+                f"WHERE {' AND '.join(wwhere)}",
+                wparams,
+            )
+            withheld = int(wrows[0]["n"]) if wrows else 0
+
         ranked = sorted(best_per_doc.values(), key=lambda pair: pair[0], reverse=True)[:limit]
         hits = [
             SearchHit(
@@ -182,12 +204,23 @@ class DocumentsProvider(SearchProvider):
             {"department": row["department"], "classification": row["classification"]}
             for _, row in ranked
         ]
+        notes: list[str] = []
+        if not hits:
+            notes.append("No accessible documents matched the query.")
+        if withheld:
+            notes.append(
+                f"{withheld} matching document(s) were withheld: the current "
+                "user's role does not permit access to them. If the user's "
+                "question is about that content, tell them they do not have "
+                "permission — do not answer it from other sources or general "
+                "knowledge."
+            )
         return SourceResults(
             source=self.name,
             hits=hits,
             facets=facet_counts(facet_rows, ["department", "classification"]),
             top_margin=top_margin([h.score for h in hits]),
-            note=None if hits else "No accessible documents matched the query.",
+            note=" ".join(notes) or None,
         )
 
 
