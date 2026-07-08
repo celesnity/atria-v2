@@ -75,6 +75,20 @@ def sidecar_path(relative_path: str) -> str:
     return relative_path + ".txt"
 
 
+def pdf_cache_path(relative_path: str) -> str:
+    """The companion converted-PDF path for an office file (``<file>.pdf``)."""
+    return relative_path + ".pdf"
+
+
+def write_pdf_cache(relative_path: str, data: bytes) -> str:
+    """Cache a converted PDF next to the source file; return its relative path."""
+    rel = pdf_cache_path(relative_path)
+    dest = uploads_root() / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    return rel
+
+
 def write_sidecar(relative_path: str, text: str) -> str:
     """Write extracted text next to a stored file; return its relative path."""
     rel = sidecar_path(relative_path)
