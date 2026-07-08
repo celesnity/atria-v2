@@ -284,6 +284,10 @@ def create_app() -> FastAPI:
     app.include_router(artifacts_router)
     app.include_router(fs_router)
     app.include_router(personas_router)
+
+    from atria.web.facade.maps_router import maps_facade_router
+
+    app.include_router(maps_facade_router)
     app.include_router(modules_router)
     app.include_router(transcribe_router)
     app.include_router(maintenance_router)
