@@ -99,3 +99,16 @@ def test_route_is_documented_unavailable(client):
     resp = client.get("/v1/route", params={"from": "a", "to": "b"})
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "service_unavailable"
+
+
+def test_search_backend_failure_returns_service_unavailable(client, monkeypatch):
+    import atria.web.facade.maps_router as maps_router
+
+    monkeypatch.setattr(
+        maps_router,
+        "_places_provider",
+        lambda: (_ for _ in ()).throw(RuntimeError("down")),
+    )
+    resp = client.get("/v1/search", params={"q": "x"})
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "service_unavailable"

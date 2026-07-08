@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import functools
+import logging
 import uuid
 from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 
 def request_id(request: Request | None = None) -> str:
@@ -33,3 +37,17 @@ def error_response(
             "requestId": request_id(request),
         },
     )
+
+
+def facade_guard(handler: Any) -> Any:
+    """Wrap a facade endpoint so backend failures return the documented envelope."""
+
+    @functools.wraps(handler)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return handler(*args, **kwargs)
+        except Exception:  # backend down/unregistered must not leak default 500s
+            logger.exception("facade backend failure in %s", handler.__name__)
+            return error_response(503, "service_unavailable", "Upstream search backend unavailable")
+
+    return wrapper
