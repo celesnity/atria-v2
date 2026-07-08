@@ -166,6 +166,11 @@ class REPL:
 
         self.tool_registry = self.runtime_suite.tool_registry
         self.normal_agent = self.runtime_suite.agents.normal
+        if (
+            getattr(self.config, "agent_mode", "normal") == "assistant"
+            and getattr(self.runtime_suite.agents, "assistant", None) is not None
+        ):
+            self.normal_agent = self.runtime_suite.agents.assistant
         self.agent = self.normal_agent
 
         # Flag for plan mode request via Shift+Tab
@@ -378,6 +383,11 @@ class REPL:
 
         # Update agent references
         self.normal_agent = self.runtime_suite.agents.normal
+        if (
+            getattr(self.config, "agent_mode", "normal") == "assistant"
+            and getattr(self.runtime_suite.agents, "assistant", None) is not None
+        ):
+            self.normal_agent = self.runtime_suite.agents.assistant
         self.agent = self.normal_agent
 
     def _build_key_bindings(self) -> KeyBindings:
