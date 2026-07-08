@@ -24,7 +24,7 @@ P022,U005,Manager,Operations,SLA mục tiêu cho dịch vụ quan trọng là ba
 P023,U006,Director,Legal & Compliance,Sự cố rò rỉ dữ liệu phải báo cáo trong bao lâu?,Allow,DOC031
 P024,U006,Director,Legal & Compliance,Nhân viên phải hoàn thành đào tạo tuân thủ khi nào?,Allow,DOC032
 P025,U006,Director,Legal & Compliance,Hợp đồng trên 500 triệu cần phê duyệt của ai?,Allow,DOC033
-P026,U003,Employee,Product,Restricted nghĩa là loại thông tin như thế nào?,Allow,DOC034
+P026,U003,Employee,Product,Restricted nghĩa là loại thông tin như thế nào?,Deny,DOC034
 P027,U003,Employee,Product,Dự báo doanh thu năm 2026 tăng bao nhiêu?,Deny,DOC037
 P028,U007,Executive,Executive Office,Dự báo doanh thu năm 2026 tăng bao nhiêu?,Allow,DOC037
 P029,U007,Executive,Executive Office,Tiêu chí đánh giá công ty mục tiêu M&A gồm gì?,Allow,DOC039
