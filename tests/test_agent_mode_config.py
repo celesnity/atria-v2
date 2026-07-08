@@ -19,3 +19,14 @@ def test_agent_mode_env_override(monkeypatch):
 
     config = ConfigManager(working_dir=REPO_ROOT).get_config()
     assert config.agent_mode == "assistant"
+
+
+def test_agent_mode_invalid_value_fails_closed(monkeypatch):
+    monkeypatch.setenv("ATRIA_AGENT_MODE", "asistant")
+    from atria.core.runtime.config import ConfigManager
+
+    import pytest as _pytest
+
+    with _pytest.raises(Exception) as excinfo:
+        ConfigManager(working_dir=REPO_ROOT).get_config()
+    assert "agent_mode" in str(excinfo.value)
