@@ -3,3 +3,4 @@ data/
 # re-include these under this module's tracked tree).
 __pycache__/
 *.pyc
+.deps.sha256

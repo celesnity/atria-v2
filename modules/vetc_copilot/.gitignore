@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.deps.sha256
 data/audit.log.jsonl
 data/pending.jsonl
 data/renewals.jsonl
