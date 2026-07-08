@@ -124,12 +124,12 @@
    "opening_hours": "M\u1edf c\u1eeda 06:00-19:00",
    "rating": 4.4,
    "q": {
-    "name": "cho ben thanh",
-    "name_en": "ben thanh market",
+    "name": "cho cho ben thanh",
+    "name_en": "cho ben thanh market",
     "aliases": [
-     "ben thanh",
-     "ben thanh market",
-     "cho ben thanh"
+     "cho ben thanh",
+     "cho ben thanh market",
+     "cho cho ben thanh"
     ],
     "addr": "1 cong truong quach thi trang, phuong ben thanh, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -155,10 +155,10 @@
    "rating": 4.2,
    "q": {
     "name": "san bay tan son nhat",
-    "name_en": "tan son nhat airport",
+    "name_en": "tan son nhat san bay",
     "aliases": [
-     "airport hcm",
-     "san bay tsn",
+     "san bay san bay tan son nhat",
+     "san bay thanh pho ho chi minh",
      "tan son nhat"
     ],
     "addr": "truong son, phuong 2, tan binh, tp ho chi minh tan binh tp ho chi minh"
@@ -185,10 +185,10 @@
    "rating": 4.1,
    "q": {
     "name": "san bay noi bai",
-    "name_en": "noi bai airport",
+    "name_en": "noi bai san bay",
     "aliases": [
-     "airport hn",
      "noi bai",
+     "san bay ha noi",
      "san bay noi bai"
     ],
     "addr": "phu minh, soc son, ha noi soc son ha noi"
@@ -217,7 +217,7 @@
     "name": "ho hoan kiem",
     "name_en": "hoan kiem lake",
     "aliases": [
-     "ho guom",
+     "ho hoan kiem",
      "hoan kiem lake"
     ],
     "addr": "hoan kiem, ha noi hoan kiem ha noi"
@@ -247,8 +247,7 @@
     "name_en": "bach mai hospital",
     "aliases": [
      "bach mai hospital",
-     "benh vien bach mai",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "78 giai phong, phuong mai, dong da, ha noi dong da ha noi"
    }
@@ -278,7 +277,7 @@
     "aliases": [
      "vc dong khoi",
      "vincom dong khoi",
-     "vincom q1"
+     "vincom quan 1"
     ],
     "addr": "72 le thanh ton, ben nghe, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -305,7 +304,6 @@
     "name": "vincom center nguyen chi thanh",
     "name_en": "vincom center nguyen chi thanh",
     "aliases": [
-     "vincom nct",
      "vincom nguyen chi thanh"
     ],
     "addr": "54a nguyen chi thanh, lang thuong, dong da, ha noi dong da ha noi"
@@ -334,7 +332,7 @@
     "name_en": "galaxy nguyen du",
     "aliases": [
      "galaxy nguyen du",
-     "rap galaxy q1"
+     "rap galaxy quan 1"
     ],
     "addr": "116 nguyen du, ben thanh, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -361,7 +359,7 @@
     "name": "cgv vincom dong khoi",
     "name_en": "cgv vincom dong khoi",
     "aliases": [
-     "cgv q1",
+     "cgv quan 1",
      "cgv vincom dong khoi"
     ],
     "addr": "vincom center dong khoi, quan 1, tp ho chi minh quan 1 tp ho chi minh"
@@ -416,13 +414,13 @@
    "opening_hours": "09:00-21:00",
    "rating": 4.0,
    "q": {
-    "name": "highlands coffee le duan",
+    "name": "highlands quan ca phe le duan",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee le duan",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe le duan",
+     "hlc"
     ],
     "addr": "15 le duan, tan binh, tp ho chi minh tan binh tp ho chi minh"
    }
@@ -448,13 +446,13 @@
    "opening_hours": "07:00-22:00",
    "rating": 4.4,
    "q": {
-    "name": "highlands coffee pham van dong",
+    "name": "highlands quan ca phe pham van dong",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee pham van dong",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe pham van dong",
+     "hlc"
     ],
     "addr": "204 pham van dong, quan 3, tp ho chi minh quan 3 tp ho chi minh"
    }
@@ -480,13 +478,13 @@
    "opening_hours": "08:00-23:00",
    "rating": 4.5,
    "q": {
-    "name": "highlands coffee hai ba trung",
+    "name": "highlands quan ca phe hai ba trung",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee hai ba trung",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe hai ba trung",
+     "hlc"
     ],
     "addr": "129 hai ba trung, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -512,13 +510,13 @@
    "opening_hours": "07:00-22:00",
    "rating": 4.5,
    "q": {
-    "name": "highlands coffee nguyen trai",
+    "name": "highlands quan ca phe nguyen trai",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee nguyen trai",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe nguyen trai",
+     "hlc"
     ],
     "addr": "37 nguyen trai, cau giay, ha noi cau giay ha noi"
    }
@@ -544,13 +542,13 @@
    "opening_hours": "24/7",
    "rating": 4.1,
    "q": {
-    "name": "highlands coffee le duan",
+    "name": "highlands quan ca phe le duan",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee le duan",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe le duan",
+     "hlc"
     ],
     "addr": "103 le duan, dong da, ha noi dong da ha noi"
    }
@@ -576,13 +574,13 @@
    "opening_hours": "24/7",
    "rating": 4.2,
    "q": {
-    "name": "highlands coffee dien bien phu",
+    "name": "highlands quan ca phe dien bien phu",
     "name_en": "",
     "aliases": [
      "highland",
-     "highlands coffee dien bien phu",
-     "hlc",
-     "hls"
+     "highlands coffee",
+     "highlands quan ca phe dien bien phu",
+     "hlc"
     ],
     "addr": "233 dien bien phu, ngu hanh son, da nang ngu hanh son da nang"
    }
@@ -802,8 +800,8 @@
     "name": "vietcombank tran hung dao",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank tran hung dao"
     ],
     "addr": "230 tran hung dao, dong da, ha noi dong da ha noi"
@@ -832,8 +830,8 @@
     "name": "vietcombank ly thuong kiet",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank ly thuong kiet"
     ],
     "addr": "3 ly thuong kiet, tan binh, tp ho chi minh tan binh tp ho chi minh"
@@ -862,8 +860,8 @@
     "name": "vietcombank nguyen hue",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank nguyen hue"
     ],
     "addr": "184 nguyen hue, quan 3, tp ho chi minh quan 3 tp ho chi minh"
@@ -892,8 +890,8 @@
     "name": "vietcombank dien bien phu",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank dien bien phu"
     ],
     "addr": "167 dien bien phu, hoan kiem, ha noi hoan kiem ha noi"
@@ -922,8 +920,8 @@
     "name": "vietcombank le loi",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank le loi"
     ],
     "addr": "137 le loi, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
@@ -952,8 +950,8 @@
     "name": "vietcombank nam ky khoi nghia",
     "name_en": "",
     "aliases": [
-     "vcb",
      "vietcom",
+     "vietcombank",
      "vietcombank nam ky khoi nghia"
     ],
     "addr": "45 nam ky khoi nghia, quan 7, tp ho chi minh quan 7 tp ho chi minh"
@@ -1668,7 +1666,7 @@
     "aliases": [
      "bach mai",
      "bach mai cach mang thang tam",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "169 cach mang thang tam, quan 7, tp ho chi minh quan 7 tp ho chi minh"
    }
@@ -1698,7 +1696,7 @@
     "aliases": [
      "bach mai",
      "bach mai truong son",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "126 truong son, son tra, da nang son tra da nang"
    }
@@ -1728,7 +1726,7 @@
     "aliases": [
      "bach mai",
      "bach mai le loi",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "31 le loi, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
    }
@@ -1758,7 +1756,7 @@
     "aliases": [
      "bach mai",
      "bach mai truong son",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "126 truong son, ba dinh, ha noi ba dinh ha noi"
    }
@@ -1788,7 +1786,7 @@
     "aliases": [
      "bach mai",
      "bach mai pham van dong",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "97 pham van dong, son tra, da nang son tra da nang"
    }
@@ -1818,7 +1816,7 @@
     "aliases": [
      "bach mai",
      "bach mai nguyen chi thanh",
-     "bv bach mai"
+     "benh vien bach mai"
     ],
     "addr": "209 nguyen chi thanh, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
    }
@@ -2027,8 +2025,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long truong son",
-     "pl"
+     "phuc long truong son"
     ],
     "addr": "235 truong son, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
    }
@@ -2057,8 +2054,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long vo nguyen giap",
-     "pl"
+     "phuc long vo nguyen giap"
     ],
     "addr": "19 vo nguyen giap, ba dinh, ha noi ba dinh ha noi"
    }
@@ -2087,8 +2083,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long le duan",
-     "pl"
+     "phuc long le duan"
     ],
     "addr": "176 le duan, hai chau, da nang hai chau da nang"
    }
@@ -2117,8 +2112,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long lang ha",
-     "pl"
+     "phuc long lang ha"
     ],
     "addr": "232 lang ha, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
    }
@@ -2147,8 +2141,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long pasteur",
-     "pl"
+     "phuc long pasteur"
     ],
     "addr": "174 pasteur, dong da, ha noi dong da ha noi"
    }
@@ -2177,8 +2170,7 @@
     "name_en": "",
     "aliases": [
      "phuc long",
-     "phuc long pham van dong",
-     "pl"
+     "phuc long pham van dong"
     ],
     "addr": "237 pham van dong, cau giay, ha noi cau giay ha noi"
    }
@@ -2203,12 +2195,12 @@
    "opening_hours": "24/7",
    "rating": 4.2,
    "q": {
-    "name": "the coffee house ly thuong kiet",
+    "name": "the quan ca phe house ly thuong kiet",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house ly thuong kiet"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house ly thuong kiet"
     ],
     "addr": "38 ly thuong kiet, hoan kiem, ha noi hoan kiem ha noi"
    }
@@ -2233,12 +2225,12 @@
    "opening_hours": "07:00-22:00",
    "rating": 4.7,
    "q": {
-    "name": "the coffee house nguyen trai",
+    "name": "the quan ca phe house nguyen trai",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house nguyen trai"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house nguyen trai"
     ],
     "addr": "72 nguyen trai, son tra, da nang son tra da nang"
    }
@@ -2263,12 +2255,12 @@
    "opening_hours": "09:00-21:00",
    "rating": 4.8,
    "q": {
-    "name": "the coffee house le duan",
+    "name": "the quan ca phe house le duan",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house le duan"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house le duan"
     ],
     "addr": "88 le duan, quan 7, tp ho chi minh quan 7 tp ho chi minh"
    }
@@ -2293,12 +2285,12 @@
    "opening_hours": "08:00-23:00",
    "rating": 4.1,
    "q": {
-    "name": "the coffee house nam ky khoi nghia",
+    "name": "the quan ca phe house nam ky khoi nghia",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house nam ky khoi nghia"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house nam ky khoi nghia"
     ],
     "addr": "106 nam ky khoi nghia, quan 3, tp ho chi minh quan 3 tp ho chi minh"
    }
@@ -2323,12 +2315,12 @@
    "opening_hours": "09:00-21:00",
    "rating": 4.2,
    "q": {
-    "name": "the coffee house nam ky khoi nghia",
+    "name": "the quan ca phe house nam ky khoi nghia",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house nam ky khoi nghia"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house nam ky khoi nghia"
     ],
     "addr": "29 nam ky khoi nghia, cau giay, ha noi cau giay ha noi"
    }
@@ -2353,12 +2345,12 @@
    "opening_hours": "09:00-21:00",
    "rating": 4.1,
    "q": {
-    "name": "the coffee house truong son",
+    "name": "the quan ca phe house truong son",
     "name_en": "",
     "aliases": [
-     "coffee house",
-     "tch",
-     "the coffee house truong son"
+     "quan ca phe house",
+     "the coffee house",
+     "the quan ca phe house truong son"
     ],
     "addr": "175 truong son, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -2735,8 +2727,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau le loi",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau le loi"
     ],
     "addr": "85 le loi, son tra, da nang son tra da nang"
    }
@@ -2765,8 +2757,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau nguyen chi thanh",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau nguyen chi thanh"
     ],
     "addr": "164 nguyen chi thanh, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
    }
@@ -2795,8 +2787,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau bach dang",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau bach dang"
     ],
     "addr": "41 bach dang, quan 7, tp ho chi minh quan 7 tp ho chi minh"
    }
@@ -2825,8 +2817,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau le duan",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau le duan"
     ],
     "addr": "215 le duan, dong da, ha noi dong da ha noi"
    }
@@ -2855,8 +2847,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau hai ba trung",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau hai ba trung"
     ],
     "addr": "79 hai ba trung, ba dinh, ha noi ba dinh ha noi"
    }
@@ -2885,8 +2877,8 @@
     "name_en": "",
     "aliases": [
      "long chau",
-     "nha thuoc long chau ly thuong kiet",
-     "nt long chau"
+     "nha thuoc long chau",
+     "nha thuoc long chau ly thuong kiet"
     ],
     "addr": "167 ly thuong kiet, cau giay, ha noi cau giay ha noi"
    }
@@ -3955,12 +3947,12 @@
    "opening_hours": "24/7",
    "rating": 4.1,
    "q": {
-    "name": "the working coffee ly thuong kiet",
+    "name": "the working quan ca phe ly thuong kiet",
     "name_en": "",
     "aliases": [
      "gan ly thuong kiet",
      "quan ca phe",
-     "the working coffee ly thuong kiet"
+     "the working quan ca phe ly thuong kiet"
     ],
     "addr": "157 ly thuong kiet, ba dinh, ha noi ba dinh ha noi"
    }
@@ -4015,12 +4007,12 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.7,
    "q": {
-    "name": "cafe sach xanh nguyen hue",
+    "name": "quan ca phe sach xanh nguyen hue",
     "name_en": "",
     "aliases": [
-     "cafe sach xanh nguyen hue",
      "gan nguyen hue",
-     "quan ca phe"
+     "quan ca phe",
+     "quan ca phe sach xanh nguyen hue"
     ],
     "addr": "149 nguyen hue, hoan kiem, ha noi hoan kiem ha noi"
    }
@@ -4045,12 +4037,12 @@
    "opening_hours": "06:00-22:00",
    "rating": 4.1,
    "q": {
-    "name": "cafe yen tinh dien bien phu",
+    "name": "quan ca phe yen tinh dien bien phu",
     "name_en": "",
     "aliases": [
-     "cafe yen tinh dien bien phu",
      "gan dien bien phu",
-     "quan ca phe"
+     "quan ca phe",
+     "quan ca phe yen tinh dien bien phu"
     ],
     "addr": "131 dien bien phu, hoan kiem, ha noi hoan kiem ha noi"
    }
@@ -4135,12 +4127,12 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.8,
    "q": {
-    "name": "the working coffee xuan thuy",
+    "name": "the working quan ca phe xuan thuy",
     "name_en": "",
     "aliases": [
      "gan xuan thuy",
      "quan ca phe",
-     "the working coffee xuan thuy"
+     "the working quan ca phe xuan thuy"
     ],
     "addr": "235 xuan thuy, quan 3, tp ho chi minh quan 3 tp ho chi minh"
    }
@@ -4195,12 +4187,12 @@
    "opening_hours": "24/7",
    "rating": 4.1,
    "q": {
-    "name": "the working coffee dien bien phu",
+    "name": "the working quan ca phe dien bien phu",
     "name_en": "",
     "aliases": [
      "gan dien bien phu",
      "quan ca phe",
-     "the working coffee dien bien phu"
+     "the working quan ca phe dien bien phu"
     ],
     "addr": "247 dien bien phu, son tra, da nang son tra da nang"
    }
@@ -4645,12 +4637,12 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.3,
    "q": {
-    "name": "hotel central ly thuong kiet",
+    "name": "khach san central ly thuong kiet",
     "name_en": "",
     "aliases": [
      "gan ly thuong kiet",
-     "hotel central ly thuong kiet",
-     "khach san"
+     "khach san",
+     "khach san central ly thuong kiet"
     ],
     "addr": "55 ly thuong kiet, hai chau, da nang hai chau da nang"
    }
@@ -4825,12 +4817,12 @@
    "opening_hours": "06:00-22:00",
    "rating": 4.3,
    "q": {
-    "name": "hotel central bach dang",
+    "name": "khach san central bach dang",
     "name_en": "",
     "aliases": [
      "gan bach dang",
-     "hotel central bach dang",
-     "khach san"
+     "khach san",
+     "khach san central bach dang"
     ],
     "addr": "233 bach dang, ngu hanh son, da nang ngu hanh son da nang"
    }
@@ -4855,12 +4847,12 @@
    "opening_hours": "06:00-22:00",
    "rating": 4.4,
    "q": {
-    "name": "tram xang an phu nam ky khoi nghia",
+    "name": "cay xang an phu nam ky khoi nghia",
     "name_en": "",
     "aliases": [
      "cay xang",
-     "gan nam ky khoi nghia",
-     "tram xang an phu nam ky khoi nghia"
+     "cay xang an phu nam ky khoi nghia",
+     "gan nam ky khoi nghia"
     ],
     "addr": "190 nam ky khoi nghia, quan 1, tp ho chi minh quan 1 tp ho chi minh"
    }
@@ -4885,11 +4877,11 @@
    "opening_hours": "24/7",
    "rating": 4.0,
    "q": {
-    "name": "cay xang 24h ly thuong kiet",
+    "name": "cay xang 24/7 ly thuong kiet",
     "name_en": "",
     "aliases": [
      "cay xang",
-     "cay xang 24h ly thuong kiet",
+     "cay xang 24/7 ly thuong kiet",
      "gan ly thuong kiet"
     ],
     "addr": "1 ly thuong kiet, hai chau, da nang hai chau da nang"
@@ -4945,11 +4937,11 @@
    "opening_hours": "06:00-22:00",
    "rating": 3.9,
    "q": {
-    "name": "cay xang 24h pasteur",
+    "name": "cay xang 24/7 pasteur",
     "name_en": "",
     "aliases": [
      "cay xang",
-     "cay xang 24h pasteur",
+     "cay xang 24/7 pasteur",
      "gan pasteur"
     ],
     "addr": "30 pasteur, tan binh, tp ho chi minh tan binh tp ho chi minh"
@@ -5005,11 +4997,11 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.7,
    "q": {
-    "name": "cay xang 24h pham van dong",
+    "name": "cay xang 24/7 pham van dong",
     "name_en": "",
     "aliases": [
      "cay xang",
-     "cay xang 24h pham van dong",
+     "cay xang 24/7 pham van dong",
      "gan pham van dong"
     ],
     "addr": "81 pham van dong, quan 1, tp ho chi minh quan 1 tp ho chi minh"
@@ -5125,12 +5117,12 @@
    "opening_hours": "06:00-22:00",
    "rating": 4.0,
    "q": {
-    "name": "tram xang an phu xuan thuy",
+    "name": "cay xang an phu xuan thuy",
     "name_en": "",
     "aliases": [
      "cay xang",
-     "gan xuan thuy",
-     "tram xang an phu xuan thuy"
+     "cay xang an phu xuan thuy",
+     "gan xuan thuy"
     ],
     "addr": "228 xuan thuy, cau giay, ha noi cau giay ha noi"
    }
@@ -5545,12 +5537,12 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.5,
    "q": {
-    "name": "nha thuoc 24h le loi",
+    "name": "nha thuoc 24/7 le loi",
     "name_en": "",
     "aliases": [
      "gan le loi",
      "nha thuoc",
-     "nha thuoc 24h le loi"
+     "nha thuoc 24/7 le loi"
     ],
     "addr": "7 le loi, hai chau, da nang hai chau da nang"
    }
@@ -5635,12 +5627,12 @@
    "opening_hours": "06:00-22:00",
    "rating": 4.5,
    "q": {
-    "name": "nha thuoc 24h kim ma",
+    "name": "nha thuoc 24/7 kim ma",
     "name_en": "",
     "aliases": [
      "gan kim ma",
      "nha thuoc",
-     "nha thuoc 24h kim ma"
+     "nha thuoc 24/7 kim ma"
     ],
     "addr": "139 kim ma, quan 7, tp ho chi minh quan 7 tp ho chi minh"
    }
@@ -5695,12 +5687,12 @@
    "opening_hours": "07:00-23:00",
    "rating": 4.0,
    "q": {
-    "name": "nha thuoc 24h le loi",
+    "name": "nha thuoc 24/7 le loi",
     "name_en": "",
     "aliases": [
      "gan le loi",
      "nha thuoc",
-     "nha thuoc 24h le loi"
+     "nha thuoc 24/7 le loi"
     ],
     "addr": "113 le loi, hoan kiem, ha noi hoan kiem ha noi"
    }

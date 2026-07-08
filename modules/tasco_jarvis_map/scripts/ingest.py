@@ -101,6 +101,20 @@ def main() -> None:
     wb = openpyxl.load_workbook(args.xlsx, read_only=True)
     DATA_DIR.mkdir(exist_ok=True)
 
+    # --- Abbreviations (FIRST — q.* keys below are stored abbrev-expanded) --
+    from _data import expand_abbrev
+    terms: dict[str, str] = {}
+    for d in _sheet_dicts(wb, "Abbreviation Dictionary"):
+        term, norm = fold(d["term"]), fold(d["normalized_form"])
+        if term and norm and term != norm:
+            terms[term] = norm
+    max_ngram = max(len(t.split()) for t in terms)
+    _write("abbreviations.json", {"max_ngram": max_ngram, "terms": terms})
+
+    def xfold(text) -> str:
+        """fold + abbreviation-expand — same pipeline queries go through."""
+        return expand_abbrev(fold(text), terms, max_ngram)
+
     # --- POIs -------------------------------------------------------------
     pois = []
     for d in _sheet_dicts(wb, "POI Dataset"):
@@ -128,10 +142,10 @@ def main() -> None:
             "opening_hours": _s(d["opening_hours"]),
             "rating": rating,
             "q": {
-                "name": fold(name_vi),
-                "name_en": fold(name_en),
-                "aliases": sorted({fold(a) for a in aliases}),
-                "addr": fold(f"{d['address']} {d['district']} {d['city']}"),
+                "name": xfold(name_vi),
+                "name_en": xfold(name_en),
+                "aliases": sorted({xfold(a) for a in aliases}),
+                "addr": xfold(f"{d['address']} {d['district']} {d['city']}"),
             },
         })
     used = {p["category"] for p in pois}
@@ -157,20 +171,11 @@ def main() -> None:
             "aliases": aliases,
             "notes": _s(d["notes"]),
             "q": {
-                "full": fold(d["full_address"]),
-                "aliases": sorted({fold(a) for a in aliases}),
+                "full": xfold(d["full_address"]),
+                "aliases": sorted({xfold(a) for a in aliases}),
             },
         })
     _write("addresses.json", {"addresses": addresses})
-
-    # --- Abbreviations -----------------------------------------------------
-    terms: dict[str, str] = {}
-    for d in _sheet_dicts(wb, "Abbreviation Dictionary"):
-        term, norm = fold(d["term"]), fold(d["normalized_form"])
-        if term and norm and term != norm:
-            terms[term] = norm
-    max_ngram = max(len(t.split()) for t in terms)
-    _write("abbreviations.json", {"max_ngram": max_ngram, "terms": terms})
 
     # --- Eval queries --------------------------------------------------------
     evals = []
