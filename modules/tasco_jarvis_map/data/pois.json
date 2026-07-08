@@ -1,0 +1,5739 @@
+{
+ "categories": {
+  "cafe": {
+   "label": "Cafe",
+   "label_vi": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "color": "#a5713f",
+   "emoji": "\u2615"
+  },
+  "restaurant": {
+   "label": "Restaurant",
+   "label_vi": "Nh\u00e0 h\u00e0ng",
+   "color": "#e8590c",
+   "emoji": "\ud83c\udf5c"
+  },
+  "hotel": {
+   "label": "Hotel",
+   "label_vi": "Kh\u00e1ch s\u1ea1n",
+   "color": "#1971c2",
+   "emoji": "\ud83c\udfe8"
+  },
+  "supermarket": {
+   "label": "Supermarket",
+   "label_vi": "Si\u00eau th\u1ecb",
+   "color": "#2f9e44",
+   "emoji": "\ud83d\uded2"
+  },
+  "convenience": {
+   "label": "Convenience",
+   "label_vi": "C\u1eeda h\u00e0ng ti\u1ec7n l\u1ee3i",
+   "color": "#66a80f",
+   "emoji": "\ud83c\udfea"
+  },
+  "mall": {
+   "label": "Mall",
+   "label_vi": "TT th\u01b0\u01a1ng m\u1ea1i",
+   "color": "#9c36b5",
+   "emoji": "\ud83d\udecd"
+  },
+  "bank": {
+   "label": "Bank/ATM",
+   "label_vi": "Ng\u00e2n h\u00e0ng/ATM",
+   "color": "#0ca678",
+   "emoji": "\ud83c\udfe7"
+  },
+  "cinema": {
+   "label": "Cinema",
+   "label_vi": "R\u1ea1p chi\u1ebfu phim",
+   "color": "#6741d9",
+   "emoji": "\ud83c\udfac"
+  },
+  "hospital": {
+   "label": "Hospital",
+   "label_vi": "B\u1ec7nh vi\u1ec7n",
+   "color": "#e03131",
+   "emoji": "\ud83c\udfe5"
+  },
+  "pharmacy": {
+   "label": "Pharmacy",
+   "label_vi": "Nh\u00e0 thu\u1ed1c",
+   "color": "#37b24d",
+   "emoji": "\ud83d\udc8a"
+  },
+  "gas": {
+   "label": "Gas station",
+   "label_vi": "C\u00e2y x\u0103ng",
+   "color": "#f08c00",
+   "emoji": "\u26fd"
+  },
+  "ev_charging": {
+   "label": "EV charging",
+   "label_vi": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "color": "#12b886",
+   "emoji": "\ud83d\udd0c"
+  },
+  "electronics": {
+   "label": "Electronics",
+   "label_vi": "\u0110i\u1ec7n m\u00e1y",
+   "color": "#4263eb",
+   "emoji": "\ud83d\udcf1"
+  },
+  "airport": {
+   "label": "Airport",
+   "label_vi": "S\u00e2n bay",
+   "color": "#3b5bdb",
+   "emoji": "\u2708"
+  },
+  "bus_station": {
+   "label": "Bus station",
+   "label_vi": "B\u1ebfn xe",
+   "color": "#7a6a54",
+   "emoji": "\ud83d\ude8c"
+  },
+  "market": {
+   "label": "Market",
+   "label_vi": "Ch\u1ee3",
+   "color": "#c2703e",
+   "emoji": "\ud83e\uddfa"
+  },
+  "attraction": {
+   "label": "Attraction",
+   "label_vi": "\u0110i\u1ec3m du l\u1ecbch",
+   "color": "#d6336c",
+   "emoji": "\ud83d\udcf8"
+  }
+ },
+ "pois": [
+  {
+   "poi_id": "POI001",
+   "name": "Ch\u1ee3 B\u1ebfn Th\u00e0nh",
+   "name_en": "Ben Thanh Market",
+   "category": "market",
+   "category_raw": "Ch\u1ee3, \u0110i\u1ec3m du l\u1ecbch",
+   "brand": "",
+   "address": "1 C\u00f4ng tr\u01b0\u1eddng Qu\u00e1ch Th\u1ecb Trang, Ph\u01b0\u1eddng B\u1ebfn Th\u00e0nh, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.7725,
+   "lng": 106.698,
+   "aliases": [
+    "cho ben thanh",
+    "ben thanh market",
+    "b\u1ebfn th\u00e0nh"
+   ],
+   "opening_hours": "M\u1edf c\u1eeda 06:00-19:00",
+   "rating": 4.4,
+   "q": {
+    "name": "cho ben thanh",
+    "name_en": "ben thanh market",
+    "aliases": [
+     "ben thanh",
+     "ben thanh market",
+     "cho ben thanh"
+    ],
+    "addr": "1 cong truong quach thi trang, phuong ben thanh, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI002",
+   "name": "S\u00e2n bay T\u00e2n S\u01a1n Nh\u1ea5t",
+   "name_en": "Tan Son Nhat Airport",
+   "category": "airport",
+   "category_raw": "S\u00e2n bay",
+   "brand": "",
+   "address": "Tr\u01b0\u1eddng S\u01a1n, Ph\u01b0\u1eddng 2, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.8188,
+   "lng": 106.6519,
+   "aliases": [
+    "san bay tsn",
+    "tan son nhat",
+    "airport hcm"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.2,
+   "q": {
+    "name": "san bay tan son nhat",
+    "name_en": "tan son nhat airport",
+    "aliases": [
+     "airport hcm",
+     "san bay tsn",
+     "tan son nhat"
+    ],
+    "addr": "truong son, phuong 2, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI003",
+   "name": "S\u00e2n bay N\u1ed9i B\u00e0i",
+   "name_en": "Noi Bai Airport",
+   "category": "airport",
+   "category_raw": "S\u00e2n bay",
+   "brand": "",
+   "address": "Ph\u00fa Minh, S\u00f3c S\u01a1n, H\u00e0 N\u1ed9i",
+   "district": "S\u00f3c S\u01a1n",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.2187,
+   "lng": 105.8042,
+   "aliases": [
+    "noi bai",
+    "san bay noi bai",
+    "airport hn"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "san bay noi bai",
+    "name_en": "noi bai airport",
+    "aliases": [
+     "airport hn",
+     "noi bai",
+     "san bay noi bai"
+    ],
+    "addr": "phu minh, soc son, ha noi soc son ha noi"
+   }
+  },
+  {
+   "poi_id": "POI004",
+   "name": "H\u1ed3 Ho\u00e0n Ki\u1ebfm",
+   "name_en": "Hoan Kiem Lake",
+   "category": "attraction",
+   "category_raw": "\u0110i\u1ec3m du l\u1ecbch",
+   "brand": "",
+   "address": "Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.0288,
+   "lng": 105.852,
+   "aliases": [
+    "ho guom",
+    "h\u1ed3 g\u01b0\u01a1m",
+    "hoan kiem lake"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.7,
+   "q": {
+    "name": "ho hoan kiem",
+    "name_en": "hoan kiem lake",
+    "aliases": [
+     "ho guom",
+     "hoan kiem lake"
+    ],
+    "addr": "hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI005",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai",
+   "name_en": "Bach Mai Hospital",
+   "category": "hospital",
+   "category_raw": "B\u1ec7nh vi\u1ec7n",
+   "brand": "B\u1ea1ch Mai",
+   "address": "78 Gi\u1ea3i Ph\u00f3ng, Ph\u01b0\u01a1ng Mai, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.0012,
+   "lng": 105.8412,
+   "aliases": [
+    "bv bach mai",
+    "benh vien bach mai",
+    "bach mai hospital"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "benh vien bach mai",
+    "name_en": "bach mai hospital",
+    "aliases": [
+     "bach mai hospital",
+     "benh vien bach mai",
+     "bv bach mai"
+    ],
+    "addr": "78 giai phong, phuong mai, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI006",
+   "name": "Vincom Center \u0110\u1ed3ng Kh\u1edfi",
+   "name_en": "Vincom Center Dong Khoi",
+   "category": "mall",
+   "category_raw": "Trung t\u00e2m th\u01b0\u01a1ng m\u1ea1i",
+   "brand": "Vincom",
+   "address": "72 L\u00ea Th\u00e1nh T\u00f4n, B\u1ebfn Ngh\u00e9, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.7781,
+   "lng": 106.7022,
+   "aliases": [
+    "vincom dong khoi",
+    "vincom q1",
+    "vc dong khoi"
+   ],
+   "opening_hours": "09:30-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "vincom center dong khoi",
+    "name_en": "vincom center dong khoi",
+    "aliases": [
+     "vc dong khoi",
+     "vincom dong khoi",
+     "vincom q1"
+    ],
+    "addr": "72 le thanh ton, ben nghe, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI007",
+   "name": "Vincom Center Nguy\u1ec5n Ch\u00ed Thanh",
+   "name_en": "Vincom Center Nguyen Chi Thanh",
+   "category": "mall",
+   "category_raw": "Trung t\u00e2m th\u01b0\u01a1ng m\u1ea1i",
+   "brand": "Vincom",
+   "address": "54A Nguy\u1ec5n Ch\u00ed Thanh, L\u00e1ng Th\u01b0\u1ee3ng, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.0239,
+   "lng": 105.8095,
+   "aliases": [
+    "vincom nguyen chi thanh",
+    "vincom nct"
+   ],
+   "opening_hours": "09:30-22:00",
+   "rating": 4.4,
+   "q": {
+    "name": "vincom center nguyen chi thanh",
+    "name_en": "vincom center nguyen chi thanh",
+    "aliases": [
+     "vincom nct",
+     "vincom nguyen chi thanh"
+    ],
+    "addr": "54a nguyen chi thanh, lang thuong, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI008",
+   "name": "Galaxy Nguy\u1ec5n Du",
+   "name_en": "Galaxy Nguyen Du",
+   "category": "cinema",
+   "category_raw": "R\u1ea1p chi\u1ebfu phim",
+   "brand": "Galaxy Cinema",
+   "address": "116 Nguy\u1ec5n Du, B\u1ebfn Th\u00e0nh, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.7719,
+   "lng": 106.6929,
+   "aliases": [
+    "galaxy nguyen du",
+    "rap galaxy q1"
+   ],
+   "opening_hours": "08:00-23:30",
+   "rating": 4.3,
+   "q": {
+    "name": "galaxy nguyen du",
+    "name_en": "galaxy nguyen du",
+    "aliases": [
+     "galaxy nguyen du",
+     "rap galaxy q1"
+    ],
+    "addr": "116 nguyen du, ben thanh, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI009",
+   "name": "CGV Vincom \u0110\u1ed3ng Kh\u1edfi",
+   "name_en": "CGV Vincom Dong Khoi",
+   "category": "cinema",
+   "category_raw": "R\u1ea1p chi\u1ebfu phim",
+   "brand": "CGV",
+   "address": "Vincom Center \u0110\u1ed3ng Kh\u1edfi, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.7782,
+   "lng": 106.7021,
+   "aliases": [
+    "cgv vincom dong khoi",
+    "cgv q1"
+   ],
+   "opening_hours": "08:00-23:30",
+   "rating": 4.4,
+   "q": {
+    "name": "cgv vincom dong khoi",
+    "name_en": "cgv vincom dong khoi",
+    "aliases": [
+     "cgv q1",
+     "cgv vincom dong khoi"
+    ],
+    "addr": "vincom center dong khoi, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI010",
+   "name": "B\u1ebfn xe M\u1ef9 \u0110\u00ecnh",
+   "name_en": "My Dinh Bus Station",
+   "category": "bus_station",
+   "category_raw": "B\u1ebfn xe",
+   "brand": "",
+   "address": "20 Ph\u1ea1m H\u00f9ng, M\u1ef9 \u0110\u00ecnh, Nam T\u1eeb Li\u00eam, H\u00e0 N\u1ed9i",
+   "district": "Nam T\u1eeb Li\u00eam",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.0289,
+   "lng": 105.778,
+   "aliases": [
+    "ben xe my dinh",
+    "my dinh bus station"
+   ],
+   "opening_hours": "05:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "ben xe my dinh",
+    "name_en": "my dinh bus station",
+    "aliases": [
+     "ben xe my dinh",
+     "my dinh bus station"
+    ],
+    "addr": "20 pham hung, my dinh, nam tu liem, ha noi nam tu liem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI011",
+   "name": "Highlands Coffee L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "15 L\u00ea Du\u1ea9n, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.802402,
+   "lng": 106.660197,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.0,
+   "q": {
+    "name": "highlands coffee le duan",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee le duan",
+     "hlc",
+     "hls"
+    ],
+    "addr": "15 le duan, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI012",
+   "name": "Highlands Coffee Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "204 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.770534,
+   "lng": 106.690614,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.4,
+   "q": {
+    "name": "highlands coffee pham van dong",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee pham van dong",
+     "hlc",
+     "hls"
+    ],
+    "addr": "204 pham van dong, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI013",
+   "name": "Highlands Coffee Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "129 Hai B\u00e0 Tr\u01b0ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.779835,
+   "lng": 106.709025,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.5,
+   "q": {
+    "name": "highlands coffee hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee hai ba trung",
+     "hlc",
+     "hls"
+    ],
+    "addr": "129 hai ba trung, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI014",
+   "name": "Highlands Coffee Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "37 Nguy\u1ec5n Tr\u00e3i, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.022741,
+   "lng": 105.797723,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "highlands coffee nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee nguyen trai",
+     "hlc",
+     "hls"
+    ],
+    "addr": "37 nguyen trai, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI015",
+   "name": "Highlands Coffee L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "103 L\u00ea Du\u1ea9n, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.010785,
+   "lng": 105.842763,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "highlands coffee le duan",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee le duan",
+     "hlc",
+     "hls"
+    ],
+    "addr": "103 le duan, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI016",
+   "name": "Highlands Coffee \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "Highlands Coffee",
+   "address": "233 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 15.99278,
+   "lng": 108.267675,
+   "aliases": [
+    "HLC",
+    "highland",
+    "hls",
+    "highlands coffee \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.2,
+   "q": {
+    "name": "highlands coffee dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "highland",
+     "highlands coffee dien bien phu",
+     "hlc",
+     "hls"
+    ],
+    "addr": "233 dien bien phu, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI017",
+   "name": "Vincom Center Kim M\u00e3",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "193 Kim M\u00e3, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.023965,
+   "lng": 105.777587,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center kim m\u00e3"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.4,
+   "q": {
+    "name": "vincom center kim ma",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center kim ma"
+    ],
+    "addr": "193 kim ma, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI018",
+   "name": "Vincom Center \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "17 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.773827,
+   "lng": 106.673485,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "vincom center dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center dien bien phu"
+    ],
+    "addr": "17 dien bien phu, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI019",
+   "name": "Vincom Center L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "55 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.057382,
+   "lng": 108.234875,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.3,
+   "q": {
+    "name": "vincom center ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center ly thuong kiet"
+    ],
+    "addr": "55 ly thuong kiet, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI020",
+   "name": "Vincom Center L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "190 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.039399,
+   "lng": 105.819723,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "vincom center ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center ly thuong kiet"
+    ],
+    "addr": "190 ly thuong kiet, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI021",
+   "name": "Vincom Center H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "146 H\u00f9ng V\u01b0\u01a1ng, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.097814,
+   "lng": 108.246424,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "vincom center hung vuong",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center hung vuong"
+    ],
+    "addr": "146 hung vuong, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI022",
+   "name": "Vincom Center L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "mall",
+   "category_raw": "Shopping Mall",
+   "brand": "Vincom Center",
+   "address": "75 L\u00ea Du\u1ea9n, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.74166,
+   "lng": 106.722828,
+   "aliases": [
+    "vc",
+    "vincom",
+    "vin",
+    "vincom center l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "vincom center le duan",
+    "name_en": "",
+    "aliases": [
+     "vc",
+     "vin",
+     "vincom",
+     "vincom center le duan"
+    ],
+    "addr": "75 le duan, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI023",
+   "name": "Vietcombank Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "230 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.022253,
+   "lng": 105.831027,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.3,
+   "q": {
+    "name": "vietcombank tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank tran hung dao"
+    ],
+    "addr": "230 tran hung dao, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI024",
+   "name": "Vietcombank L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "3 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.805329,
+   "lng": 106.654054,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.1,
+   "q": {
+    "name": "vietcombank ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank ly thuong kiet"
+    ],
+    "addr": "3 ly thuong kiet, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI025",
+   "name": "Vietcombank Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "184 Nguy\u1ec5n Hu\u1ec7, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.780312,
+   "lng": 106.676251,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.5,
+   "q": {
+    "name": "vietcombank nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank nguyen hue"
+    ],
+    "addr": "184 nguyen hue, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI026",
+   "name": "Vietcombank \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "167 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.037703,
+   "lng": 105.855648,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.8,
+   "q": {
+    "name": "vietcombank dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank dien bien phu"
+    ],
+    "addr": "167 dien bien phu, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI027",
+   "name": "Vietcombank L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "137 L\u00ea L\u1ee3i, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.801955,
+   "lng": 106.701198,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.6,
+   "q": {
+    "name": "vietcombank le loi",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank le loi"
+    ],
+    "addr": "137 le loi, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI028",
+   "name": "Vietcombank Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "Vietcombank",
+   "address": "45 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.72413,
+   "lng": 106.711876,
+   "aliases": [
+    "vcb",
+    "vietcom",
+    "vietcombank nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 3.9,
+   "q": {
+    "name": "vietcombank nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "vcb",
+     "vietcom",
+     "vietcombank nam ky khoi nghia"
+    ],
+    "addr": "45 nam ky khoi nghia, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI029",
+   "name": "BIDV Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "126 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.784943,
+   "lng": 106.694781,
+   "aliases": [
+    "bidv",
+    "bidv tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.8,
+   "q": {
+    "name": "bidv tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv tran hung dao"
+    ],
+    "addr": "126 tran hung dao, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI030",
+   "name": "BIDV Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "78 Nguy\u1ec5n Tr\u00e3i, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.726117,
+   "lng": 106.713092,
+   "aliases": [
+    "bidv",
+    "bidv nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.4,
+   "q": {
+    "name": "bidv nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv nguyen trai"
+    ],
+    "addr": "78 nguyen trai, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI031",
+   "name": "BIDV \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "225 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.05986,
+   "lng": 108.232019,
+   "aliases": [
+    "bidv",
+    "bidv \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "bidv dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv dien bien phu"
+    ],
+    "addr": "225 dien bien phu, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI032",
+   "name": "BIDV V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "69 V\u00f5 Nguy\u00ean Gi\u00e1p, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 15.994756,
+   "lng": 108.255364,
+   "aliases": [
+    "bidv",
+    "bidv v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "bidv vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv vo nguyen giap"
+    ],
+    "addr": "69 vo nguyen giap, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI033",
+   "name": "BIDV Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "72 Nguy\u1ec5n Hu\u1ec7, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.106762,
+   "lng": 108.252837,
+   "aliases": [
+    "bidv",
+    "bidv nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.1,
+   "q": {
+    "name": "bidv nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv nguyen hue"
+    ],
+    "addr": "72 nguyen hue, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI034",
+   "name": "BIDV L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "bank",
+   "category_raw": "Bank/ATM",
+   "brand": "BIDV",
+   "address": "224 L\u00ea Du\u1ea9n, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.802595,
+   "lng": 106.718819,
+   "aliases": [
+    "bidv",
+    "bidv l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.6,
+   "q": {
+    "name": "bidv le duan",
+    "name_en": "",
+    "aliases": [
+     "bidv",
+     "bidv le duan"
+    ],
+    "addr": "224 le duan, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI035",
+   "name": "CGV Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "94 Hai B\u00e0 Tr\u01b0ng, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.028215,
+   "lng": 105.849219,
+   "aliases": [
+    "cgv cinema",
+    "cgv hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "cgv hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "cgv cinema",
+     "cgv hai ba trung"
+    ],
+    "addr": "94 hai ba trung, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI036",
+   "name": "CGV B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "171 B\u1ea1ch \u0110\u1eb1ng, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.774439,
+   "lng": 106.685455,
+   "aliases": [
+    "cgv cinema",
+    "cgv b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 3.8,
+   "q": {
+    "name": "cgv bach dang",
+    "name_en": "",
+    "aliases": [
+     "cgv bach dang",
+     "cgv cinema"
+    ],
+    "addr": "171 bach dang, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI037",
+   "name": "CGV \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "43 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.81354,
+   "lng": 106.706095,
+   "aliases": [
+    "cgv cinema",
+    "cgv \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 3.9,
+   "q": {
+    "name": "cgv dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "cgv cinema",
+     "cgv dien bien phu"
+    ],
+    "addr": "43 dien bien phu, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI038",
+   "name": "CGV L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "218 L\u00ea Du\u1ea9n, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 15.998046,
+   "lng": 108.270368,
+   "aliases": [
+    "cgv cinema",
+    "cgv l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "cgv le duan",
+    "name_en": "",
+    "aliases": [
+     "cgv cinema",
+     "cgv le duan"
+    ],
+    "addr": "218 le duan, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI039",
+   "name": "CGV C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "81 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.029076,
+   "lng": 105.863824,
+   "aliases": [
+    "cgv cinema",
+    "cgv c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "cgv cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "cgv cach mang thang tam",
+     "cgv cinema"
+    ],
+    "addr": "81 cach mang thang tam, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI040",
+   "name": "CGV Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "CGV",
+   "address": "36 Hai B\u00e0 Tr\u01b0ng, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.728874,
+   "lng": 106.725032,
+   "aliases": [
+    "cgv cinema",
+    "cgv hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "cgv hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "cgv cinema",
+     "cgv hai ba trung"
+    ],
+    "addr": "36 hai ba trung, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI041",
+   "name": "Galaxy Cinema C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "122 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.736429,
+   "lng": 106.713354,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "galaxy cinema cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema cach mang thang tam"
+    ],
+    "addr": "122 cach mang thang tam, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI042",
+   "name": "Galaxy Cinema C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "141 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.027268,
+   "lng": 105.804898,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.6,
+   "q": {
+    "name": "galaxy cinema cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema cach mang thang tam"
+    ],
+    "addr": "141 cach mang thang tam, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI043",
+   "name": "Galaxy Cinema Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "87 Hai B\u00e0 Tr\u01b0ng, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.027936,
+   "lng": 105.847655,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "galaxy cinema hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema hai ba trung"
+    ],
+    "addr": "87 hai ba trung, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI044",
+   "name": "Galaxy Cinema V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "181 V\u00f5 Nguy\u00ean Gi\u00e1p, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.82589,
+   "lng": 106.696763,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.6,
+   "q": {
+    "name": "galaxy cinema vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema vo nguyen giap"
+    ],
+    "addr": "181 vo nguyen giap, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI045",
+   "name": "Galaxy Cinema H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "71 H\u00f9ng V\u01b0\u01a1ng, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.025634,
+   "lng": 105.830092,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.0,
+   "q": {
+    "name": "galaxy cinema hung vuong",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema hung vuong"
+    ],
+    "addr": "71 hung vuong, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI046",
+   "name": "Galaxy Cinema B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "cinema",
+   "category_raw": "Cinema",
+   "brand": "Galaxy Cinema",
+   "address": "214 B\u1ea1ch \u0110\u1eb1ng, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.015297,
+   "lng": 105.839827,
+   "aliases": [
+    "galaxy",
+    "galaxy cinema",
+    "galaxy cinema b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "galaxy cinema bach dang",
+    "name_en": "",
+    "aliases": [
+     "galaxy",
+     "galaxy cinema",
+     "galaxy cinema bach dang"
+    ],
+    "addr": "214 bach dang, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI047",
+   "name": "Vinmec Kim M\u00e3",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "238 Kim M\u00e3, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.026865,
+   "lng": 105.800931,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec kim m\u00e3"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "vinmec kim ma",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec kim ma"
+    ],
+    "addr": "238 kim ma, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI048",
+   "name": "Vinmec H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "119 H\u00f9ng V\u01b0\u01a1ng, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.014719,
+   "lng": 105.816411,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 3.8,
+   "q": {
+    "name": "vinmec hung vuong",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec hung vuong"
+    ],
+    "addr": "119 hung vuong, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI049",
+   "name": "Vinmec L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "101 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.058298,
+   "lng": 108.235099,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.8,
+   "q": {
+    "name": "vinmec ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec ly thuong kiet"
+    ],
+    "addr": "101 ly thuong kiet, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI050",
+   "name": "Vinmec Pasteur",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "179 Pasteur, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.771701,
+   "lng": 106.706796,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec pasteur"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "vinmec pasteur",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec pasteur"
+    ],
+    "addr": "179 pasteur, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI051",
+   "name": "Vinmec L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "82 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.09937,
+   "lng": 108.251812,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.3,
+   "q": {
+    "name": "vinmec ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec ly thuong kiet"
+    ],
+    "addr": "82 ly thuong kiet, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI052",
+   "name": "Vinmec L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "Vinmec",
+   "address": "50 L\u00ea L\u1ee3i, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.775249,
+   "lng": 106.707071,
+   "aliases": [
+    "vinmec hospital",
+    "vinmec l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.5,
+   "q": {
+    "name": "vinmec le loi",
+    "name_en": "",
+    "aliases": [
+     "vinmec hospital",
+     "vinmec le loi"
+    ],
+    "addr": "50 le loi, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI053",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 1",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "169 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.732385,
+   "lng": 106.724573,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.7,
+   "q": {
+    "name": "benh vien bach mai co so 1",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai cach mang thang tam",
+     "bv bach mai"
+    ],
+    "addr": "169 cach mang thang tam, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI054",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 2",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "126 Tr\u01b0\u1eddng S\u01a1n, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.095268,
+   "lng": 108.25422,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "benh vien bach mai co so 2",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai truong son",
+     "bv bach mai"
+    ],
+    "addr": "126 truong son, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI055",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 3",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "31 L\u00ea L\u1ee3i, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.798716,
+   "lng": 106.699861,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "benh vien bach mai co so 3",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai le loi",
+     "bv bach mai"
+    ],
+    "addr": "31 le loi, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI056",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 4",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "126 Tr\u01b0\u1eddng S\u01a1n, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.049373,
+   "lng": 105.844353,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.6,
+   "q": {
+    "name": "benh vien bach mai co so 4",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai truong son",
+     "bv bach mai"
+    ],
+    "addr": "126 truong son, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI057",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 5",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "97 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.09713,
+   "lng": 108.252229,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.8,
+   "q": {
+    "name": "benh vien bach mai co so 5",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai pham van dong",
+     "bv bach mai"
+    ],
+    "addr": "97 pham van dong, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI058",
+   "name": "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai C\u01a1 s\u1edf 6",
+   "name_en": "",
+   "category": "hospital",
+   "category_raw": "Hospital",
+   "brand": "B\u1ea1ch Mai",
+   "address": "209 Nguy\u1ec5n Ch\u00ed Thanh, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.815888,
+   "lng": 106.7132,
+   "aliases": [
+    "bach mai",
+    "bv bach mai",
+    "b\u1ea1ch mai nguy\u1ec5n ch\u00ed thanh"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.3,
+   "q": {
+    "name": "benh vien bach mai co so 6",
+    "name_en": "",
+    "aliases": [
+     "bach mai",
+     "bach mai nguyen chi thanh",
+     "bv bach mai"
+    ],
+    "addr": "209 nguyen chi thanh, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI059",
+   "name": "Circle K Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "202 Nguy\u1ec5n Hu\u1ec7, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.784478,
+   "lng": 106.675261,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.2,
+   "q": {
+    "name": "circle k nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k nguyen hue",
+     "ck"
+    ],
+    "addr": "202 nguyen hue, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI060",
+   "name": "Circle K Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "161 Tr\u01b0\u1eddng S\u01a1n, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.063038,
+   "lng": 108.228341,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "circle k truong son",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k truong son",
+     "ck"
+    ],
+    "addr": "161 truong son, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI061",
+   "name": "Circle K H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "47 H\u00f9ng V\u01b0\u01a1ng, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.054883,
+   "lng": 108.229003,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "circle k hung vuong",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k hung vuong",
+     "ck"
+    ],
+    "addr": "47 hung vuong, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI062",
+   "name": "Circle K L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "52 L\u00e1ng H\u1ea1, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.028315,
+   "lng": 105.777891,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "circle k lang ha",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k lang ha",
+     "ck"
+    ],
+    "addr": "52 lang ha, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI063",
+   "name": "Circle K L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "152 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.031054,
+   "lng": 105.841679,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.7,
+   "q": {
+    "name": "circle k ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k ly thuong kiet",
+     "ck"
+    ],
+    "addr": "152 ly thuong kiet, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI064",
+   "name": "Circle K Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "convenience",
+   "category_raw": "Convenience Store",
+   "brand": "Circle K",
+   "address": "217 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.028989,
+   "lng": 105.804002,
+   "aliases": [
+    "ck",
+    "circle",
+    "circle k ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.2,
+   "q": {
+    "name": "circle k pham van dong",
+    "name_en": "",
+    "aliases": [
+     "circle",
+     "circle k pham van dong",
+     "ck"
+    ],
+    "addr": "217 pham van dong, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI065",
+   "name": "Ph\u00fac Long Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "235 Tr\u01b0\u1eddng S\u01a1n, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.808505,
+   "lng": 106.721625,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.6,
+   "q": {
+    "name": "phuc long truong son",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long truong son",
+     "pl"
+    ],
+    "addr": "235 truong son, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI066",
+   "name": "Ph\u00fac Long V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "19 V\u00f5 Nguy\u00ean Gi\u00e1p, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.050152,
+   "lng": 105.820424,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.4,
+   "q": {
+    "name": "phuc long vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long vo nguyen giap",
+     "pl"
+    ],
+    "addr": "19 vo nguyen giap, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI067",
+   "name": "Ph\u00fac Long L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "176 L\u00ea Du\u1ea9n, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.064018,
+   "lng": 108.209267,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.4,
+   "q": {
+    "name": "phuc long le duan",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long le duan",
+     "pl"
+    ],
+    "addr": "176 le duan, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI068",
+   "name": "Ph\u00fac Long L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "232 L\u00e1ng H\u1ea1, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.816431,
+   "lng": 106.723447,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.6,
+   "q": {
+    "name": "phuc long lang ha",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long lang ha",
+     "pl"
+    ],
+    "addr": "232 lang ha, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI069",
+   "name": "Ph\u00fac Long Pasteur",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "174 Pasteur, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.031489,
+   "lng": 105.842113,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long pasteur"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.0,
+   "q": {
+    "name": "phuc long pasteur",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long pasteur",
+     "pl"
+    ],
+    "addr": "174 pasteur, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI070",
+   "name": "Ph\u00fac Long Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe/Tea",
+   "brand": "Ph\u00fac Long",
+   "address": "237 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.042172,
+   "lng": 105.790378,
+   "aliases": [
+    "phuc long",
+    "pl",
+    "ph\u00fac long ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.2,
+   "q": {
+    "name": "phuc long pham van dong",
+    "name_en": "",
+    "aliases": [
+     "phuc long",
+     "phuc long pham van dong",
+     "pl"
+    ],
+    "addr": "237 pham van dong, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI071",
+   "name": "The Coffee House L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "38 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.03413,
+   "lng": 105.844749,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.2,
+   "q": {
+    "name": "the coffee house ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house ly thuong kiet"
+    ],
+    "addr": "38 ly thuong kiet, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI072",
+   "name": "The Coffee House Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "72 Nguy\u1ec5n Tr\u00e3i, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.092406,
+   "lng": 108.262998,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.7,
+   "q": {
+    "name": "the coffee house nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house nguyen trai"
+    ],
+    "addr": "72 nguyen trai, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI073",
+   "name": "The Coffee House L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "88 L\u00ea Du\u1ea9n, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.721007,
+   "lng": 106.713467,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.8,
+   "q": {
+    "name": "the coffee house le duan",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house le duan"
+    ],
+    "addr": "88 le duan, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI074",
+   "name": "The Coffee House Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "106 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.785724,
+   "lng": 106.689728,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.1,
+   "q": {
+    "name": "the coffee house nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house nam ky khoi nghia"
+    ],
+    "addr": "106 nam ky khoi nghia, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI075",
+   "name": "The Coffee House Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "29 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.031393,
+   "lng": 105.792006,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.2,
+   "q": {
+    "name": "the coffee house nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house nam ky khoi nghia"
+    ],
+    "addr": "29 nam ky khoi nghia, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI076",
+   "name": "The Coffee House Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Cafe",
+   "brand": "The Coffee House",
+   "address": "175 Tr\u01b0\u1eddng S\u01a1n, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.774673,
+   "lng": 106.692192,
+   "aliases": [
+    "tch",
+    "coffee house",
+    "the coffee house tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.1,
+   "q": {
+    "name": "the coffee house truong son",
+    "name_en": "",
+    "aliases": [
+     "coffee house",
+     "tch",
+     "the coffee house truong son"
+    ],
+    "addr": "175 truong son, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI077",
+   "name": "Lotte Mart C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "60 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.768126,
+   "lng": 106.70404,
+   "aliases": [
+    "lotte",
+    "lotte mart c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.3,
+   "q": {
+    "name": "lotte mart cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart cach mang thang tam"
+    ],
+    "addr": "60 cach mang thang tam, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI078",
+   "name": "Lotte Mart Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "156 Xu\u00e2n Th\u1ee7y, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.794917,
+   "lng": 106.659582,
+   "aliases": [
+    "lotte",
+    "lotte mart xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.4,
+   "q": {
+    "name": "lotte mart xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart xuan thuy"
+    ],
+    "addr": "156 xuan thuy, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI079",
+   "name": "Lotte Mart V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "11 V\u00f5 Nguy\u00ean Gi\u00e1p, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.036951,
+   "lng": 105.867058,
+   "aliases": [
+    "lotte",
+    "lotte mart v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.8,
+   "q": {
+    "name": "lotte mart vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart vo nguyen giap"
+    ],
+    "addr": "11 vo nguyen giap, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI080",
+   "name": "Lotte Mart Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "221 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.071563,
+   "lng": 108.223784,
+   "aliases": [
+    "lotte",
+    "lotte mart nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.4,
+   "q": {
+    "name": "lotte mart nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart nam ky khoi nghia"
+    ],
+    "addr": "221 nam ky khoi nghia, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI081",
+   "name": "Lotte Mart Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "134 Nguy\u1ec5n Tr\u00e3i, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.040304,
+   "lng": 105.856917,
+   "aliases": [
+    "lotte",
+    "lotte mart nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.2,
+   "q": {
+    "name": "lotte mart nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart nguyen trai"
+    ],
+    "addr": "134 nguyen trai, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI082",
+   "name": "Lotte Mart H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Lotte Mart",
+   "address": "124 H\u00f9ng V\u01b0\u01a1ng, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.00248,
+   "lng": 108.253676,
+   "aliases": [
+    "lotte",
+    "lotte mart h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.3,
+   "q": {
+    "name": "lotte mart hung vuong",
+    "name_en": "",
+    "aliases": [
+     "lotte",
+     "lotte mart hung vuong"
+    ],
+    "addr": "124 hung vuong, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI083",
+   "name": "Co.opmart Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "75 Tr\u01b0\u1eddng S\u01a1n, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.018296,
+   "lng": 105.839832,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.7,
+   "q": {
+    "name": "co.opmart truong son",
+    "name_en": "",
+    "aliases": [
+     "co.opmart truong son",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "75 truong son, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI084",
+   "name": "Co.opmart Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "147 Nguy\u1ec5n Hu\u1ec7, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.091589,
+   "lng": 108.254439,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "co.opmart nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "co.opmart nguyen hue",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "147 nguyen hue, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI085",
+   "name": "Co.opmart Kim M\u00e3",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "161 Kim M\u00e3, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.787262,
+   "lng": 106.682418,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart kim m\u00e3"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 3.9,
+   "q": {
+    "name": "co.opmart kim ma",
+    "name_en": "",
+    "aliases": [
+     "co.opmart kim ma",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "161 kim ma, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI086",
+   "name": "Co.opmart Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "28 Nguy\u1ec5n Hu\u1ec7, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.781074,
+   "lng": 106.702606,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.3,
+   "q": {
+    "name": "co.opmart nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "co.opmart nguyen hue",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "28 nguyen hue, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI087",
+   "name": "Co.opmart L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "27 L\u00e1ng H\u1ea1, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.0401,
+   "lng": 105.79193,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.6,
+   "q": {
+    "name": "co.opmart lang ha",
+    "name_en": "",
+    "aliases": [
+     "co.opmart lang ha",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "27 lang ha, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI088",
+   "name": "Co.opmart \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "Co.opmart",
+   "address": "118 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.766619,
+   "lng": 106.712508,
+   "aliases": [
+    "coop",
+    "coopmart",
+    "co.opmart \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.8,
+   "q": {
+    "name": "co.opmart dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "co.opmart dien bien phu",
+     "coop",
+     "coopmart"
+    ],
+    "addr": "118 dien bien phu, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI089",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "85 L\u00ea L\u1ee3i, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.120377,
+   "lng": 108.243515,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.6,
+   "q": {
+    "name": "nha thuoc long chau le loi",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau le loi",
+     "nt long chau"
+    ],
+    "addr": "85 le loi, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI090",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u Nguy\u1ec5n Ch\u00ed Thanh",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "164 Nguy\u1ec5n Ch\u00ed Thanh, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.801533,
+   "lng": 106.704763,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u nguy\u1ec5n ch\u00ed thanh"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.2,
+   "q": {
+    "name": "nha thuoc long chau nguyen chi thanh",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau nguyen chi thanh",
+     "nt long chau"
+    ],
+    "addr": "164 nguyen chi thanh, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI091",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "41 B\u1ea1ch \u0110\u1eb1ng, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.746315,
+   "lng": 106.717206,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.4,
+   "q": {
+    "name": "nha thuoc long chau bach dang",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau bach dang",
+     "nt long chau"
+    ],
+    "addr": "41 bach dang, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI092",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "215 L\u00ea Du\u1ea9n, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.010635,
+   "lng": 105.843406,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.2,
+   "q": {
+    "name": "nha thuoc long chau le duan",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau le duan",
+     "nt long chau"
+    ],
+    "addr": "215 le duan, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI093",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "79 Hai B\u00e0 Tr\u01b0ng, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.028864,
+   "lng": 105.847631,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.1,
+   "q": {
+    "name": "nha thuoc long chau hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau hai ba trung",
+     "nt long chau"
+    ],
+    "addr": "79 hai ba trung, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI094",
+   "name": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Nh\u00e0 thu\u1ed1c Long Ch\u00e2u",
+   "address": "167 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.045672,
+   "lng": 105.786949,
+   "aliases": [
+    "long chau",
+    "nt long chau",
+    "nh\u00e0 thu\u1ed1c long ch\u00e2u l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.4,
+   "q": {
+    "name": "nha thuoc long chau ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "long chau",
+     "nha thuoc long chau ly thuong kiet",
+     "nt long chau"
+    ],
+    "addr": "167 ly thuong kiet, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI095",
+   "name": "Pharmacity H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "9 H\u00f9ng V\u01b0\u01a1ng, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.036084,
+   "lng": 105.790919,
+   "aliases": [
+    "pharma",
+    "pharmacity h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "pharmacity hung vuong",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity hung vuong"
+    ],
+    "addr": "9 hung vuong, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI096",
+   "name": "Pharmacity L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "177 L\u00ea Du\u1ea9n, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.042231,
+   "lng": 105.823162,
+   "aliases": [
+    "pharma",
+    "pharmacity l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 3.9,
+   "q": {
+    "name": "pharmacity le duan",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity le duan"
+    ],
+    "addr": "177 le duan, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI097",
+   "name": "Pharmacity Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "123 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.778861,
+   "lng": 106.686892,
+   "aliases": [
+    "pharma",
+    "pharmacity ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.7,
+   "q": {
+    "name": "pharmacity pham van dong",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity pham van dong"
+    ],
+    "addr": "123 pham van dong, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI098",
+   "name": "Pharmacity Pasteur",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "153 Pasteur, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.032743,
+   "lng": 105.839606,
+   "aliases": [
+    "pharma",
+    "pharmacity pasteur"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "pharmacity pasteur",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity pasteur"
+    ],
+    "addr": "153 pasteur, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI099",
+   "name": "Pharmacity L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "7 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.780275,
+   "lng": 106.709858,
+   "aliases": [
+    "pharma",
+    "pharmacity l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "pharmacity ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity ly thuong kiet"
+    ],
+    "addr": "7 ly thuong kiet, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI100",
+   "name": "Pharmacity Kim M\u00e3",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Pharmacy",
+   "brand": "Pharmacity",
+   "address": "122 Kim M\u00e3, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.801917,
+   "lng": 106.640377,
+   "aliases": [
+    "pharma",
+    "pharmacity kim m\u00e3"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.5,
+   "q": {
+    "name": "pharmacity kim ma",
+    "name_en": "",
+    "aliases": [
+     "pharma",
+     "pharmacity kim ma"
+    ],
+    "addr": "122 kim ma, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI101",
+   "name": "Petrolimex Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "221 Hai B\u00e0 Tr\u01b0ng, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.012481,
+   "lng": 108.261235,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.5,
+   "q": {
+    "name": "petrolimex hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex hai ba trung"
+    ],
+    "addr": "221 hai ba trung, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI102",
+   "name": "Petrolimex Kim M\u00e3",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "187 Kim M\u00e3, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.020156,
+   "lng": 105.821143,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex kim m\u00e3"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "petrolimex kim ma",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex kim ma"
+    ],
+    "addr": "187 kim ma, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI103",
+   "name": "Petrolimex Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "223 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.028258,
+   "lng": 105.783232,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 3.8,
+   "q": {
+    "name": "petrolimex pham van dong",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex pham van dong"
+    ],
+    "addr": "223 pham van dong, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI104",
+   "name": "Petrolimex Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "33 Nguy\u1ec5n Hu\u1ec7, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.790474,
+   "lng": 106.709608,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.0,
+   "q": {
+    "name": "petrolimex nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex nguyen hue"
+    ],
+    "addr": "33 nguyen hue, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI105",
+   "name": "Petrolimex B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "145 B\u1ea1ch \u0110\u1eb1ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.776174,
+   "lng": 106.70596,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.2,
+   "q": {
+    "name": "petrolimex bach dang",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex bach dang"
+    ],
+    "addr": "145 bach dang, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI106",
+   "name": "Petrolimex L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "Petrolimex",
+   "address": "28 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.721897,
+   "lng": 106.720868,
+   "aliases": [
+    "c\u00e2y x\u0103ng petrolimex",
+    "petrolimex l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.1,
+   "q": {
+    "name": "petrolimex ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "cay xang petrolimex",
+     "petrolimex ly thuong kiet"
+    ],
+    "addr": "28 ly thuong kiet, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI107",
+   "name": "PVOIL L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "45 L\u00ea Du\u1ea9n, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.728153,
+   "lng": 106.71044,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "pvoil le duan",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil le duan"
+    ],
+    "addr": "45 le duan, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI108",
+   "name": "PVOIL L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "165 L\u00e1ng H\u1ea1, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.031153,
+   "lng": 105.795296,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.4,
+   "q": {
+    "name": "pvoil lang ha",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil lang ha"
+    ],
+    "addr": "165 lang ha, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI109",
+   "name": "PVOIL Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "59 Nguy\u1ec5n Hu\u1ec7, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.092567,
+   "lng": 108.238599,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.1,
+   "q": {
+    "name": "pvoil nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil nguyen hue"
+    ],
+    "addr": "59 nguyen hue, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI110",
+   "name": "PVOIL C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "220 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.01,
+   "lng": 105.820465,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 3.8,
+   "q": {
+    "name": "pvoil cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil cach mang thang tam"
+    ],
+    "addr": "220 cach mang thang tam, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI111",
+   "name": "PVOIL Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "196 Hai B\u00e0 Tr\u01b0ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.783547,
+   "lng": 106.695578,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.5,
+   "q": {
+    "name": "pvoil hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil hai ba trung"
+    ],
+    "addr": "196 hai ba trung, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI112",
+   "name": "PVOIL Pasteur",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "Gas Station",
+   "brand": "PVOIL",
+   "address": "82 Pasteur, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.020353,
+   "lng": 105.868677,
+   "aliases": [
+    "pv oil",
+    "pvoil",
+    "pvoil pasteur"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 3.9,
+   "q": {
+    "name": "pvoil pasteur",
+    "name_en": "",
+    "aliases": [
+     "pv oil",
+     "pvoil",
+     "pvoil pasteur"
+    ],
+    "addr": "82 pasteur, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI113",
+   "name": "FPT Shop Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "190 Tr\u01b0\u1eddng S\u01a1n, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.776263,
+   "lng": 106.692323,
+   "aliases": [
+    "fpt shop",
+    "fpt shop tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.2,
+   "q": {
+    "name": "fpt shop truong son",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop truong son"
+    ],
+    "addr": "190 truong son, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI114",
+   "name": "FPT Shop L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "165 L\u00e1ng H\u1ea1, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.033273,
+   "lng": 105.853449,
+   "aliases": [
+    "fpt shop",
+    "fpt shop l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 3.9,
+   "q": {
+    "name": "fpt shop lang ha",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop lang ha"
+    ],
+    "addr": "165 lang ha, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI115",
+   "name": "FPT Shop Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "30 Nguy\u1ec5n Tr\u00e3i, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.03199,
+   "lng": 105.839324,
+   "aliases": [
+    "fpt shop",
+    "fpt shop nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 3.8,
+   "q": {
+    "name": "fpt shop nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop nguyen trai"
+    ],
+    "addr": "30 nguyen trai, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI116",
+   "name": "FPT Shop L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "39 L\u00ea Du\u1ea9n, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.720558,
+   "lng": 106.719453,
+   "aliases": [
+    "fpt shop",
+    "fpt shop l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.4,
+   "q": {
+    "name": "fpt shop le duan",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop le duan"
+    ],
+    "addr": "39 le duan, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI117",
+   "name": "FPT Shop L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "75 L\u00ea L\u1ee3i, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.03224,
+   "lng": 105.841309,
+   "aliases": [
+    "fpt shop",
+    "fpt shop l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.7,
+   "q": {
+    "name": "fpt shop le loi",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop le loi"
+    ],
+    "addr": "75 le loi, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI118",
+   "name": "FPT Shop Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "FPT Shop",
+   "address": "136 Tr\u01b0\u1eddng S\u01a1n, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.037695,
+   "lng": 105.825158,
+   "aliases": [
+    "fpt shop",
+    "fpt shop tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "08:00-23:00",
+   "rating": 4.4,
+   "q": {
+    "name": "fpt shop truong son",
+    "name_en": "",
+    "aliases": [
+     "fpt shop",
+     "fpt shop truong son"
+    ],
+    "addr": "136 truong son, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI119",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "93 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.809737,
+   "lng": 106.705229,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "the gioi di dong dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong dien bien phu"
+    ],
+    "addr": "93 dien bien phu, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI120",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "82 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.786555,
+   "lng": 106.678823,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "the gioi di dong nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong nam ky khoi nghia"
+    ],
+    "addr": "82 nam ky khoi nghia, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI121",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "150 L\u00e1ng H\u1ea1, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.012836,
+   "lng": 105.835203,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.3,
+   "q": {
+    "name": "the gioi di dong lang ha",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong lang ha"
+    ],
+    "addr": "150 lang ha, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI122",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "61 H\u00f9ng V\u01b0\u01a1ng, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.027594,
+   "lng": 105.825358,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 3.9,
+   "q": {
+    "name": "the gioi di dong hung vuong",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong hung vuong"
+    ],
+    "addr": "61 hung vuong, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI123",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "36 Hai B\u00e0 Tr\u01b0ng, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.806963,
+   "lng": 106.661211,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.1,
+   "q": {
+    "name": "the gioi di dong hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong hai ba trung"
+    ],
+    "addr": "36 hai ba trung, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI124",
+   "name": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng Nguy\u1ec5n Ch\u00ed Thanh",
+   "name_en": "",
+   "category": "electronics",
+   "category_raw": "Electronics",
+   "brand": "Th\u1ebf Gi\u1edbi Di \u0110\u1ed9ng",
+   "address": "12 Nguy\u1ec5n Ch\u00ed Thanh, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.001976,
+   "lng": 108.266827,
+   "aliases": [
+    "tgdd",
+    "the gioi di dong",
+    "th\u1ebf gi\u1edbi di \u0111\u1ed9ng nguy\u1ec5n ch\u00ed thanh"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "the gioi di dong nguyen chi thanh",
+    "name_en": "",
+    "aliases": [
+     "tgdd",
+     "the gioi di dong",
+     "the gioi di dong nguyen chi thanh"
+    ],
+    "addr": "12 nguyen chi thanh, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI125",
+   "name": "WinMart Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "128 Tr\u01b0\u1eddng S\u01a1n, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.038492,
+   "lng": 105.829762,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 3.9,
+   "q": {
+    "name": "winmart truong son",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart truong son",
+     "wm"
+    ],
+    "addr": "128 truong son, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI126",
+   "name": "WinMart C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "48 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.042677,
+   "lng": 105.842681,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "winmart cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart cach mang thang tam",
+     "wm"
+    ],
+    "addr": "48 cach mang thang tam, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI127",
+   "name": "WinMart Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "163 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.801218,
+   "lng": 106.715678,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.7,
+   "q": {
+    "name": "winmart nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart nam ky khoi nghia",
+     "wm"
+    ],
+    "addr": "163 nam ky khoi nghia, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI128",
+   "name": "WinMart Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "7 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.781889,
+   "lng": 106.673556,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "09:00-21:00",
+   "rating": 4.8,
+   "q": {
+    "name": "winmart nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart nam ky khoi nghia",
+     "wm"
+    ],
+    "addr": "7 nam ky khoi nghia, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI129",
+   "name": "WinMart Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "184 Hai B\u00e0 Tr\u01b0ng, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.800823,
+   "lng": 106.662659,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "07:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "winmart hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart hai ba trung",
+     "wm"
+    ],
+    "addr": "184 hai ba trung, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI130",
+   "name": "WinMart Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "supermarket",
+   "category_raw": "Supermarket",
+   "brand": "WinMart",
+   "address": "130 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.813689,
+   "lng": 106.715262,
+   "aliases": [
+    "wm",
+    "winmart",
+    "winmart ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 3.8,
+   "q": {
+    "name": "winmart pham van dong",
+    "name_en": "",
+    "aliases": [
+     "winmart",
+     "winmart pham van dong",
+     "wm"
+    ],
+    "addr": "130 pham van dong, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI131",
+   "name": "The Working Coffee L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "157 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.036666,
+   "lng": 105.815687,
+   "aliases": [
+    "the working coffee l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "the working coffee ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "gan ly thuong kiet",
+     "quan ca phe",
+     "the working coffee ly thuong kiet"
+    ],
+    "addr": "157 ly thuong kiet, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI132",
+   "name": "C\u00e0 ph\u00ea View \u0110\u1eb9p V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "149 V\u00f5 Nguy\u00ean Gi\u00e1p, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.05525,
+   "lng": 105.815327,
+   "aliases": [
+    "c\u00e0 ph\u00ea view \u0111\u1eb9p v\u00f5 nguy\u00ean gi\u00e1p",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.2,
+   "q": {
+    "name": "ca phe view dep vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "ca phe view dep vo nguyen giap",
+     "gan vo nguyen giap",
+     "quan ca phe"
+    ],
+    "addr": "149 vo nguyen giap, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI133",
+   "name": "Cafe S\u00e1ch Xanh Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "149 Nguy\u1ec5n Hu\u1ec7, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.014761,
+   "lng": 105.862344,
+   "aliases": [
+    "cafe s\u00e1ch xanh nguy\u1ec5n hu\u1ec7",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "cafe sach xanh nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "cafe sach xanh nguyen hue",
+     "gan nguyen hue",
+     "quan ca phe"
+    ],
+    "addr": "149 nguyen hue, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI134",
+   "name": "Cafe Y\u00ean T\u0129nh \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "131 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.044358,
+   "lng": 105.870001,
+   "aliases": [
+    "cafe y\u00ean t\u0129nh \u0111i\u1ec7n bi\u00ean ph\u1ee7",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.1,
+   "q": {
+    "name": "cafe yen tinh dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "cafe yen tinh dien bien phu",
+     "gan dien bien phu",
+     "quan ca phe"
+    ],
+    "addr": "131 dien bien phu, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI135",
+   "name": "C\u00e0 ph\u00ea View \u0110\u1eb9p Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "178 Xu\u00e2n Th\u1ee7y, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.791008,
+   "lng": 106.666854,
+   "aliases": [
+    "c\u00e0 ph\u00ea view \u0111\u1eb9p xu\u00e2n th\u1ee7y",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.6,
+   "q": {
+    "name": "ca phe view dep xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "ca phe view dep xuan thuy",
+     "gan xuan thuy",
+     "quan ca phe"
+    ],
+    "addr": "178 xuan thuy, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI136",
+   "name": "C\u00e0 ph\u00ea View \u0110\u1eb9p L\u00ea Du\u1ea9n",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "235 L\u00ea Du\u1ea9n, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.039414,
+   "lng": 105.824479,
+   "aliases": [
+    "c\u00e0 ph\u00ea view \u0111\u1eb9p l\u00ea du\u1ea9n",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n l\u00ea du\u1ea9n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "ca phe view dep le duan",
+    "name_en": "",
+    "aliases": [
+     "ca phe view dep le duan",
+     "gan le duan",
+     "quan ca phe"
+    ],
+    "addr": "235 le duan, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI137",
+   "name": "The Working Coffee Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "235 Xu\u00e2n Th\u1ee7y, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.784913,
+   "lng": 106.687076,
+   "aliases": [
+    "the working coffee xu\u00e2n th\u1ee7y",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.8,
+   "q": {
+    "name": "the working coffee xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "gan xuan thuy",
+     "quan ca phe",
+     "the working coffee xuan thuy"
+    ],
+    "addr": "235 xuan thuy, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI138",
+   "name": "C\u00e0 ph\u00ea View \u0110\u1eb9p Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "167 Nguy\u1ec5n Tr\u00e3i, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.006235,
+   "lng": 105.846285,
+   "aliases": [
+    "c\u00e0 ph\u00ea view \u0111\u1eb9p nguy\u1ec5n tr\u00e3i",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "ca phe view dep nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "ca phe view dep nguyen trai",
+     "gan nguyen trai",
+     "quan ca phe"
+    ],
+    "addr": "167 nguyen trai, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI139",
+   "name": "The Working Coffee \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "247 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.109299,
+   "lng": 108.250167,
+   "aliases": [
+    "the working coffee \u0111i\u1ec7n bi\u00ean ph\u1ee7",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.1,
+   "q": {
+    "name": "the working coffee dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "gan dien bien phu",
+     "quan ca phe",
+     "the working coffee dien bien phu"
+    ],
+    "addr": "247 dien bien phu, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI140",
+   "name": "C\u00e0 ph\u00ea M\u1ed9c L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "cafe",
+   "category_raw": "Qu\u00e1n c\u00e0 ph\u00ea",
+   "brand": "",
+   "address": "119 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.815641,
+   "lng": 106.706796,
+   "aliases": [
+    "c\u00e0 ph\u00ea m\u1ed9c l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 3.7,
+   "q": {
+    "name": "ca phe moc ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "ca phe moc ly thuong kiet",
+     "gan ly thuong kiet",
+     "quan ca phe"
+    ],
+    "addr": "119 ly thuong kiet, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI141",
+   "name": "Qu\u00e1n \u0102n Ngon H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "76 H\u00f9ng V\u01b0\u01a1ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.786333,
+   "lng": 106.693733,
+   "aliases": [
+    "qu\u00e1n \u0103n ngon h\u00f9ng v\u01b0\u01a1ng",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.9,
+   "q": {
+    "name": "quan an ngon hung vuong",
+    "name_en": "",
+    "aliases": [
+     "gan hung vuong",
+     "nha hang",
+     "quan an ngon hung vuong"
+    ],
+    "addr": "76 hung vuong, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI142",
+   "name": "L\u1ea9u Ph\u1ed1 Nguy\u1ec5n Tr\u00e3i",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "40 Nguy\u1ec5n Tr\u00e3i, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.013685,
+   "lng": 105.835395,
+   "aliases": [
+    "l\u1ea9u ph\u1ed1 nguy\u1ec5n tr\u00e3i",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n nguy\u1ec5n tr\u00e3i"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.8,
+   "q": {
+    "name": "lau pho nguyen trai",
+    "name_en": "",
+    "aliases": [
+     "gan nguyen trai",
+     "lau pho nguyen trai",
+     "nha hang"
+    ],
+    "addr": "40 nguyen trai, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI143",
+   "name": "Qu\u00e1n \u0102n Ngon Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "236 Hai B\u00e0 Tr\u01b0ng, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.731581,
+   "lng": 106.714944,
+   "aliases": [
+    "qu\u00e1n \u0103n ngon hai b\u00e0 tr\u01b0ng",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 3.9,
+   "q": {
+    "name": "quan an ngon hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "gan hai ba trung",
+     "nha hang",
+     "quan an ngon hai ba trung"
+    ],
+    "addr": "236 hai ba trung, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI144",
+   "name": "Qu\u00e1n \u0102n Ngon H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "184 H\u00f9ng V\u01b0\u01a1ng, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.106462,
+   "lng": 108.268854,
+   "aliases": [
+    "qu\u00e1n \u0103n ngon h\u00f9ng v\u01b0\u01a1ng",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.4,
+   "q": {
+    "name": "quan an ngon hung vuong",
+    "name_en": "",
+    "aliases": [
+     "gan hung vuong",
+     "nha hang",
+     "quan an ngon hung vuong"
+    ],
+    "addr": "184 hung vuong, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI145",
+   "name": "Ph\u1edf Truy\u1ec1n Th\u1ed1ng Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "98 Xu\u00e2n Th\u1ee7y, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.02371,
+   "lng": 105.841981,
+   "aliases": [
+    "ph\u1edf truy\u1ec1n th\u1ed1ng xu\u00e2n th\u1ee7y",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.9,
+   "q": {
+    "name": "pho truyen thong xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "gan xuan thuy",
+     "nha hang",
+     "pho truyen thong xuan thuy"
+    ],
+    "addr": "98 xuan thuy, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI146",
+   "name": "L\u1ea9u Ph\u1ed1 V\u00f5 Nguy\u00ean Gi\u00e1p",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "113 V\u00f5 Nguy\u00ean Gi\u00e1p, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.018495,
+   "lng": 105.835314,
+   "aliases": [
+    "l\u1ea9u ph\u1ed1 v\u00f5 nguy\u00ean gi\u00e1p",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n v\u00f5 nguy\u00ean gi\u00e1p"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.9,
+   "q": {
+    "name": "lau pho vo nguyen giap",
+    "name_en": "",
+    "aliases": [
+     "gan vo nguyen giap",
+     "lau pho vo nguyen giap",
+     "nha hang"
+    ],
+    "addr": "113 vo nguyen giap, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI147",
+   "name": "Nh\u00e0 h\u00e0ng Gia \u0110\u00ecnh Vi\u1ec7t H\u00f9ng V\u01b0\u01a1ng",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "146 H\u00f9ng V\u01b0\u01a1ng, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.810952,
+   "lng": 106.642271,
+   "aliases": [
+    "nh\u00e0 h\u00e0ng gia \u0111\u00ecnh vi\u1ec7t h\u00f9ng v\u01b0\u01a1ng",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n h\u00f9ng v\u01b0\u01a1ng"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "nha hang gia dinh viet hung vuong",
+    "name_en": "",
+    "aliases": [
+     "gan hung vuong",
+     "nha hang",
+     "nha hang gia dinh viet hung vuong"
+    ],
+    "addr": "146 hung vuong, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI148",
+   "name": "Ph\u1edf Truy\u1ec1n Th\u1ed1ng Kim M\u00e3",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "25 Kim M\u00e3, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.072275,
+   "lng": 108.234262,
+   "aliases": [
+    "ph\u1edf truy\u1ec1n th\u1ed1ng kim m\u00e3",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n kim m\u00e3"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.0,
+   "q": {
+    "name": "pho truyen thong kim ma",
+    "name_en": "",
+    "aliases": [
+     "gan kim ma",
+     "nha hang",
+     "pho truyen thong kim ma"
+    ],
+    "addr": "25 kim ma, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI149",
+   "name": "L\u1ea9u Ph\u1ed1 L\u00e1ng H\u1ea1",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "75 L\u00e1ng H\u1ea1, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.75883,
+   "lng": 106.715798,
+   "aliases": [
+    "l\u1ea9u ph\u1ed1 l\u00e1ng h\u1ea1",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n l\u00e1ng h\u1ea1"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.2,
+   "q": {
+    "name": "lau pho lang ha",
+    "name_en": "",
+    "aliases": [
+     "gan lang ha",
+     "lau pho lang ha",
+     "nha hang"
+    ],
+    "addr": "75 lang ha, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI150",
+   "name": "Qu\u00e1n \u0102n Ngon Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "restaurant",
+   "category_raw": "Nh\u00e0 h\u00e0ng",
+   "brand": "",
+   "address": "223 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.088631,
+   "lng": 108.257724,
+   "aliases": [
+    "qu\u00e1n \u0103n ngon ph\u1ea1m v\u0103n \u0111\u1ed3ng",
+    "nh\u00e0 h\u00e0ng",
+    "g\u1ea7n ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "quan an ngon pham van dong",
+    "name_en": "",
+    "aliases": [
+     "gan pham van dong",
+     "nha hang",
+     "quan an ngon pham van dong"
+    ],
+    "addr": "223 pham van dong, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI151",
+   "name": "Kh\u00e1ch s\u1ea1n Bi\u1ec3n Xanh Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "158 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, B\u00ecnh Th\u1ea1nh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "B\u00ecnh Th\u1ea1nh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.800323,
+   "lng": 106.701085,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n bi\u1ec3n xanh ph\u1ea1m v\u0103n \u0111\u1ed3ng",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.7,
+   "q": {
+    "name": "khach san bien xanh pham van dong",
+    "name_en": "",
+    "aliases": [
+     "gan pham van dong",
+     "khach san",
+     "khach san bien xanh pham van dong"
+    ],
+    "addr": "158 pham van dong, binh thanh, tp ho chi minh binh thanh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI152",
+   "name": "Resort \u00c1nh D\u01b0\u01a1ng Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "200 Tr\u01b0\u1eddng S\u01a1n, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.067326,
+   "lng": 108.202901,
+   "aliases": [
+    "resort \u00e1nh d\u01b0\u01a1ng tr\u01b0\u1eddng s\u01a1n",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.4,
+   "q": {
+    "name": "resort anh duong truong son",
+    "name_en": "",
+    "aliases": [
+     "gan truong son",
+     "khach san",
+     "resort anh duong truong son"
+    ],
+    "addr": "200 truong son, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI153",
+   "name": "Kh\u00e1ch s\u1ea1n C\u00f4ng T\u00e1c Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "238 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.7803,
+   "lng": 106.713318,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n c\u00f4ng t\u00e1c tr\u1ea7n h\u01b0ng \u0111\u1ea1o",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "khach san cong tac tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "gan tran hung dao",
+     "khach san",
+     "khach san cong tac tran hung dao"
+    ],
+    "addr": "238 tran hung dao, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI154",
+   "name": "Hotel Central L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "55 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.067131,
+   "lng": 108.216529,
+   "aliases": [
+    "hotel central l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.3,
+   "q": {
+    "name": "hotel central ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "gan ly thuong kiet",
+     "hotel central ly thuong kiet",
+     "khach san"
+    ],
+    "addr": "55 ly thuong kiet, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI155",
+   "name": "Kh\u00e1ch s\u1ea1n Gia \u0110\u00ecnh Pasteur",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "162 Pasteur, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.007285,
+   "lng": 105.841345,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n gia \u0111\u00ecnh pasteur",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n pasteur"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.7,
+   "q": {
+    "name": "khach san gia dinh pasteur",
+    "name_en": "",
+    "aliases": [
+     "gan pasteur",
+     "khach san",
+     "khach san gia dinh pasteur"
+    ],
+    "addr": "162 pasteur, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI156",
+   "name": "Kh\u00e1ch s\u1ea1n Gia \u0110\u00ecnh L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "180 L\u00ea L\u1ee3i, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.034362,
+   "lng": 105.843178,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n gia \u0111\u00ecnh l\u00ea l\u1ee3i",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "24/7",
+   "rating": 3.9,
+   "q": {
+    "name": "khach san gia dinh le loi",
+    "name_en": "",
+    "aliases": [
+     "gan le loi",
+     "khach san",
+     "khach san gia dinh le loi"
+    ],
+    "addr": "180 le loi, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI157",
+   "name": "Kh\u00e1ch s\u1ea1n Bi\u1ec3n Xanh Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "212 Nguy\u1ec5n Hu\u1ec7, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.000879,
+   "lng": 108.274264,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n bi\u1ec3n xanh nguy\u1ec5n hu\u1ec7",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.7,
+   "q": {
+    "name": "khach san bien xanh nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "gan nguyen hue",
+     "khach san",
+     "khach san bien xanh nguyen hue"
+    ],
+    "addr": "212 nguyen hue, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI158",
+   "name": "Kh\u00e1ch s\u1ea1n Gia \u0110\u00ecnh L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "86 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.04821,
+   "lng": 108.226612,
+   "aliases": [
+    "kh\u00e1ch s\u1ea1n gia \u0111\u00ecnh l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "khach san gia dinh ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "gan ly thuong kiet",
+     "khach san",
+     "khach san gia dinh ly thuong kiet"
+    ],
+    "addr": "86 ly thuong kiet, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI159",
+   "name": "Resort \u00c1nh D\u01b0\u01a1ng Hai B\u00e0 Tr\u01b0ng",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "85 Hai B\u00e0 Tr\u01b0ng, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.775995,
+   "lng": 106.664412,
+   "aliases": [
+    "resort \u00e1nh d\u01b0\u01a1ng hai b\u00e0 tr\u01b0ng",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n hai b\u00e0 tr\u01b0ng"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.4,
+   "q": {
+    "name": "resort anh duong hai ba trung",
+    "name_en": "",
+    "aliases": [
+     "gan hai ba trung",
+     "khach san",
+     "resort anh duong hai ba trung"
+    ],
+    "addr": "85 hai ba trung, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI160",
+   "name": "Hotel Central B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "hotel",
+   "category_raw": "Kh\u00e1ch s\u1ea1n",
+   "brand": "",
+   "address": "233 B\u1ea1ch \u0110\u1eb1ng, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 15.996927,
+   "lng": 108.248592,
+   "aliases": [
+    "hotel central b\u1ea1ch \u0111\u1eb1ng",
+    "kh\u00e1ch s\u1ea1n",
+    "g\u1ea7n b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "hotel central bach dang",
+    "name_en": "",
+    "aliases": [
+     "gan bach dang",
+     "hotel central bach dang",
+     "khach san"
+    ],
+    "addr": "233 bach dang, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI161",
+   "name": "Tr\u1ea1m x\u0103ng An Ph\u00fa Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "190 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.765111,
+   "lng": 106.697643,
+   "aliases": [
+    "tr\u1ea1m x\u0103ng an ph\u00fa nam k\u1ef3 kh\u1edfi ngh\u0129a",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.4,
+   "q": {
+    "name": "tram xang an phu nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "gan nam ky khoi nghia",
+     "tram xang an phu nam ky khoi nghia"
+    ],
+    "addr": "190 nam ky khoi nghia, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI162",
+   "name": "C\u00e2y x\u0103ng 24h L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "1 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.084073,
+   "lng": 108.232395,
+   "aliases": [
+    "c\u00e2y x\u0103ng 24h l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "cay xang 24h ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang 24h ly thuong kiet",
+     "gan ly thuong kiet"
+    ],
+    "addr": "1 ly thuong kiet, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI163",
+   "name": "Tr\u1ea1m nhi\u00ean li\u1ec7u Ph\u00fa M\u1ef9 Nguy\u1ec5n Ch\u00ed Thanh",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "64 Nguy\u1ec5n Ch\u00ed Thanh, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.78445,
+   "lng": 106.646466,
+   "aliases": [
+    "tr\u1ea1m nhi\u00ean li\u1ec7u ph\u00fa m\u1ef9 nguy\u1ec5n ch\u00ed thanh",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n nguy\u1ec5n ch\u00ed thanh"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 3.7,
+   "q": {
+    "name": "tram nhien lieu phu my nguyen chi thanh",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "gan nguyen chi thanh",
+     "tram nhien lieu phu my nguyen chi thanh"
+    ],
+    "addr": "64 nguyen chi thanh, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI164",
+   "name": "C\u00e2y x\u0103ng 24h Pasteur",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "30 Pasteur, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.788239,
+   "lng": 106.650367,
+   "aliases": [
+    "c\u00e2y x\u0103ng 24h pasteur",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n pasteur"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 3.9,
+   "q": {
+    "name": "cay xang 24h pasteur",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang 24h pasteur",
+     "gan pasteur"
+    ],
+    "addr": "30 pasteur, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI165",
+   "name": "C\u00e2y x\u0103ng Trung T\u00e2m Pasteur",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "93 Pasteur, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.019168,
+   "lng": 105.782268,
+   "aliases": [
+    "c\u00e2y x\u0103ng trung t\u00e2m pasteur",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n pasteur"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 3.8,
+   "q": {
+    "name": "cay xang trung tam pasteur",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang trung tam pasteur",
+     "gan pasteur"
+    ],
+    "addr": "93 pasteur, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI166",
+   "name": "C\u00e2y x\u0103ng 24h Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "81 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.761841,
+   "lng": 106.71462,
+   "aliases": [
+    "c\u00e2y x\u0103ng 24h ph\u1ea1m v\u0103n \u0111\u1ed3ng",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "cay xang 24h pham van dong",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang 24h pham van dong",
+     "gan pham van dong"
+    ],
+    "addr": "81 pham van dong, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI167",
+   "name": "C\u00e2y x\u0103ng Trung T\u00e2m Pasteur",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "101 Pasteur, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.750857,
+   "lng": 106.707579,
+   "aliases": [
+    "c\u00e2y x\u0103ng trung t\u00e2m pasteur",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n pasteur"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.7,
+   "q": {
+    "name": "cay xang trung tam pasteur",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang trung tam pasteur",
+     "gan pasteur"
+    ],
+    "addr": "101 pasteur, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI168",
+   "name": "C\u00e2y x\u0103ng Qu\u1ed1c L\u1ed9 Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "172 Nguy\u1ec5n Hu\u1ec7, S\u01a1n Tr\u00e0, \u0110\u00e0 N\u1eb5ng",
+   "district": "S\u01a1n Tr\u00e0",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.092981,
+   "lng": 108.244504,
+   "aliases": [
+    "c\u00e2y x\u0103ng qu\u1ed1c l\u1ed9 nguy\u1ec5n hu\u1ec7",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.9,
+   "q": {
+    "name": "cay xang quoc lo nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang quoc lo nguyen hue",
+     "gan nguyen hue"
+    ],
+    "addr": "172 nguyen hue, son tra, da nang son tra da nang"
+   }
+  },
+  {
+   "poi_id": "POI169",
+   "name": "C\u00e2y x\u0103ng Trung T\u00e2m Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "44 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, Ng\u0169 H\u00e0nh S\u01a1n, \u0110\u00e0 N\u1eb5ng",
+   "district": "Ng\u0169 H\u00e0nh S\u01a1n",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 15.988121,
+   "lng": 108.268588,
+   "aliases": [
+    "c\u00e2y x\u0103ng trung t\u00e2m tr\u1ea7n h\u01b0ng \u0111\u1ea1o",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.6,
+   "q": {
+    "name": "cay xang trung tam tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "cay xang trung tam tran hung dao",
+     "gan tran hung dao"
+    ],
+    "addr": "44 tran hung dao, ngu hanh son, da nang ngu hanh son da nang"
+   }
+  },
+  {
+   "poi_id": "POI170",
+   "name": "Tr\u1ea1m x\u0103ng An Ph\u00fa Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "gas",
+   "category_raw": "C\u00e2y x\u0103ng",
+   "brand": "",
+   "address": "228 Xu\u00e2n Th\u1ee7y, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.052442,
+   "lng": 105.793096,
+   "aliases": [
+    "tr\u1ea1m x\u0103ng an ph\u00fa xu\u00e2n th\u1ee7y",
+    "c\u00e2y x\u0103ng",
+    "g\u1ea7n xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.0,
+   "q": {
+    "name": "tram xang an phu xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "cay xang",
+     "gan xuan thuy",
+     "tram xang an phu xuan thuy"
+    ],
+    "addr": "228 xuan thuy, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI171",
+   "name": "Tr\u1ea1m s\u1ea1c nhanh Trung t\u00e2m Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "110 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.786328,
+   "lng": 106.638558,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c nhanh trung t\u00e2m tr\u1ea7n h\u01b0ng \u0111\u1ea1o",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 3.8,
+   "q": {
+    "name": "tram sac nhanh trung tam tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "gan tran hung dao",
+     "tram sac dien",
+     "tram sac nhanh trung tam tran hung dao"
+    ],
+    "addr": "110 tran hung dao, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI172",
+   "name": "EV Station Plaza Pasteur",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "189 Pasteur, Ba \u0110\u00ecnh, H\u00e0 N\u1ed9i",
+   "district": "Ba \u0110\u00ecnh",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.037159,
+   "lng": 105.832549,
+   "aliases": [
+    "ev station plaza pasteur",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n pasteur"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.3,
+   "q": {
+    "name": "ev station plaza pasteur",
+    "name_en": "",
+    "aliases": [
+     "ev station plaza pasteur",
+     "gan pasteur",
+     "tram sac dien"
+    ],
+    "addr": "189 pasteur, ba dinh, ha noi ba dinh ha noi"
+   }
+  },
+  {
+   "poi_id": "POI173",
+   "name": "Tr\u1ea1m s\u1ea1c nhanh Trung t\u00e2m Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "118 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.766284,
+   "lng": 106.683347,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c nhanh trung t\u00e2m ph\u1ea1m v\u0103n \u0111\u1ed3ng",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.3,
+   "q": {
+    "name": "tram sac nhanh trung tam pham van dong",
+    "name_en": "",
+    "aliases": [
+     "gan pham van dong",
+     "tram sac dien",
+     "tram sac nhanh trung tam pham van dong"
+    ],
+    "addr": "118 pham van dong, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI174",
+   "name": "Tr\u1ea1m s\u1ea1c VinFast Kim M\u00e3",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "146 Kim M\u00e3, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.793161,
+   "lng": 106.71544,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c vinfast kim m\u00e3",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n kim m\u00e3"
+   ],
+   "opening_hours": "24/7",
+   "rating": 3.8,
+   "q": {
+    "name": "tram sac vinfast kim ma",
+    "name_en": "",
+    "aliases": [
+     "gan kim ma",
+     "tram sac dien",
+     "tram sac vinfast kim ma"
+    ],
+    "addr": "146 kim ma, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI175",
+   "name": "Tr\u1ea1m s\u1ea1c \u0111\u01b0\u1eddng d\u00e0i B\u1ea1ch \u0110\u1eb1ng",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "193 B\u1ea1ch \u0110\u1eb1ng, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.785028,
+   "lng": 106.697756,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c \u0111\u01b0\u1eddng d\u00e0i b\u1ea1ch \u0111\u1eb1ng",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n b\u1ea1ch \u0111\u1eb1ng"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.7,
+   "q": {
+    "name": "tram sac duong dai bach dang",
+    "name_en": "",
+    "aliases": [
+     "gan bach dang",
+     "tram sac dien",
+     "tram sac duong dai bach dang"
+    ],
+    "addr": "193 bach dang, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI176",
+   "name": "Tr\u1ea1m s\u1ea1c EV City \u0110i\u1ec7n Bi\u00ean Ph\u1ee7",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "51 \u0110i\u1ec7n Bi\u00ean Ph\u1ee7, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.727074,
+   "lng": 106.727575,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c ev city \u0111i\u1ec7n bi\u00ean ph\u1ee7",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n \u0111i\u1ec7n bi\u00ean ph\u1ee7"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.0,
+   "q": {
+    "name": "tram sac ev city dien bien phu",
+    "name_en": "",
+    "aliases": [
+     "gan dien bien phu",
+     "tram sac dien",
+     "tram sac ev city dien bien phu"
+    ],
+    "addr": "51 dien bien phu, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI177",
+   "name": "Tr\u1ea1m s\u1ea1c EV City Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "207 Nguy\u1ec5n Hu\u1ec7, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.034719,
+   "lng": 105.792374,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c ev city nguy\u1ec5n hu\u1ec7",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "08:00-22:00",
+   "rating": 4.4,
+   "q": {
+    "name": "tram sac ev city nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "gan nguyen hue",
+     "tram sac dien",
+     "tram sac ev city nguyen hue"
+    ],
+    "addr": "207 nguyen hue, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI178",
+   "name": "Tr\u1ea1m s\u1ea1c nhanh Trung t\u00e2m Kim M\u00e3",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "152 Kim M\u00e3, Qu\u1eadn 1, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 1",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.78311,
+   "lng": 106.720638,
+   "aliases": [
+    "tr\u1ea1m s\u1ea1c nhanh trung t\u00e2m kim m\u00e3",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n kim m\u00e3"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "tram sac nhanh trung tam kim ma",
+    "name_en": "",
+    "aliases": [
+     "gan kim ma",
+     "tram sac dien",
+     "tram sac nhanh trung tam kim ma"
+    ],
+    "addr": "152 kim ma, quan 1, tp ho chi minh quan 1 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI179",
+   "name": "EV Station Plaza Ph\u1ea1m V\u0103n \u0110\u1ed3ng",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "3 Ph\u1ea1m V\u0103n \u0110\u1ed3ng, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.074622,
+   "lng": 108.217061,
+   "aliases": [
+    "ev station plaza ph\u1ea1m v\u0103n \u0111\u1ed3ng",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n ph\u1ea1m v\u0103n \u0111\u1ed3ng"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.3,
+   "q": {
+    "name": "ev station plaza pham van dong",
+    "name_en": "",
+    "aliases": [
+     "ev station plaza pham van dong",
+     "gan pham van dong",
+     "tram sac dien"
+    ],
+    "addr": "3 pham van dong, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI180",
+   "name": "EV Station Plaza C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m",
+   "name_en": "",
+   "category": "ev_charging",
+   "category_raw": "Tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+   "brand": "",
+   "address": "6 C\u00e1ch M\u1ea1ng Th\u00e1ng T\u00e1m, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.788296,
+   "lng": 106.699796,
+   "aliases": [
+    "ev station plaza c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m",
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n c\u00e1ch m\u1ea1ng th\u00e1ng t\u00e1m"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 3.8,
+   "q": {
+    "name": "ev station plaza cach mang thang tam",
+    "name_en": "",
+    "aliases": [
+     "ev station plaza cach mang thang tam",
+     "gan cach mang thang tam",
+     "tram sac dien"
+    ],
+    "addr": "6 cach mang thang tam, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI181",
+   "name": "Ti\u1ec7m thu\u1ed1c S\u1ee9c Kh\u1ecfe L\u00fd Th\u01b0\u1eddng Ki\u1ec7t",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "127 L\u00fd Th\u01b0\u1eddng Ki\u1ec7t, \u0110\u1ed1ng \u0110a, H\u00e0 N\u1ed9i",
+   "district": "\u0110\u1ed1ng \u0110a",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.011591,
+   "lng": 105.845166,
+   "aliases": [
+    "ti\u1ec7m thu\u1ed1c s\u1ee9c kh\u1ecfe l\u00fd th\u01b0\u1eddng ki\u1ec7t",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n l\u00fd th\u01b0\u1eddng ki\u1ec7t"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.2,
+   "q": {
+    "name": "tiem thuoc suc khoe ly thuong kiet",
+    "name_en": "",
+    "aliases": [
+     "gan ly thuong kiet",
+     "nha thuoc",
+     "tiem thuoc suc khoe ly thuong kiet"
+    ],
+    "addr": "127 ly thuong kiet, dong da, ha noi dong da ha noi"
+   }
+  },
+  {
+   "poi_id": "POI182",
+   "name": "Nh\u00e0 thu\u1ed1c An Khang Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "189 Nguy\u1ec5n Hu\u1ec7, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.017782,
+   "lng": 105.850687,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c an khang nguy\u1ec5n hu\u1ec7",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.1,
+   "q": {
+    "name": "nha thuoc an khang nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "gan nguyen hue",
+     "nha thuoc",
+     "nha thuoc an khang nguyen hue"
+    ],
+    "addr": "189 nguyen hue, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI183",
+   "name": "Nh\u00e0 thu\u1ed1c Gia \u0110\u00ecnh Xu\u00e2n Th\u1ee7y",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "35 Xu\u00e2n Th\u1ee7y, C\u1ea7u Gi\u1ea5y, H\u00e0 N\u1ed9i",
+   "district": "C\u1ea7u Gi\u1ea5y",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.050292,
+   "lng": 105.807289,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c gia \u0111\u00ecnh xu\u00e2n th\u1ee7y",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n xu\u00e2n th\u1ee7y"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 3.7,
+   "q": {
+    "name": "nha thuoc gia dinh xuan thuy",
+    "name_en": "",
+    "aliases": [
+     "gan xuan thuy",
+     "nha thuoc",
+     "nha thuoc gia dinh xuan thuy"
+    ],
+    "addr": "35 xuan thuy, cau giay, ha noi cau giay ha noi"
+   }
+  },
+  {
+   "poi_id": "POI184",
+   "name": "Nh\u00e0 thu\u1ed1c 24h L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "7 L\u00ea L\u1ee3i, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.085195,
+   "lng": 108.227953,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c 24h l\u00ea l\u1ee3i",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.5,
+   "q": {
+    "name": "nha thuoc 24h le loi",
+    "name_en": "",
+    "aliases": [
+     "gan le loi",
+     "nha thuoc",
+     "nha thuoc 24h le loi"
+    ],
+    "addr": "7 le loi, hai chau, da nang hai chau da nang"
+   }
+  },
+  {
+   "poi_id": "POI185",
+   "name": "Nh\u00e0 thu\u1ed1c An Khang Nguy\u1ec5n Hu\u1ec7",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "165 Nguy\u1ec5n Hu\u1ec7, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.748333,
+   "lng": 106.724916,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c an khang nguy\u1ec5n hu\u1ec7",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n nguy\u1ec5n hu\u1ec7"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.5,
+   "q": {
+    "name": "nha thuoc an khang nguyen hue",
+    "name_en": "",
+    "aliases": [
+     "gan nguyen hue",
+     "nha thuoc",
+     "nha thuoc an khang nguyen hue"
+    ],
+    "addr": "165 nguyen hue, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI186",
+   "name": "Nh\u00e0 thu\u1ed1c Minh T\u00e2m Tr\u01b0\u1eddng S\u01a1n",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "78 Tr\u01b0\u1eddng S\u01a1n, Qu\u1eadn 3, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 3",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.789724,
+   "lng": 106.680734,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c minh t\u00e2m tr\u01b0\u1eddng s\u01a1n",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n tr\u01b0\u1eddng s\u01a1n"
+   ],
+   "opening_hours": "24/7",
+   "rating": 4.0,
+   "q": {
+    "name": "nha thuoc minh tam truong son",
+    "name_en": "",
+    "aliases": [
+     "gan truong son",
+     "nha thuoc",
+     "nha thuoc minh tam truong son"
+    ],
+    "addr": "78 truong son, quan 3, tp ho chi minh quan 3 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI187",
+   "name": "Nh\u00e0 thu\u1ed1c 24h Kim M\u00e3",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "139 Kim M\u00e3, Qu\u1eadn 7, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "Qu\u1eadn 7",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.738564,
+   "lng": 106.723823,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c 24h kim m\u00e3",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n kim m\u00e3"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 4.5,
+   "q": {
+    "name": "nha thuoc 24h kim ma",
+    "name_en": "",
+    "aliases": [
+     "gan kim ma",
+     "nha thuoc",
+     "nha thuoc 24h kim ma"
+    ],
+    "addr": "139 kim ma, quan 7, tp ho chi minh quan 7 tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI188",
+   "name": "Nh\u00e0 thu\u1ed1c Gia \u0110\u00ecnh Nam K\u1ef3 Kh\u1edfi Ngh\u0129a",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "180 Nam K\u1ef3 Kh\u1edfi Ngh\u0129a, T\u00e2n B\u00ecnh, TP H\u1ed3 Ch\u00ed Minh",
+   "district": "T\u00e2n B\u00ecnh",
+   "city": "TP H\u1ed3 Ch\u00ed Minh",
+   "lat": 10.783821,
+   "lng": 106.649224,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c gia \u0111\u00ecnh nam k\u1ef3 kh\u1edfi ngh\u0129a",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n nam k\u1ef3 kh\u1edfi ngh\u0129a"
+   ],
+   "opening_hours": "06:00-22:00",
+   "rating": 3.7,
+   "q": {
+    "name": "nha thuoc gia dinh nam ky khoi nghia",
+    "name_en": "",
+    "aliases": [
+     "gan nam ky khoi nghia",
+     "nha thuoc",
+     "nha thuoc gia dinh nam ky khoi nghia"
+    ],
+    "addr": "180 nam ky khoi nghia, tan binh, tp ho chi minh tan binh tp ho chi minh"
+   }
+  },
+  {
+   "poi_id": "POI189",
+   "name": "Nh\u00e0 thu\u1ed1c 24h L\u00ea L\u1ee3i",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "113 L\u00ea L\u1ee3i, Ho\u00e0n Ki\u1ebfm, H\u00e0 N\u1ed9i",
+   "district": "Ho\u00e0n Ki\u1ebfm",
+   "city": "H\u00e0 N\u1ed9i",
+   "lat": 21.03968,
+   "lng": 105.868667,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c 24h l\u00ea l\u1ee3i",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n l\u00ea l\u1ee3i"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 4.0,
+   "q": {
+    "name": "nha thuoc 24h le loi",
+    "name_en": "",
+    "aliases": [
+     "gan le loi",
+     "nha thuoc",
+     "nha thuoc 24h le loi"
+    ],
+    "addr": "113 le loi, hoan kiem, ha noi hoan kiem ha noi"
+   }
+  },
+  {
+   "poi_id": "POI190",
+   "name": "Nh\u00e0 thu\u1ed1c An Khang Tr\u1ea7n H\u01b0ng \u0110\u1ea1o",
+   "name_en": "",
+   "category": "pharmacy",
+   "category_raw": "Nh\u00e0 thu\u1ed1c",
+   "brand": "",
+   "address": "179 Tr\u1ea7n H\u01b0ng \u0110\u1ea1o, H\u1ea3i Ch\u00e2u, \u0110\u00e0 N\u1eb5ng",
+   "district": "H\u1ea3i Ch\u00e2u",
+   "city": "\u0110\u00e0 N\u1eb5ng",
+   "lat": 16.064667,
+   "lng": 108.234892,
+   "aliases": [
+    "nh\u00e0 thu\u1ed1c an khang tr\u1ea7n h\u01b0ng \u0111\u1ea1o",
+    "nh\u00e0 thu\u1ed1c",
+    "g\u1ea7n tr\u1ea7n h\u01b0ng \u0111\u1ea1o"
+   ],
+   "opening_hours": "07:00-23:00",
+   "rating": 3.7,
+   "q": {
+    "name": "nha thuoc an khang tran hung dao",
+    "name_en": "",
+    "aliases": [
+     "gan tran hung dao",
+     "nha thuoc",
+     "nha thuoc an khang tran hung dao"
+    ],
+    "addr": "179 tran hung dao, hai chau, da nang hai chau da nang"
+   }
+  }
+ ]
+}
