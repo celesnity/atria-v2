@@ -1,15 +1,17 @@
 # switch-llm.ps1 - flip Atria's chat LLM provider between Qwen (DashScope) and OpenAI.
 #
 # Usage:
-#   .\switch-llm.ps1 qwen      # use Qwen via DashScope (qwen3.5-plus-2026-02-15)
-#   .\switch-llm.ps1 openai    # use OpenAI (gpt-5.5)  [needs OpenAI quota]
+#   .\switch-llm.ps1 qwen      # use Qwen via DashScope
+#   .\switch-llm.ps1 openai    # use OpenAI
 #   .\switch-llm.ps1 status    # print the currently active provider
 #
 # How it works: Atria reads OPENAI_API_KEY / ATRIA_MODEL / ATRIA_FALLBACK_MODEL /
 # ATRIA_API_BASE_URL from .env (loaded by run-backend.ps1 on every start). This
-# script rewrites those four active lines in place, pulling each provider's API
-# key from the commented "key vault" (LLM_KEY_QWEN / LLM_KEY_OPENAI) in .env, so
-# secrets live only in .env. After switching, RESTART the backend terminal.
+# script rewrites those four active lines in place, pulling ALL of each provider's
+# values (key + model + fallback + base URL) from the commented per-provider "vault"
+# in .env (LLM_KEY_/LLM_MODEL_/LLM_FALLBACK_/LLM_BASE_<PROVIDER>). Nothing is
+# hardcoded here: to change a model, edit its LLM_MODEL_* line in .env and re-run.
+# Keys and models live only in .env. After switching, RESTART the backend terminal.
 #
 # NOTE: keep this file pure ASCII - Windows PowerShell reads non-BOM files as
 # ANSI, and characters like an em-dash can corrupt string parsing.
@@ -67,25 +69,29 @@ if ($Provider -eq 'status') {
   exit 0
 }
 
-# Provider profiles. The API key is resolved from the .env key vault.
-if ($Provider -eq 'qwen') {
-  $key = Get-VaultKey 'LLM_KEY_QWEN'
-  $model = 'qwen3.5-plus-2026-02-15'
-  $fallback = 'qwen3.5-flash'
-  $baseUrl = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions'
-  $label = 'QWEN (DashScope)'
-}
-else {
-  $key = Get-VaultKey 'LLM_KEY_OPENAI'
-  $model = 'gpt-5.5'
-  $fallback = 'gpt-5.4'
-  $baseUrl = 'https://api.openai.com/v1/chat/completions'
-  $label = 'OPENAI'
-}
+# Provider profiles. EVERYTHING (key + model + fallback + base URL) is resolved
+# from the .env vault - nothing is hardcoded here. To change a model, edit the
+# LLM_MODEL_<PROVIDER> / LLM_FALLBACK_<PROVIDER> line in .env and re-run this.
+$p = $Provider.ToUpper()
+$key = Get-VaultKey "LLM_KEY_$p"
+$model = Get-VaultKey "LLM_MODEL_$p"
+$fallback = Get-VaultKey "LLM_FALLBACK_$p"
+$baseUrl = Get-VaultKey "LLM_BASE_$p"
+$label = if ($Provider -eq 'qwen') { 'QWEN (DashScope)' } else { 'OPENAI' }
 
-if ([string]::IsNullOrWhiteSpace($key)) {
-  Write-Host "ERROR: could not find the API key for '$Provider' in the .env key vault." -ForegroundColor Red
-  Write-Host "Expected a commented line like: # LLM_KEY_$($Provider.ToUpper())=sk-..." -ForegroundColor Red
+# All four vault values are required; report exactly which are missing.
+$missing = @()
+foreach ($pair in @(
+    @('LLM_KEY',      $key),
+    @('LLM_MODEL',    $model),
+    @('LLM_FALLBACK', $fallback),
+    @('LLM_BASE',     $baseUrl))) {
+  if ([string]::IsNullOrWhiteSpace($pair[1])) { $missing += "$($pair[0])_$p" }
+}
+if ($missing.Count -gt 0) {
+  Write-Host "ERROR: missing vault value(s) for '$Provider' in .env:" -ForegroundColor Red
+  foreach ($m in $missing) { Write-Host "  # $m=..." -ForegroundColor Red }
+  Write-Host "Add the commented line(s) to the LLM vault section of .env." -ForegroundColor Red
   exit 1
 }
 
@@ -124,6 +130,3 @@ Write-Host "  ATRIA_API_BASE_URL   = $baseUrl"
 Write-Host ""
 Write-Host "RESTART the backend terminal for this to take effect:" -ForegroundColor Yellow
 Write-Host "  Ctrl+C in the run-backend.ps1 window, then re-run  .\run-backend.ps1" -ForegroundColor Yellow
-if ($Provider -eq 'openai') {
-  Write-Host "NOTE: OpenAI quota was exhausted (429). Top up the account or chat will fail." -ForegroundColor Yellow
-}
