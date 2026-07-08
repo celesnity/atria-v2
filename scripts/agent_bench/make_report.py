@@ -55,7 +55,7 @@ def main() -> None:
     add(
         "- Harness: scripts/agent_bench/ — headless stack per deps_builder.py, "
         "per-case identity via ATRIA_SEARCH_USER_ID, one fresh session per case, "
-        "minimal deployment persona (see harness.DEFAULT_PERSONA)"
+        "assistant-agent deployment (suite.agents.assistant)"
     )
     add("- Discipline: measure-only. No retrieval/prompt tuning from these results.")
     add("")
