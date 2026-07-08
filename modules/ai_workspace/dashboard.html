@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<title>AI Workspace · Secure Department Knowledge</title>
+<!-- Runs inside Atria via the AtriaDash bridge (__bridge.js), which executes
+     scripts/workspace.py <args> and returns its JSON stdout. All access filtering
+     is server-side (3-gate model); the UI only renders what the backend returns.
+     The persona login is a demo gate (password 12345678), not core Atria auth. -->
+<style>
+  :root{
+    --bg:#F7F6F3; --panel:#FFFFFF; --ink:#1B1A17; --muted:#6B6A64; --faint:#9B9A93;
+    --line:#E7E5DF; --line2:#F0EEE9; --accent:#8A4B2E; --accent-ink:#6E3A22; --soft:#F3ECE6;
+    --green:#1E9E64; --green-bg:#E7F6EE; --blue:#2E6BD6; --blue-bg:#E8EEFC;
+    --amber:#B7791F; --amber-bg:#FBF1DC; --red:#CB2E4A; --red-bg:#FCE8EC;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.5}
+  .hide{display:none !important}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 13px}
+  button.primary{background:var(--accent);color:#fff;border:none;font-weight:600}
+  button.ghost{background:#fff}
+  button.tab{border:none;background:none;color:var(--muted);padding:8px 4px;border-bottom:2px solid transparent;border-radius:0;font-weight:500}
+  button.tab.active{color:var(--accent-ink);border-bottom-color:var(--accent)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  input,select{font:inherit;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);width:100%}
+  header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 22px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600}
+  .brand .dot{width:26px;height:26px;border-radius:8px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  nav{display:flex;gap:18px;align-items:center}
+  .who{display:flex;align-items:center;gap:9px;font-size:13px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  main{padding:20px 22px 44px;max-width:1180px;margin:0 auto}
+  h1.title{font-size:22px;margin:2px 0 3px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
+  .stat .k{font-size:12px;color:var(--muted)}
+  .stat .v{font-size:22px;font-weight:600;margin-top:2px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .folder{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;text-align:left;display:flex;flex-direction:column;gap:8px;transition:border-color .12s}
+  .folder:hover{border-color:var(--accent)}
+  .folder.own{border-color:var(--accent);background:var(--soft)}
+  .folder.locked{background:var(--line2);color:var(--faint);border-style:dashed}
+  .folder .top{display:flex;align-items:center;gap:9px}
+  .folder .fic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--soft);color:var(--accent)}
+  .folder.locked .fic{background:#E6E4DE;color:var(--faint)}
+  .folder .nm{font-weight:600;font-size:14px}
+  .folder .mt{font-size:12px;color:var(--muted)}
+  .folder.locked .mt{color:var(--faint)}
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:#fff;padding:7px 12px;color:var(--muted)}
+  .seg button.on{background:var(--soft);color:var(--accent-ink)}
+  .filecards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;text-align:left;display:flex;flex-direction:column}
+  .fcard:hover{border-color:var(--accent)}
+  .fcard .thumb{height:96px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;letter-spacing:.5px}
+  .fcard .body{padding:10px 12px}
+  .fcard .fn{font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fcard .meta{font-size:11.5px;color:var(--muted);margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:11px 14px;background:var(--line2);font-weight:600}
+  td{padding:11px 14px;border-top:1px solid var(--line2);font-size:13px;vertical-align:middle}
+  tr.click:hover{background:var(--soft);cursor:pointer}
+  .ficon{display:inline-flex;width:30px;height:30px;border-radius:7px;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:9px;vertical-align:middle}
+  .badge{display:inline-block;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600}
+  .badge.Public{background:var(--green-bg);color:var(--green)} .badge.Internal{background:var(--blue-bg);color:var(--blue)}
+  .badge.Confidential{background:var(--amber-bg);color:var(--amber)} .badge.Restricted{background:var(--red-bg);color:var(--red)}
+  .badge.dept{background:#EEEDE8;color:var(--muted)}
+  .k-PDF{background:var(--red-bg);color:var(--red)} .k-DOC{background:var(--blue-bg);color:var(--blue)}
+  .k-PPT{background:#FBEBDF;color:#B5541F} .k-XLS{background:var(--green-bg);color:var(--green)}
+  .k-IMG{background:#EDE7FA;color:#6B4BC0} .k-TXT{background:#EBEEF2;color:#586274} .k-FILE{background:#EBEEF2;color:#586274}
+  .empty{color:var(--muted);font-size:13px;padding:18px;text-align:center}
+  .icon-del{color:var(--red);background:none;border:none;padding:6px;border-radius:8px}
+  .icon-del:hover{background:var(--red-bg)}
+  .overlay{position:fixed;inset:0;background:rgba(20,20,18,.45);display:none;align-items:center;justify-content:center;padding:22px;z-index:20}
+  .overlay.open{display:flex}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:460px;padding:18px 20px}
+  .modal.wide{max-width:920px;padding:0;overflow:hidden;display:flex;flex-direction:column;max-height:90vh}
+  .mhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .mhead .t{font-weight:600;display:flex;align-items:center;gap:9px}
+  .mbody{padding:16px 18px;overflow:auto}
+  .mbody pre{white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#FAF9F6;border:1px solid var(--line);border-radius:9px;padding:13px;max-height:60vh;overflow:auto}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12.5px;color:var(--muted)}
+  .row{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+  .msg{font-size:12.5px;min-height:16px}
+  .err{color:var(--red)} .ok{color:var(--green)}
+  .spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--soft);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .note{display:flex;gap:7px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--soft);color:var(--muted);font-size:12px}
+  .breadcrumb{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .breadcrumb b{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div id="loginView">
+  <main style="max-width:430px;margin-top:6vh">
+    <div class="stat" style="padding:22px 22px">
+      <h1 class="title">Đăng nhập AI Workspace</h1>
+      <p class="sub">Chọn nhân sự, nhập mật khẩu demo <b>12345678</b> để kiểm tra phân quyền theo phòng ban.</p>
+      <div class="field"><label>Nhân sự</label><select id="loginUser"></select></div>
+      <div class="field"><label>Mật khẩu</label><input id="loginPass" type="password" value="12345678"/></div>
+      <button class="primary" id="loginBtn" style="width:100%">Đăng nhập</button>
+      <div id="loginMsg" class="msg err" style="margin-top:10px"></div>
+    </div>
+  </main>
+</div>
+
+<div id="appView" class="hide">
+  <header>
+    <div class="brand"><span class="dot">◆</span> AI Workspace</div>
+    <nav id="tabs">
+      <button class="tab active" data-view="home">Kho tài liệu</button>
+      <button class="tab manager-only" data-view="manage">Quản lý</button>
+      <button class="tab manager-only" data-view="audit">Nhật ký</button>
+    </nav>
+    <div class="who">
+      <div class="avatar" id="who-av"></div>
+      <div><div id="who-name" style="font-weight:600"></div><div id="who-role" class="sub" style="margin:0"></div></div>
+      <button class="ghost" id="logoutBtn">Đăng xuất</button>
+    </div>
+  </header>
+  <main>
+    <section id="homeView">
+      <h1 class="title">Thư mục phòng ban</h1>
+      <p class="sub" id="homeHint"></p>
+      <div class="stats" id="statStrip"></div>
+      <div class="grid" id="folders"><div class="empty"><span class="spinner"></span> Đang tải…</div></div>
+    </section>
+
+    <section id="folderView" class="hide">
+      <div class="breadcrumb"><b>Kho tài liệu</b> › <span id="fvName"></span></div>
+      <div class="toolbar">
+        <button class="ghost" id="fvBack">← Quay lại</button>
+        <div class="seg" id="fvSeg"><button data-mode="grid" class="on">Lưới</button><button data-mode="list">Danh sách</button></div>
+      </div>
+      <div id="fvBody"></div>
+    </section>
+
+    <section id="manageView" class="hide">
+      <div class="toolbar">
+        <div>
+          <h1 class="title" style="margin:0">Quản lý tài liệu</h1>
+          <p class="sub" id="mgScope" style="margin:2px 0 0"></p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="mgDept" class="hide" style="width:auto"></select>
+          <div class="seg" id="mgSeg"><button data-mode="list" class="on">Danh sách</button><button data-mode="grid">Lưới</button></div>
+          <button class="primary" id="mgUpload">↑ Tải lên</button>
+        </div>
+      </div>
+      <div id="mgBody"></div>
+    </section>
+
+    <section id="auditView" class="hide">
+      <h1 class="title">Nhật ký truy cập</h1>
+      <p class="sub">Ai đã xem / tải lên / xóa tài liệu — phục vụ governance.</p>
+      <div id="auditBody"></div>
+    </section>
+  </main>
+</div>
+
+<div id="docOverlay" class="overlay"><div class="modal wide">
+  <div class="mhead"><div class="t" id="docTitle"></div><button class="ghost" id="docClose">✕</button></div>
+  <div class="mbody" id="docBody"></div>
+</div></div>
+
+<div id="warnOverlay" class="overlay"><div class="modal">
+  <div class="t" style="font-weight:600;font-size:15px;margin-bottom:8px">🔒 Không có quyền truy cập</div>
+  <p class="sub" id="warnText"></p>
+  <div class="row"><button class="primary" id="warnOk">Đã hiểu</button></div>
+</div></div>
+
+<div id="upOverlay" class="overlay"><div class="modal">
+  <div class="t" style="font-weight:600;font-size:15px;margin-bottom:12px">Tải tài liệu lên</div>
+  <div class="field" id="upDeptField"><label>Phòng ban</label><select id="upDept"></select></div>
+  <div class="field"><label>Tệp (.pdf, .docx, .pptx, ảnh, .md, .txt)</label>
+    <input id="upFile" type="file" accept=".pdf,.docx,.pptx,.md,.txt,.csv,.json,.png,.jpg,.jpeg,.gif,.webp,image/*,text/*"/></div>
+  <div class="field"><label>Phân loại bảo mật</label>
+    <select id="upCls"><option>Public</option><option>Internal</option><option selected>Confidential</option><option>Restricted</option></select></div>
+  <div class="field"><label>Tiêu đề (tuỳ chọn)</label><input id="upTitle" placeholder="Mặc định theo tên tệp"/></div>
+  <div id="upMsg" class="msg err"></div>
+  <div class="row"><button class="ghost" id="upCancel">Huỷ</button><button class="primary" id="upSubmit">Tải lên</button></div>
+</div></div>
+
+<div id="delOverlay" class="overlay"><div class="modal">
+  <div class="t" style="font-weight:600;font-size:15px;margin-bottom:8px">Xóa khỏi workspace?</div>
+  <p class="sub" id="delText"></p>
+  <div id="delMsg" class="msg err"></div>
+  <div class="row"><button class="ghost" id="delCancel">Huỷ</button><button class="primary" id="delOk" style="background:var(--red)">Xóa</button></div>
+</div></div>
+
+<script src="__bridge.js"></script>
+<script>
+(function(){
+  var D=window.AtriaDash, me=null, fvMode='grid', mgMode='list', curFolder=null, delDocId=null, fvDocs=[];
+  var PERSONAS=[["U004","Phạm Quốc Dũng","ENG","Employee"],["U001","Nguyễn Văn An","HR","Employee"],
+    ["U005","Hoàng Thu Hà","OPS","Manager"],["U002","Trần Thị Bình","FIN","Manager"],
+    ["U003","Lê Minh Châu","PROD","Director"],["U006","Đỗ Anh Khoa","LEGAL","Director"],
+    ["U007","Vũ Thị Lan","EXEC","Executive"],["U008","Bùi Đức Minh","COMP","Employee"]];
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+  function noBridge(){return !(D&&D.json)}
+  function run(a,o){return D.json('workspace.py',a,Object.assign({timeout_ms:30000},o||{}))}
+  function initials(n){var p=(n||'').trim().split(/\s+/);return((p[0]||'')[0]||'')+((p[p.length-1]||'')[0]||'')}
+  function open(el){$(el).classList.add('open')} function close(el){$(el).classList.remove('open')}
+  function fmtSize(b){b=b||0;return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'}
+  function fmtDate(s){if(!s)return '—';var d=new Date(s);return isNaN(d)?'—':d.toLocaleDateString('vi-VN')}
+  function kind(name,mime){name=(name||'').toLowerCase();mime=mime||'';
+    if(name.endsWith('.pdf')||mime==='application/pdf')return 'PDF';
+    if(name.match(/\.(docx?|odt)$/))return 'DOC'; if(name.match(/\.pptx?$/))return 'PPT';
+    if(name.match(/\.(xlsx?|csv)$/))return 'XLS'; if(mime.indexOf('image/')===0||name.match(/\.(png|jpe?g|gif|webp|bmp)$/))return 'IMG';
+    if(name.match(/\.(md|txt|json|log)$/))return 'TXT'; return 'FILE'}
+  function stat(k,v){return '<div class="stat"><div class="k">'+esc(k)+'</div><div class="v">'+v+'</div></div>'}
+
+  PERSONAS.forEach(function(u){var o=document.createElement('option');o.value=u[0];o.textContent=u[0]+' — '+u[1]+' ('+u[2]+' · '+u[3]+')';$('loginUser').appendChild(o)});
+
+  $('loginBtn').onclick=function(){
+    $('loginMsg').textContent='';
+    if(noBridge()){$('loginMsg').textContent='Bridge Atria không khả dụng.';return}
+    run(['login','--user',$('loginUser').value,'--password',$('loginPass').value]).then(function(r){
+      if(!r.authenticated){$('loginMsg').textContent='Sai thông tin đăng nhập.';return}
+      me=r; $('who-av').textContent=initials(r.full_name); $('who-name').textContent=r.full_name+' · '+r.user_id;
+      $('who-role').textContent=r.role+' · '+r.department;
+      document.querySelectorAll('.manager-only').forEach(function(e){e.classList.toggle('hide',!r.can_upload)});
+      $('loginView').classList.add('hide'); $('appView').classList.remove('hide');
+      showView('home');
+    }).catch(function(e){$('loginMsg').textContent='Lỗi: '+(e&&e.message||e)});
+  };
+  $('logoutBtn').onclick=function(){me=null;$('appView').classList.add('hide');$('loginView').classList.remove('hide')};
+
+  function showView(v){
+    ['home','folder','manage','audit'].forEach(function(n){$(n+'View').classList.toggle('hide',n!==v)});
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t.dataset.view===v)});
+    if(v==='home')loadHome(); if(v==='manage')loadManage(); if(v==='audit')loadAudit();
+  }
+  document.querySelectorAll('.tab').forEach(function(t){t.onclick=function(){showView(t.dataset.view)}});
+
+  function loadHome(){
+    $('homeHint').textContent=(me.role==='Executive')?'Bạn là Executive — xem được tài liệu của tất cả phòng ban.'
+      :'Bạn xem được tài liệu Company và của phòng '+me.department+'. Phòng khác bị khóa.';
+    run(['stats','--user',me.user_id]).then(function(s){
+      var c=s.by_classification||{};
+      $('statStrip').innerHTML=stat('Tài liệu xem được',s.total_visible)+stat('Public / Internal',(c.Public||0)+(c.Internal||0))+stat('Confidential',c.Confidential||0)+stat('Restricted',c.Restricted||0);
+    }).catch(function(){$('statStrip').innerHTML=''});
+    $('folders').innerHTML='<div class="empty"><span class="spinner"></span> Đang tải…</div>';
+    run(['folders','--user',me.user_id]).then(function(r){
+      $('folders').innerHTML=r.folders.map(function(f){var lk=f.locked;
+        return '<button class="folder'+(f.is_own?' own':'')+(lk?' locked':'')+'" data-code="'+esc(f.dept_code)+'" data-name="'+esc(f.name_en)+'" data-lock="'+lk+'">'+
+          '<div class="top"><span class="fic">'+(lk?'🔒':'📁')+'</span><span class="nm">'+esc(f.name_en)+'</span></div>'+
+          '<div class="mt">'+(f.is_own?'phòng của bạn · ':'')+f.visible_count+' tài liệu xem được</div></button>';}).join('');
+      document.querySelectorAll('.folder').forEach(function(el){el.onclick=function(){
+        if(el.dataset.lock==='true'){$('warnText').textContent='Bạn không có quyền vào thư mục "'+el.dataset.name+'". Chỉ Company và phòng của bạn mới truy cập được.';open('warnOverlay');return}
+        openFolder(el.dataset.code,el.dataset.name);}});
+    }).catch(function(e){$('folders').innerHTML='<div class="empty err">Lỗi: '+esc(e&&e.message||e)+'</div>'});
+  }
+
+  $('fvBack').onclick=function(){showView('home')};
+  $('fvSeg').querySelectorAll('button').forEach(function(b){b.onclick=function(){fvMode=b.dataset.mode;$('fvSeg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});renderFolder();}});
+  function openFolder(code,name){
+    curFolder={code:code,name:name};showView('folder');$('fvName').textContent=name;
+    $('fvBody').innerHTML='<div class="empty"><span class="spinner"></span> Đang tải…</div>';
+    run(['workspace','--user',me.user_id,'--department',code]).then(function(r){fvDocs=r.documents;renderFolder()}).catch(function(e){$('fvBody').innerHTML='<div class="empty err">Lỗi: '+esc(e&&e.message||e)+'</div>'});
+  }
+  function renderFolder(){
+    if(!fvDocs.length){$('fvBody').innerHTML='<div class="empty">Không có tài liệu bạn được phép xem trong phòng này.</div>';return}
+    $('fvBody').innerHTML=(fvMode==='grid')?'<div class="filecards">'+fvDocs.map(fileCard).join('')+'</div>':fileTable(fvDocs,false);
+    bindOpen($('fvBody'));
+  }
+  function fileCard(d){var k=kind(d.original_filename,d.mime_type);
+    return '<button class="fcard" data-doc="'+esc(d.doc_id)+'"><div class="thumb k-'+k+'">'+k+'</div>'+
+      '<div class="body"><div class="fn">'+esc(d.title)+'</div>'+
+      '<div class="meta"><span class="badge '+esc(d.classification)+'">'+esc(d.classification)+'</span><span>'+fmtSize(d.size_bytes)+'</span><span>·</span><span>'+fmtDate(d.created_at)+'</span></div></div></button>'}
+  function fileTable(rows,manage){
+    var head='<tr><th>Tên tài liệu</th><th>Phòng</th><th>Phân loại</th><th>Kích thước</th><th>Ngày</th><th>Người tải</th>'+(manage?'<th></th>':'')+'</tr>';
+    var body=rows.map(function(d){var k=kind(d.original_filename,d.mime_type);
+      return '<tr class="click" data-doc="'+esc(d.doc_id)+'">'+
+        '<td><span class="ficon k-'+k+'">'+k+'</span>'+esc(d.title)+'</td>'+
+        '<td><span class="badge dept">'+esc(d.department)+'</span></td>'+
+        '<td><span class="badge '+esc(d.classification)+'">'+esc(d.classification)+'</span></td>'+
+        '<td>'+fmtSize(d.size_bytes)+'</td><td>'+fmtDate(d.created_at)+'</td><td>'+esc(d.uploaded_by_name||'—')+'</td>'+
+        (manage?'<td><button class="icon-del" data-del="'+esc(d.doc_id)+'" title="Xóa">🗑</button></td>':'')+'</tr>'}).join('');
+    return '<table>'+head+body+'</table>'}
+  function bindOpen(scope){
+    scope.querySelectorAll('[data-doc]').forEach(function(el){el.onclick=function(ev){if(ev.target.closest('[data-del]'))return;openDoc(el.dataset.doc)}});
+    scope.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(ev){ev.stopPropagation();askDelete(b.dataset.del)}});
+  }
+
+  $('docClose').onclick=function(){close('docOverlay');$('docBody').innerHTML=''};
+  function openDoc(docId){
+    open('docOverlay');$('docTitle').textContent='Đang mở…';$('docBody').innerHTML='<div class="empty"><span class="spinner"></span></div>';
+    run(['read-document','--user',me.user_id,'--doc',docId]).then(function(r){
+      if(!r.allowed){$('docTitle').textContent='Không có quyền';$('docBody').innerHTML='<div class="empty err">🔒 '+esc(r.reason)+'</div>';return}
+      var k=kind(r.original_filename,r.mime_type);
+      $('docTitle').innerHTML='<span class="ficon k-'+k+'">'+k+'</span>'+esc(r.title)+' <span class="badge '+esc(r.classification)+'">'+esc(r.classification)+'</span>';
+      if(r.render==='pdf'){$('docBody').innerHTML='<iframe src="data:application/pdf;base64,'+r.file_b64+'" style="width:100%;height:68vh;border:1px solid var(--line);border-radius:8px"></iframe>'}
+      else if(r.render==='image'){$('docBody').innerHTML='<img src="data:'+esc(r.mime_type)+';base64,'+r.file_b64+'" style="max-width:100%;border-radius:8px"/>'}
+      else{$('docBody').innerHTML=(r.content&&r.content.trim())?'<pre>'+esc(r.content)+'</pre>':'<div class="note">'+esc(r.note||'Không có nội dung xem trước.')+'</div>'}
+    }).catch(function(e){$('docBody').innerHTML='<div class="empty err">Lỗi: '+esc(e&&e.message||e)+'</div>'});
+  }
+
+  function loadManage(){
+    var dept=(me.role==='Executive')?($('mgDept').value||null):null;
+    $('mgBody').innerHTML='<div class="empty"><span class="spinner"></span> Đang tải…</div>';
+    var args=['manage','--user',me.user_id]; if(dept)args.push('--department',dept);
+    run(args).then(function(r){
+      $('mgScope').textContent=(me.role==='Executive')?('Phạm vi: toàn công ty'+(dept?(' · lọc '+dept):'')+' · '+r.total+' tài liệu'):('Phạm vi: phòng '+me.department+' · '+r.total+' tài liệu');
+      if(me.role==='Executive'&&$('mgDept').options.length<=1){
+        $('mgDept').classList.remove('hide');
+        $('mgDept').innerHTML='<option value="">Tất cả phòng</option>'+r.manageable_departments.map(function(c){return '<option>'+esc(c)+'</option>'}).join('');
+      }
+      if(!r.documents.length){$('mgBody').innerHTML='<div class="empty">Chưa có tài liệu trong phạm vi này.</div>';return}
+      $('mgBody').innerHTML=(mgMode==='list')?fileTable(r.documents,true):
+        '<div class="filecards">'+r.documents.map(function(d){return fileCard(d).replace('</button>','')+'<div style="padding:0 12px 10px"><button class="icon-del" data-del="'+esc(d.doc_id)+'">🗑 Xóa</button></div></button>'}).join('')+'</div>';
+      bindOpen($('mgBody'));
+    }).catch(function(e){$('mgBody').innerHTML='<div class="empty err">Lỗi: '+esc(e&&e.message||e)+'</div>'});
+  }
+  $('mgDept').onchange=loadManage;
+  $('mgSeg').querySelectorAll('button').forEach(function(b){b.onclick=function(){mgMode=b.dataset.mode;$('mgSeg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});loadManage()}});
+
+  $('mgUpload').onclick=function(){openUpload()};
+  function openUpload(){
+    $('upMsg').textContent='';$('upFile').value='';$('upTitle').value='';
+    if(me.role==='Executive'){$('upDeptField').classList.remove('hide');
+      run(['folders','--user',me.user_id]).then(function(r){$('upDept').innerHTML=r.folders.map(function(f){return '<option'+(f.dept_code===me.department?' selected':'')+'>'+esc(f.dept_code)+'</option>'}).join('')});
+    } else {$('upDeptField').classList.add('hide')}
+    open('upOverlay');
+  }
+  $('upCancel').onclick=function(){close('upOverlay')};
+  $('upSubmit').onclick=function(){
+    var f=$('upFile').files[0]; if(!f){$('upMsg').className='msg err';$('upMsg').textContent='Chọn một tệp.';return}
+    $('upMsg').className='msg';$('upMsg').textContent='Đang tải lên…';
+    var reader=new FileReader();
+    reader.onload=function(){
+      var b64=String(reader.result).split(',')[1]||'';
+      var args=['add-document','--user',me.user_id,'--stdin','--base64','--filename',f.name,'--classification',$('upCls').value];
+      if($('upTitle').value)args.push('--title',$('upTitle').value);
+      if(me.role==='Executive'&&$('upDept').value)args.push('--department',$('upDept').value);
+      run(args,{stdin:b64,timeout_ms:60000}).then(function(r){
+        if(!r.uploaded){$('upMsg').className='msg err';$('upMsg').textContent=r.reason||'Thất bại.';return}
+        close('upOverlay');loadManage();
+      }).catch(function(e){$('upMsg').className='msg err';$('upMsg').textContent='Lỗi: '+(e&&e.message||e)});
+    };
+    reader.readAsDataURL(f);
+  };
+
+  function askDelete(docId){delDocId=docId;$('delMsg').textContent='';$('delText').textContent='Tài liệu sẽ bị ẩn khỏi workspace (soft-delete, vẫn lưu vết trong nhật ký).';open('delOverlay')}
+  $('delCancel').onclick=function(){close('delOverlay')};
+  $('delOk').onclick=function(){
+    run(['delete-document','--user',me.user_id,'--doc',delDocId]).then(function(r){
+      if(!r.deleted){$('delMsg').textContent=r.reason||'Không xóa được.';return}
+      close('delOverlay');loadManage();
+    }).catch(function(e){$('delMsg').textContent='Lỗi: '+(e&&e.message||e)});
+  };
+  $('warnOk').onclick=function(){close('warnOverlay')};
+
+  function loadAudit(){
+    $('auditBody').innerHTML='<div class="empty"><span class="spinner"></span> Đang tải…</div>';
+    run(['audit','--limit','60']).then(function(r){
+      var ev=(r.events||[]).slice().reverse();
+      if(!ev.length){$('auditBody').innerHTML='<div class="empty">Chưa có sự kiện.</div>';return}
+      $('auditBody').innerHTML='<table><tr><th>Thời gian</th><th>Loại</th><th>Người dùng</th><th>Tài liệu / Phòng</th><th>Kết quả</th></tr>'+
+        ev.map(function(e){var res=e.decision||(e.ok===true?'ok':e.ok===false?'từ chối':'')||'';
+          return '<tr><td>'+esc((e.ts||'').replace('T',' ').slice(0,19))+'</td><td>'+esc(e.type||'')+'</td><td>'+esc(e.user_id||'')+'</td><td>'+esc(e.doc_id||e.department||'')+'</td><td>'+esc(res)+'</td></tr>'}).join('')+'</table>';
+    }).catch(function(e){$('auditBody').innerHTML='<div class="empty err">Lỗi: '+esc(e&&e.message||e)+'</div>'});
+  }
+
+  if(noBridge())$('loginMsg').textContent='Bridge Atria không khả dụng (mở trong Atria để dùng).';
+})();
+</script>
+</body>
+</html>
