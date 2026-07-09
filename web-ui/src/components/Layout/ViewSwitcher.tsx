@@ -1,4 +1,4 @@
-import { MessageSquare, Network } from "lucide-react";
+import { MessageSquare, Network, LayoutList } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/cn";
@@ -42,6 +42,12 @@ const VIEWS: ViewDef[] = [
     Icon: Network,
     isActive: (p) =>
       p.startsWith("/dispatch") || p.startsWith("/divide") || p.startsWith("/parallel"),
+  },
+  {
+    to: "/blackboard",
+    label: "Blackboard",
+    Icon: LayoutList,
+    isActive: (p) => p.startsWith("/blackboard"),
   },
 ];
 

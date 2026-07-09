@@ -97,6 +97,7 @@ class RegistrationMixin:
                 system_prompt=spec.get("system_prompt"),
                 source=AgentSource.BUILTIN,
                 model=spec.get("model"),
+                capability_profile=spec.get("capability_profile"),
             )
             configs.append(config)
 
@@ -204,6 +205,7 @@ class RegistrationMixin:
                     else AgentSource.PROJECT
                 ),
                 model=agent_def.get("model"),
+                capability_profile=agent_def.get("capability_profile"),
             )
 
             # Check for direct system prompt (from markdown agent files)

@@ -6,10 +6,9 @@ version: 1.0.0
 
 Analyze the codebase at {path} and generate a comprehensive ATRIA.md that serves as the definitive reference for any AI agent or developer working in this repository.
 
-Use the subagent tool with Code-Explorer:
-"Explore {path} thoroughly. Read ALL config files (package.json, pyproject.toml, setup.py, setup.cfg, Makefile, Dockerfile, Cargo.toml, go.mod, etc.), README, and any CI/CD configs (.github/workflows/, .gitlab-ci.yml). Also read 2-3 core source files to understand the architecture. Report: project name, description, tech stack, all available commands (install, run, test, lint, build, deploy), main directories with purposes, architecture layers, key design patterns, code style conventions, and any testing requirements."
+Explore {path} thoroughly with batched reads: read ALL config files (package.json, pyproject.toml, setup.py, setup.cfg, Makefile, Dockerfile, Cargo.toml, go.mod, etc.), README, and any CI/CD configs (.github/workflows/, .gitlab-ci.yml), plus 2-3 core source files to understand the architecture. Determine: project name, description, tech stack, all available commands (install, run, test, lint, build, deploy), main directories with purposes, architecture layers, key design patterns, code style conventions, and testing requirements.
 
-After exploration, use write_file to create {path}/ATRIA.md with this format:
+Then use write_file to create {path}/ATRIA.md with this format:
 
 ```
 # ATRIA.md

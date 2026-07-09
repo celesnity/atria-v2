@@ -1,0 +1,5 @@
+data/
+# Python build artifacts (the parent .gitignore's negation would otherwise
+# re-include these under this module's tracked tree).
+__pycache__/
+*.pyc

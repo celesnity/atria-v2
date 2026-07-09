@@ -17,6 +17,10 @@ PLANNER_SUBAGENT = SubAgentSpec(
         "provided in the prompt."
     ),
     system_prompt=load_prompt("subagents/subagent-planner"),
+    capability_profile=(
+        "Explores and maps the codebase: locates definitions, traces callers, "
+        "finds patterns, and reports where/how things are implemented."
+    ),
     tools=list(PLANNING_TOOLS) + ["write_file", "edit_file"],
     model=None,  # Use default model from config
 )

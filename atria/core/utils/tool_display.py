@@ -39,25 +39,19 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "complete_todo": ("Complete_Todos", "todo"),
     "list_todos": ("List_Todos", "todos"),
     "clear_todos": ("Clear_Todos", "todos"),
-    "subagent": ("Spawn", "subagent"),
+    "request_help": ("Request help", "helpers"),
     "docker_start": ("Starting", "Docker container"),
     "docker_stop": ("Stopping", "Docker container"),
     "docker_copy": ("Copying", "file to Docker"),
     "docker_input_files": ("Checking", "input files"),
     "docker_setup": ("Setting up", "Docker environment"),
     # LSP/Symbol tools
-    "find_symbol": ("Find_Symbol", "symbol"),
-    "find_referencing_symbols": ("Find_References_Symbol", "symbol"),
-    "insert_before_symbol": ("Insert_Before_Symbol", "symbol"),
-    "insert_after_symbol": ("Insert_After_Symbol", "symbol"),
-    "replace_symbol_body": ("Replace_Symbol", "symbol"),
-    "rename_symbol": ("Rename_Symbol", "symbol"),
     # Plan tool
     "present_plan": ("Present Plan", "plan"),
     # Other tools
     "notebook_edit": ("Edit", "notebook"),
     "ask_user": ("Ask", "user"),
-    "get_subagent_output": ("Get Output", "subagent"),
+    "get_help_responses": ("Get", "help responses"),
     "task_complete": ("Complete", "task"),
     "invoke_skill": ("Skill", "skill"),
 }
@@ -283,16 +277,10 @@ def format_tool_call(tool_name: str, tool_args: Mapping[str, Any]) -> str:
         if params:
             return f"Search({', '.join(params)})"
 
-    # Enhanced formatting for spawn_subagent tool
-    elif tool_name == "subagent" and tool_args:
-        subagent_type = tool_args.get("subagent_type", "general-purpose")
-        description = tool_args.get("description", "")
-        # Show full description without truncation, no [Docker] suffix
-        # Docker is shown as a separate step with spinner
-        # Just show "Explore(description)" format, no "Spawn[]" wrapper
-        if description:
-            return f"{subagent_type}({description})"
-        return subagent_type
+    # Enhanced formatting for the request_help tool (broadcast blackboard)
+    elif tool_name == "request_help" and tool_args:
+        prompt = tool_args.get("prompt", "")
+        return f"Request help({prompt})" if prompt else "Request help"
 
     # Docker container startup
     elif tool_name == "docker_start" and tool_args:

@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ToolSpec:
@@ -84,33 +86,49 @@ class SkillToolLoader:
     def discover_and_register(self, ctx: SkillToolContext) -> list[ToolSpec]:
         """Discover all code-bearing skills and return merged ToolSpecs.
 
-        Raises SkillToolError on duplicate tool names across skills.
+        Each skill is processed in isolation: if a skill's declared tools.py is
+        missing, fails to import, lacks `register(ctx)`, returns something other
+        than list[ToolSpec], or collides with a tool name already registered by
+        an earlier skill, that skill is skipped with a logged warning instead of
+        aborting discovery for every other skill. Specs from a skill that fails
+        partway through are discarded in full -- a skill only contributes to the
+        returned list (and to duplicate-name tracking) once it has registered
+        cleanly from start to finish.
         """
         specs: list[ToolSpec] = []
         seen: dict[str, Path] = {}
 
         for skill_md in self._iter_skill_files():
-            tools_file = self._tools_file_for(skill_md)
-            if tools_file is None:
+            try:
+                skill_specs: list[ToolSpec] = []
+                skill_seen: dict[str, Path] = {}
+                tools_file = self._tools_file_for(skill_md)
+                if tools_file is None:
+                    continue
+                module = self._import_tools_module(skill_md.parent, tools_file)
+                register_fn = getattr(module, "register", None)
+                if register_fn is None:
+                    raise SkillToolError(f"{tools_file}: missing required `register(ctx)` function")
+                produced = register_fn(ctx)
+                if not isinstance(produced, list):
+                    raise SkillToolError(f"{tools_file}: register() must return list[ToolSpec]")
+                for spec in produced:
+                    if not isinstance(spec, ToolSpec):
+                        raise SkillToolError(
+                            f"{tools_file}: register() returned non-ToolSpec item: {spec!r}"
+                        )
+                    if spec.name in seen or spec.name in skill_seen:
+                        existing = seen.get(spec.name, skill_seen.get(spec.name))
+                        raise SkillToolError(
+                            f"Duplicate tool name {spec.name!r}: {existing} and {tools_file}"
+                        )
+                    skill_seen[spec.name] = tools_file
+                    skill_specs.append(spec)
+            except Exception as exc:  # noqa: BLE001 - one broken skill must not sink the rest
+                logger.warning("skill tool discovery failed for %s: %s", skill_md, exc)
                 continue
-            module = self._import_tools_module(skill_md.parent, tools_file)
-            register_fn = getattr(module, "register", None)
-            if register_fn is None:
-                raise SkillToolError(f"{tools_file}: missing required `register(ctx)` function")
-            produced = register_fn(ctx)
-            if not isinstance(produced, list):
-                raise SkillToolError(f"{tools_file}: register() must return list[ToolSpec]")
-            for spec in produced:
-                if not isinstance(spec, ToolSpec):
-                    raise SkillToolError(
-                        f"{tools_file}: register() returned non-ToolSpec item: {spec!r}"
-                    )
-                if spec.name in seen:
-                    raise SkillToolError(
-                        f"Duplicate tool name {spec.name!r}: " f"{seen[spec.name]} and {tools_file}"
-                    )
-                seen[spec.name] = tools_file
-                specs.append(spec)
+            seen.update(skill_seen)
+            specs.extend(skill_specs)
 
         return specs
 
