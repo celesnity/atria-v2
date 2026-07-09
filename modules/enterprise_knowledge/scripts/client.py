@@ -11,6 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from _bootstrap import sibling  # noqa: E402
+
 from typing import Callable, Dict, List, Optional, Tuple
 
 try:  # Import lazily so unit tests can inject a fake factory without openai.
@@ -18,8 +20,8 @@ try:  # Import lazily so unit tests can inject a fake factory without openai.
 except ImportError:  # pragma: no cover - openai installed in real env
     _OpenAI = None  # type: ignore[assignment]
 
-import budget  # type: ignore[import-not-found]
-from config import RoleConfig  # type: ignore[import-not-found]
+budget = sibling("budget")
+RoleConfig = sibling("config").RoleConfig
 
 ClientFactory = Callable[[str, str], object]
 

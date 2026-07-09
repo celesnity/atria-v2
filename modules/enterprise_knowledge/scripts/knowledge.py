@@ -16,18 +16,20 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from config import load_config  # type: ignore[import-not-found]
-from client import RoleClient  # type: ignore[import-not-found]
-from corpus import load_corpus  # type: ignore[import-not-found]
-from chunking import chunk_document  # type: ignore[import-not-found]
-from index_store import IndexStore  # type: ignore[import-not-found]
-import identity  # type: ignore[import-not-found]
-import acl  # type: ignore[import-not-found]
-import bm25  # type: ignore[import-not-found]
-import audit  # type: ignore[import-not-found]
-import graph_store  # type: ignore[import-not-found]
-import graph_build  # type: ignore[import-not-found]
-import graph_retrieval  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+load_config = sibling("config").load_config
+RoleClient = sibling("client").RoleClient
+load_corpus = sibling("corpus").load_corpus
+chunk_document = sibling("chunking").chunk_document
+IndexStore = sibling("index_store").IndexStore
+identity = sibling("identity")
+acl = sibling("acl")
+bm25 = sibling("bm25")
+audit = sibling("audit")
+graph_store = sibling("graph_store")
+graph_build = sibling("graph_build")
+graph_retrieval = sibling("graph_retrieval")
 
 # Output dim of the embedding model. Default matches OpenAI text-embedding-3-small.
 EMBED_DIM = 1536
@@ -225,7 +227,7 @@ def _cmd_query(
     if not hits:
         payload["message"] = "Không tìm thấy tài liệu phù hợp trong phạm vi truy cập của bạn."
     if synthesize and hits:
-        from synthesis import synthesize as _synth  # local import
+        _synth = sibling("synthesis").synthesize  # local import
 
         answer = _synth(text, hits, _synthesis_chat_fn())
         payload["answer"] = answer

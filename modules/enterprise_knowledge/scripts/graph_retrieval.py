@@ -13,8 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import acl  # type: ignore[import-not-found]
-import graph_store  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+acl = sibling("acl")
+graph_store = sibling("graph_store")
 
 
 def expand(store, seed_hits, user, hops: int, max_neighbors: int) -> list[dict]:

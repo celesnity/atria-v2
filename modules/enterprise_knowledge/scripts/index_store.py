@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import bm25  # type: ignore[import-not-found]  # noqa: E402
+from _bootstrap import sibling  # noqa: E402
+
+bm25 = sibling("bm25")
 
 COLLECTION = "enterprise_chunks"
 

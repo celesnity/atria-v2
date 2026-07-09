@@ -16,7 +16,9 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import extraction  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+extraction = sibling("extraction")
 
 
 def doc_to_node(doc) -> dict:

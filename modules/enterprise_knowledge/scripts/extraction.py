@@ -16,7 +16,9 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import budget  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+budget = sibling("budget")
 
 ALLOWED_ENTITY_TYPES = frozenset(
     {"Policy", "Process", "Concept", "Person", "Org", "Amount", "Date", "Term"}

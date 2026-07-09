@@ -13,13 +13,14 @@ from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import budget  # type: ignore[import-not-found]
-from guardrails import (  # type: ignore[import-not-found]
-    ADVISORY_NOTE,
-    answer_confidence,
-    enforce_citations,
-    needs_manual_review,
-)
+from _bootstrap import sibling  # noqa: E402
+
+budget = sibling("budget")
+_guardrails = sibling("guardrails")
+ADVISORY_NOTE = _guardrails.ADVISORY_NOTE
+answer_confidence = _guardrails.answer_confidence
+enforce_citations = _guardrails.enforce_citations
+needs_manual_review = _guardrails.needs_manual_review
 
 _REVIEW_NOTICE = (
     "Chưa đủ căn cứ trong tài liệu — cần con người kiểm tra thủ công. "
