@@ -28,13 +28,6 @@ from atria.core.context_engineering.memory.roles import (
 
 # Legacy imports for backwards compatibility (deprecated)
 from atria.core.context_engineering.memory.playbook import SessionPlaybook, Strategy
-from atria.core.context_engineering.memory.reflection import ExecutionReflector, ReflectionResult
-
-# Conversation summarization for thinking context
-from atria.core.context_engineering.memory.conversation_summarizer import (
-    ConversationSummarizer,
-    ConversationSummary,
-)
 
 __all__ = [
     # Native ACE Components (recommended)
@@ -50,9 +43,4 @@ __all__ = [
     # Legacy (deprecated, for backwards compatibility)
     "SessionPlaybook",
     "Strategy",
-    "ExecutionReflector",
-    "ReflectionResult",
-    # Conversation summarization for thinking context
-    "ConversationSummarizer",
-    "ConversationSummary",
 ]
