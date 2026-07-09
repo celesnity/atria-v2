@@ -12,18 +12,15 @@ When considering delegation to a subagent, reason through these questions:
 ## Which subagent matches the task?
 
 - **ask-user**: Need clarification on ambiguous requirements or user preferences? (e.g., which auth method, database choice)
-- **Code-Explorer**: Need to understand LOCAL codebase structure, find implementations, or trace patterns?
 - **Web-Generator**: Need to create a new web application from scratch?
 - **Planner**: Need to create a detailed implementation plan? Spawn a Planner subagent.
 
 ## Is a subagent appropriate?
 
 **YES, spawn a subagent when**:
-- Task requires specialized expertise (paper implementation, web generation)
-- Task involves multiple files and complex coordination
-- Task requires deep codebase exploration with many searches
+- Task requires specialized expertise (web generation, a module workflow)
 - Task needs user input through structured questions
-- Task is isolated and can run in fresh context
+- Independent work that can run in the background / fresh context
 
 **NO, handle directly when**:
 - Single file edit or quick refactor
@@ -35,7 +32,7 @@ When considering delegation to a subagent, reason through these questions:
 ## Anti-patterns — do NOT spawn a subagent when:
 - The task is creative/design work with no existing codebase to explore (game design, brainstorming, writing specs from scratch) — handle directly
 - The task doesn't match ANY subagent's purpose — don't force-fit the closest option
-- Code-Explorer is ONLY for LOCAL files that already exist — never use it for greenfield design or external knowledge tasks
+- Understanding existing code/data — do it inline with batched reads, not a subagent
 
 ## Common patterns to recognize:
 
@@ -51,12 +48,8 @@ When considering delegation to a subagent, reason through these questions:
 
 ### Subagent Delegation (Spawn subagent):
 - "Build a web app for X" -> **Web-Generator**
-- "How does authentication work in this codebase?" -> **Code-Explorer** (multi-file trace)
-- "Understand the database schema" -> **Code-Explorer** (models + migrations)
-- "What caching strategy is used?" -> **Code-Explorer** (find all cache uses)
 - "Plan adding real-time features" -> **Planner** subagent (design approach)
 - "Which library should we use for X?" -> **ask-user** (user preference)
-- "Implement user registration system" -> **Planner** subagent first for design, then implement
-- "Explain the error handling strategy" -> **Code-Explorer** (multi-file analysis)
+- Understanding how something works ("how does auth work", "what caching is used") -> handle inline: batch read_file/search, read the results, then answer.
 
 **Remember**: Subagent results aren't shown to the user - you must summarize their findings in your reasoning and response.

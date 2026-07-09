@@ -40,12 +40,12 @@ When choosing tools, prefer the more specific option:
 - "What's in the database models?" → `read_file` on models.py (single file read)
 - "Run the tests" → `run_command` (single command)
 
-**Use subagents when exploration or specialization is needed** (5+ tool calls or multiple files):
-- "How does authentication work?" → **Code-Explorer** (requires multi-file exploration)
-- "What's the architecture of module X?" → **Code-Explorer** (needs comprehensive analysis)
-- "Explain the error handling strategy" → **Code-Explorer** (multi-file trace)
+**Explore inline — read to understand before answering.** For "how does X work", "what's the architecture", "explain the error handling" — batch read_file/list_files/search in one response and read the results before answering. Do not answer from assumption.
+
+**Use a specialized subagent only when the task needs its role**:
 - "Should I use Redis or Memcached?" → **ask-user** (user preference needed)
 - "Create a landing page for X" → **Web-Generator** (full web app creation)
+- A module's own workflow → that module's subagent (see the HARD RULE above)
 
 **Use the Planner subagent for planning and design tasks**:
 - "Design a caching layer" → **Planner** subagent (requires planning and design)
@@ -60,7 +60,7 @@ writes its results back to a shared blackboard while streaming progress to the
 user's **Dispatch** tab.
 
 - Pass ONE task element for a single delegation to a specialized agent type
-  (e.g. one-shot planner, code-explorer on a known scope, pr-reviewer).
+  (e.g. a one-shot planner, or a module worker on a known scope).
 - Pass SEVERAL task elements in the same call to run independent tasks
   concurrently — batch processing many items, running checks across a data set,
   exploring different parts of the codebase. Tasks are flat and independent:
@@ -82,9 +82,9 @@ completion notification — do not poll. Requires Redis and a running atria-work
 
 **Rule of thumb**:
 - **Known target** (specific file, function, pattern) → **Direct tools** (1-3 tool calls)
-- **Exploration needed** (understand how, find strategy, design approach) → **Subagent** (5+ tool calls or multiple files)
+- **Exploration needed** (understand how, find strategy) → **Direct, batched** (read/search in one response, read results before acting)
 - **Single file** → **Direct** (never spawn a subagent for one file)
-- **Multiple files or deep analysis** → **Subagent**
+- **Multiple files or deep analysis** → **Direct, batched reads** (spawn a subagent only for a module workflow or a distinct role)
 - **You already have the file path** → **Direct** (read it yourself, don't delegate)
 - **Concurrent subagents**: When the user requests multiple agents or the task has independent parts, pass multiple task elements in the single `subagent(tasks=[...])` call. They execute concurrently.
 - **Parallel read-only tools**: When you need to read multiple files or search for multiple patterns, make all the calls in a single response. Independent read-only tools (read_file, list_files, search) execute concurrently when batched together.
