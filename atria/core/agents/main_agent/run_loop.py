@@ -22,8 +22,6 @@ PARALLELIZABLE_TOOLS = frozenset(
         "get_process_output",
         "list_todos",
         "search_tools",
-        "find_symbol",
-        "find_referencing_symbols",
     }
 )
 
@@ -244,7 +242,6 @@ class RunLoopMixin:
         MAX_TODO_NUDGES = self.config.max_todo_nudges
         completion_nudge_sent = False
         interrupted = False
-        has_explored = False  # Track whether Code-Explorer has been spawned
 
         effective_max_iterations = (
             max_iterations if max_iterations is not None else self.config.max_iterations_default
@@ -546,45 +543,11 @@ class RunLoopMixin:
                     continue  # Next iteration of outer while loop
 
                 # Sequential path (original logic)
-                # Explore-first enforcement: block task subagent spawns until
-                # Code-Explorer has run
-                _EXPLORE_EXEMPT = {"Code-Explorer", "ask-user"}
-                _explore_blocked = False
-                if self.config.explore_first_enabled and not has_explored:
-                    for tc in tool_calls:
-                        if tc["function"]["name"] == "subagent":
-                            tc_args = json.loads(tc["function"]["arguments"])
-                            subagent_type = tc_args.get("subagent_type", "")
-                            if subagent_type not in _EXPLORE_EXEMPT:
-                                _explore_blocked = True
-                                for t in tool_calls:
-                                    if t["id"] == tc["id"]:
-                                        messages.append(
-                                            {
-                                                "role": "tool",
-                                                "tool_call_id": t["id"],
-                                                "content": get_reminder("explore_first_nudge"),
-                                            }
-                                        )
-                                    else:
-                                        messages.append(
-                                            {
-                                                "role": "tool",
-                                                "tool_call_id": t["id"],
-                                                "content": "Blocked: explore first.",
-                                            }
-                                        )
-                                break
-                if _explore_blocked:
-                    continue  # Next iteration of outer while loop
-
-                # Mark explored when Code-Explorer is being spawned
-                for tc in tool_calls:
-                    if tc["function"]["name"] == "subagent":
-                        tc_args = json.loads(tc["function"]["arguments"])
-                        if tc_args.get("subagent_type", "") == "Code-Explorer":
-                            has_explored = True
-                            break
+                # NOTE: The broadcast paradigm removed caller-chosen subagent types,
+                # so the old explore-first gate (which keyed on request_help's
+                # subagent_type == "Code-Explorer") no longer applies — a request_help
+                # is an un-addressed broadcast and is never blocked on a specific
+                # helper having run first.
 
                 for tool_call in tool_calls:
                     tool_name = tool_call["function"]["name"]

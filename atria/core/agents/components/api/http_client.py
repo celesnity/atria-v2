@@ -295,7 +295,7 @@ class AgentHttpClient:
         request_thread = threading.Thread(target=make_request, daemon=True)
         request_thread.start()
 
-        from atria.ui_textual.debug_logger import debug_log
+        from atria.core.agents.display.debug_logger import debug_log
 
         try:
             poll_count = 0

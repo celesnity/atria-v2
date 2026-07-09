@@ -356,7 +356,7 @@ class DockerPrepMixin:
         if ui_callback is None:
             return None
 
-        from atria.ui_textual.nested_callback import NestedUICallback
+        from atria.core.agents.callbacks.nested_callback import NestedUICallback
 
         # Use existing _create_docker_path_sanitizer
         path_sanitizer = self._create_docker_path_sanitizer(

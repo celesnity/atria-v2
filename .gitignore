@@ -201,13 +201,7 @@ run-frontend.ps1
 # Top-level data-modules created at runtime. Anchored to the repo root so it does
 # NOT also match the source package atria/core/modules/.
 
-modules/*
-# ...except source modules (code, not runtime data) — keep these tracked.
-!modules/knowledge_search/
-!modules/enterprise_search/
-!modules/maps_search/
-modules/*/__pycache__/
-modules/*/scripts/__pycache__/
+# modules/*
 testingData
 
 *.csv
