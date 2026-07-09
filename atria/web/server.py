@@ -263,6 +263,15 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Map service-layer errors to HTTP responses so core stays web-agnostic.
+    from fastapi.responses import JSONResponse
+
+    from atria.core.services.errors import ServiceError
+
+    @app.exception_handler(ServiceError)
+    async def _service_error_handler(_request, exc: ServiceError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status, content={"detail": exc.detail})
+
     # CORS middleware for development
     app.add_middleware(
         CORSMiddleware,

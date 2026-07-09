@@ -1,0 +1,51 @@
+question_id,user_id,user_role,user_department,question_vi,expected_permission,expected_document_id
+P001,U001,Employee,Human Resources,Chính sách thử việc là gì?,Allow,DOC001
+P002,U002,Manager,Finance,Nhân viên được bao nhiêu ngày nghỉ phép năm?,Allow,DOC002
+P003,U010,Employee,Finance,Làm thế nào để nộp yêu cầu hoàn ứng chi phí?,Allow,DOC011
+P004,U003,Employee,Product,Quy trình phát hành sản phẩm gồm những giai đoạn nào?,Allow,DOC018
+P005,U004,Employee,Engineering,Làm thế nào để yêu cầu môi trường phát triển mới?,Allow,DOC025
+P006,U006,Director,Legal & Compliance,Chính sách lưu trữ hồ sơ quy định hợp đồng được lưu bao lâu?,Allow,DOC035
+P007,U003,Employee,Product,Ưu tiên chiến lược của công ty năm 2026 là gì?,Deny,DOC036
+P008,U007,Executive,Executive Office,Ưu tiên chiến lược của công ty năm 2026 là gì?,Allow,DOC036
+P009,U004,Employee,Engineering,Khung lương Product Manager là bao nhiêu?,Deny,DOC007
+P010,U001,Employee,Human Resources,Khung lương Product Manager là bao nhiêu?,Allow,DOC007
+P011,U005,Manager,Operations,Mật khẩu tài khoản công ty cần đáp ứng yêu cầu gì?,Allow,DOC004
+P012,U011,Employee,Product,Mức hoàn chi phí khách sạn công tác trong nước là bao nhiêu?,Allow,DOC003
+P013,U010,Employee,Finance,Điều khoản thanh toán tiêu chuẩn cho nhà cung cấp là bao lâu?,Allow,DOC013
+P014,U010,Employee,Finance,Chu kỳ lập ngân sách năm bắt đầu khi nào?,Allow,DOC012
+P015,U010,Employee,Finance,Chi phí trên 200 triệu cần phê duyệt của ai?,Allow,DOC014
+P016,U003,Employee,Product,Activation rate được định nghĩa như thế nào?,Allow,DOC019
+P017,U003,Employee,Product,PRD chuẩn cần có những phần nào?,Allow,DOC020
+P018,U004,Employee,Engineering,API nội bộ cần có những yêu cầu nào?,Allow,DOC021
+P019,U004,Employee,Engineering,Merge request cần điều kiện gì trước khi merge?,Allow,DOC022
+P020,U004,Employee,Engineering,Sự cố P1 cần phản hồi trong bao lâu?,Allow,DOC024
+P021,U005,Manager,Operations,Hỗ trợ khách hàng được chia thành các level nào?,Allow,DOC026
+P022,U005,Manager,Operations,SLA mục tiêu cho dịch vụ quan trọng là bao nhiêu?,Allow,DOC027
+P023,U006,Director,Legal & Compliance,Sự cố rò rỉ dữ liệu phải báo cáo trong bao lâu?,Allow,DOC031
+P024,U006,Director,Legal & Compliance,Nhân viên phải hoàn thành đào tạo tuân thủ khi nào?,Allow,DOC032
+P025,U006,Director,Legal & Compliance,Hợp đồng trên 500 triệu cần phê duyệt của ai?,Allow,DOC033
+P026,U003,Employee,Product,Restricted nghĩa là loại thông tin như thế nào?,Allow,DOC034
+P027,U003,Employee,Product,Dự báo doanh thu năm 2026 tăng bao nhiêu?,Deny,DOC037
+P028,U007,Executive,Executive Office,Dự báo doanh thu năm 2026 tăng bao nhiêu?,Allow,DOC037
+P029,U007,Executive,Executive Office,Tiêu chí đánh giá công ty mục tiêu M&A gồm gì?,Allow,DOC039
+P030,U007,Executive,Executive Office,Khoảng cách lớn nhất trong chuyển đổi số nội bộ là gì?,Allow,DOC040
+P031,U003,Employee,Product,"Tôi đang thử việc, tôi có được hoàn ứng chi phí công tác không?",Allow,DOC001; DOC011
+P032,U004,Employee,Engineering,Cho tôi xem lộ trình sản phẩm quý 2.,Deny,DOC017
+P033,U003,Employee,Product,Lộ trình sản phẩm quý 2 tập trung vào gì?,Allow,DOC017
+P034,U005,Manager,Operations,KPI vận hành gồm những chỉ số nào?,Allow,DOC030
+P035,U002,Manager,Finance,KPI vận hành gồm những chỉ số nào?,Deny,DOC030
+P036,U001,Employee,Human Resources,HR check-in nhân viên mới vào những mốc nào?,Allow,DOC010
+P037,U003,Employee,Product,Quy trình tuyển dụng tiêu chuẩn gồm những bước nào?,Deny,DOC006
+P038,U004,Employee,Engineering,Sau triển khai production đội kỹ thuật cần theo dõi bao lâu?,Allow,DOC023
+P039,U002,Manager,Finance,Mua sắm trên 100 triệu cần bao nhiêu báo giá?,Allow,DOC015
+P040,U006,Director,Legal & Compliance,Dữ liệu cá nhân chỉ được xử lý khi nào?,Allow,DOC031
+P041,U007,Executive,Executive Office,Ba trọng tâm kinh doanh năm 2026 là gì?,Allow,DOC038
+P042,U004,Employee,Engineering,Ba trọng tâm kinh doanh năm 2026 là gì?,Deny,DOC038
+P043,U003,Employee,Product,Mỗi tính năng cần có gì trước khi phát triển?,Allow,DOC018
+P044,U012,Employee,Engineering,Có được commit secret vào repository không?,Allow,DOC022
+P045,U008,Employee,Company,Quà tặng từ đối tác trên 1 triệu cần làm gì?,Allow,DOC005
+P046,U001,Employee,Human Resources,Ngân sách đào tạo tối đa mỗi năm là bao nhiêu?,Allow,DOC009
+P047,U010,Employee,Finance,Nhà cung cấp mới cần hồ sơ gì?,Allow,DOC013
+P048,U014,Director,Legal & Compliance,Hồ sơ nhân sự được lưu trong bao lâu sau khi nghỉ việc?,Allow,DOC035
+P049,U013,Employee,Operations,Sự cố nghiêm trọng cần cập nhật trạng thái bao lâu một lần?,Allow,DOC028
+P050,U003,Employee,Product,Các chỉ số trọng tâm trong chiến lược sản phẩm là gì?,Allow,DOC016

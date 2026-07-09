@@ -187,8 +187,6 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
     composer.register_section("tool_selection", "system/main/main-tool-selection.md", priority=50)
 
     # Code quality and workflows - Priority 55-65
-    composer.register_section("code_quality", "system/main/main-code-quality.md", priority=55)
-
     composer.register_section("action_safety", "system/main/main-action-safety.md", priority=56)
 
     composer.register_section(
@@ -200,13 +198,6 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
     composer.register_section("error_recovery", "system/main/main-error-recovery.md", priority=60)
 
     # Conditional sections - Priority 70-80
-    composer.register_section(
-        "git_workflow",
-        "system/main/main-git-workflow.md",
-        condition=lambda ctx: ctx.get("in_git_repo", False),
-        priority=70,
-    )
-
     composer.register_section(
         "task_tracking",
         "system/main/main-task-tracking.md",
@@ -238,8 +229,6 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
         priority=85,
     )
 
-    composer.register_section("code_references", "system/main/main-code-references.md", priority=90)
-
     composer.register_section(
         "system_reminders_note",
         "system/main/main-reminders-note.md",
@@ -270,10 +259,6 @@ def create_thinking_composer(templates_dir: Path) -> PromptComposer:
 
     composer.register_section(
         "subagent_guide", "system/thinking/thinking-subagent-guide.md", priority=50
-    )
-
-    composer.register_section(
-        "code_references", "system/thinking/thinking-code-references.md", priority=85
     )
 
     composer.register_section(

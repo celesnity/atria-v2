@@ -54,3 +54,69 @@ class Task:
         return cls(id=d["id"], subagent_type=d["subagent_type"], prompt=d["prompt"],
                    status=d.get("status", "pending"), result=d.get("result", ""),
                    ts=float(d.get("ts", 0.0)))
+
+
+REQUEST_STATUSES: tuple[str, ...] = ("open", "answered", "closed")
+
+
+@dataclass(frozen=True)
+class Request:
+    """One un-addressed request the main agent posts to board β (paper §3)."""
+
+    id: str
+    prompt: str
+    status: str = "open"
+    ts: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "prompt": self.prompt,
+                "status": self.status, "ts": self.ts}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Request":
+        return cls(id=d["id"], prompt=d["prompt"],
+                   status=d.get("status", "open"), ts=float(d.get("ts", 0.0)))
+
+
+@dataclass(frozen=True)
+class Response:
+    """One helper's answer on the response board β_r (exclusive to the main agent)."""
+
+    request_id: str
+    responder: str
+    content: str
+    confidence: float = 0.0
+    ts: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {"request_id": self.request_id, "responder": self.responder,
+                "content": self.content, "confidence": self.confidence, "ts": self.ts}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Response":
+        return cls(request_id=d["request_id"], responder=d["responder"],
+                   content=d["content"], confidence=float(d.get("confidence", 0.0)),
+                   ts=float(d.get("ts", 0.0)))
+
+
+@dataclass(frozen=True)
+class Bid:
+    """One helper's autonomous self-assessment of a request (for telemetry/viewer)."""
+
+    request_id: str
+    responder: str
+    volunteered: bool
+    reason: str = ""
+    confidence: float = 0.0
+    ts: float = 0.0
+
+    def to_dict(self) -> dict:
+        return {"request_id": self.request_id, "responder": self.responder,
+                "volunteered": self.volunteered, "reason": self.reason,
+                "confidence": self.confidence, "ts": self.ts}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Bid":
+        return cls(request_id=d["request_id"], responder=d["responder"],
+                   volunteered=bool(d["volunteered"]), reason=d.get("reason", ""),
+                   confidence=float(d.get("confidence", 0.0)), ts=float(d.get("ts", 0.0)))

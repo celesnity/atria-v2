@@ -15,4 +15,4 @@ Use this list to reason about what actions are possible. Suggest which tools to 
 - **Command Execution**: `run_command`, `list_processes`, `kill_process`
 - **MCP**: `search_tools` (find tools by keyword then use them)
 - **Task Tracking**: `write_todos`, `update_todo`, `complete_todo`, `clear_todos`
-- **Subagents**: `subagent(tasks=[{subagent_type, prompt}])` - Delegate complex tasks to specialized subagents (e.g., large features, deep research, multi-file refactoring); pass several task elements to run independent tasks concurrently. Don't use for single file edits.
+- **Helper Agents**: `request_help(prompt, max_helpers?)` - Broadcast a request to helper agents (e.g., large features, deep research, multi-file refactoring); helpers self-select by bidding — you do not pick which agent runs. Collect responses with `get_help_responses(request_id)`. Don't use for single file edits.
