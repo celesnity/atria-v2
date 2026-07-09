@@ -70,3 +70,15 @@ def test_remove_document_forwards_doc_id(monkeypatch):
     monkeypatch.setattr(ek_index, "_api", lambda: fake)
     assert ek_index.remove_document("DOC900") is True
     assert got["doc_id"] == "DOC900"
+
+
+def test_reindex_forwards_docs(monkeypatch):
+    ek_index = _load("ek_index", "aiw_ekidx_5")
+    got = {}
+    fake = types.ModuleType("ingest_api")
+    fake.reindex_documents = lambda docs, **kw: got.update({"n": len(docs)}) or {"chunks_indexed": 1}
+    monkeypatch.setattr(ek_index, "_api", lambda: fake)
+    docs = [{"doc_id": "DOCA", "title": "t", "department": "ENG",
+             "classification": "Internal", "text": "a b"}]
+    assert ek_index.reindex(docs) is True
+    assert got["n"] == 1

@@ -38,6 +38,13 @@ def cli(*argv):
     return code, json.loads(buf.getvalue())
 
 
+def test_reindex_executive_only(env, monkeypatch):
+    monkeypatch.setattr(workspace.ek_index, "reindex", lambda docs: True)
+    assert cli("reindex", "--user", "U005")[0] == 1  # Manager denied
+    code, out = cli("reindex", "--user", "U007")  # Executive ok
+    assert code == 0 and out["reindexed"] is True
+
+
 def test_manage_scope(env):
     _, mgr = cli("manage", "--user", "U005")  # Manager OPS
     assert mgr["scope"] == "OPS"
