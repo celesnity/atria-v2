@@ -9,6 +9,7 @@ from typing import Any, Protocol
 _log = logging.getLogger(__name__)
 
 _PATTERN = "atria:bb:*:notes"
+_BOARD_PATTERN = "atria:bb:*:board"
 
 
 class _Broadcaster(Protocol):
@@ -48,7 +49,7 @@ class BlackboardSubscriber:
             iterations: If set, stop after this many `get_message` calls (for testing).
         """
         pubsub = self._redis.pubsub()
-        await pubsub.psubscribe(_PATTERN)
+        await pubsub.psubscribe(_PATTERN, _BOARD_PATTERN)
         try:
             seen = 0
             while not self._stopped:
@@ -88,13 +89,19 @@ class BlackboardSubscriber:
             _log.warning("blackboard subscriber: bad payload: %s", exc)
             return
 
-        task_id = payload.get("task_id") or ""
-        if not self._admit(task_id):
+        channel = msg.get("channel")
+        if isinstance(channel, (bytes, bytearray)):
+            channel = channel.decode()
+        key = payload.get("request_id") or payload.get("task_id") or ""
+        if not self._admit(key):
             return
-
-        await self._broadcaster.broadcast(
-            {"type": "blackboard.note", "data": payload}
-        )
+        if isinstance(channel, str) and channel.endswith(":board"):
+            kind = payload.pop("kind", "event")
+            await self._broadcaster.broadcast(
+                {"type": f"blackboard.{kind}", "data": payload}
+            )
+            return
+        await self._broadcaster.broadcast({"type": "blackboard.note", "data": payload})
 
     def _admit(self, task_id: str) -> bool:
         """Apply per-task rate limit; return True if message should be forwarded.
