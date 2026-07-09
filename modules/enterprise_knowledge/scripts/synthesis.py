@@ -1,0 +1,112 @@
+"""Compose a cited answer grounded ONLY in retrieved passages.
+
+The LLM is asked to cite every claim with the passage's ``[chunk_id]``; the
+result is then post-validated — any sentence without a citation resolving to a
+retrieved chunk is dropped, and low-confidence answers are routed for review.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from typing import Callable
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import budget  # type: ignore[import-not-found]
+from guardrails import (  # type: ignore[import-not-found]
+    ADVISORY_NOTE,
+    answer_confidence,
+    enforce_citations,
+    needs_manual_review,
+)
+
+_REVIEW_NOTICE = (
+    "Chưa đủ căn cứ trong tài liệu — cần con người kiểm tra thủ công. "
+    "Xem các đoạn trích và đối chiếu với tài liệu gốc được phép truy cập."
+)
+
+
+_SYSTEM_PROMPT = (
+    "Bạn trả lời câu hỏi nội bộ doanh nghiệp CHỈ dựa trên các đoạn trích được "
+    "cung cấp. Trả lời bằng tiếng Việt. Trích dẫn mọi khẳng định bằng thẻ đoạn "
+    "trong ngoặc vuông, ví dụ [DOC002#0]. Không dùng kiến thức bên ngoài. Nếu "
+    "các đoạn trích không trả lời được câu hỏi, hãy nói rõ điều đó."
+)
+
+
+def fit_hits_to_budget(query: str, hits: list[dict]) -> list[dict]:
+    """Return the leading hits whose passages fit the synthesis input budget.
+
+    Passages are kept in ranked order until the estimated prompt size would
+    exceed the model's input budget (context minus reserved output). At least
+    the top hit is always kept — if it alone overruns the budget its text is
+    truncated — so a grounded answer is still attempted rather than dropped.
+    """
+    available = budget.input_budget("synthesis")
+    overhead = (
+        budget.estimate_tokens(_SYSTEM_PROMPT)
+        + budget.estimate_tokens(query)
+        + 16  # "Question:"/"Passages:" framing
+    )
+    remaining = max(0, available - overhead)
+    fitted: list[dict] = []
+    used = 0
+    for hit in hits:
+        line_cost = budget.estimate_tokens(f"[{hit['chunk_id']}] {hit['text']}")
+        if used + line_cost <= remaining:
+            fitted.append(hit)
+            used += line_cost
+        elif not fitted:
+            # Top hit alone overruns: truncate its text so we still answer.
+            budget_for_text = max(0, remaining - budget.estimate_tokens(hit["chunk_id"]) - 4)
+            fitted.append({**hit, "text": budget.fit_text(hit["text"], budget_for_text)})
+            break
+        else:
+            break
+    return fitted
+
+
+def build_synthesis_messages(query: str, hits: list[dict]) -> list[dict]:
+    """Build chat messages that force passage-grounded, cited answers.
+
+    Passages are trimmed to :func:`fit_hits_to_budget` so the prompt plus the
+    reserved completion stay within the deployed model's context window.
+    """
+    passages = "\n".join(f"[{h['chunk_id']}] {h['text']}" for h in hits)
+    user = f"Question: {query}\n\nPassages:\n{passages}"
+    return [{"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user}]
+
+
+def synthesize(query: str, hits: list[dict], chat_fn: Callable[[list], str]) -> dict:
+    """Synthesize a cited answer and post-validate it against the hits.
+
+    Args:
+        query: The user question.
+        hits: Retrieved passages (each with ``chunk_id``, ``text``, ``score``).
+        chat_fn: Callable taking chat messages, returning the raw answer string.
+
+    Returns:
+        ``{"answer","grounded","dropped","confidence","needs_review",
+        "disclaimer","citations"}``.
+    """
+    fitted = fit_hits_to_budget(query, hits)
+    raw = chat_fn(build_synthesis_messages(query, fitted))
+    # Only passages actually sent are citable; confidence still reflects the
+    # full retrieval so a budget-trimmed prompt is not scored as stronger.
+    allowed = {h["chunk_id"] for h in fitted}
+    checked = enforce_citations(raw, allowed)
+    confidence = answer_confidence(hits)
+    review = needs_manual_review(confidence, len(checked["grounded"]))
+    citations = [c for c in allowed if f"[{c}]" in checked["answer"]]
+    answer = _REVIEW_NOTICE if review else checked["answer"]
+    return {
+        "answer": answer,
+        "grounded": checked["grounded"],
+        "dropped": checked["dropped"],
+        "confidence": confidence,
+        "needs_review": review,
+        "disclaimer": ADVISORY_NOTE,
+        "citations": sorted(citations),
+    }
