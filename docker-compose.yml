@@ -99,6 +99,27 @@ services:
       - MC_NEO4J_URI=bolt://neo4j:7687
       - MC_NEO4J_USER=neo4j
       - MC_NEO4J_PASSWORD=atria-neo4j
+      # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
+      # synthesis; Qdrant on the compose network (override models in .env).
+      - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_INDEX_EMBED_MODEL=${EK_INDEX_EMBED_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
+      - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
+      - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
+      - EK_QDRANT_URL=http://qdrant:6333
+      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
+      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
+      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
+      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
+      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
+      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
+      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
+      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
+      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
+      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
+      - EK_BM25_K1=${EK_BM25_K1:-1.5}
+      - EK_BM25_B=${EK_BM25_B:-0.75}
       # Speech-to-text backend (voice input). Hard-coded to the internal `asr`
       # sidecar so it is correct regardless of the host-oriented value in .env.
       - ATRIA_ASR_BASE_URL=http://asr:9000/v1
@@ -173,6 +194,27 @@ services:
       - MC_NEO4J_URI=bolt://neo4j:7687
       - MC_NEO4J_USER=neo4j
       - MC_NEO4J_PASSWORD=atria-neo4j
+      # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
+      # synthesis; Qdrant on the compose network (override models in .env).
+      - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_INDEX_EMBED_MODEL=${EK_INDEX_EMBED_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
+      - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
+      - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
+      - EK_QDRANT_URL=http://qdrant:6333
+      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
+      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
+      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
+      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
+      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
+      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
+      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
+      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
+      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
+      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
+      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
+      - EK_BM25_K1=${EK_BM25_K1:-1.5}
+      - EK_BM25_B=${EK_BM25_B:-0.75}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

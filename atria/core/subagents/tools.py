@@ -27,6 +27,7 @@ def build_subagent_orchestrator(
     working_dir: str = "",
     progress_cb: Any = None,
     redis_client: Any = None,
+    helper_profiles: list[tuple[str, str]] | None = None,
 ) -> SubagentOrchestrator:
     """Construct a SubagentOrchestrator that fans workers over the task broker."""
     sub_cfg = getattr(config, "divide", None) or config
@@ -58,6 +59,8 @@ def build_subagent_orchestrator(
                     return tid, {**(res.return_value or {}), "status": "done"}
             await asyncio.sleep(0.25)
 
+    from atria.core.blackboard.verify_llm import build_verify_llm
+
     return SubagentOrchestrator(
         job_store=JobStore(redis_client, SUBAGENT_PREFIX),
         redis_client=redis_client,
@@ -69,42 +72,41 @@ def build_subagent_orchestrator(
         session_id=session_id,
         working_dir=working_dir,
         progress_cb=progress_cb,
+        helper_profiles=helper_profiles or [],
+        verify_llm=build_verify_llm(config),
     )
 
 
-def execute_subagent_fanout(arguments: dict, orchestrator: SubagentOrchestrator) -> dict:
-    """Write tasks to the blackboard and fan workers out. Returns a job handle."""
-    tasks = arguments.get("tasks")
-    if not tasks or not isinstance(tasks, list):
-        return {"success": False, "error": "tasks (non-empty list) is required", "output": None}
+def execute_request_help(arguments: dict, orchestrator: SubagentOrchestrator) -> dict:
+    """Post an un-addressed help request; return a request handle."""
+    prompt = arguments.get("prompt")
+    if not prompt or not isinstance(prompt, str):
+        return {"success": False, "error": "prompt (string) is required", "output": None}
+    max_helpers = int(arguments.get("max_helpers", 3) or 3)
     try:
-        job_id = orchestrator.start(tasks)
+        request_id = orchestrator.start(prompt, max_helpers=max_helpers)
     except Exception as exc:  # noqa: BLE001 — surface as tool error, never crash the loop
-        logger.warning("subagent fan-out start failed: %s", exc)
-        return {"success": False, "error": f"subagent failed: {exc}", "output": None}
+        logger.warning("request_help start failed: %s", exc)
+        return {"success": False, "error": f"request_help failed: {exc}", "output": None}
     return {
         "success": True,
-        "job_id": job_id,
+        "request_id": request_id,
         "status": "running",
         "output": (
-            f"[SUBAGENT STARTED] job_id={job_id} with {len(tasks)} task(s). "
-            "Use get_subagent_output(job_id) to poll and collect results."
+            f"[REQUEST POSTED] request_id={request_id}. Helpers are bidding; use "
+            "get_help_responses(request_id) to collect volunteers' answers."
         ),
     }
 
 
-def execute_get_subagent_output(arguments: dict, orchestrator: SubagentOrchestrator) -> dict:
-    """Collect task statuses + the shared-context notes digest for a job."""
-    job_id = arguments.get("job_id", "")
-    if not job_id:
-        return {"success": False, "error": "job_id is required", "output": None}
+def execute_get_help_responses(arguments: dict, orchestrator: SubagentOrchestrator) -> dict:
+    """Collect response-board answers + bid roster + note digest for a request."""
+    request_id = arguments.get("request_id", "")
+    if not request_id:
+        return {"success": False, "error": "request_id is required", "output": None}
     try:
-        result = orchestrator.collect(
-            job_id,
-            block=arguments.get("block", True),
-            timeout_ms=arguments.get("timeout", 30000),
-        )
+        result = orchestrator.collect(request_id)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("get_subagent_output failed: %s", exc)
-        return {"success": False, "error": f"get_subagent_output failed: {exc}", "output": None}
+        logger.warning("get_help_responses failed: %s", exc)
+        return {"success": False, "error": f"get_help_responses failed: {exc}", "output": None}
     return {"success": result.get("status") != "unknown", "output": result}

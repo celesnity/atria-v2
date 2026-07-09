@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from atria.models.message import ChatMessage, Role, ToolCall
-from atria.ui_textual.callback_interface import BaseUICallback
+from atria.core.agents.callbacks.callback_interface import BaseUICallback
 from atria.web.logging_config import logger
 from atria.web.protocol import WSMessageType
 

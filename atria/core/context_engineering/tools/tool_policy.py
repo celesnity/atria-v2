@@ -16,17 +16,11 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "read_file",
         "list_files",
         "search",
-        "find_symbol",
-        "find_referencing_symbols",
         "read_pdf",
     },
     "group:write": {
         "write_file",
         "edit_file",
-        "insert_before_symbol",
-        "insert_after_symbol",
-        "replace_symbol_body",
-        "rename_symbol",
         "notebook_edit",
         "apply_patch",
     },
@@ -37,8 +31,8 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "kill_process",
     },
     "group:session": {
-        "subagent",
-        "get_subagent_output",
+        "request_help",
+        "get_help_responses",
         "list_subagents",
     },
     "group:meta": {

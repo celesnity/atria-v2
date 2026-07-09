@@ -158,12 +158,6 @@ class FileToolHandler:
             if self._file_ops and self._file_ops._is_gitignored(file_path):
                 output_msg += " (note: this file is in .gitignore)"
 
-        # LSP diagnostics: check for errors introduced by the edit
-        if edit_result.success and output_msg:
-            diag_text = self._get_lsp_diagnostics(file_path)
-            if diag_text:
-                output_msg += diag_text
-
         return {
             "success": edit_result.success,
             "output": output_msg,
@@ -383,33 +377,6 @@ class FileToolHandler:
             if "timeout" in error_msg.lower():
                 error_msg = "Search timed out. Try a more specific path."
             return {"success": False, "error": error_msg, "output": None}
-
-    # ------------------------------------------------------------------
-    # LSP diagnostics
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _get_lsp_diagnostics(file_path: str) -> str:
-        """Check for LSP diagnostics (errors) after editing a file.
-
-        Returns a formatted string to append to tool output, or empty string
-        if no LSP server is available or no errors are found.
-        """
-        try:
-            from atria.core.context_engineering.tools.lsp import get_lsp_wrapper
-
-            wrapper = get_lsp_wrapper()
-            diagnostics = wrapper.get_diagnostics(file_path, severity_filter=1)
-            if not diagnostics:
-                return ""
-
-            lines = ["\n\nLSP errors detected:"]
-            for d in diagnostics:
-                lines.append(f"  Line {d['line']}: {d['message']}")
-
-            return "\n".join(lines)
-        except Exception:
-            # LSP not available or failed — gracefully skip
-            return ""
 
     # ------------------------------------------------------------------
     # Internal helpers

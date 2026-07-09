@@ -87,6 +87,7 @@ class ConfigManager:
             "model": os.environ.get("ATRIA_MODEL"),
             "fallback_model": os.environ.get("ATRIA_FALLBACK_MODEL"),
             "api_base_url": os.environ.get("ATRIA_API_BASE_URL"),
+            "agent_mode": os.environ.get("ATRIA_AGENT_MODE"),
         }
         for key, value in env_overrides.items():
             if value:
@@ -136,6 +137,7 @@ class ConfigManager:
             "model_critique",
             "model_compact",
             "api_base_url",
+            "agent_mode",
             "debug_logging",
             "disabled_tools",
         }
