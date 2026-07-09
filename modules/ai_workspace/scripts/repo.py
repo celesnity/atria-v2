@@ -113,6 +113,7 @@ def _doc_dict(session, doc, classes, depts, users) -> dict:
         "uploaded_by_name": users.get(doc.uploaded_by, "Hệ thống"),
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
         "status": doc.status,
+        "index_status": doc.index_status,
     }
 
 
@@ -140,6 +141,16 @@ def set_document_status(doc_id: str, status: str, path: str | None = None) -> bo
         if not doc:
             return False
         doc.status = status
+        return True
+
+
+def set_index_status(doc_id: str, status: str, path: str | None = None) -> bool:
+    """Update a document's EK ``index_status``. Returns False if the doc is unknown."""
+    with session_scope(path) as session:
+        doc = session.get(models.Document, doc_id)
+        if not doc:
+            return False
+        doc.index_status = status
         return True
 
 
