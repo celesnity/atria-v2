@@ -108,8 +108,17 @@ def render_module_section(m: Module) -> list[str]:
     return section
 
 
-def build_skill_block(registry: ModuleRegistry) -> str:
-    """Return the lazy module catalog (header + a summary per module). Empty if none."""
+def build_skill_block(registry: ModuleRegistry, *, include_subagent_delegation: bool = True) -> str:
+    """Return the lazy module catalog (header + a summary per module). Empty if none.
+
+    Args:
+        registry: Module registry to render entries from.
+        include_subagent_delegation: When True (default), modules whose manifest
+            enables a dedicated subagent get a "delegate with `subagent(...)`" hint.
+            Pass False for agents whose LLM has no `subagent` tool (e.g.
+            `AssistantAgent`) so the prompt doesn't instruct a tool that isn't
+            available; module entries still render, just without the hint.
+    """
     modules = registry.all()
     if not modules:
         return ""
@@ -117,11 +126,11 @@ def build_skill_block(registry: ModuleRegistry) -> str:
     for m in modules:
         section_lines = render_module_section(m)
         sub = m.manifest.subagent if m.manifest else None
-        if sub and sub.enabled:
+        if sub and sub.enabled and include_subagent_delegation:
             section_lines += [
                 "",
                 f"**Dedicated subagent:** this module has a specialist subagent "
-                f'`{m.name}`. For multi-step or heavy work, delegate with '
+                f"`{m.name}`. For multi-step or heavy work, delegate with "
                 f'`subagent(tasks=[{{"subagent_type": "{m.name}", "prompt": "…"}}])` — '
                 f"its CLI output stays out of this conversation. Quick lookups may run inline.",
             ]
