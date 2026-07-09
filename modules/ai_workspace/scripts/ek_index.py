@@ -29,8 +29,12 @@ def index_document(
     """Ingest one document into EK. Returns True on success, False on any failure."""
     try:
         _api().ingest_document(
-            doc_id=doc_id, title=title, department=dept_code,
-            classification=classification, text=text, owner=owner,
+            doc_id=doc_id,
+            title=title,
+            department=dept_code,
+            classification=classification,
+            text=text,
+            owner=owner,
         )
         return True
     except Exception:  # noqa: BLE001 - never break the upload

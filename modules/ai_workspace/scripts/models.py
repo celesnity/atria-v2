@@ -5,6 +5,7 @@ classifications, an access_matrix (role x classification -> effect), users, and
 document metadata. Document *content* is not stored here — only a path to the
 file on disk (see storage.py). The DB is the authority for access decisions.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -83,9 +84,7 @@ class Document(Base):
     file_path: Mapped[str] = mapped_column(String(512), default="")  # relative to uploads root
     mime_type: Mapped[str] = mapped_column(String(64), default="")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
-    uploaded_by: Mapped[str | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    uploaded_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="active")
     # EK index lifecycle: pending | indexed | failed | skipped
     index_status: Mapped[str] = mapped_column(String(16), default="pending")

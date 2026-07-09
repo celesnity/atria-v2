@@ -4,6 +4,7 @@ Returns plain dataclasses/dicts (never live ORM instances) so callers are
 insulated from the session lifecycle. Also holds password hashing for the
 module-level demo login.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -22,6 +23,7 @@ from db import session_scope  # noqa: E402
 
 
 # --- password hashing (stdlib pbkdf2, no extra deps) ------------------------
+
 
 def hash_password(password: str, salt: bytes | None = None, iterations: int = 100_000) -> str:
     """Return a ``pbkdf2$iterations$salt$hash`` string for ``password``."""
@@ -46,14 +48,15 @@ def verify_password(password: str, stored: str) -> bool:
 
 # --- resolved identity ------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ResolvedUser:
     """A user resolved to the values access decisions need."""
 
     user_id: str
     full_name: str
-    role: str          # role_en
-    department: str    # dept_code
+    role: str  # role_en
+    department: str  # dept_code
     department_id: int
     status: str
 
@@ -219,15 +222,17 @@ def insert_document(
         cls = session.scalar(
             select(models.Classification).where(models.Classification.code == classification_code)
         )
-        session.add(models.Document(
-            id=doc_id,
-            title=title,
-            department_id=dept.id,
-            classification_id=cls.id,
-            original_filename=original_filename,
-            file_path=file_path,
-            mime_type=mime_type,
-            size_bytes=size_bytes,
-            uploaded_by=uploaded_by,
-            status="active",
-        ))
+        session.add(
+            models.Document(
+                id=doc_id,
+                title=title,
+                department_id=dept.id,
+                classification_id=cls.id,
+                original_filename=original_filename,
+                file_path=file_path,
+                mime_type=mime_type,
+                size_bytes=size_bytes,
+                uploaded_by=uploaded_by,
+                status="active",
+            )
+        )
