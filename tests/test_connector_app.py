@@ -107,3 +107,26 @@ def test_unknown_tool_is_404(monkeypatch):
     client, _ = _client(monkeypatch, lambda *a, **k: {})
     r = client.post("/connector/tools/nope", json={"arguments": {}})
     assert r.status_code == 404
+
+
+def test_sidecar_health_endpoint(monkeypatch):
+    client, app_mod = _client(monkeypatch, lambda **k: {})
+    monkeypatch.setattr(app_mod.service, "sidecar_health",
+                        lambda: {"qdrant": "ok", "llm": "error: down"})
+    r = client.get("/connector/sidecar-health")
+    assert r.status_code == 200
+    assert r.json()["qdrant"] == "ok"
+
+
+def test_signoff_endpoint_records_event(monkeypatch):
+    client, app_mod = _client(monkeypatch, lambda **k: {})
+    captured = {}
+    def fake_record(payload):
+        captured.update(payload)
+        return {"id": "evt1", **payload}
+    monkeypatch.setattr(app_mod.service, "record_signoff", fake_record)
+    r = client.post("/connector/signoff", json={"engineer": "eng@x", "decision": "acknowledged"})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert captured["engineer"] == "eng@x"
+    assert captured["type"] == "signoff"

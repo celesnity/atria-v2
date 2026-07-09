@@ -69,7 +69,6 @@ def manifest() -> dict:
             "remoteEntry": f"{PUBLIC_BASE}/dashboard/remoteEntry.js",
             "exposed": {
                 "dashboard": "./Dashboard",
-                "cards": {"maintenance_answer": "./MaintenanceAnswerCard"},
             },
         },
         "version": "1",
@@ -118,6 +117,28 @@ def run(body: RunBody) -> dict:
         return service.run_query(text, int(body.args.get("k", 5)),
                                  body.args.get("ata"), body.args.get("revision", "current"))
     raise HTTPException(400, f"unsupported action {body.action!r}")
+
+
+@app.get("/connector/sidecar-health")
+def sidecar_health() -> dict:
+    return service.sidecar_health()
+
+
+class SignoffBody(BaseModel):
+    engineer: str
+    query: str | None = None
+    answer_summary: str | None = None
+    decision: str = "acknowledged"
+    note: str | None = None
+    citations: list[dict] = Field(default_factory=list)
+    answer_type: str | None = None
+    is_sensitive: bool | None = None
+    exact_quote: str | None = None
+
+
+@app.post("/connector/signoff")
+def signoff(body: SignoffBody) -> dict:
+    return {"ok": True, "event": service.record_signoff({"type": "signoff", **body.model_dump()})}
 
 
 _DASHBOARD_DIST = Path(os.environ.get("MC_DASHBOARD_DIST", "/app/frontend_dist"))

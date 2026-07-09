@@ -146,6 +146,9 @@ services:
       - MC_NEO4J_USER=neo4j
       - MC_NEO4J_PASSWORD=atria-neo4j
       - MC_PUBLIC_BASE=http://localhost:9200
+      - MC_AUDIT_LOG=/app/data/audit.log.jsonl
+    volumes:
+      - mc_audit:/app/data
     depends_on:
       - qdrant
       - neo4j
@@ -253,3 +256,4 @@ volumes:
   neo4j_data:
   hf_cache:
   asr_models:
+  mc_audit:

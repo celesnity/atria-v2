@@ -83,6 +83,24 @@ class RemoteConnector:
             logger.warning("connector %s call_tool(%s) failed: %s", self.name, tool, exc)
             raise ConnectorUnreachable(str(exc)) from exc
 
+    def get_json(self, path: str, timeout: float = 5.0) -> dict:
+        try:
+            r = self._client.get(path, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPError as exc:
+            logger.warning("connector %s GET %s failed: %s", self.name, path, exc)
+            raise ConnectorUnreachable(str(exc)) from exc
+
+    def post_json(self, path: str, payload: dict, timeout: float = 15.0) -> dict:
+        try:
+            r = self._client.post(path, json=payload, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except httpx.HTTPError as exc:
+            logger.warning("connector %s POST %s failed: %s", self.name, path, exc)
+            raise ConnectorUnreachable(str(exc)) from exc
+
 
 from typing import TYPE_CHECKING, Any, Callable  # noqa: E402
 
