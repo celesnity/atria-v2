@@ -243,7 +243,7 @@ class AgentExecutor:
         from atria.web.web_ask_user_manager import WebAskUserManager
         from atria.web.web_ui_callback import WebUICallback
         from atria.web.ws_tool_broadcaster import WebSocketToolBroadcaster
-        from atria.repl.react_executor import ReactExecutor
+        from atria.core.agents.execution.react_executor import ReactExecutor
 
         # Clear any previous interrupt flags
         self.state.clear_interrupt()
@@ -481,7 +481,7 @@ class AgentExecutor:
 
             # Expand @file mentions — TUI path does this via query_enhancer.prepare_messages
             import re as _re
-            from atria.repl.file_content_injector import FileContentInjector
+            from atria.core.agents.execution.file_content_injector import FileContentInjector
 
             _injector = FileContentInjector(file_ops, config, working_dir)
             _injection = _injector.inject_content(message)
