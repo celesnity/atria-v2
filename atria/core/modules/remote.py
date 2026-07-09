@@ -82,3 +82,63 @@ class RemoteConnector:
         except httpx.HTTPError as exc:
             logger.warning("connector %s call_tool(%s) failed: %s", self.name, tool, exc)
             raise ConnectorUnreachable(str(exc)) from exc
+
+
+from typing import TYPE_CHECKING, Any, Callable  # noqa: E402
+
+if TYPE_CHECKING:  # avoid import cycles / heavy imports at module load
+    from atria.core.modules.store import Module
+    from atria.core.skill_tools import SkillToolContext, ToolSpec
+
+
+def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
+                  tool_name: str) -> Callable[..., dict]:
+    def handler(**kwargs: Any) -> dict:
+        query = str(kwargs.get("query") or kwargs.get("text") or "")
+        try:
+            resp = conn.call_tool(tool_name, kwargs)
+        except ConnectorUnreachable:
+            card = unavailable_card(query, conn.name)
+            if ctx.broadcaster:
+                try:
+                    ctx.broadcaster({"type": "maintenance_answer", **card})
+                except Exception as exc:  # noqa: BLE001
+                    ctx.logger.warning("card broadcast failed: %s", exc)
+            return {"success": True, "output": card, "_llm_suffix": UNAVAILABLE_SUFFIX}
+
+        card = resp.get("card")
+        if card and ctx.broadcaster:
+            try:
+                ctx.broadcaster({"type": "maintenance_answer", **card})
+            except Exception as exc:  # noqa: BLE001
+                ctx.logger.warning("card broadcast failed: %s", exc)
+        out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
+        if resp.get("llm_suffix"):
+            out["_llm_suffix"] = resp["llm_suffix"]
+        return out
+
+    return handler
+
+
+def build_remote_tool_specs(ctx: "SkillToolContext",
+                            modules: "list[Module]") -> "list[ToolSpec]":
+    """Build proxy ToolSpecs for every service-module, from its committed manifest."""
+    from atria.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
+
+    specs: list[ToolSpec] = []
+    for module in modules:
+        svc = getattr(module.manifest, "service", None) if module.manifest else None
+        if not svc:
+            continue
+        conn = RemoteConnector(module.name, svc.connector_url, svc.health_path)
+        for tool in svc.tools:
+            name = tool.get("name")
+            if not name:
+                continue
+            specs.append(ToolSpec(
+                name=name,
+                description=tool.get("description", ""),
+                parameters=tool.get("parameters", {"type": "object", "properties": {}}),
+                handler=_make_handler(ctx, conn, name),
+            ))
+    return specs
