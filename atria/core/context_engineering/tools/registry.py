@@ -121,6 +121,20 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         except Exception as exc:  # noqa: BLE001
             logger.warning("skill-tool discovery failed; continuing without skill tools: %s", exc)
             self._skill_specs = {}
+        # Merge remote proxy tools from service-modules (out-of-process connectors).
+        # These replace what an in-process tools.py used to provide; on name
+        # collision the remote spec wins (the local tools.py has been retired).
+        try:
+            from atria.core.modules.registry import get_registry as _get_mod_registry
+            from atria.core.modules.remote import build_remote_tool_specs
+
+            _remote_specs = build_remote_tool_specs(self.skill_ctx, _get_mod_registry().all())
+            for _spec in _remote_specs:
+                self._skill_specs[_spec.name] = _spec
+            if _remote_specs:
+                logger.info("registered %d remote proxy tool(s)", len(_remote_specs))
+        except Exception as exc:  # noqa: BLE001 — never block registry init
+            logger.warning("remote proxy tool registration failed: %s", exc)
         # Protected-path guard: denies tool access to configured corpus roots
         # (defaults protect modules/*/sample_manuals even without a settings
         # file — ProtectedPathGuard falls back to defaults on a missing or
