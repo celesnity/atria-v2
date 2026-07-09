@@ -17,9 +17,6 @@ __all__ = ["FileOperations", "DEFAULT_SEARCH_EXCLUDES"]
 # Image extensions that can be base64-encoded for LLM
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"}
 _PDF_EXTENSIONS = {".pdf"}
-# Office documents whose text is extracted (so read_file/search work on uploads)
-_DOCX_EXTENSIONS = {".docx"}
-_XLSX_EXTENSIONS = {".xlsx", ".xlsm"}
 
 
 class FileOperations:
@@ -199,76 +196,6 @@ class FileOperations:
             "Install pdftotext (poppler) or PyMuPDF (pip install pymupdf)."
         )
 
-    def _docx_text(self, path: Path) -> str:
-        """Extract plain text (paragraphs + tables) from a .docx file."""
-        try:
-            import docx  # python-docx
-        except ImportError:
-            try:
-                import docx2txt  # lightweight fallback
-
-                return docx2txt.process(str(path)) or ""
-            except ImportError:
-                return "Error: Cannot read .docx (install python-docx)."
-        try:
-            document = docx.Document(str(path))
-            parts: list[str] = [p.text for p in document.paragraphs]
-            for table in document.tables:
-                for row in table.rows:
-                    parts.append(" | ".join(c.text.strip() for c in row.cells))
-            return "\n".join(parts)
-        except Exception as exc:  # noqa: BLE001
-            return f"Error reading .docx: {exc}"
-
-    def _xlsx_text(self, path: Path) -> str:
-        """Extract cell text from an .xlsx workbook (all sheets)."""
-        try:
-            import openpyxl
-        except ImportError:
-            return "Error: Cannot read .xlsx (openpyxl not installed)."
-        try:
-            wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
-            lines: list[str] = []
-            for ws in wb.worksheets:
-                lines.append(f"--- Sheet: {ws.title} ---")
-                for row in ws.iter_rows(values_only=True):
-                    cells = ["" if v is None else str(v) for v in row]
-                    if any(c.strip() for c in cells):
-                        lines.append("\t".join(cells))
-            wb.close()
-            return "\n".join(lines)
-        except Exception as exc:  # noqa: BLE001
-            return f"Error reading .xlsx: {exc}"
-
-    def _extract_searchable_text(self, path: Path) -> Optional[str]:
-        """Return plain text for a supported binary document, else None.
-
-        Used by both read_file and the grep fallback so uploaded Office
-        documents (.docx/.xlsx) are readable and full-text searchable.
-        """
-        suffix = path.suffix.lower()
-        if suffix in _DOCX_EXTENSIONS:
-            return self._docx_text(path)
-        if suffix in _XLSX_EXTENSIONS:
-            return self._xlsx_text(path)
-        return None
-
-    def _format_numbered_lines(self, lines: list[str], offset: int, max_lines: int) -> str:
-        """Format extracted text lines in cat -n style with truncation notice."""
-        total = len(lines)
-        start_idx = max(offset - 1, 0)
-        end_idx = min(start_idx + max_lines, total)
-        parts: list[str] = []
-        for i, line in enumerate(lines[start_idx:end_idx], start=start_idx + 1):
-            text = line.rstrip()
-            if len(text) > self.MAX_LINE_LENGTH:
-                text = text[: self.MAX_LINE_LENGTH] + "... (line truncated)"
-            parts.append(f"  {i}\t{text}")
-        result = "\n".join(parts)
-        if end_idx < total:
-            result += f"\n... (truncated: showing lines {start_idx + 1}-{end_idx} of {total})"
-        return result
-
     def read_file(
         self,
         file_path: str,
@@ -316,17 +243,6 @@ class FileOperations:
             if line_end is not None:
                 effective_max = line_end - effective_offset + 1
             return self._read_pdf_file(path, offset=effective_offset, max_lines=effective_max)
-
-        # Handle Office documents — extract text (Word, Excel)
-        if suffix in _DOCX_EXTENSIONS or suffix in _XLSX_EXTENSIONS:
-            effective_offset = offset or line_start or 1
-            if effective_offset < 1:
-                effective_offset = 1
-            effective_max = max_lines if max_lines is not None else self.DEFAULT_MAX_LINES
-            if line_end is not None:
-                effective_max = line_end - effective_offset + 1
-            text = self._extract_searchable_text(path) or ""
-            return self._format_numbered_lines(text.split("\n"), effective_offset, effective_max)
 
         # Detect binary files
         if self._is_binary_file(path):
@@ -667,64 +583,58 @@ class FileOperations:
                 continue
 
             try:
-                abs_path = str(path)
-                # Office documents (.docx/.xlsx) are binary — extract their text
-                # so uploaded files are full-text searchable. Plain files read raw.
-                doc_text = self._extract_searchable_text(path)
-                if doc_text is not None:
-                    content = doc_text
-                else:
-                    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                    abs_path = str(path)
+
+                    if multiline:
                         content = f.read()
+                        found = list(regex.finditer(content))
+                        if not found:
+                            continue
 
-                if multiline:
-                    found = list(regex.finditer(content))
-                    if not found:
-                        continue
-
-                    if output_mode == "files_with_matches":
-                        seen_files.append(abs_path)
-                        if len(seen_files) >= max_results:
-                            break
-                    elif output_mode == "count":
-                        file_counts[abs_path] = len(found)
-                    else:
-                        # Compute line numbers from match positions
-                        for m in found:
-                            line_num = content[: m.start()].count("\n") + 1
-                            match_text = m.group(0)
-                            # Truncate long multiline matches
-                            if len(match_text) > 200:
-                                match_text = match_text[:200] + "..."
-                            matches.append(
-                                {
-                                    "file": abs_path,
-                                    "line": line_num,
-                                    "content": match_text.strip(),
-                                }
-                            )
-                            if len(matches) >= max_results:
-                                return matches
-                else:
-                    for line_num, line in enumerate(content.splitlines(), 1):
-                        if regex.search(line):
-                            if output_mode == "files_with_matches":
-                                seen_files.append(abs_path)
-                                if len(seen_files) >= max_results:
-                                    return [{"file": fp} for fp in seen_files]
-                                break  # One match is enough for this file
-                            elif output_mode == "count":
-                                file_counts[abs_path] = file_counts.get(abs_path, 0) + 1
-                            else:
+                        if output_mode == "files_with_matches":
+                            seen_files.append(abs_path)
+                            if len(seen_files) >= max_results:
+                                break
+                        elif output_mode == "count":
+                            file_counts[abs_path] = len(found)
+                        else:
+                            # Compute line numbers from match positions
+                            for m in found:
+                                line_num = content[: m.start()].count("\n") + 1
+                                match_text = m.group(0)
+                                # Truncate long multiline matches
+                                if len(match_text) > 200:
+                                    match_text = match_text[:200] + "..."
                                 matches.append(
                                     {
                                         "file": abs_path,
                                         "line": line_num,
-                                        "content": line.strip(),
+                                        "content": match_text.strip(),
                                     }
                                 )
                                 if len(matches) >= max_results:
                                     return matches
+                    else:
+                        for line_num, line in enumerate(f, 1):
+                            if regex.search(line):
+                                if output_mode == "files_with_matches":
+                                    seen_files.append(abs_path)
+                                    if len(seen_files) >= max_results:
+                                        return [{"file": fp} for fp in seen_files]
+                                    break  # One match is enough for this file
+                                elif output_mode == "count":
+                                    file_counts[abs_path] = file_counts.get(abs_path, 0) + 1
+                                else:
+                                    matches.append(
+                                        {
+                                            "file": abs_path,
+                                            "line": line_num,
+                                            "content": line.strip(),
+                                        }
+                                    )
+                                    if len(matches) >= max_results:
+                                        return matches
             except Exception:
                 continue
 
