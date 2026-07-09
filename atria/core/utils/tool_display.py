@@ -46,12 +46,6 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "docker_input_files": ("Checking", "input files"),
     "docker_setup": ("Setting up", "Docker environment"),
     # LSP/Symbol tools
-    "find_symbol": ("Find_Symbol", "symbol"),
-    "find_referencing_symbols": ("Find_References_Symbol", "symbol"),
-    "insert_before_symbol": ("Insert_Before_Symbol", "symbol"),
-    "insert_after_symbol": ("Insert_After_Symbol", "symbol"),
-    "replace_symbol_body": ("Replace_Symbol", "symbol"),
-    "rename_symbol": ("Rename_Symbol", "symbol"),
     # Plan tool
     "present_plan": ("Present Plan", "plan"),
     # Other tools

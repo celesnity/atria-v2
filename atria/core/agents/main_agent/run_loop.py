@@ -22,8 +22,6 @@ PARALLELIZABLE_TOOLS = frozenset(
         "get_process_output",
         "list_todos",
         "search_tools",
-        "find_symbol",
-        "find_referencing_symbols",
     }
 )
 

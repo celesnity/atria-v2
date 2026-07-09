@@ -13,8 +13,6 @@ PLANNING_TOOLS = {
     "get_process_output",
     "read_pdf",  # PDF extraction is read-only
     # Symbol tools (read-only)
-    "find_symbol",
-    "find_referencing_symbols",
     # MCP tool discovery (read-only)
     "search_tools",
     # Subagent spawning (subagents handle their own restrictions)

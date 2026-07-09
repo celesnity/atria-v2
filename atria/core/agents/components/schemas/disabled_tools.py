@@ -38,12 +38,6 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         # NOTE: send_image is intentionally NOT disabled — it pushes images to
         # the web chat.
         # Code symbol tools + notebook
-        "find_symbol",
-        "rename_symbol",
-        "find_referencing_symbols",
-        "replace_symbol_body",
-        "insert_after_symbol",
-        "insert_before_symbol",
         "notebook_edit",
         # Subagents — this deployment does not spawn or manage subagents.
         "subagent",
