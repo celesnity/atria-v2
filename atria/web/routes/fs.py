@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import mimetypes
-import os
 import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from atria.db.connection import get_sessionmaker
-from atria.db.repositories.conversation_repo import ConversationRepository
+from atria.core.services.conversation_service import ConversationService
 from atria.web.dependencies.auth import require_authenticated_user
+from atria.web.dependencies.services import get_conversation_service
 from atria.web.state import broadcast_to_all_clients as _broadcast
 
 
@@ -48,25 +47,14 @@ def _resolve_safe(base: Path, user_path: str) -> Path:
     return target
 
 
-async def _conv_working_dir(conversation_id: int) -> Path:
-    sm = await get_sessionmaker()
-    repo = ConversationRepository(sm)
-    conv = await repo.get_by_id(conversation_id)
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    wd = conv["working_directory"]
-    if not wd or not os.path.isdir(wd):
-        raise HTTPException(status_code=404, detail="Working directory missing")
-    return Path(wd)
-
-
 @router.get("/{conversation_id}/fs/list")
 async def list_dir(
     conversation_id: int,
     path: str = Query(""),
     show_hidden: bool = Query(False),
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> dict:
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     target = _resolve_safe(base, path)
     if not target.is_dir():
         raise HTTPException(status_code=400, detail="not a directory")
@@ -102,8 +90,9 @@ async def list_dir(
 async def read_file(
     conversation_id: int,
     path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> StreamingResponse:
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     target = _resolve_safe(base, path)
     if not target.exists():
         raise HTTPException(status_code=404, detail="file not found")
@@ -155,10 +144,11 @@ _MAX_WRITE_BYTES: int = 25 * 1024 * 1024
 async def write_file(
     conversation_id: int,
     body: _WriteBody,
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> None:
     if len(body.content.encode("utf-8")) > _MAX_WRITE_BYTES:
         raise HTTPException(status_code=413, detail="content too large")
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     base_resolved = base.resolve(strict=True)
     if body.path.startswith(("/", "\\")):
         raise HTTPException(status_code=400, detail="absolute path not allowed")
@@ -189,6 +179,7 @@ async def write_file_binary(
     conversation_id: int,
     request: Request,
     path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> None:
     """Write raw bytes to ``path`` under the conversation's working directory.
 
@@ -199,7 +190,7 @@ async def write_file_binary(
     data = await request.body()
     if len(data) > _MAX_WRITE_BYTES:
         raise HTTPException(status_code=413, detail="content too large")
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     base_resolved = base.resolve(strict=True)
     if path.startswith(("/", "\\")):
         raise HTTPException(status_code=400, detail="absolute path not allowed")
@@ -236,9 +227,10 @@ class _RenameBody(BaseModel):
 async def rename_path(
     conversation_id: int,
     body: _RenameBody,
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> None:
     """Rename/move a file or directory within the conversation's working directory."""
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     src = _resolve_safe(base, body.from_)
     dst = _resolve_safe(base, body.to)
     if not src.exists():
@@ -263,9 +255,10 @@ async def rename_path(
 async def delete_path(
     conversation_id: int,
     path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
 ) -> None:
     """Delete a file (unlink) or directory (recursive) within the working directory."""
-    base = await _conv_working_dir(conversation_id)
+    base = await convs.working_dir(conversation_id)
     target = _resolve_safe(base, path)
     if not target.exists():
         raise HTTPException(status_code=404, detail="not found")
