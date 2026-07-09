@@ -7,99 +7,74 @@ from typing import Any, TYPE_CHECKING
 if TYPE_CHECKING:
     from .manager import SubAgentManager
 
-TASK_TOOL_NAME = "subagent"
+REQUEST_HELP_TOOL_NAME = "request_help"
 
-TASK_TOOL_DESCRIPTION = """Delegate one or more independent tasks to ephemeral subagents.
+REQUEST_HELP_TOOL_DESCRIPTION = """Post an un-addressed request for help on the shared blackboard.
 
-Each task in `tasks` runs as its own subagent on a background worker, in an
-isolated context, and writes its findings back to a shared blackboard. All tasks
-in one call share that blackboard, so a later wave can build on what an earlier
-wave committed.
+You do NOT choose who answers. Every helper agent independently decides whether it
+can contribute, based on its own capabilities. Volunteers run in the background and
+write their answers to a response board; you collect them with
+`get_help_responses(request_id)`.
 
 ## When to Use
-- Complex, self-contained work that can be handed off: research, analysis, code
-  review, or a focused change
-- Several independent pieces of work — pass them all at once to run concurrently
-- Tasks requiring focused reasoning or heavy token usage in an isolated context
+- You need information, analysis, or a focused change and are not sure which helper
+  is best suited — describe WHAT you need and let helpers self-select.
 
-## When NOT to Use
-- Simple tasks that can be completed with a few direct tool calls
-- Tasks requiring intermediate feedback or clarification mid-run
-
-## Available Subagent Types
+## Available Helpers (they decide, not you)
 {subagent_descriptions}
 
 ## Usage Notes
-1. Put everything the subagent needs in `prompt` — it cannot see the conversation.
-2. Pass multiple items in `tasks` to run them concurrently on the worker pool.
-3. Tasks are independent — there is no dependency ordering. When step B needs
-   step A's result, run A first, collect it with `get_subagent_output(job_id)`,
-   then issue B in a new call.
-4. Returns a `job_id`; use `get_subagent_output(job_id)` to poll and collect.
-5. Delegation requires Redis and a running `atria-worker`."""
+1. Put everything a helper needs in `prompt` — helpers cannot see the conversation.
+2. `max_helpers` caps how many volunteers run (default 3).
+3. Returns a `request_id`; poll with `get_help_responses(request_id)`.
+4. Requires Redis and a running `atria-worker`. If no helper volunteers, you get an
+   empty response set — plan, run code yourself, or re-request differently."""
 
 
-def create_task_tool_schema(manager: "SubAgentManager") -> dict[str, Any]:
-    """Create the unified ``subagent`` tool schema with available subagent types.
+def create_request_help_schema(manager: "SubAgentManager") -> dict[str, Any]:
+    """Create the ``request_help`` tool schema (no caller-chosen routing).
 
     Args:
-        manager: The SubAgentManager with registered subagents
+        manager: The SubAgentManager with registered subagents.
 
     Returns:
-        OpenAI-compatible tool schema dict
+        OpenAI-compatible tool schema dict.
     """
-    # Use get_agent_configs() which reads from ALL_SUBAGENTS directly
-    # instead of get_available_types() which requires register_defaults() to be called first
     agent_configs = manager.get_agent_configs()
-
-    available_types = [c.name for c in agent_configs]
-
-    # Build subagent descriptions for tool description
-    subagent_lines = []
-    for config in agent_configs:
-        subagent_lines.append(f"- **{config.name}**: {config.description}")
-
-    subagent_descriptions = "\n".join(subagent_lines)
-
+    lines = []
+    for c in agent_configs:
+        if c.name == "ask-user":
+            continue  # builtin UI action, never a volunteer
+        # Profile the helper by its capability_profile, or fall back to its
+        # description so dynamically-registered module workers self-select too.
+        profile = getattr(c, "capability_profile", None) or getattr(c, "description", None)
+        if not profile:
+            continue
+        lines.append(f"- **{c.name}**: {profile}")
+    subagent_descriptions = "\n".join(lines) or "- (no helpers with profiles registered)"
     return {
         "type": "function",
         "function": {
-            "name": TASK_TOOL_NAME,
-            "description": TASK_TOOL_DESCRIPTION.format(
+            "name": REQUEST_HELP_TOOL_NAME,
+            "description": REQUEST_HELP_TOOL_DESCRIPTION.format(
                 subagent_descriptions=subagent_descriptions
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "tasks": {
-                        "type": "array",
+                    "prompt": {
+                        "type": "string",
                         "description": (
-                            "One or more independent tasks to delegate. Each runs as "
-                            "its own subagent on a worker; all share one blackboard so "
-                            "they read each other's committed notes. A single "
-                            "delegation is just a one-element list."
+                            "Full self-contained description of what you need. Helpers "
+                            "cannot see the conversation."
                         ),
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "subagent_type": {
-                                    "type": "string",
-                                    "description": "Which subagent type runs this task.",
-                                    "enum": available_types,
-                                },
-                                "prompt": {
-                                    "type": "string",
-                                    "description": (
-                                        "Full self-contained instructions; the subagent "
-                                        "has no access to conversation history."
-                                    ),
-                                },
-                            },
-                            "required": ["subagent_type", "prompt"],
-                        },
+                    },
+                    "max_helpers": {
+                        "type": "integer",
+                        "description": "Max volunteers to run (default 3).",
                     },
                 },
-                "required": ["tasks"],
+                "required": ["prompt"],
             },
         },
     }

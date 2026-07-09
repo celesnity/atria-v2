@@ -24,6 +24,7 @@ class AgentSuite:
     """Agent suite for runtime."""
 
     normal: AgentInterface
+    assistant: AgentInterface | None = None
     subagent_manager: SubAgentManager | None = None
     skill_loader: "SkillLoader | None" = None
 
@@ -92,8 +93,19 @@ class AgentFactory:
             env_context=self._env_context,
         )
 
+        from atria.core.agents.assistant_agent import AssistantAgent
+
+        assistant = AssistantAgent(
+            self._config,
+            self._tool_registry,
+            self._mode_manager,
+            self._working_dir,
+            env_context=self._env_context,
+        )
+
         return AgentSuite(
             normal=normal,
+            assistant=assistant,
             subagent_manager=self._subagent_manager,
             skill_loader=self._skill_loader,
         )
@@ -155,3 +167,5 @@ class AgentFactory:
         """Refresh tool metadata for the agent."""
         if hasattr(suite.normal, "refresh_tools"):
             suite.normal.refresh_tools()
+        if suite.assistant is not None and hasattr(suite.assistant, "refresh_tools"):
+            suite.assistant.refresh_tools()

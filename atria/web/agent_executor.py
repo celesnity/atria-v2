@@ -243,7 +243,7 @@ class AgentExecutor:
         from atria.web.web_ask_user_manager import WebAskUserManager
         from atria.web.web_ui_callback import WebUICallback
         from atria.web.ws_tool_broadcaster import WebSocketToolBroadcaster
-        from atria.repl.react_executor import ReactExecutor
+        from atria.core.agents.execution.react_executor import ReactExecutor
 
         # Clear any previous interrupt flags
         self.state.clear_interrupt()
@@ -360,6 +360,13 @@ class AgentExecutor:
 
         # Get agent
         agent = runtime_suite.agents.normal
+        assistant_selected = False
+        if (
+            getattr(config, "agent_mode", "normal") == "assistant"
+            and getattr(runtime_suite.agents, "assistant", None) is not None
+        ):
+            agent = runtime_suite.agents.assistant
+            assistant_selected = True
         agent.tool_registry = wrapped_registry
         agent._cost_tracker = cost_tracker
 
@@ -414,20 +421,29 @@ class AgentExecutor:
         # Inject the file-based module SKILL block into the cached prefix so the LLM
         # provider's prefix cache picks it up. Stable across turns; rebuilt only when
         # the registry version bumps (i.e. when files change on disk).
-        try:
-            from atria.core.modules.prompt import build_skill_block
-            from atria.core.modules.registry import get_registry as _get_module_registry
+        #
+        # Skip entirely for assistant deployments: AssistantAgent.build_system_prompt
+        # already embeds its own SKILL block (built with
+        # include_subagent_delegation=False) directly into system_content above. The
+        # block built here always defaults to include_subagent_delegation=True, so it
+        # is a *different* string (once any module manifest sets
+        # subagent.enabled: true, the two no longer coincidentally match) and must
+        # never be appended on top of the assistant's prompt.
+        if not assistant_selected:
+            try:
+                from atria.core.modules.prompt import build_skill_block
+                from atria.core.modules.registry import get_registry as _get_module_registry
 
-            _modules_block = build_skill_block(_get_module_registry())
-        except Exception as _mod_err:  # never let modules break a chat turn
-            logger.warning("Failed to build module SKILL block: %s", _mod_err)
-            _modules_block = ""
+                _modules_block = build_skill_block(_get_module_registry())
+            except Exception as _mod_err:  # never let modules break a chat turn
+                logger.warning("Failed to build module SKILL block: %s", _mod_err)
+                _modules_block = ""
 
-        if _modules_block:
-            skill_block = "\n\n" + _modules_block
-            system_content += skill_block
-            if hasattr(agent, "_system_stable") and agent._system_stable:
-                agent._system_stable += skill_block
+            if _modules_block and _modules_block not in system_content:
+                skill_block = "\n\n" + _modules_block
+                system_content += skill_block
+                if hasattr(agent, "_system_stable") and agent._system_stable:
+                    agent._system_stable += skill_block
 
         if not message_history or message_history[0].get("role") != "system":
             message_history.insert(0, {"role": "system", "content": system_content})
@@ -481,7 +497,7 @@ class AgentExecutor:
 
             # Expand @file mentions — TUI path does this via query_enhancer.prepare_messages
             import re as _re
-            from atria.repl.file_content_injector import FileContentInjector
+            from atria.core.agents.execution.file_content_injector import FileContentInjector
 
             _injector = FileContentInjector(file_ops, config, working_dir)
             _injection = _injector.inject_content(message)

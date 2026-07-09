@@ -16,7 +16,6 @@ from .interaction_tools import SCHEMAS as _INTERACTION
 from .knowledge_tools import SCHEMAS as _KNOWLEDGE
 from .orchestration_tools import SCHEMAS as _ORCHESTRATION
 from .process_tools import SCHEMAS as _PROCESS
-from .symbol_tools import SCHEMAS as _SYMBOL
 from .system_tools import SCHEMAS as _SYSTEM
 from .web_tools import SCHEMAS as _WEB
 
@@ -27,7 +26,6 @@ BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
     *_WEB,
     *_INTERACTION,
     *_SYSTEM,
-    *_SYMBOL,
     *_KNOWLEDGE,
     *_AGENT,
     *_ORCHESTRATION,

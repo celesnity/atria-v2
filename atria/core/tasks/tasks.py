@@ -46,6 +46,29 @@ def _run_subagent_sync(runtime_suite: Any, deps: Any, payload: SubagentTaskPaylo
     }
 
 
+async def _write_response(
+    redis: Any, run_id: str, responder: str, content: str, confidence: float
+) -> None:
+    """Write one helper answer to the response board β_r (best-effort)."""
+    import time
+
+    from atria.core.blackboard.models import Response
+    from atria.core.blackboard.response_store import ResponseStore
+
+    store = ResponseStore(redis, run_id=run_id, ttl=3600)
+    await store.add([Response(request_id=run_id, responder=responder,
+                              content=content[:1000], confidence=confidence, ts=time.time())])
+    try:
+        from atria.core.blackboard.board_events import publish_board_event
+
+        await publish_board_event(redis, run_id, "response", {
+            "request_id": run_id, "responder": responder,
+            "content": content[:1000], "confidence": confidence,
+        })
+    except Exception:  # noqa: BLE001 — viewer event is best-effort
+        pass
+
+
 async def _claim_and_load(redis: Any, bb_id: str, task_id: str, ttl: int):
     """Claim ``task_id`` on the blackboard and return its Task, or None.
 
@@ -95,6 +118,11 @@ async def run_background_subagent(payload: dict) -> dict:
             await task_store.set_status(
                 p.subagent_task_id, status, result=str(result.get("content", ""))[:280]
             )
+            if status == "done":
+                await _write_response(
+                    redis, p.blackboard_task_id, p.subagent_type,
+                    str(result.get("content", "")), p.bid_confidence,
+                )
         return result
     except Exception as exc:  # noqa: BLE001
         logger.exception("background subagent failed: %s", exc)

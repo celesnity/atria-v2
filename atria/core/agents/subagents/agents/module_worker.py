@@ -25,5 +25,9 @@ MODULE_WORKER_SUBAGENT: SubAgentSpec = {
         "commands. Shares a blackboard with peer workers; returns a result summary."
     ),
     "system_prompt": load_prompt("subagents/subagent-module-worker", fallback=_FALLBACK),
+    "capability_profile": (
+        "Implements a focused change or task within a single module using that "
+        "module's documented commands (run scripts, invoke skills, edit files)."
+    ),
     "tools": ["run_command", "invoke_skill", "read_file", "write_file"],
 }

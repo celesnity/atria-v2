@@ -24,6 +24,9 @@ class SubAgentSpec(TypedDict):
     system_prompt: str
     """System prompt that defines the subagent's behavior and role."""
 
+    capability_profile: NotRequired[str]
+    """Short prose describing what this helper can do, used for autonomous bidding."""
+
     tools: NotRequired[list[str]]
     """List of tool names this subagent has access to.
     If not specified, inherits all tools from the main agent."""

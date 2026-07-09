@@ -220,7 +220,7 @@ class ExecutionMixin:
         # For Docker subagents, caller should use create_docker_nested_callback() first
         nested_callback = None
         if ui_callback is not None:
-            from atria.ui_textual.nested_callback import NestedUICallback
+            from atria.core.agents.callbacks.nested_callback import NestedUICallback
 
             if isinstance(ui_callback, NestedUICallback):
                 # Already nested (e.g., from create_docker_nested_callback), use directly

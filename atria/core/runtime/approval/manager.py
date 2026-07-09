@@ -100,7 +100,7 @@ class ApprovalManager:
         from prompt_toolkit.layout import Layout
         from prompt_toolkit.layout.containers import Window
         from prompt_toolkit.layout.controls import FormattedTextControl
-        from atria.ui_textual.style_tokens import PT_META_GREY
+        from atria.core.agents.display.style_tokens import PT_META_GREY
 
         selected_index = [0]
 
