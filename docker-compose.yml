@@ -147,7 +147,6 @@ services:
     depends_on:
       - qdrant
       - neo4j
-      - tei
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
       interval: 15s
