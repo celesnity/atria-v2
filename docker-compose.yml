@@ -130,7 +130,9 @@ services:
     restart: unless-stopped
 
   maintenance-copilot:
-    build: ./modules/maintenance_copilot/backend
+    build:
+      context: ./modules/maintenance_copilot
+      dockerfile: backend/Dockerfile
     ports:
       - "9200:9200"
     environment:

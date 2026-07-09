@@ -9,9 +9,11 @@ Endpoints:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import service  # backend/service.py (pipeline dir already on sys.path via service import)
@@ -116,3 +118,8 @@ def run(body: RunBody) -> dict:
         return service.run_query(text, int(body.args.get("k", 5)),
                                  body.args.get("ata"), body.args.get("revision", "current"))
     raise HTTPException(400, f"unsupported action {body.action!r}")
+
+
+_DASHBOARD_DIST = Path(os.environ.get("MC_DASHBOARD_DIST", "/app/frontend_dist"))
+if _DASHBOARD_DIST.is_dir():
+    app.mount("/dashboard", StaticFiles(directory=str(_DASHBOARD_DIST)), name="dashboard")
