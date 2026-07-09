@@ -1,4 +1,5 @@
 """Upload authorization + secure retrieval."""
+
 from __future__ import annotations
 
 import contextlib
@@ -41,29 +42,41 @@ def cli(*argv):
 
 
 def test_employee_cannot_upload(env):
-    code, out = cli("add-document", "--user", "U004", "--file", str(env),
-                    "--classification", "Confidential")
+    code, out = cli(
+        "add-document", "--user", "U004", "--file", str(env), "--classification", "Confidential"
+    )
     assert code == 1 and out["uploaded"] is False
     assert "Manager" in out["reason"]
 
 
 def test_manager_upload_sets_department_from_account(env):
-    code, out = cli("add-document", "--user", "U005", "--file", str(env),
-                    "--classification", "Confidential", "--title", "Ghi chú vận hành")
+    code, out = cli(
+        "add-document",
+        "--user",
+        "U005",
+        "--file",
+        str(env),
+        "--classification",
+        "Confidential",
+        "--title",
+        "Ghi chú vận hành",
+    )
     assert code == 0 and out["uploaded"] is True
     assert out["department"] == "OPS"  # U005's department, not from input
     assert out["doc_id"] == "DOC041"
 
 
 def test_invalid_classification_rejected(env):
-    code, out = cli("add-document", "--user", "U005", "--file", str(env),
-                    "--classification", "TopSecret")
+    code, out = cli(
+        "add-document", "--user", "U005", "--file", str(env), "--classification", "TopSecret"
+    )
     assert code == 1 and out["uploaded"] is False
 
 
 def test_uploaded_confidential_is_department_scoped(env):
-    _, up = cli("add-document", "--user", "U005", "--file", str(env),
-                "--classification", "Confidential")
+    _, up = cli(
+        "add-document", "--user", "U005", "--file", str(env), "--classification", "Confidential"
+    )
     doc_id = up["doc_id"]
     # same-department member can open and read content
     _, allow = cli("read-document", "--user", "U013", "--doc", doc_id)  # U013 = OPS
@@ -80,8 +93,17 @@ def test_upload_docx_extracts_text(env, tmp_path):
     doc.add_paragraph("Quy định SLA vận hành nội bộ")
     doc.save(str(path))
 
-    code, up = cli("add-document", "--user", "U005", "--file", str(path),
-                   "--classification", "Internal", "--title", "SLA")
+    code, up = cli(
+        "add-document",
+        "--user",
+        "U005",
+        "--file",
+        str(path),
+        "--classification",
+        "Internal",
+        "--title",
+        "SLA",
+    )
     assert code == 0 and up["uploaded"] is True
     assert up["extracted_chars"] > 0  # text was parsed out of the .docx
 
@@ -93,10 +115,18 @@ def test_upload_docx_extracts_text(env, tmp_path):
 
 def test_upload_text_triggers_indexing_indexed(env, monkeypatch):
     seen = {}
-    monkeypatch.setattr(workspace.ek_index, "index_document",
-                        lambda **kw: seen.update(kw) or True)
-    code, up = cli("add-document", "--user", "U005", "--file", str(env),
-                   "--classification", "Internal", "--title", "Chính sách")
+    monkeypatch.setattr(workspace.ek_index, "index_document", lambda **kw: seen.update(kw) or True)
+    code, up = cli(
+        "add-document",
+        "--user",
+        "U005",
+        "--file",
+        str(env),
+        "--classification",
+        "Internal",
+        "--title",
+        "Chính sách",
+    )
     assert code == 0 and up["index_status"] == "indexed"
     assert seen["doc_id"] == up["doc_id"] and seen["dept_code"] == "OPS"
     assert seen["classification"] == "Internal" and seen["owner"] == "U005"
@@ -105,30 +135,45 @@ def test_upload_text_triggers_indexing_indexed(env, monkeypatch):
 
 def test_upload_index_failure_sets_failed_but_upload_ok(env, monkeypatch):
     monkeypatch.setattr(workspace.ek_index, "index_document", lambda **kw: False)
-    code, up = cli("add-document", "--user", "U005", "--file", str(env),
-                   "--classification", "Internal")
+    code, up = cli(
+        "add-document", "--user", "U005", "--file", str(env), "--classification", "Internal"
+    )
     assert code == 0 and up["uploaded"] is True
     assert up["index_status"] == "failed"
 
 
 def test_upload_no_text_is_skipped(env, monkeypatch, tmp_path):
     calls = {"n": 0}
-    monkeypatch.setattr(workspace.ek_index, "index_document",
-                        lambda **kw: calls.__setitem__("n", calls["n"] + 1) or True)
+    monkeypatch.setattr(
+        workspace.ek_index,
+        "index_document",
+        lambda **kw: calls.__setitem__("n", calls["n"] + 1) or True,
+    )
     blank = tmp_path / "blank.bin"
     blank.write_bytes(b"\x00\x01\x02")
-    code, up = cli("add-document", "--user", "U005", "--file", str(blank),
-                   "--classification", "Internal", "--title", "blank")
+    code, up = cli(
+        "add-document",
+        "--user",
+        "U005",
+        "--file",
+        str(blank),
+        "--classification",
+        "Internal",
+        "--title",
+        "blank",
+    )
     assert code == 0 and up["index_status"] == "skipped"
     assert calls["n"] == 0  # indexer not called when there is no text
 
 
 def test_delete_removes_from_index(env, monkeypatch):
-    _, up = cli("add-document", "--user", "U005", "--file", str(env),
-                "--classification", "Internal")
+    _, up = cli(
+        "add-document", "--user", "U005", "--file", str(env), "--classification", "Internal"
+    )
     removed = {}
-    monkeypatch.setattr(workspace.ek_index, "remove_document",
-                        lambda **kw: removed.update(kw) or True)
+    monkeypatch.setattr(
+        workspace.ek_index, "remove_document", lambda **kw: removed.update(kw) or True
+    )
     code, out = cli("delete-document", "--user", "U005", "--doc", up["doc_id"])
     assert code == 0 and out["deleted"] is True
     assert removed["doc_id"] == up["doc_id"]
@@ -141,6 +186,15 @@ def test_upload_via_base64_stdin(env, monkeypatch, tmp_path):
 
     payload = base64.b64encode("# Ghi chú\nNội dung base64.".encode("utf-8")).decode()
     monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(payload.encode())))
-    code, up = cli("add-document", "--user", "U005", "--stdin", "--base64",
-                   "--filename", "note.md", "--classification", "Internal")
+    code, up = cli(
+        "add-document",
+        "--user",
+        "U005",
+        "--stdin",
+        "--base64",
+        "--filename",
+        "note.md",
+        "--classification",
+        "Internal",
+    )
     assert code == 0 and up["uploaded"] is True

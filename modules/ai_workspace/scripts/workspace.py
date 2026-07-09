@@ -36,6 +36,7 @@ def _require_user(user_id: str) -> "repo.ResolvedUser":
 
 # --- commands ---------------------------------------------------------------
 
+
 def cmd_seed() -> int:
     from seed_db import seed  # local import; tools dir on path
 
@@ -58,24 +59,34 @@ def cmd_login(user_id: str, password: str) -> int:
         _print({"authenticated": False, "reason": "invalid credentials"})
         return 1
     audit.append_event({"type": "login", "user_id": user_id, "ok": True})
-    _print({
-        "authenticated": True, "user_id": user.user_id, "full_name": user.full_name,
-        "role": user.role, "department": user.department,
-        "can_upload": access.can_upload(user.role),
-    })
+    _print(
+        {
+            "authenticated": True,
+            "user_id": user.user_id,
+            "full_name": user.full_name,
+            "role": user.role,
+            "department": user.department,
+            "can_upload": access.can_upload(user.role),
+        }
+    )
     return 0
 
 
 def cmd_whoami(user_id: str) -> int:
     user = _require_user(user_id)
     matrix = repo.load_access_matrix()
-    _print({
-        "user_id": user.user_id, "full_name": user.full_name, "role": user.role,
-        "department": user.department, "can_upload": access.can_upload(user.role),
-        "accessible_classifications": sorted(
-            access.accessible_classifications(user.role, matrix)
-        ),
-    })
+    _print(
+        {
+            "user_id": user.user_id,
+            "full_name": user.full_name,
+            "role": user.role,
+            "department": user.department,
+            "can_upload": access.can_upload(user.role),
+            "accessible_classifications": sorted(
+                access.accessible_classifications(user.role, matrix)
+            ),
+        }
+    )
     return 0
 
 
@@ -89,16 +100,26 @@ def cmd_can_access(user_id: str, doc_id: str) -> int:
     decision = access.decide(
         user.role, user.department, doc["classification"], doc["department"], matrix
     )
-    audit.append_event({
-        "type": "can_access", "user_id": user.user_id, "doc_id": doc_id,
-        "decision": "allow" if decision.allowed else "deny",
-    })
-    _print({
-        "user_id": user.user_id, "role": user.role, "department": user.department,
-        "doc_id": doc_id, "classification": doc["classification"],
-        "department_of_doc": doc["department"], "allowed": decision.allowed,
-        "reason": decision.reason,
-    })
+    audit.append_event(
+        {
+            "type": "can_access",
+            "user_id": user.user_id,
+            "doc_id": doc_id,
+            "decision": "allow" if decision.allowed else "deny",
+        }
+    )
+    _print(
+        {
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "doc_id": doc_id,
+            "classification": doc["classification"],
+            "department_of_doc": doc["department"],
+            "allowed": decision.allowed,
+            "reason": decision.reason,
+        }
+    )
     return 0
 
 
@@ -110,22 +131,34 @@ def cmd_folders(user_id: str) -> int:
     for dept in repo.list_departments():
         code = dept["dept_code"]
         visible = sum(
-            1 for d in docs
-            if d["department"] == code and access.decide(
-                user.role, user.department, d["classification"], code, matrix
-            ).allowed
+            1
+            for d in docs
+            if d["department"] == code
+            and access.decide(user.role, user.department, d["classification"], code, matrix).allowed
         )
         is_own = code == user.department
-        folders.append({
-            "dept_code": code, "name_en": dept["name_en"], "name_vi": dept["name_vi"],
-            "knowledge_space": dept["knowledge_space"], "visible_count": visible,
-            "is_own": is_own,
-            # A folder is locked only when the user can see nothing in it — so the
-            # Company space stays open to everyone, other departments lock shut.
-            "locked": visible == 0,
-        })
-    _print({"user_id": user.user_id, "role": user.role, "department": user.department,
-            "can_upload": access.can_upload(user.role), "folders": folders})
+        folders.append(
+            {
+                "dept_code": code,
+                "name_en": dept["name_en"],
+                "name_vi": dept["name_vi"],
+                "knowledge_space": dept["knowledge_space"],
+                "visible_count": visible,
+                "is_own": is_own,
+                # A folder is locked only when the user can see nothing in it — so the
+                # Company space stays open to everyone, other departments lock shut.
+                "locked": visible == 0,
+            }
+        )
+    _print(
+        {
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "can_upload": access.can_upload(user.role),
+            "folders": folders,
+        }
+    )
     return 0
 
 
@@ -134,25 +167,40 @@ def cmd_workspace(user_id: str, department: str | None) -> int:
     matrix = repo.load_access_matrix()
     docs = repo.list_documents(department)
     visible = [
-        {"doc_id": d["doc_id"], "title": d["title"],
-         "classification": d["classification"], "department": d["department"],
-         "mime_type": d["mime_type"], "size_bytes": d["size_bytes"],
-         "uploaded_by_name": d["uploaded_by_name"], "created_at": d["created_at"],
-         "original_filename": d["original_filename"]}
+        {
+            "doc_id": d["doc_id"],
+            "title": d["title"],
+            "classification": d["classification"],
+            "department": d["department"],
+            "mime_type": d["mime_type"],
+            "size_bytes": d["size_bytes"],
+            "uploaded_by_name": d["uploaded_by_name"],
+            "created_at": d["created_at"],
+            "original_filename": d["original_filename"],
+        }
         for d in docs
         if access.decide(
             user.role, user.department, d["classification"], d["department"], matrix
         ).allowed
     ]
-    audit.append_event({
-        "type": "workspace", "user_id": user.user_id, "department": department,
-        "visible_doc_ids": [d["doc_id"] for d in visible],
-    })
-    _print({
-        "user_id": user.user_id, "role": user.role, "department": user.department,
-        "filter_department": department, "total_visible": len(visible),
-        "documents": visible,
-    })
+    audit.append_event(
+        {
+            "type": "workspace",
+            "user_id": user.user_id,
+            "department": department,
+            "visible_doc_ids": [d["doc_id"] for d in visible],
+        }
+    )
+    _print(
+        {
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "filter_department": department,
+            "total_visible": len(visible),
+            "documents": visible,
+        }
+    )
     return 0
 
 
@@ -168,15 +216,19 @@ def cmd_add_document(
 ) -> int:
     user = _require_user(user_id)
     if not access.can_upload(user.role):
-        audit.append_event({"type": "upload", "user_id": user.user_id, "ok": False,
-                             "reason": "not_authorized"})
-        _print({"uploaded": False,
-                "reason": f"role {user.role} may not upload; Manager+ required"})
+        audit.append_event(
+            {"type": "upload", "user_id": user.user_id, "ok": False, "reason": "not_authorized"}
+        )
+        _print({"uploaded": False, "reason": f"role {user.role} may not upload; Manager+ required"})
         return 1
     if classification not in access.CLASSIFICATIONS:
-        _print({"uploaded": False,
+        _print(
+            {
+                "uploaded": False,
                 "reason": f"invalid classification: {classification!r}",
-                "valid": list(access.CLASSIFICATIONS)})
+                "valid": list(access.CLASSIFICATIONS),
+            }
+        )
         return 1
 
     # Department is the uploader's own by default; only an Executive may target
@@ -184,8 +236,7 @@ def cmd_add_document(
     target_dept = user.department
     if department and department != user.department:
         if user.role != "Executive":
-            _print({"uploaded": False,
-                    "reason": "chỉ Executive được tải lên phòng khác"})
+            _print({"uploaded": False, "reason": "chỉ Executive được tải lên phòng khác"})
             return 1
         if department not in {d["dept_code"] for d in repo.list_departments()}:
             _print({"uploaded": False, "reason": f"phòng không tồn tại: {department}"})
@@ -248,9 +299,15 @@ def cmd_add_document(
             extracted_chars = len(text)
 
     repo.insert_document(
-        doc_id=doc_id, title=doc_title, dept_code=target_dept,
-        classification_code=classification, file_path=rel, original_filename=src_name,
-        mime_type=mime, size_bytes=size, uploaded_by=user.user_id,
+        doc_id=doc_id,
+        title=doc_title,
+        dept_code=target_dept,
+        classification_code=classification,
+        file_path=rel,
+        original_filename=src_name,
+        mime_type=mime,
+        size_bytes=size,
+        uploaded_by=user.user_id,
     )
 
     # Push into EK for AI search (best-effort; indexing never fails the upload).
@@ -263,25 +320,43 @@ def cmd_add_document(
             index_text = ""
     if index_text.strip():
         indexed = ek_index.index_document(
-            doc_id=doc_id, title=doc_title, dept_code=target_dept,
-            classification=classification, text=index_text, owner=user.user_id,
+            doc_id=doc_id,
+            title=doc_title,
+            dept_code=target_dept,
+            classification=classification,
+            text=index_text,
+            owner=user.user_id,
         )
         index_status = "indexed" if indexed else "failed"
     else:
         index_status = "skipped"
     repo.set_index_status(doc_id, index_status)
 
-    audit.append_event({
-        "type": "upload", "user_id": user.user_id, "ok": True, "doc_id": doc_id,
-        "department": target_dept, "classification": classification,
-        "extracted_chars": extracted_chars, "index_status": index_status,
-    })
-    _print({
-        "uploaded": True, "doc_id": doc_id, "title": doc_title,
-        "department": target_dept, "classification": classification,
-        "size_bytes": size, "file_path": rel, "extracted_chars": extracted_chars,
-        "index_status": index_status,
-    })
+    audit.append_event(
+        {
+            "type": "upload",
+            "user_id": user.user_id,
+            "ok": True,
+            "doc_id": doc_id,
+            "department": target_dept,
+            "classification": classification,
+            "extracted_chars": extracted_chars,
+            "index_status": index_status,
+        }
+    )
+    _print(
+        {
+            "uploaded": True,
+            "doc_id": doc_id,
+            "title": doc_title,
+            "department": target_dept,
+            "classification": classification,
+            "size_bytes": size,
+            "file_path": rel,
+            "extracted_chars": extracted_chars,
+            "index_status": index_status,
+        }
+    )
     return 0
 
 
@@ -296,15 +371,28 @@ def cmd_delete_document(user_id: str, doc_id: str) -> int:
         user.role == "Executive" or doc["department"] == user.department
     )
     if not authorized:
-        audit.append_event({"type": "delete", "user_id": user.user_id, "doc_id": doc_id,
-                             "ok": False, "reason": "not_authorized"})
-        _print({"deleted": False,
-                "reason": "cần Manager+ và đúng phòng (hoặc Executive)"})
+        audit.append_event(
+            {
+                "type": "delete",
+                "user_id": user.user_id,
+                "doc_id": doc_id,
+                "ok": False,
+                "reason": "not_authorized",
+            }
+        )
+        _print({"deleted": False, "reason": "cần Manager+ và đúng phòng (hoặc Executive)"})
         return 1
     repo.set_document_status(doc_id, "deleted")
     ek_index.remove_document(doc_id=doc_id)  # drop chunks from the index (best-effort)
-    audit.append_event({"type": "delete", "user_id": user.user_id, "doc_id": doc_id,
-                        "ok": True, "department": doc["department"]})
+    audit.append_event(
+        {
+            "type": "delete",
+            "user_id": user.user_id,
+            "doc_id": doc_id,
+            "ok": True,
+            "department": doc["department"],
+        }
+    )
     _print({"deleted": True, "doc_id": doc_id, "department": doc["department"]})
     return 0
 
@@ -322,11 +410,17 @@ def cmd_manage(user_id: str, department: str | None) -> int:
         scope = user.department  # Manager/Director: own department only
         manageable = [user.department]
     docs = repo.list_documents(scope)
-    _print({
-        "user_id": user.user_id, "role": user.role, "department": user.department,
-        "scope": scope or "ALL", "manageable_departments": manageable,
-        "total": len(docs), "documents": docs,
-    })
+    _print(
+        {
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "scope": scope or "ALL",
+            "manageable_departments": manageable,
+            "total": len(docs),
+            "documents": docs,
+        }
+    )
     return 0
 
 
@@ -335,19 +429,27 @@ def cmd_stats(user_id: str) -> int:
     user = _require_user(user_id)
     matrix = repo.load_access_matrix()
     visible = [
-        d for d in repo.list_documents()
-        if access.decide(user.role, user.department, d["classification"],
-                         d["department"], matrix).allowed
+        d
+        for d in repo.list_documents()
+        if access.decide(
+            user.role, user.department, d["classification"], d["department"], matrix
+        ).allowed
     ]
     by_class: dict[str, int] = {}
     by_dept: dict[str, int] = {}
     for d in visible:
         by_class[d["classification"]] = by_class.get(d["classification"], 0) + 1
         by_dept[d["department"]] = by_dept.get(d["department"], 0) + 1
-    _print({
-        "user_id": user.user_id, "role": user.role, "department": user.department,
-        "total_visible": len(visible), "by_classification": by_class, "by_department": by_dept,
-    })
+    _print(
+        {
+            "user_id": user.user_id,
+            "role": user.role,
+            "department": user.department,
+            "total_visible": len(visible),
+            "by_classification": by_class,
+            "by_department": by_dept,
+        }
+    )
     return 0
 
 
@@ -383,19 +485,28 @@ def cmd_read_document(user_id: str, doc_id: str) -> int:
     decision = access.decide(
         user.role, user.department, doc["classification"], doc["department"], matrix
     )
-    audit.append_event({
-        "type": "read_document", "user_id": user.user_id, "doc_id": doc_id,
-        "decision": "allow" if decision.allowed else "deny",
-    })
+    audit.append_event(
+        {
+            "type": "read_document",
+            "user_id": user.user_id,
+            "doc_id": doc_id,
+            "decision": "allow" if decision.allowed else "deny",
+        }
+    )
     if not decision.allowed:
         _print({"allowed": False, "doc_id": doc_id, "reason": decision.reason})
         return 0
     name = doc["original_filename"] or ""
     mime = doc["mime_type"] or ""
     payload = {
-        "allowed": True, "doc_id": doc_id, "title": doc["title"],
-        "classification": doc["classification"], "department": doc["department"],
-        "mime_type": mime, "original_filename": name, "size_bytes": doc["size_bytes"],
+        "allowed": True,
+        "doc_id": doc_id,
+        "title": doc["title"],
+        "classification": doc["classification"],
+        "department": doc["department"],
+        "mime_type": mime,
+        "original_filename": name,
+        "size_bytes": doc["size_bytes"],
     }
     import base64
     import convert
@@ -470,16 +581,24 @@ def cmd_reindex(user_id: str) -> int:
             sidecar = storage.sidecar_path(rel)
             if rel and storage.exists(sidecar):
                 text = storage.read_text(sidecar)
-            elif (rel and storage.exists(rel)
-                  and storage.is_text(d.get("mime_type", ""), d.get("original_filename", ""))):
+            elif (
+                rel
+                and storage.exists(rel)
+                and storage.is_text(d.get("mime_type", ""), d.get("original_filename", ""))
+            ):
                 text = storage.read_text(rel)
         except OSError:
             text = ""
-        docs.append({
-            "doc_id": d["doc_id"], "title": d["title"], "department": d["department"],
-            "classification": d["classification"], "text": text,
-            "owner": d.get("uploaded_by") or "",
-        })
+        docs.append(
+            {
+                "doc_id": d["doc_id"],
+                "title": d["title"],
+                "department": d["department"],
+                "classification": d["classification"],
+                "text": text,
+                "owner": d.get("uploaded_by") or "",
+            }
+        )
     ok = ek_index.reindex(docs)
     for d in docs:
         status = "skipped" if not d["text"].strip() else ("indexed" if ok else "failed")
@@ -527,12 +646,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--user", required=True)
     p_add.add_argument("--file", default=None, help="Source file path (or use --stdin).")
     p_add.add_argument("--stdin", action="store_true", help="Read file bytes from stdin.")
-    p_add.add_argument("--base64", action="store_true", help="Stdin payload is base64-encoded (binary-safe).")
+    p_add.add_argument(
+        "--base64", action="store_true", help="Stdin payload is base64-encoded (binary-safe)."
+    )
     p_add.add_argument("--filename", default=None, help="Original filename when using --stdin.")
     p_add.add_argument("--classification", required=True)
     p_add.add_argument("--title", default=None)
-    p_add.add_argument("--department", default=None,
-                       help="Target department (Executive only; else uploader's own).")
+    p_add.add_argument(
+        "--department",
+        default=None,
+        help="Target department (Executive only; else uploader's own).",
+    )
 
     p_read = sub.add_parser("read-document", help="Open a document (access-checked).")
     p_read.add_argument("--user", required=True)
@@ -577,10 +701,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "workspace":
         return cmd_workspace(args.user, args.department)
     if args.command == "add-document":
-        return cmd_add_document(args.user, args.file, args.classification, args.title,
-                                use_stdin=args.stdin, filename=args.filename,
-                                is_base64=getattr(args, "base64", False),
-                                department=args.department)
+        return cmd_add_document(
+            args.user,
+            args.file,
+            args.classification,
+            args.title,
+            use_stdin=args.stdin,
+            filename=args.filename,
+            is_base64=getattr(args, "base64", False),
+            department=args.department,
+        )
     if args.command == "read-document":
         return cmd_read_document(args.user, args.doc)
     if args.command == "delete-document":

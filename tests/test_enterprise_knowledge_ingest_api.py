@@ -31,8 +31,13 @@ def test_ingest_document_indexes_chunks_with_acl_payload():
     api = _load("ingest_api", "ek_api_1")
     s = _store()
     r = api.ingest_document(
-        "DOC900", "Chính sách nghỉ phép", "ENG", "Internal",
-        "Nhân viên được nghỉ phép theo quy định của phòng.", owner="U004", store=s
+        "DOC900",
+        "Chính sách nghỉ phép",
+        "ENG",
+        "Internal",
+        "Nhân viên được nghỉ phép theo quy định của phòng.",
+        owner="U004",
+        store=s,
     )
     assert r["chunks_indexed"] >= 1 and r["doc_tokens"] > 0
     pts, _ = s._q.scroll(s._collection, with_payload=True, limit=10)
@@ -87,10 +92,22 @@ def test_reindex_documents_rebuilds_with_exact_avgdl():
     api = _load("ingest_api", "ek_api_reindex")
     s = _store()
     docs = [
-        {"doc_id": "DOCA", "title": "A", "department": "ENG", "classification": "Internal",
-         "text": "a b c", "owner": "U004"},
-        {"doc_id": "DOCB", "title": "B", "department": "ENG", "classification": "Internal",
-         "text": "d e", "owner": "U004"},
+        {
+            "doc_id": "DOCA",
+            "title": "A",
+            "department": "ENG",
+            "classification": "Internal",
+            "text": "a b c",
+            "owner": "U004",
+        },
+        {
+            "doc_id": "DOCB",
+            "title": "B",
+            "department": "ENG",
+            "classification": "Internal",
+            "text": "d e",
+            "owner": "U004",
+        },
     ]
     res = api.reindex_documents(docs, store=s)
     assert res["chunks_indexed"] == 2

@@ -37,8 +37,13 @@ def _build_store() -> IndexStore:
 
 
 def _to_document(
-    doc_id: str, title: str, department: str, classification: str,
-    text: str, owner: str, knowledge_space: str | None,
+    doc_id: str,
+    title: str,
+    department: str,
+    classification: str,
+    text: str,
+    owner: str,
+    knowledge_space: str | None,
 ) -> Document:
     return Document(
         doc_id=doc_id,
@@ -103,8 +108,13 @@ def reindex_documents(docs: list[dict], store: IndexStore | None = None) -> dict
         if not d.get("text", "").strip():
             continue
         doc = _to_document(
-            d["doc_id"], d["title"], d["department"], d["classification"],
-            d["text"], d.get("owner", ""), None,
+            d["doc_id"],
+            d["title"],
+            d["department"],
+            d["classification"],
+            d["text"],
+            d.get("owner", ""),
+            None,
         )
         store.delete_by_doc_id(d["doc_id"])
         all_records.extend(chunk_document(doc))
