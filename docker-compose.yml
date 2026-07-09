@@ -15,6 +15,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Dedicated PostGIS + pgvector Postgres for the tasco_jarvis_map module
+  # (GeoRAG hybrid retrieval). Separate from the core `db` so the app database
+  # stays on the plain postgres image. Host port 5433.
+  map-db:
+    build: ./modules/tasco_jarvis_map/db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=atria_map
+      - POSTGRES_USER=atria_map
+      - POSTGRES_PASSWORD=atria_map
+    ports:
+      - "5433:5432"
+    volumes:
+      - map_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atria_map -d atria_map"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   adminer:
     image: adminer:latest
     restart: unless-stopped
@@ -67,6 +87,8 @@ services:
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
+      - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
+      - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
       - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
@@ -160,6 +182,8 @@ services:
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
+      - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
+      - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
       - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
@@ -262,6 +286,7 @@ services:
 volumes:
   atria_data:
   postgres_data:
+  map_postgres_data:
   tei_data:
   qdrant_data:
   neo4j_data:
