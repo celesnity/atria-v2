@@ -14,7 +14,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from identity import User  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+User = sibling("identity").User
 
 EXECUTIVE = "Executive"
 PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED = (

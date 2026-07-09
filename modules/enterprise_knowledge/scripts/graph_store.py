@@ -16,7 +16,9 @@ from typing import Callable, Mapping, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from identity import User  # type: ignore[import-not-found]
+from _bootstrap import sibling  # noqa: E402
+
+User = sibling("identity").User
 
 NS_LABEL = "EKNode"
 RunFn = Callable[[str, dict], list]
