@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any
 
 # pipeline/ is a flat, non-package dir; putting it on sys.path lets copilot run
 # its own sys.path.insert so budget/guardrails/synthesis/index_store/audit
@@ -162,6 +161,7 @@ def run_query(query: str, k: int = 5, ata: str | None = None,
         "confidence": round(confidence, 3),
         "confidence_band": band,
         "review_required": review_required,
+        # Key rename: pipeline returns 'disclaimer'; card uses 'advisory_note' (vs. guardrails.ADVISORY_NOTE on unavailable card).
         "advisory_note": ans.get("disclaimer", ""),
         "validation_warnings": ans.get("validation_warnings", []),
         "structured": structured,
@@ -177,3 +177,14 @@ def run_query(query: str, k: int = 5, ata: str | None = None,
     except Exception:
         pass
     return result
+
+
+def sidecar_health() -> dict:
+    """Probe the copilot sidecars (tei/llm/qdrant/neo4j) → {'name': 'ok'|'error: …'}."""
+    import copilot  # deferred heavy import; only runs in the service container
+    return copilot.check_health(copilot._build_probes())
+
+
+def record_signoff(payload: dict) -> dict:
+    """Append a licensed-engineer sign-off to the copilot's audit trail; returns the event."""
+    return audit.append_event(payload)

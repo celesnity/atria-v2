@@ -44,6 +44,6 @@
   "remote": {
     "name": "maintenance_copilot",
     "remoteEntry": "http://localhost:9200/dashboard/remoteEntry.js",
-    "exposed": {"dashboard": "./Dashboard", "cards": {"maintenance_answer": "./MaintenanceAnswerCard"}}
+    "exposed": {"dashboard": "./Dashboard"}
   }
 }

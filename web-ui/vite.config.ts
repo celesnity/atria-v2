@@ -55,18 +55,7 @@ export default defineConfig({
   build: {
     outDir: '../atria/web/static',
     emptyOutDir: true,
-    rollupOptions: {
-      output: {
-        // Split heavy deps into their own chunks so they're fetched on-demand,
-        // not blocking the editorial Login/Landing hero on cold start.
-        manualChunks: {
-          'chart-vendor': ['recharts'],
-          'markdown-vendor': ['react-markdown'],
-          'motion-vendor': ['motion', 'animejs'],
-          'monaco-vendor': ['@monaco-editor/react', 'monaco-editor'],
-          'xlsx-vendor': ['xlsx'],
-        },
-      },
-    },
+    // Module Federation manages chunk splitting; a manualChunks map here is
+    // ignored by the plugin. Rely on dynamic import() splits (viewers are lazy).
   },
 })
