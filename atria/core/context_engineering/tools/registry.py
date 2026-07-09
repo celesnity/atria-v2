@@ -50,14 +50,6 @@ from atria.core.context_engineering.tools.implementations.task_complete_tool imp
 from atria.core.context_engineering.tools.implementations.present_plan_tool import (
     PresentPlanTool,
 )
-from atria.core.context_engineering.tools.symbol_tools import (
-    handle_find_symbol,
-    handle_find_referencing_symbols,
-    handle_insert_before_symbol,
-    handle_insert_after_symbol,
-    handle_replace_symbol_body,
-    handle_rename_symbol,
-)
 
 from atria.core.context_engineering.tools.registry_mixins import (
     InlineToolsMixin,
@@ -209,13 +201,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "complete_todo": self._complete_todo,
             "list_todos": lambda args, ctx=None: self.todo_handler.list_todos(),
             "clear_todos": self._clear_todos,
-            # Symbol tools (LSP-based)
-            "find_symbol": lambda args: handle_find_symbol(args),
-            "find_referencing_symbols": lambda args: handle_find_referencing_symbols(args),
-            "insert_before_symbol": lambda args: handle_insert_before_symbol(args),
-            "insert_after_symbol": lambda args: handle_insert_after_symbol(args),
-            "replace_symbol_body": lambda args: handle_replace_symbol_body(args),
-            "rename_symbol": lambda args: handle_rename_symbol(args),
             # Unified subagent delegation (blackboard task channel)
             "subagent": self._execute_subagent_fanout,
             "get_subagent_output": self._execute_get_subagent_output,

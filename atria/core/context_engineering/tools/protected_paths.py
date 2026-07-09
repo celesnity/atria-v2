@@ -39,12 +39,6 @@ PROTECTED_PATH_PARAMS: dict[str, tuple[str, ...]] = {
     "list_files": ("path",),
     "search": ("path",),
     "notebook_edit": ("notebook_path",),
-    "find_symbol": ("file_path",),
-    "find_referencing_symbols": ("file_path",),
-    "insert_before_symbol": ("file_path",),
-    "insert_after_symbol": ("file_path",),
-    "replace_symbol_body": ("file_path",),
-    "rename_symbol": ("file_path",),
     # Corpus integrity: writes are denied too.
     "write_file": ("file_path",),
     "edit_file": ("file_path",),
