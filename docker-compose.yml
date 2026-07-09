@@ -123,9 +123,14 @@ services:
         condition: service_healthy
 
   # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
+  # Loopback-published so a HOST-run backend (uvicorn on the host, not in-compose)
+  # can reach it at localhost:6379 — the map module's per-turn session cache
+  # (session_context.py) needs this. In-compose services still use redis:6379.
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

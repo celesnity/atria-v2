@@ -237,6 +237,71 @@ def _parse_with_flags(args, categories: dict, terms: dict, max_ngram: int) -> di
     return parsed
 
 
+def _bare_city_update(parsed: dict) -> bool:
+    """True when a turn supplies ONLY a city (a follow-up like 'toi o SG') and
+    nothing else — even if the router misfired the intent to navigation (a bare
+    'toi o ...' can do that). Such a turn should re-scope the prior request."""
+    return bool(
+        parsed.get("city_entry")
+        and not parsed.get("category")
+        and not parsed.get("brands")
+        and parsed.get("coords") is None
+        and parsed.get("anchor_text") is None
+        and parsed.get("anchor_coords") is None
+    )
+
+
+def _city_entry_for(canonical: str):
+    """Reconstruct a gazetteer city entry from a cached canonical name."""
+    try:
+        return query_intent.context()["gaz"]["city_idx"].get(canonical)
+    except Exception:  # noqa: BLE001 - context/gaz unavailable -> skip the lever
+        return None
+
+
+def _merge_prior(args, parsed: dict) -> None:
+    """Fold prior-turn slots into the current parse so a conversation continues
+    in-context. ``args.prior`` is a dict of the last turn's resolved slots and is
+    set ONLY by the interactive jarvis_chat path — the benchmark/eval never set
+    it, so this is a strict no-op for them (gates untouched).
+
+    R1 bare-city-update: a city-only follow-up inherits the prior category/intent
+        and re-runs the prior search scoped to the NEW city ('benh vien' -> 'SG'
+        => hospitals in HCMC). Also undoes the spurious navigation misfire.
+    R2 city carry-forward: a category/brand turn with no city inherits the prior
+        city ('nha thuoc' after a city was established).
+
+    Writes BOTH steering levers: args.city/args.category (the plain engines read
+    only these) and parsed city_entry/category/intent (the geometric branches
+    read only these)."""
+    prior = getattr(args, "prior", None)
+    if not prior or not isinstance(prior, dict):
+        return
+    prior_city = prior.get("city_canonical")
+    prior_cat = prior.get("category")
+
+    # R1: the current turn is only a city; inherit what the user was asking for
+    # and scope it to the freshly named city.
+    if _bare_city_update(parsed) and prior_cat:
+        parsed["category"] = prior_cat
+        args.category = prior_cat
+        parsed["intent"] = "category"
+        parsed["nav"] = False               # cancel the 'toi o ...' nav misfire
+        parsed["destination_text"] = None
+        parsed["origin_text"] = None
+        parsed["_inherited"] = True
+        args.city = parsed["city_entry"]["canonical"]
+        return
+
+    # R2: a content turn with no city of its own inherits the prior city.
+    if prior_city and parsed.get("city_entry") is None and not getattr(args, "city", None):
+        args.city = prior_city
+        entry = _city_entry_for(prior_city)
+        if entry is not None:
+            parsed["city_entry"] = entry
+        parsed["_inherited"] = True
+
+
 def _confidence(intent: str, results: list, anchor: dict | None) -> float:
     """A 0..1 confidence for the README output contract."""
     if not results:
@@ -259,6 +324,7 @@ def cmd_search(args) -> dict:
     for both backends. Only PLAIN scoring dispatches to the active engine."""
     categories, pois, terms, max_ngram = _load()
     parsed = _parse_with_flags(args, categories, terms, max_ngram)
+    _merge_prior(args, parsed)  # multi-turn context (no-op unless args.prior set)
     intent = parsed["intent"]
 
     if intent in ("coordinate", "reverse_geocode") and parsed["coords"] is not None:
@@ -285,7 +351,13 @@ def cmd_search(args) -> dict:
                                       (anchor["lat"], anchor["lng"]), anchor)
         # tentative-split revert: anchor unresolved -> plain, city-filtered search
 
-    return _dispatch(_cmd_search_json, "cmd_search_db", args)
+    resp = _dispatch(_cmd_search_json, "cmd_search_db", args)
+    if parsed.get("_inherited"):
+        # The plain engines re-parse the raw text internally, so a follow-up like
+        # "toi o SG" re-derives its nav misfire there and mislabels the response.
+        # Restamp the intent from the authoritative merged parse.
+        resp["intent"] = query_intent.competition_intent(parsed)
+    return resp
 
 
 def cmd_near(args) -> dict:
