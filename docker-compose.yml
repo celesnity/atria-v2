@@ -89,7 +89,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
     depends_on:
@@ -152,19 +152,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       - ./modules:/app/modules
     entrypoint:
       - /bin/sh
       - -c
       - >
-        mkdir -p /root/.atria &&
+        mkdir -p /home/atria/.atria &&
         : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
         printf '{"model":"%s","api_base_url":"%s"}\n'
           "$${ATRIA_MODEL}"
           "$${ATRIA_API_BASE_URL}"
-          > /root/.atria/settings.json &&
+          > /home/atria/.atria/settings.json &&
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
     depends_on:
       db:
