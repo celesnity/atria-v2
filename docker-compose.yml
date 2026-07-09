@@ -89,7 +89,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
     depends_on:
@@ -129,6 +129,37 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  maintenance-copilot:
+    build:
+      context: ./modules/maintenance_copilot
+      dockerfile: backend/Dockerfile
+    ports:
+      - "9200:9200"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      - MC_QDRANT_URL=http://qdrant:6333
+      - MC_NEO4J_URI=bolt://neo4j:7687
+      - MC_NEO4J_USER=neo4j
+      - MC_NEO4J_PASSWORD=atria-neo4j
+      - MC_PUBLIC_BASE=http://localhost:9200
+      - MC_AUDIT_LOG=/app/data/audit.log.jsonl
+    volumes:
+      - mc_audit:/app/data
+    depends_on:
+      - qdrant
+      - neo4j
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
   # divide + parallel). Shares modules + ~/.atria with the web service so
   # dispatched work and the dashboard read/write the same data.
@@ -152,19 +183,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       - ./modules:/app/modules
     entrypoint:
       - /bin/sh
       - -c
       - >
-        mkdir -p /root/.atria &&
+        mkdir -p /home/atria/.atria &&
         : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
         printf '{"model":"%s","api_base_url":"%s"}\n'
           "$${ATRIA_MODEL}"
           "$${ATRIA_API_BASE_URL}"
-          > /root/.atria/settings.json &&
+          > /home/atria/.atria/settings.json &&
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
     depends_on:
       db:
@@ -225,3 +256,4 @@ volumes:
   neo4j_data:
   hf_cache:
   asr_models:
+  mc_audit:

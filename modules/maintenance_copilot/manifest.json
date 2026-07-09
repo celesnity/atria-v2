@@ -20,5 +20,30 @@
     "enabled": false,
     "model": null,
     "tools": null
+  },
+  "service": {
+    "connector_url": "http://maintenance-copilot:9200",
+    "health_path": "/connector/health",
+    "tools": [
+      {
+        "name": "maintenance_copilot_query",
+        "description": "Answer an aircraft-maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA) with grounded RAG: returns a cited, confidence-scored answer and renders it as a maintenance-answer card in the UI. Advisory only — never a dispatch decision.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {"type": "string", "description": "The maintenance question, in English."},
+            "k": {"type": "integer", "default": 5, "description": "Passages to retrieve."},
+            "ata": {"type": "string", "description": "Optional ATA chapter filter, e.g. '32'."},
+            "revision": {"type": "string", "default": "current", "description": "'current', a specific revision, or 'none'."}
+          },
+          "required": ["query"]
+        }
+      }
+    ]
+  },
+  "remote": {
+    "name": "maintenance_copilot",
+    "remoteEntry": "http://localhost:9200/dashboard/remoteEntry.js",
+    "exposed": {"dashboard": "./Dashboard"}
   }
 }

@@ -64,7 +64,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user (best practice: don't run the server as root).
-RUN groupadd --system atria && useradd --system --gid atria --home-dir /home/atria --create-home atria
+RUN groupadd --system atria && useradd --system --gid atria --home-dir /home/atria --create-home atria \
+    # Pre-create the settings dir owned by atria so a fresh named volume mounted
+    # here (atria_data) inherits atria:atria ownership instead of defaulting to root.
+    && mkdir -p /home/atria/.atria && chown atria:atria /home/atria/.atria
 
 # Bring over the fully-built venv + application source from the builder.
 COPY --from=builder --chown=atria:atria /app /app
