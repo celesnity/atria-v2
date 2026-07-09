@@ -180,3 +180,58 @@ def test_unknown_mode_raises():
     s.ensure_collection(dim=3)
     with pytest.raises(ValueError):
         s.query("x", mode="nope")
+
+
+def _make_store(sentinel):
+    from qdrant_client import QdrantClient
+
+    index_store = _load("index_store", sentinel)
+    s = index_store.IndexStore(QdrantClient(":memory:"), _embed_fn)
+    s.ensure_collection(dim=3)
+    return s
+
+
+def test_upsert_stores_token_count_in_payload():
+    chunking = _load("chunking", "ek_is_tc_chunk")
+    s = _make_store("ek_is_tc_store")
+    rec = _rec(chunking, "DOCT", 0, "một hai ba bốn", "Internal", "ENG")  # 4 tokens
+    s.upsert_chunks([rec], avgdl=4.0)
+    pts, _ = s._q.scroll(s._collection, with_payload=True, limit=10)
+    assert pts[0].payload["token_count"] == rec.token_count == 4
+
+
+def test_delete_by_doc_id_removes_only_that_doc():
+    chunking = _load("chunking", "ek_is_del_chunk")
+    s = _make_store("ek_is_del_store")
+    s.upsert_chunks(
+        [
+            _rec(chunking, "DOCA", 0, "a b", "Internal", "ENG"),
+            _rec(chunking, "DOCB", 0, "c d", "Internal", "ENG"),
+        ],
+        avgdl=2.0,
+    )
+    removed = s.delete_by_doc_id("DOCA")
+    assert removed == 1
+    left = {p.payload["doc_id"] for p in s._q.scroll(s._collection, limit=10)[0]}
+    assert left == {"DOCB"}
+
+
+def test_delete_by_doc_id_absent_returns_zero():
+    s = _make_store("ek_is_del_absent")
+    assert s.delete_by_doc_id("NOPE") == 0
+
+
+def test_corpus_token_stats_sums_token_count():
+    chunking = _load("chunking", "ek_is_stats_chunk")
+    s = _make_store("ek_is_stats_store")
+    r1 = _rec(chunking, "DOCA", 0, "a b c", "Internal", "ENG")  # 3 tokens
+    r2 = _rec(chunking, "DOCB", 0, "d e", "Internal", "ENG")  # 2 tokens
+    s.upsert_chunks([r1, r2], avgdl=2.5)
+    total_tokens, total_chunks = s.corpus_token_stats()
+    assert total_chunks == 2
+    assert total_tokens == r1.token_count + r2.token_count == 5
+
+
+def test_corpus_token_stats_empty_is_zero():
+    s = _make_store("ek_is_stats_empty")
+    assert s.corpus_token_stats() == (0, 0)
