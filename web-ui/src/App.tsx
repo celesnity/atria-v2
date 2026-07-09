@@ -4,6 +4,7 @@ import { MotionConfig } from 'motion/react';
 import { ChatPage } from './pages/ChatPage';
 import { DispatchPage } from './pages/DispatchPage';
 import './stores/solverJobs';
+import './stores/blackboardStore';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/Layout/AppShell';
 import { TenantsPage } from './pages/admin/TenantsPage';
