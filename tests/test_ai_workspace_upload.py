@@ -25,6 +25,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("AIW_UPLOADS_DIR", str(tmp_path / "uploads"))
     monkeypatch.setenv("AIW_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
     seed_db.seed()
+    # Keep uploads hermetic: stub the EK indexing hook (no Qdrant/embeddings in tests).
+    monkeypatch.setattr(workspace.ek_index, "index_document", lambda **kw: True)
+    monkeypatch.setattr(workspace.ek_index, "remove_document", lambda **kw: True)
     src = tmp_path / "note.md"
     src.write_text("# Ghi chú\nNội dung mật.\n", encoding="utf-8")
     return src
@@ -86,6 +89,49 @@ def test_upload_docx_extracts_text(env, tmp_path):
     _, opened = cli("read-document", "--user", "U005", "--doc", up["doc_id"])
     assert opened["allowed"] is True
     assert "SLA vận hành" in opened["content"]
+
+
+def test_upload_text_triggers_indexing_indexed(env, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(workspace.ek_index, "index_document",
+                        lambda **kw: seen.update(kw) or True)
+    code, up = cli("add-document", "--user", "U005", "--file", str(env),
+                   "--classification", "Internal", "--title", "Chính sách")
+    assert code == 0 and up["index_status"] == "indexed"
+    assert seen["doc_id"] == up["doc_id"] and seen["dept_code"] == "OPS"
+    assert seen["classification"] == "Internal" and seen["owner"] == "U005"
+    assert "Nội dung mật" in seen["text"]
+
+
+def test_upload_index_failure_sets_failed_but_upload_ok(env, monkeypatch):
+    monkeypatch.setattr(workspace.ek_index, "index_document", lambda **kw: False)
+    code, up = cli("add-document", "--user", "U005", "--file", str(env),
+                   "--classification", "Internal")
+    assert code == 0 and up["uploaded"] is True
+    assert up["index_status"] == "failed"
+
+
+def test_upload_no_text_is_skipped(env, monkeypatch, tmp_path):
+    calls = {"n": 0}
+    monkeypatch.setattr(workspace.ek_index, "index_document",
+                        lambda **kw: calls.__setitem__("n", calls["n"] + 1) or True)
+    blank = tmp_path / "blank.bin"
+    blank.write_bytes(b"\x00\x01\x02")
+    code, up = cli("add-document", "--user", "U005", "--file", str(blank),
+                   "--classification", "Internal", "--title", "blank")
+    assert code == 0 and up["index_status"] == "skipped"
+    assert calls["n"] == 0  # indexer not called when there is no text
+
+
+def test_delete_removes_from_index(env, monkeypatch):
+    _, up = cli("add-document", "--user", "U005", "--file", str(env),
+                "--classification", "Internal")
+    removed = {}
+    monkeypatch.setattr(workspace.ek_index, "remove_document",
+                        lambda **kw: removed.update(kw) or True)
+    code, out = cli("delete-document", "--user", "U005", "--doc", up["doc_id"])
+    assert code == 0 and out["deleted"] is True
+    assert removed["doc_id"] == up["doc_id"]
 
 
 def test_upload_via_base64_stdin(env, monkeypatch, tmp_path):

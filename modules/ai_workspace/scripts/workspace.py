@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
 import access  # noqa: E402
 import audit  # noqa: E402
+import ek_index  # noqa: E402
 import repo  # noqa: E402
 import storage  # noqa: E402
 
@@ -251,15 +252,35 @@ def cmd_add_document(
         classification_code=classification, file_path=rel, original_filename=src_name,
         mime_type=mime, size_bytes=size, uploaded_by=user.user_id,
     )
+
+    # Push into EK for AI search (best-effort; indexing never fails the upload).
+    if not storage.is_text(mime, src_name):
+        index_text = text  # from the extraction block above (may be "")
+    else:
+        try:
+            index_text = storage.read_text(rel)
+        except OSError:
+            index_text = ""
+    if index_text.strip():
+        indexed = ek_index.index_document(
+            doc_id=doc_id, title=doc_title, dept_code=target_dept,
+            classification=classification, text=index_text, owner=user.user_id,
+        )
+        index_status = "indexed" if indexed else "failed"
+    else:
+        index_status = "skipped"
+    repo.set_index_status(doc_id, index_status)
+
     audit.append_event({
         "type": "upload", "user_id": user.user_id, "ok": True, "doc_id": doc_id,
         "department": target_dept, "classification": classification,
-        "extracted_chars": extracted_chars,
+        "extracted_chars": extracted_chars, "index_status": index_status,
     })
     _print({
         "uploaded": True, "doc_id": doc_id, "title": doc_title,
         "department": target_dept, "classification": classification,
         "size_bytes": size, "file_path": rel, "extracted_chars": extracted_chars,
+        "index_status": index_status,
     })
     return 0
 
@@ -281,6 +302,7 @@ def cmd_delete_document(user_id: str, doc_id: str) -> int:
                 "reason": "cần Manager+ và đúng phòng (hoặc Executive)"})
         return 1
     repo.set_document_status(doc_id, "deleted")
+    ek_index.remove_document(doc_id=doc_id)  # drop chunks from the index (best-effort)
     audit.append_event({"type": "delete", "user_id": user.user_id, "doc_id": doc_id,
                         "ok": True, "department": doc["department"]})
     _print({"deleted": True, "doc_id": doc_id, "department": doc["department"]})
