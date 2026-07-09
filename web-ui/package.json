@@ -12,6 +12,8 @@
   "dependencies": {
     "@flowgram.ai/free-layout-editor": "^1.0.12",
     "@heroicons/react": "^2.2.0",
+    "@module-federation/runtime": "^2.7.0",
+    "@module-federation/vite": "^1.16.14",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-resizable": "^3.0.8",
     "@univerjs/preset-sheets-core": "^0.25.0",
@@ -39,6 +41,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -50,6 +53,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^29.1.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.4.2",

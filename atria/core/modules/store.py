@@ -90,6 +90,24 @@ class ModuleSubagentManifest:
 
 
 @dataclass
+class ModuleServiceManifest:
+    """Declares that a module runs as an out-of-process connector service."""
+
+    connector_url: str
+    tools: List[Dict[str, Any]] = field(default_factory=list)
+    health_path: str = "/connector/health"
+
+
+@dataclass
+class ModuleRemoteManifest:
+    """Declares a module's Module-Federation frontend remote."""
+
+    name: str
+    remote_entry: str
+    exposed: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class ModuleManifest:
     """User-authored module presentation config (manifest.json).
 
@@ -104,6 +122,8 @@ class ModuleManifest:
     activity_default: Optional[ActivityLabel] = None
     activity_actions: Dict[str, ActivityLabel] = field(default_factory=dict)
     subagent: Optional[ModuleSubagentManifest] = None
+    service: Optional[ModuleServiceManifest] = None
+    remote: Optional[ModuleRemoteManifest] = None
 
 
 @dataclass
@@ -218,6 +238,8 @@ def _read_manifest(module_dir: Path) -> Optional[ModuleManifest]:
         activity_default=activity_default,
         activity_actions=activity_actions,
         subagent=_parse_subagent(raw.get("subagent")),
+        service=_parse_service(raw.get("service")),
+        remote=_parse_remote(raw.get("remote")),
     )
 
 
@@ -256,6 +278,36 @@ def _parse_subagent(raw: Any) -> Optional[ModuleSubagentManifest]:
         enabled=enabled,
         model=_nonempty_str(raw.get("model")),
         tools=tools,
+    )
+
+
+def _parse_service(raw: Any) -> Optional[ModuleServiceManifest]:
+    """Lenient parser for the optional ``service`` block. Needs ``connector_url``."""
+    if not isinstance(raw, dict):
+        return None
+    connector_url = _nonempty_str(raw.get("connector_url"))
+    if not connector_url:
+        return None
+    tools_raw = raw.get("tools")
+    tools = [t for t in tools_raw if isinstance(t, dict) and t.get("name")] if isinstance(
+        tools_raw, list) else []
+    health_path = _nonempty_str(raw.get("health_path")) or "/connector/health"
+    return ModuleServiceManifest(
+        connector_url=connector_url, tools=tools, health_path=health_path)
+
+
+def _parse_remote(raw: Any) -> Optional[ModuleRemoteManifest]:
+    """Lenient parser for the optional ``remote`` (Module Federation) block."""
+    if not isinstance(raw, dict):
+        return None
+    remote_entry = _nonempty_str(raw.get("remoteEntry"))
+    if not remote_entry:
+        return None
+    exposed = raw.get("exposed")
+    return ModuleRemoteManifest(
+        name=_nonempty_str(raw.get("name")) or "",
+        remote_entry=remote_entry,
+        exposed=exposed if isinstance(exposed, dict) else {},
     )
 
 

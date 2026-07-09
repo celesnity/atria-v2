@@ -4,11 +4,18 @@ export interface ModuleDashboardManifest {
   badge_color?: string | null;
 }
 
+export interface ModuleRemoteManifest {
+  name?: string | null;
+  remote_entry?: string | null;
+  exposed?: Record<string, any> | null;
+}
+
 export interface ModuleManifest {
   display_name?: string | null;
   tooltip?: string | null;
   icon?: string | null;
   dashboard?: ModuleDashboardManifest | null;
+  remote?: ModuleRemoteManifest | null;
 }
 
 export interface Module {

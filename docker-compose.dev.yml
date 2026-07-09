@@ -54,20 +54,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       # Mount Python source for hot reload — no rebuild needed on code change
       - ./atria:/app/atria
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
     command: >
       /bin/sh -c "
-        mkdir -p /root/.atria &&
+        mkdir -p /home/atria/.atria &&
         : \"$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}\" &&
         : \"$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}\" &&
         printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\n'
           \"$${ATRIA_MODEL}\"
           \"$${ATRIA_API_BASE_URL}\"
-          > /root/.atria/settings.json &&
+          > /home/atria/.atria/settings.json &&
         exec uvicorn atria.web.server:create_app --factory
           --host 0.0.0.0 --port 8080
           --reload --reload-dir /app/atria
@@ -127,20 +127,20 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/root/.atria
+      - atria_data:/home/atria/.atria
       - ./atria:/app/atria
       - ./modules:/app/modules
     entrypoint:
       - /bin/sh
       - -c
       - >
-        mkdir -p /root/.atria &&
+        mkdir -p /home/atria/.atria &&
         : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
         printf '{"model":"%s","api_base_url":"%s"}\n'
           "$${ATRIA_MODEL}"
           "$${ATRIA_API_BASE_URL}"
-          > /root/.atria/settings.json &&
+          > /home/atria/.atria/settings.json &&
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
     depends_on:
       db:
