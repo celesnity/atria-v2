@@ -173,7 +173,7 @@ class ContextPicker:
         Returns:
             Tuple of (context pieces, image blocks)
         """
-        from atria.repl.file_content_injector import FileContentInjector
+        from atria.core.agents.execution.file_content_injector import FileContentInjector
 
         pieces: list[ContextPiece] = []
 

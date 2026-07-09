@@ -251,7 +251,7 @@ async def list_files(query: str = "") -> Dict[str, Any]:
         gitignore_parser = None
         gitignore_path = working_dir / ".gitignore"
         if gitignore_path.exists():
-            from atria.ui_textual.autocomplete_internal.gitignore import GitIgnoreParser
+            from atria.core.agents.display.gitignore import GitIgnoreParser
 
             gitignore_parser = GitIgnoreParser(working_dir)
 
