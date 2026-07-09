@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Network, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Message } from '../../types';
+import { LinkifiedText } from './FileLink';
 
 interface ToolCallMessageProps {
   message: Message;
@@ -574,7 +575,7 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
                 <div key={index} className={`font-mono text-[12px] leading-5 ${
                   isError ? 'text-block-coral' : isSuccess ? 'text-semantic-success' : 'text-ink/40'
                 }`}>
-                  {lineStr}
+                  <LinkifiedText text={lineStr} />
                 </div>
               );
             })}

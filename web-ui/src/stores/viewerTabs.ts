@@ -67,6 +67,7 @@ function openTabIn(slice: TabSlice, tab: ViewerTab): TabSlice {
 
 export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
   tabsByConv: {},
+  openNonce: 0,
 
   openTab: (convId, path, location) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
@@ -77,7 +78,10 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
 
   openModuleTab: (convId, name) => {
     const slice = get().tabsByConv[convId] ?? { tabs: [], activeId: null, dirty: {} };
-    set({ tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) } });
+    set({
+      tabsByConv: { ...get().tabsByConv, [convId]: openTabIn(slice, tabFromModule(name)) },
+      openNonce: get().openNonce + 1,
+    });
   },
 
   openModuleFileTab: (convId, module, path, location) => {
@@ -87,6 +91,7 @@ export const useViewerTabsStore = create<ViewerTabsState>((set, get) => ({
         ...get().tabsByConv,
         [convId]: openTabIn(slice, tabFromModuleFile(module, path, location)),
       },
+      openNonce: get().openNonce + 1,
     });
   },
 
