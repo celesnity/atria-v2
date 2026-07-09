@@ -39,11 +39,10 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         # the web chat.
         # Code symbol tools + notebook
         "notebook_edit",
-        # Subagents — this deployment does not spawn or manage subagents.
-        "subagent",
+        # request_help / get_help_responses (broadcast blackboard) are ENABLED by
+        # default — the feature is meant to be live out of the box.
         "list_subagents",
         "list_agents",
-        "get_subagent_output",
         # Uploaded-image artifacts — users don't upload images here.
         "list_artifact_images",
         "read_artifact_image",
