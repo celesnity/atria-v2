@@ -129,6 +129,33 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  maintenance-copilot:
+    build: ./modules/maintenance_copilot/backend
+    ports:
+      - "9200:9200"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      - MC_QDRANT_URL=http://qdrant:6333
+      - MC_NEO4J_URI=bolt://neo4j:7687
+      - MC_NEO4J_USER=neo4j
+      - MC_NEO4J_PASSWORD=atria-neo4j
+      - MC_PUBLIC_BASE=http://localhost:9200
+    depends_on:
+      - qdrant
+      - neo4j
+      - tei
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
   # divide + parallel). Shares modules + ~/.atria with the web service so
   # dispatched work and the dashboard read/write the same data.

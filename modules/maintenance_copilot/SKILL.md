@@ -1,7 +1,6 @@
 ---
 name: maintenance_copilot
 description: ALWAYS use for ANY aircraft maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA). ALWAYS answer via the `maintenance_copilot_query` tool — it runs grounded RAG and renders a cited, confidence-scored structured answer card in the UI. The CLI runbook is for human operators only. Do NOT grep the manual files or answer from your own knowledge.
-tools: tools.py
 ---
 
 # maintenance_copilot
