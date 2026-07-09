@@ -201,9 +201,9 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "complete_todo": self._complete_todo,
             "list_todos": lambda args, ctx=None: self.todo_handler.list_todos(),
             "clear_todos": self._clear_todos,
-            # Unified subagent delegation (blackboard task channel)
-            "subagent": self._execute_subagent_fanout,
-            "get_subagent_output": self._execute_get_subagent_output,
+            # Broadcast blackboard: un-addressed request + voluntary response
+            "request_help": self._execute_request_help,
+            "get_help_responses": self._execute_get_help_responses,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
             # MCP tool discovery (token-efficient)
@@ -437,8 +437,8 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 "list_artifact_images",
                 "read_artifact_image",
                 "NOTE",
-                "subagent",
-                "get_subagent_output",
+                "request_help",
+                "get_help_responses",
                 "write_todos",
                 "update_todo",
                 "complete_todo",

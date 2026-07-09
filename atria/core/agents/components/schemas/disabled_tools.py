@@ -40,10 +40,10 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
         # Code symbol tools + notebook
         "notebook_edit",
         # Subagents — this deployment does not spawn or manage subagents.
-        "subagent",
+        "request_help",
         "list_subagents",
         "list_agents",
-        "get_subagent_output",
+        "get_help_responses",
         # Uploaded-image artifacts — users don't upload images here.
         "list_artifact_images",
         "read_artifact_image",

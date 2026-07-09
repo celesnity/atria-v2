@@ -550,7 +550,7 @@ class RunLoopMixin:
                 _explore_blocked = False
                 if self.config.explore_first_enabled and not has_explored:
                     for tc in tool_calls:
-                        if tc["function"]["name"] == "subagent":
+                        if tc["function"]["name"] == "request_help":
                             tc_args = json.loads(tc["function"]["arguments"])
                             subagent_type = tc_args.get("subagent_type", "")
                             if subagent_type not in _EXPLORE_EXEMPT:
@@ -578,7 +578,7 @@ class RunLoopMixin:
 
                 # Mark explored when Code-Explorer is being spawned
                 for tc in tool_calls:
-                    if tc["function"]["name"] == "subagent":
+                    if tc["function"]["name"] == "request_help":
                         tc_args = json.loads(tc["function"]["arguments"])
                         if tc_args.get("subagent_type", "") == "Code-Explorer":
                             has_explored = True

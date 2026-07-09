@@ -182,7 +182,7 @@ class ToolExecutionMixin:
         ui_callback = ctx.ui_callback
 
         # Check if ALL tools are spawn_subagent (parallel agent scenario)
-        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "subagent"]
+        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "request_help"]
         is_parallel_agents = len(spawn_calls) == len(tool_calls) and len(spawn_calls) > 1
 
         # Build agent info mapping (tool_call_id -> agent info)
@@ -256,7 +256,7 @@ class ToolExecutionMixin:
                 # Track individual agent completion
                 if ui_callback:
                     tool_name = tool_call["function"]["name"]
-                    if tool_name == "subagent":
+                    if tool_name == "request_help":
                         tool_call_id = tool_call["id"]
                         success = result.get("success", True) if isinstance(result, dict) else True
                         if hasattr(ui_callback, "on_parallel_agent_complete"):
