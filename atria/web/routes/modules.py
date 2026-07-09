@@ -49,6 +49,14 @@ class ModuleDashboardManifestOut(BaseModel):
     badge_color: Optional[str] = None
 
 
+class ModuleRemoteManifestOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    name: str = ""
+    remote_entry: Optional[str] = None
+    exposed: dict = {}
+
+
 class ModuleManifestOut(BaseModel):
     model_config = {"from_attributes": True}
 
@@ -56,6 +64,7 @@ class ModuleManifestOut(BaseModel):
     tooltip: Optional[str] = None
     icon: Optional[str] = None
     dashboard: Optional[ModuleDashboardManifestOut] = None
+    remote: Optional[ModuleRemoteManifestOut] = None
 
 
 class ModuleOut(BaseModel):
@@ -125,7 +134,10 @@ def list_endpoint(
 ):
     items = reg.all()
     if has_dashboard:
-        items = [m for m in items if "dashboard.html" in m.files]
+        items = [
+            m for m in items
+            if "dashboard.html" in m.files or (m.manifest and m.manifest.remote)
+        ]
     return [ModuleOut.model_validate(m) for m in items]
 
 
