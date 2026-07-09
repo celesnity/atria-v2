@@ -40,6 +40,7 @@ class AgentConfig:
     skill_path: str | None = None  # For custom agents
     source: AgentSource = AgentSource.BUILTIN
     model: str | None = None
+    capability_profile: str | None = None
 
     def get_tool_list(self, all_tools: list[str]) -> list[str]:
         """Resolve tool specification to concrete list.
