@@ -49,10 +49,15 @@ class OrchestrationOpsMixin:
         _current = getattr(_sess_mgr, "current_session", None) if _sess_mgr else None
         owner_id = (getattr(_current, "owner_id", None) or "") if _current else ""
 
+        # Bid pool = every helper (incl. dynamically-registered module workers),
+        # profiled by its capability_profile or, failing that, its description.
+        # ask-user is a builtin UI action, never a volunteer.
         profiles: list[tuple[str, str]] = []
         if mgr is not None:
             for c in mgr.get_agent_configs():
-                p = getattr(c, "capability_profile", None)
+                if c.name == "ask-user":
+                    continue
+                p = getattr(c, "capability_profile", None) or getattr(c, "description", None)
                 if p:
                     profiles.append((c.name, p))
 
