@@ -71,6 +71,54 @@ def normalize_query(query: str, terms: dict[str, str], max_ngram: int) -> str:
     return expand_abbrev(fold(query), terms, max_ngram)
 
 
+_HHMM_RE = re.compile(r"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})")
+
+
+def parse_opening_hours(spec: str | None) -> tuple[int, int] | None:
+    """Parse an opening_hours string to (open_min, close_min) since midnight.
+
+    Handles the dataset's formats: '24/7' -> (0, 1440); the first 'HH:MM-HH:MM'
+    anywhere in the string (so 'Mở cửa 06:00-19:00' works); a close <= open is
+    treated as overnight (+1440). Returns None when nothing parses.
+    """
+    if not spec:
+        return None
+    s = str(spec).strip().lower()
+    if "24/7" in s or "24h" in s or "ca ngay" in s:
+        return (0, 1440)
+    m = _HHMM_RE.search(s)
+    if not m:
+        return None
+    open_min = int(m.group(1)) * 60 + int(m.group(2))
+    close_min = int(m.group(3)) * 60 + int(m.group(4))
+    if close_min <= open_min:
+        close_min += 1440  # crosses midnight
+    return (open_min, close_min)
+
+
+def is_open_at(spec: str | None, minute_of_day: int) -> bool:
+    """Is a place with `spec` open at `minute_of_day` (0..1439)? Unknown -> True
+    (never hide a place we cannot schedule)."""
+    parsed = parse_opening_hours(spec)
+    if parsed is None:
+        return True
+    open_min, close_min = parsed
+    for m in (minute_of_day, minute_of_day + 1440):
+        if open_min <= m < close_min:
+            return True
+    return False
+
+
+def open_after(spec: str | None, minute_of_day: int) -> bool:
+    """Is a place still open AT OR AFTER `minute_of_day` (i.e. closes later than
+    the given time)? Used by 'mở cửa sau 10 giờ tối'. Unknown -> True."""
+    parsed = parse_opening_hours(spec)
+    if parsed is None:
+        return True
+    _open, close_min = parsed
+    return close_min > minute_of_day or close_min >= 1440
+
+
 def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     r = 6371.0088
     p1, p2 = math.radians(lat1), math.radians(lat2)

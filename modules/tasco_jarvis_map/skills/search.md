@@ -49,18 +49,53 @@ empty (never places from another city). Districts are detected/stored but
 deliberately NOT hard-filtered (district names can double as street names);
 district words keep working through the location scoring.
 
+## Intent router (data-derived, no hardcoded places/brands)
+
+`search` runs every query through `scripts/query_intent.py`, which classifies
+it into one of the competition archetypes and drives retrieval accordingly.
+Everything it needs is derived from the dataset at load: **intent sentinels**
+from the abbreviation dictionary's own expansions (terms mapping to
+"navigation" / "nearby search" — e.g. `chi duong`, `gan day` — are stripped
+BEFORE expansion so that literal English never leaks into the normalized
+query), **brands** from distinct POI `brand` values (+ no-space / distinctive-
+tail variants so "long chau" matches "Nhà thuốc Long Châu"), **streets** from
+the address rows, and **cities** from the gazetteer.
+
+Detected intents and how they retrieve:
+- **Coordinate** ("10.7769,106.7009") — distance search around the point (1 km).
+- **Navigation** ("chỉ đường đến X", "đi X từ Y") — resolves the destination to
+  one POI; the response's `anchor` is the destination and jarvis draws a route.
+- **Nearby (anchored)** ("atm gần sân bay", "cafe near ben thanh") — geocodes the
+  landmark/coordinate anchor (within the detected city, if any) and returns
+  category-filtered results ranked by distance (radius 1/2/3 km for
+  coordinate/address/landmark, widened ×2 once if empty). If the anchor can't be
+  resolved (absent from the dataset), it reverts to a plain city-filtered search
+  and discloses this via `anchor: null`.
+- **Nearby (current location)** ("cafe gần đây") — no anchor in the CLI; jarvis
+  uses the live map viewport.
+- **Address** ("12 Nguyễn Huệ Q1"), **Brand Category** ("atm vcb" — brand is a
+  hard filter), **Category**, **Ambiguous** (bare brand), **POI**, **Discovery**.
+
+The category-detection hijack is fixed: "atm gần sân bay" keeps the anchor
+("sân bay") separate from the target ("atm"), so it returns banks, not airports.
+
 ## Subcommands
 
-### `search "<query>" [--limit 8] [--city <name|alias>] [--category <key>]`
-Category-aware POI search. Detects a category phrase inside the query
-("cafe", "nha thuoc", "tram sac"…) and a city mention (any gazetteer alias:
-saigon, sg, tphcm, hanoi, hn, danang, dn…), uses leftover tokens as a
-district/name constraint. `--city` accepts the same alias vocabulary
-(`--city saigon` works) and overrides the detected city.
-Output: `{query, normalized_query, category, city, results: [...], count}`
-(`city` = canonical folded form or null); each result: `{poi_id, name,
-name_en, category, lat, lng, address, district, city, rating,
-opening_hours, score}` (score 0–100, sorted desc).
+### `search "<query>" [--limit 8] [--city <name|alias>] [--category <key>] [--open-after HH:MM] [--open-now] [--now HH:MM]`
+Intent-routed POI search (see above). Detects category, city, brand, proximity
+anchor, coordinates, navigation destination and opening-hours constraints.
+`--city` accepts the gazetteer alias vocabulary (`--city saigon`) and overrides
+the detected city. Time flags filter by `opening_hours`: `--open-after 22:00`
+keeps places open past 10 pm ("mở cửa sau 10 giờ tối"); `--open-now` uses
+`--now HH:MM` (default noon, deterministic for eval).
+Output: `{query, normalized_query, category, city, intent, anchor, entities,
+confidence_score, results: [...], count}`. `intent` is the competition label;
+`anchor` = `{kind: poi|address|coordinate, label, lat, lng, resolution, radius_km}`
+or null; `entities` follows the README output contract (category/brand/
+district/reference/time…); `confidence_score` is 0–1. Each result: `{poi_id,
+name, name_en, category, lat, lng, address, district, city, rating,
+opening_hours, score|distance_km}` (score 0–100 for plain, distance_km for
+anchored/coordinate/nearby), sorted best-first.
 
 ### `near --lat <f> --lng <f> [--radius-km 3] [--category <key>] [--limit 8]`
 Haversine radius search, sorted by distance.
@@ -100,14 +135,29 @@ Debug breakdown of how one POI scores under a query: per-signal values
 final score, detected `city`, and `rank_in_results`. A POI excluded by the
 hard city filter reports `excluded_by: "city_filter"` with its `poi_city`.
 
+## Jarvis map actions (dashboard `applyActions`)
+
+`{"type":"pins",...}`, `{"type":"focus",lat,lng,zoom}`, `{"type":"clear",
+what:"ai"|"route"|"all"}`, and `{"type":"route",from:{lat,lng},to:{lat,lng}}`
+(a dashed accent-colored straight line + a temporary rust anchor marker at the
+destination). The search bar also drops the anchor marker whenever a response
+carries `anchor` (proximity/coordinate/navigation), cleared on the next search.
+
 ## Quality baseline
 
-`scripts/eval.py` vs the 60 public evaluation queries, both backends:
-poi_hit@1 100% (11/11 answerable), category detection 100% (34/34).
-City precision (`data/eval_city.json`, 15 queries incl. saigon/sg/tphcm/
-hn/dn aliases): 100% on both backends — gated at >= 95%.
-Geocode (`eval.py --geocode`): 92% hit@1 on the alias-derived gold set
-(misses are ambiguous street-only aliases); handwritten hard set 100% on
-db vs 90% on json. Three eval queries target POIs absent from the
-participants dataset (coverage gaps). Use `--backend json|db|both` for
-side-by-side metrics with latency.
+`scripts/eval.py` vs the 60 public evaluation queries (gates on the ACTIVE
+backend; run `--backend both` for side-by-side):
+- **poi_hit@3 100%** (11/11 answerable), poi_hit@1 100% — gated ≥ 80%.
+- **category detection 100%** (34/34).
+- **city_precision 100%** (`data/eval_city.json`, 15 queries) — gated ≥ 95%.
+- **intent_acc 72%** (competition label vs the router; the 60-query gold set has
+  internally inconsistent intent labels, so this gates against REGRESSIONS at
+  ≥ 65%, not perfection).
+- **anchored_pass 100%** (`data/eval_anchored.json`, 12 proximity/coordinate/
+  navigation queries) — gated ≥ 80%.
+- Geocode (`eval.py --geocode`): 92% hit@1 on the alias-derived gold set.
+
+Three eval queries target POIs absent from the participants dataset (coverage
+gaps). Metrics above are **json-measured** (2026-07-09); the db engine mirrors
+the same router/scoring but requires the `map-db` container up + `OPENAI_API_KEY`
+to run — verify with `--backend db` once Docker is running.

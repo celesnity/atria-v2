@@ -125,6 +125,16 @@ CREATE TABLE IF NOT EXISTS map_query_embeddings (
     created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Opening-hours parsed to minutes-since-midnight (open_min..close_min, close
+-- may exceed 1440 for overnight venues; 24/7 = 0..1440). Backfilled by
+-- db_import.py from _data.parse_opening_hours. v1 time filtering uses the shared
+-- Python helper on raw->>'opening_hours' for byte-parity with the JSON engine;
+-- these columns exist for SQL-level time filters and inspection. Idempotent so
+-- an already-provisioned map-db picks them up without a reset.
+ALTER TABLE map_pois ADD COLUMN IF NOT EXISTS open_min  smallint;
+ALTER TABLE map_pois ADD COLUMN IF NOT EXISTS close_min integer;
+CREATE INDEX IF NOT EXISTS map_pois_hours ON map_pois (open_min, close_min);
+
 CREATE INDEX IF NOT EXISTS map_pois_geom_gist  ON map_pois USING gist (geom);
 CREATE INDEX IF NOT EXISTS map_addr_geom_gist  ON map_addresses USING gist (geom);
 CREATE INDEX IF NOT EXISTS map_pois_name_trgm  ON map_pois USING gin (normalized_name gin_trgm_ops);

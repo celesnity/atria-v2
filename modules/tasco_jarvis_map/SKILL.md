@@ -11,6 +11,15 @@ search engine understands Vietnamese query quirks: missing accents
 ("quan ca phe"), abbreviations ("q1" → "Quận 1", "tp hcm"), aliases and
 mixed EN/VN ("ben thanh market").
 
+Every query is classified by an intent router (`scripts/query_intent.py`,
+data-derived — no hardcoded places or brands) into the competition archetypes:
+POI / Category / Brand / Address / Nearby (proximity anchor or current
+location) / Navigation / Coordinate / Ambiguous / Discovery. Proximity
+("atm gần sân bay"), coordinate ("10.7769,106.7009"), navigation ("chỉ đường
+đến …") and opening-hours ("mở cửa sau 10 giờ tối") queries are all handled;
+the `search` response carries `intent`, `anchor`, `entities` and
+`confidence_score` alongside the results. See `skills/search.md`.
+
 Retrieval is GeoRAG-backed: PostgreSQL + PostGIS + pg_trgm + full-text +
 pgvector hybrid scoring (dedicated `map-db` container), with automatic
 fallback to the local JSON engine when the DB is down. City mentions

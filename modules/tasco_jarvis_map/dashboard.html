@@ -295,6 +295,19 @@
       border-radius: 50%; animation: ping 1.8s ease-out infinite; pointer-events: none;
     }
 
+    /* ── Anchor marker (proximity/navigation reference) — rust, distinct from
+          category teardrops and violet AI pins ── */
+    .anchor-divicon { background: transparent; border: 0; }
+    .anchor-dot {
+      position: relative; width: 15px; height: 15px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--pin-border);
+      box-shadow: 0 2px 7px rgba(226, 104, 63, .55);
+    }
+    .anchor-dot::after {
+      content: ''; position: absolute; inset: -8px; border: 2px solid var(--accent);
+      border-radius: 50%; animation: ping 1.8s ease-out infinite; pointer-events: none;
+    }
+
     /* ── Jarvis popover + FAB ───────────────────────────────────────── */
     #jarvisFab {
       position: absolute; right: 16px; bottom: 18px; z-index: 1002;
@@ -567,6 +580,30 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
     aiLayer = new L.LayerGroup().addTo(map);
+    var routeLayer = new L.LayerGroup().addTo(map);   // dashed navigation line
+    var anchorLayer = new L.LayerGroup().addTo(map);  // proximity/nav reference
+    function accentColor() {
+      return (getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent') || '#e2683f').trim();
+    }
+    function clearRoute() { routeLayer.clearLayers(); }
+    function clearAnchor() { anchorLayer.clearLayers(); }
+    function makeAnchorIcon() {
+      return new L.DivIcon({
+        html: '<div class="anchor-dot"></div>', className: 'anchor-divicon',
+        iconSize: [15, 15], iconAnchor: [8, 8],
+      });
+    }
+    function dropAnchor(lat, lng, label) {
+      clearAnchor();
+      var m = new L.Marker([lat, lng], { icon: makeAnchorIcon(), title: label || '', zIndexOffset: 600 });
+      if (label) {
+        m.bindPopup(new L.Popup().setContent(
+          '<div class="poi-popup"><b>' + esc(label) + '</b><br><small>'
+          + 'Điểm tham chiếu / reference point</small></div>'));
+      }
+      anchorLayer.addLayer(m);
+    }
     $('zoomIn').addEventListener('click', function () { map.zoomIn(); });
     $('zoomOut').addEventListener('click', function () { map.zoomOut(); });
 
@@ -757,12 +794,20 @@
         searchIds = new Set(results.map(function (r) { return r.poi_id; }));
         searchOrder = results.map(function (r) { return r.poi_id; });
         liveFilter = '';
-        $('listTitle').textContent = 'Kết quả / Results';
+        var label = res.intent && res.intent !== 'POI Search' && res.intent !== 'Category Search'
+          ? res.intent : 'Kết quả / Results';
+        $('listTitle').textContent = label;
         closeDetail();
         refresh();
+        // Anchored / coordinate / navigation searches carry a reference point —
+        // drop a temporary rust anchor marker so "near X" is visible on the map.
+        clearRoute();
+        if (res.anchor && res.anchor.lat != null) dropAnchor(res.anchor.lat, res.anchor.lng, res.anchor.label);
+        else clearAnchor();
         if (results.length) {
-          var b = new L.LatLngBounds(results.map(function (r) { return [r.lat, r.lng]; }));
-          map.fitBounds(b, { padding: [46, 46], maxZoom: 15 });
+          var pts = results.map(function (r) { return [r.lat, r.lng]; });
+          if (res.anchor && res.anchor.lat != null) pts.push([res.anchor.lat, res.anchor.lng]);
+          map.fitBounds(new L.LatLngBounds(pts), { padding: [46, 46], maxZoom: 15 });
         } else {
           AtriaDash.toast({ message: 'No places found for "' + q + '"', severity: 'info' });
         }
@@ -776,6 +821,7 @@
       $('search').value = '';
       $('clearSearch').style.display = 'none';
       $('listTitle').textContent = 'Khám phá / Explore';
+      clearRoute(); clearAnchor();
       refresh();
     }
     $('search').addEventListener('input', function (e) {
@@ -820,8 +866,15 @@
           }
         } else if (a.type === 'focus' && a.lat != null) {
           map.flyTo([a.lat, a.lng], a.zoom || 15);
+        } else if (a.type === 'route' && a.from && a.to) {
+          clearRoute();
+          routeLayer.addLayer(new L.Polyline(
+            [[a.from.lat, a.from.lng], [a.to.lat, a.to.lng]],
+            { color: accentColor(), weight: 3, opacity: 0.85, dashArray: '8,9', lineCap: 'round' }));
+          dropAnchor(a.to.lat, a.to.lng);
         } else if (a.type === 'clear') {
           if (a.what === 'ai' || a.what === 'all') clearAiPins();
+          if (a.what === 'route' || a.what === 'all') { clearRoute(); clearAnchor(); }
         }
       });
     }

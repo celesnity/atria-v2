@@ -28,20 +28,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _db
 import gazetteer
+import query_intent
 from _data import fold, load_abbreviations, normalize_query
 
 # Legacy scoring/detection helpers stay the single source of truth.
 # search_db is only imported lazily from inside search.py's cmd_* wrappers
 # (or standalone), so this import is not circular.
 from search import (
+    _apply_scope,
+    _brand_hit,
     _category_index,
+    _confidence,
     _coverage_score,
     _detect_category,
+    _geo_contract,
     _location_score,
+    _now_minutes,
+    _parse_with_flags,
     _poi_keys,
     _public,
     _score_text,
     _strip_noise,
+    _time_ok,
 )
 
 _GAZ = None
@@ -176,16 +184,23 @@ def _poi_signal_rows(conn, norm: str, raw: str, qvec) -> list[dict]:
         ]
 
 
-def _search_pipeline(conn, query: str, city: str | None, category: str | None) -> dict:
+def _search_pipeline(conn, query: str, city: str | None, category: str | None,
+                     parsed: dict | None = None, now_min: int = 720) -> dict:
     """Shared scoring pipeline for cmd_search_db and cmd_explain_match_db.
 
     Returns {norm, cat_key, remainder, kept, all}: `kept` is the ranked list
     of rows above threshold (sort key = score + rating/100, legacy tiebreak);
-    `all` keeps every row with its full signal breakdown for explain."""
+    `all` keeps every row with its full signal breakdown for explain. `parsed`
+    is the query_intent router output (brands / time); when None it is derived
+    here (explain path). Geometric intents never reach this pipeline — they are
+    resolved upstream in search.cmd_search over the JSON data (both backends)."""
     terms, max_ngram = load_abbreviations()
     raw_q = fold(query)
     norm = normalize_query(query, terms, max_ngram)
     gaz = _gazetteer_db(conn)
+    if parsed is None:
+        cat_idx0 = _category_index(_db_categories(conn))
+        parsed = query_intent.parse(query, query_intent.context(), _detect_category, cat_idx0)
     # Place pre-pass (mirrors the json engine): detect a data-derived city
     # mention, strip it + noise from the category/location string; name
     # scoring keeps the full norm/raw.
@@ -198,15 +213,27 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None) -
     eff_city = (
         gazetteer.resolve_place(city, gaz) if city else (place["canonical"] if place else None)
     )
+    brands = parsed["brands"]
+    brand_remainder = parsed["remainder"]
 
     qvec = _embed_query(conn, query)
     rows = _poi_signal_rows(conn, norm, raw_q, qvec)
+
+    # Brand + category = hard brand filter (mirror of the json engine): only
+    # applied when the brand actually has a POI in that category.
+    brand_filter = bool(brands) and bool(cat_key) and any(
+        r["raw"]["category"] == cat_key and _brand_hit(brands, r["raw"]) for r in rows
+    )
 
     detailed: list[dict] = []
     for row in rows:
         p = row["raw"]
         if eff_city and eff_city not in fold(p["city"]):
             continue  # HARD city filter — precision over recall
+        if not _time_ok(p, parsed["time"], now_min):
+            continue  # opening-hours constraint from the router
+        if brand_filter and not _brand_hit(brands, p):
+            continue  # named-brand precision
         keys = _poi_keys(p)
         legacy = max(
             _score_text(norm, keys),
@@ -226,11 +253,19 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None) -
             cat_s = 55 + 35 * max(loc, rem_name / 100)
             s = max(name_s, cat_s)
             branch = "category_match"
-        elif cat_key and remainder == "":
-            s = name_s * 0.3
-            branch = "off_category_fade"
+        elif cat_key:
+            # off-category for a CATEGORY search: keep only near-exact NAME matches;
+            # everything else is noise (precision > recall). Mirrors search.py.
+            s = name_s * 0.5 if name_s >= 80 else 0.0
+            branch = "off_category_drop"
         else:
             s = name_s
+        if brands and _brand_hit(brands, p):
+            rem_name = _score_text(brand_remainder, keys) / 100 if brand_remainder else 0.0
+            brand_s = 58 + 34 * rem_name
+            if brand_s > s:
+                s = brand_s
+                branch = "brand"
         detailed.append(
             {
                 "poi": p,
@@ -257,15 +292,31 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None) -
 
 def cmd_search_db(args) -> dict:
     conn = _db.connect()
+    now_min = _now_minutes(args)
     with conn:
-        pipe = _search_pipeline(conn, args.query, args.city, args.category)
-    top = pipe["kept"][: args.limit]
+        categories = _db_categories(conn)
+        terms, max_ngram = load_abbreviations()
+        parsed = _parse_with_flags(args, categories, terms, max_ngram)
+        pipe = _search_pipeline(conn, args.query, args.city, args.category, parsed, now_min)
+    # Sub-city scope filter (mirror of the json engine): keep only in-district /
+    # in-street results when any exist, else disclose via place_scope.
+    scored = [(d["sort_key"], d["poi"]) for d in pipe["kept"]]
+    scored, scope_note = _apply_scope(scored, pipe["norm"])
+    top = scored[: args.limit]
+    intent_label = query_intent.competition_intent(parsed)
+    results = [_public(p, score=s) for s, p in top]
     return {
         "query": args.query,
         "normalized_query": pipe["norm"],
         "category": pipe["cat_key"],
         "city": pipe["city"],
-        "results": [_public(d["poi"], score=d["sort_key"]) for d in top],
+        "intent": intent_label,
+        "anchor": None,
+        "place_scope": scope_note,
+        "geo_contract": _geo_contract(pipe["city"], scope_note, None, results),
+        "entities": parsed["entities"],
+        "confidence_score": _confidence(intent_label, results, None),
+        "results": results,
         "count": len(top),
     }
 
