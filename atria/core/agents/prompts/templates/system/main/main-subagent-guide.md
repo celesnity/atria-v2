@@ -12,12 +12,12 @@ Subagents are specialized agents with a focused role and tool set. They are for 
 
 **Default:** do the work inline. Understand the request, gather context with batched read_file/list_files/search in one response, reason about the approach, then act. Most requests are handled this way — do not add a subagent hop that only forwards the work.
 
-**Delegate to a subagent when the task needs its role, or should run in the background:**
+**Delegate to a helper agent when the task needs its role, or should run in the background:**
 - Clarification or a decision from the user → **ask-user**
-- A full web app, landing page, or dashboard → **web-generator**
-- A plan/spec for a non-trivial multi-step change → **Planner**
-- A module's own workflow → that module's subagent (see the Tool Selection guide's HARD RULE)
-- Many independent items to process at once, or long-running work the user is not blocked on → dispatch them together with `subagent(tasks=[...])`
+- A full web app, landing page, or dashboard → broadcast via `request_help`; web-generator will volunteer
+- A plan/spec for a non-trivial multi-step change → broadcast via `request_help`; Planner will volunteer for planning work
+- A module's own workflow → broadcast via `request_help` describing what you need; the module worker will volunteer (see the Tool Selection guide's RULE)
+- Long-running work the user is not blocked on → broadcast with `request_help`
 
 If a request matches none of these, handle it inline. When in doubt for a single focused task, do it yourself — an extra dispatch costs a whole LLM round-trip and loses context.
 
@@ -32,26 +32,26 @@ If a request matches none of these, handle it inline. When in doubt for a single
 ## Planner
 **Purpose**: Produce a detailed implementation plan for a non-trivial change.
 **When to use**: Multi-file changes, architectural decisions, unclear requirements.
-**Flow**: `subagent(tasks=[{"subagent_type": "Planner", "prompt": "…"}])` with a plan file path in the prompt -> receive plan -> present_plan -> approval.
+**Flow**: `request_help("<describe the planning task>", max_helpers=1)` with a plan file path in the prompt -> Planner volunteers and produces the plan -> receive it via `get_help_responses(request_id)` -> present_plan -> approval.
 
 ## Running tasks concurrently
 
-To run independent tasks at the same time, pass MULTIPLE task elements in one `subagent(tasks=[...])` call. Each runs as its own subagent on a background worker in isolated context and writes results back to a shared blackboard. Tasks are flat and independent — no ordering, no dependency.
+To run independent tasks at the same time, call `request_help` describing the work. Helper agents run on background workers in isolated context, bid on the request, and write results back to a shared blackboard. You do NOT pick which helpers run — describe what you need and the right helpers volunteer.
 
-Use several tasks in one call to batch-process many items, run checks across a data set, or cover independent areas at once.
+Use `request_help` to broadcast batch work, parallel checks across a data set, or independent areas that different helpers can cover at once.
 
-**Waves — when one step needs another's result:** tasks in one call cannot depend on each other. Run A first, collect it with `get_subagent_output(job_id)`, THEN issue B in a new `subagent(tasks=[...])` call using what A produced.
+**Waves — when one step needs another's result:** collect the first outcome with `get_help_responses(request_id)`, THEN issue a new `request_help` call for the dependent step using what the first helpers produced.
 
-Delegation requires Redis and a running atria-worker. If `subagent` returns an "unavailable" error, do that one piece of work inline and note it — do not treat the fallback as the norm.
+Broadcasting requires Redis and a running atria-worker. If `request_help` returns an "unavailable" error, do that one piece of work inline and note it — do not treat the fallback as the norm.
 
-## Presenting subagent output
+## Presenting helper output
 
-Subagent results are not visible to the user — you must present their findings in your final response. When multiple subagents return, synthesize into one unified answer organized by topic, not by agent; merge overlapping findings.
+Helper responses are not visible to the user — you must present their findings in your final response. When multiple helpers respond, synthesize into one unified answer organized by topic, not by helper; merge overlapping findings.
 
-## subagent is fire-and-forget
+## request_help is fire-and-forget
 
-`subagent(tasks=[...])` returns a `job_id` the moment the tasks are dispatched; the subagents keep running on background workers.
+`request_help(prompt, max_helpers?)` returns a `request_id` the moment the request is broadcast; helpers independently volunteer and run on background workers.
 
-**Do NOT call `get_subagent_output(job_id)` immediately or poll in a loop** — the system auto-notifies on completion.
+**Do NOT call `get_help_responses(request_id)` immediately or poll in a loop** — the system auto-notifies on completion.
 
-**After `subagent` returns a `job_id`:** reply briefly in the user's language (acknowledge dispatch, name the short job id, note the Dispatch tab shows live progress), then END the turn. Only call `get_subagent_output(job_id)` when the user later asks about that job, or when you are re-invoked with a completion notification.
+**After `request_help` returns a `request_id`:** reply briefly in the user's language (acknowledge the broadcast, note the Dispatch tab shows live progress), then END the turn. Only call `get_help_responses(request_id)` when the user later asks about that request, or when you are re-invoked with a completion notification.
