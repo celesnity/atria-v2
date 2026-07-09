@@ -47,20 +47,15 @@ dependencies = [
     "pydantic>=2.12.3",
     "rich>=14.2.0",
     "httpx>=0.28.1",
-    "python-dotenv>=1.1.1",
     "tiktoken>=0.12.0",
     "fastmcp>=3.0.1",
-    "pillow>=10.0.0",
     "fastapi>=0.119.1",
     "uvicorn>=0.38.0",
-    "passlib[bcrypt]>=1.7.4",
     "itsdangerous>=2.2.0",
-    "jinja2>=3.0.0",
     # AST-based code search
     "ast-grep-cli>=0.35.0",
-    # LSP server dependencies (solidlsp)
+    # gitignore matching
     "pathspec>=0.11.0",
-    "psutil>=5.9.0",
     "asyncpg>=0.29.0",
     "sqlalchemy[asyncio]>=2.0",
     # Pub/sub bus for cross-process push_block routing
@@ -70,19 +65,15 @@ dependencies = [
     "taskiq-redis>=1.0",
     # PDF extraction for Paper2Code subagent
     "pypdf>=4.0.0",
-    # SWE-bench dataset loading
-    "datasets>=2.0.0",
     # Excel / CSV parsing
     "openpyxl>=3.1.0",
-    "pandas>=2.0.0",
     "markdown>=3.5.0",
     "weasyprint>=60.0",
     # Filesystem watcher for modules
     "watchdog>=4.0",
     # JWT validation for Keycloak auth
     "pyjwt[crypto]>=2.8",
-    "qdrant-client>=1.18.0",
-    "chonkie>=1.6.8",
+    # Knowledge graph for maintenance_copilot (atria/web/routes/maintenance.py)
     "neo4j>=6.2.0",
     # WS client for proxying streaming speech-to-text to the ASR sidecar
     "websockets>=12",
