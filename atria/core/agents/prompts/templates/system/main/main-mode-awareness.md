@@ -9,12 +9,10 @@ version: 3.0.0
 For non-trivial implementation tasks, use the Planner subagent to explore
 the codebase and create a structured plan before writing code.
 
-Dispatch via subagent(tasks=[{"subagent_type": "Planner", "prompt": "…"}]). Include in the prompt:
+Broadcast via `request_help(prompt="…")`. Include in the prompt:
 - The task description and relevant context
 - A plan file path under ~/.atria/plans/ (e.g., ~/.atria/plans/add-auth-flow.md)
 
-After the Planner returns, call present_plan(plan_file_path="...") to show
-the plan to the user and get approval.
+The Planner will volunteer for planning work. After `get_help_responses(request_id)` returns the plan, call `present_plan(plan_file_path="...")` to show the plan to the user and get approval.
 
-If the user requests modifications, re-spawn the Planner with feedback and
-the same plan file path. If rejected, ask the user how to proceed.
+If the user requests modifications, broadcast a new `request_help` with the feedback and the same plan file path. If rejected, ask the user how to proceed.
