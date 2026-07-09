@@ -1,4 +1,4 @@
-import { MessageSquare, Network, LayoutList } from "lucide-react";
+import { MessageSquare, LayoutList } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../lib/cn";
@@ -6,17 +6,17 @@ import { runningSolverCount, useSolverJobsStore } from "../../stores/solverJobs"
 
 /**
  * ViewSwitcher — the single source of truth for switching between the two
- * primary surfaces of the app: the Chat window and the task-dispatch monitor
- * ("Dispatch", the work-division page at /divide).
+ * primary surfaces of the app: the Chat window and the Blackboard monitor
+ * (helpers' bids and responses to broadcast requests, at /blackboard).
  *
  * Best-practice notes:
  *  - One consistent control rendered identically on every surface, so the
- *    Chat <-> Dispatch switch lives in the same place no matter where you are.
+ *    Chat <-> Blackboard switch lives in the same place no matter where you are.
  *  - Segmented control communicates "these are mutually-exclusive views" and
  *    surfaces the active view (aria-current + visual fill) instead of burying
  *    navigation in a lone icon pill.
- *  - Live badge on Dispatch shows running jobs, so while you're chatting you
- *    can see agents are working and jump straight to monitor them.
+ *  - Live badge on Blackboard shows running jobs, so while you're chatting you
+ *    can see helpers are working and jump straight to monitor them.
  *  - Keyboard accessible (real links, visible focus ring); icons carry text
  *    labels; the running count is announced via aria-label.
  */
@@ -37,17 +37,14 @@ const VIEWS: ViewDef[] = [
     isActive: (p) => p === "/" || p.startsWith("/chat"),
   },
   {
-    to: "/dispatch",
-    label: "Dispatch",
-    Icon: Network,
-    isActive: (p) =>
-      p.startsWith("/dispatch") || p.startsWith("/divide") || p.startsWith("/parallel"),
-  },
-  {
     to: "/blackboard",
     label: "Blackboard",
     Icon: LayoutList,
-    isActive: (p) => p.startsWith("/blackboard"),
+    isActive: (p) =>
+      p.startsWith("/blackboard") ||
+      p.startsWith("/dispatch") ||
+      p.startsWith("/divide") ||
+      p.startsWith("/parallel"),
   },
 ];
 
@@ -63,8 +60,8 @@ export function ViewSwitcher({ className }: { className?: string }) {
     >
       {VIEWS.map(({ to, label, Icon, isActive }) => {
         const active = isActive(location.pathname);
-        const isDispatch = to === "/dispatch";
-        const showBadge = isDispatch && runningJobs > 0;
+        const isBlackboard = to === "/blackboard";
+        const showBadge = isBlackboard && runningJobs > 0;
         return (
           <Link
             key={to}

@@ -132,13 +132,13 @@ export function SolveDispatchCard({ message }: Props) {
       <div className="px-3 py-1.5 border-t border-border-300/10 flex items-center justify-between text-[11px]">
         <span className="text-text-500 font-mono">
           {status === 'done'
-            ? 'Đã hoàn thành. Kết quả trên Dispatch page.'
+            ? 'Đã hoàn thành. Kết quả trên Blackboard page.'
             : 'Đang chạy nền. Bạn có thể tiếp tục trò chuyện.'}
         </span>
         <Link
-          to="/dispatch"
+          to="/blackboard"
           className="inline-flex items-center gap-1 font-mono text-text-400 hover:text-text-200 transition-colors"
-          aria-label="Xem trên Dispatch"
+          aria-label="Xem trên Blackboard"
         >
           Xem chi tiết <ArrowRight className="w-3 h-3" strokeWidth={2} aria-hidden="true" />
         </Link>
