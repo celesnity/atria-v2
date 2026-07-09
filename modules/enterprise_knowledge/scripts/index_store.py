@@ -206,6 +206,40 @@ class IndexStore:
                 break
         return {"count": count, "by_classification": by_class, "by_department": by_dept}
 
+    def delete_by_doc_id(self, doc_id: str) -> int:
+        """Delete every chunk whose payload ``doc_id`` matches. Returns count removed."""
+        if not self._q.collection_exists(self._collection):
+            return 0
+        flt = models.Filter(
+            must=[models.FieldCondition(key="doc_id", match=models.MatchValue(value=doc_id))]
+        )
+        removed = self._q.count(self._collection, count_filter=flt).count
+        if removed:
+            self._q.delete(
+                collection_name=self._collection,
+                points_selector=models.FilterSelector(filter=flt),
+                wait=True,
+            )
+        return removed
+
+    def corpus_token_stats(self) -> tuple[int, int]:
+        """Return ``(total_tokens, total_chunks)`` across the collection (0,0 if absent)."""
+        if not self._q.collection_exists(self._collection):
+            return 0, 0
+        total_tokens = 0
+        total_chunks = 0
+        offset = None
+        while True:
+            recs, offset = self._q.scroll(
+                collection_name=self._collection, with_payload=True, limit=256, offset=offset
+            )
+            for r in recs:
+                total_tokens += int(r.payload.get("token_count", 0))
+                total_chunks += 1
+            if offset is None:
+                break
+        return total_tokens, total_chunks
+
     def reset(self) -> None:
         """Delete the collection if it exists."""
         if self._q.collection_exists(self._collection):
