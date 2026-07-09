@@ -31,8 +31,8 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "kill_process",
     },
     "group:session": {
-        "subagent",
-        "get_subagent_output",
+        "request_help",
+        "get_help_responses",
         "list_subagents",
     },
     "group:meta": {

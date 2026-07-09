@@ -122,32 +122,21 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
-    # ===== Task Output Tool =====
+    # ===== Help Responses Tool =====
     {
         "type": "function",
         "function": {
-            "name": "get_subagent_output",
-            "description": load_tool_description("get_subagent_output"),
+            "name": "get_help_responses",
+            "description": load_tool_description("get_help_responses"),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "job_id": {
+                    "request_id": {
                         "type": "string",
-                        "description": "The job_id returned by the subagent tool.",
-                    },
-                    "block": {
-                        "type": "boolean",
-                        "description": "Whether to wait for completion. Set to false for non-blocking status check.",
-                        "default": True,
-                    },
-                    "timeout": {
-                        "type": "integer",
-                        "description": "Maximum wait time in milliseconds (max 600000)",
-                        "default": 30000,
-                        "maximum": 600000,
+                        "description": "The request_id returned by request_help.",
                     },
                 },
-                "required": ["job_id"],
+                "required": ["request_id"],
             },
         },
     },
