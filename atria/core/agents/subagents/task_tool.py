@@ -43,9 +43,13 @@ def create_request_help_schema(manager: "SubAgentManager") -> dict[str, Any]:
     agent_configs = manager.get_agent_configs()
     lines = []
     for c in agent_configs:
-        profile = getattr(c, "capability_profile", None)
+        if c.name == "ask-user":
+            continue  # builtin UI action, never a volunteer
+        # Profile the helper by its capability_profile, or fall back to its
+        # description so dynamically-registered module workers self-select too.
+        profile = getattr(c, "capability_profile", None) or getattr(c, "description", None)
         if not profile:
-            continue  # builtins like ask-user are not volunteers
+            continue
         lines.append(f"- **{c.name}**: {profile}")
     subagent_descriptions = "\n".join(lines) or "- (no helpers with profiles registered)"
     return {

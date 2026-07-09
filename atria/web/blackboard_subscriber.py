@@ -92,7 +92,8 @@ class BlackboardSubscriber:
         channel = msg.get("channel")
         if isinstance(channel, (bytes, bytearray)):
             channel = channel.decode()
-        key = payload.get("request_id") or payload.get("task_id") or ""
+        # request events carry `id`; bid/response carry `request_id`; notes carry `task_id`.
+        key = payload.get("request_id") or payload.get("task_id") or payload.get("id") or ""
         if not self._admit(key):
             return
         if isinstance(channel, str) and channel.endswith(":board"):
