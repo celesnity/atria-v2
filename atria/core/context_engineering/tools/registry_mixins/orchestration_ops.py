@@ -49,6 +49,18 @@ class OrchestrationOpsMixin:
         _current = getattr(_sess_mgr, "current_session", None) if _sess_mgr else None
         owner_id = (getattr(_current, "owner_id", None) or "") if _current else ""
 
+        # Bid pool = every helper (incl. dynamically-registered module workers),
+        # profiled by its capability_profile or, failing that, its description.
+        # ask-user is a builtin UI action, never a volunteer.
+        profiles: list[tuple[str, str]] = []
+        if mgr is not None:
+            for c in mgr.get_agent_configs():
+                if c.name == "ask-user":
+                    continue
+                p = getattr(c, "capability_profile", None) or getattr(c, "description", None)
+                if p:
+                    profiles.append((c.name, p))
+
         self._subagent_orchestrator = build_subagent_orchestrator(
             task_client=task_client,
             config=self._app_config,
@@ -56,36 +68,37 @@ class OrchestrationOpsMixin:
             session_id=session_id,
             working_dir=str(working_dir),
             progress_cb=progress_cb,
+            helper_profiles=profiles,
         )
         return self._subagent_orchestrator
 
-    def _execute_subagent_fanout(
+    def _execute_request_help(
         self, arguments: dict[str, Any], context: Any = None
     ) -> dict[str, Any]:
-        """Dispatch the ``subagent`` tool: write tasks + fan workers out."""
+        """Dispatch the ``request_help`` tool: post a request + bid it out."""
         orch = self._get_subagent_orchestrator(context)
         if orch is None:
             return {
                 "success": False,
-                "error": "Subagent delegation unavailable (no task client). "
+                "error": "Help requests unavailable (no task client). "
                 "Requires a running TaskIQ worker + Redis.",
                 "output": None,
             }
-        from atria.core.subagents.tools import execute_subagent_fanout
+        from atria.core.subagents.tools import execute_request_help
 
-        return execute_subagent_fanout(arguments, orch)
+        return execute_request_help(arguments, orch)
 
-    def _execute_get_subagent_output(
+    def _execute_get_help_responses(
         self, arguments: dict[str, Any], context: Any = None
     ) -> dict[str, Any]:
-        """Dispatch ``get_subagent_output``: collect statuses + notes digest."""
+        """Dispatch ``get_help_responses``: collect responses + bids + notes digest."""
         orch = self._get_subagent_orchestrator(context)
         if orch is None:
             return {
                 "success": False,
-                "error": "Subagent delegation unavailable (no task client).",
+                "error": "Help requests unavailable (no task client).",
                 "output": None,
             }
-        from atria.core.subagents.tools import execute_get_subagent_output
+        from atria.core.subagents.tools import execute_get_help_responses
 
-        return execute_get_subagent_output(arguments, orch)
+        return execute_get_help_responses(arguments, orch)

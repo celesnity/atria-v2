@@ -168,52 +168,13 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
             ctx.skip_next_thinking = True
             return LoopAction.CONTINUE
 
-        # Explore-first enforcement: block task subagent spawns until Code-Explorer has run
-        EXPLORE_EXEMPT_SUBAGENTS = {"Code-Explorer", "ask-user"}
-        if not ctx.has_explored and not ctx.plan_approved_signal_injected:
-            for tc in tool_calls:
-                if tc["function"]["name"] == "subagent":
-                    try:
-                        args = json.loads(tc["function"]["arguments"])
-                    except (json.JSONDecodeError, KeyError):
-                        continue
-                    subagent_type = args.get("subagent_type", "")
-                    if subagent_type not in EXPLORE_EXEMPT_SUBAGENTS:
-                        # Nudge the agent to explore first
-                        append_nudge(
-                            ctx.messages,
-                            get_reminder("explore_first_nudge"),
-                            role="tool",
-                            tool_call_id=tc["id"],
-                        )
-                        # Fill remaining tool calls with synthetic results
-                        for other_tc in tool_calls:
-                            if other_tc["id"] != tc["id"]:
-                                append_nudge(
-                                    ctx.messages,
-                                    "Blocked: explore first.",
-                                    role="tool",
-                                    tool_call_id=other_tc["id"],
-                                )
-                        ctx.skip_next_thinking = True
-                        return LoopAction.CONTINUE
-
-        # Mark explored / planner spawned
-        for tc in tool_calls:
-            if tc["function"]["name"] == "subagent":
-                try:
-                    args = json.loads(tc["function"]["arguments"])
-                except (json.JSONDecodeError, KeyError):
-                    continue
-                subagent_type = args.get("subagent_type", "")
-                if subagent_type == "Code-Explorer":
-                    ctx.has_explored = True
-                elif subagent_type == "Planner":
-                    ctx.planner_pending = True
-                    ctx.planner_plan_path = args.get("plan_file_path", "")
+        # NOTE: The broadcast paradigm removed caller-chosen subagent types, so the
+        # old "explore first via Code-Explorer" / "Planner auto-plan" gates (which
+        # keyed on request_help's subagent_type) no longer apply — a request_help is
+        # an un-addressed broadcast, never blocked on a specific helper having run.
 
         # Execute tools (parallel for spawn_subagent batches or read-only batches)
-        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "subagent"]
+        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "request_help"]
         is_all_spawn_agents = len(spawn_calls) == len(tool_calls) and len(spawn_calls) > 1
         is_all_parallelizable = len(tool_calls) > 1 and all(
             tc["function"]["name"] in self.PARALLELIZABLE_TOOLS for tc in tool_calls
@@ -265,7 +226,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
                 self._snapshot_manager.track()
 
         # Check if agent has subagent capability (for dynamic truncation hints)
-        _has_subagent = "subagent" in getattr(ctx.tool_registry, "_handlers", {})
+        _has_subagent = "request_help" in getattr(ctx.tool_registry, "_handlers", {})
 
         # Batch add all results after completion (maintains message order)
         for tool_call in tool_calls:

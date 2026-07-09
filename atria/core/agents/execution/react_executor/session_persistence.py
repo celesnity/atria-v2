@@ -71,7 +71,7 @@ class SessionPersistenceMixin:
 
             nested_calls = []
             if (
-                tool_name == "subagent"
+                tool_name == "request_help"
                 and ctx.ui_callback
                 and hasattr(ctx.ui_callback, "get_and_clear_nested_calls")
             ):

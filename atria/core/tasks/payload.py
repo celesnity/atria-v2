@@ -28,3 +28,4 @@ class SubagentTaskPayload(BaseModel):
     blackboard_task_id: str | None = None
     thread_id: int = 0
     subagent_task_id: str | None = None
+    bid_confidence: float = 0.0
