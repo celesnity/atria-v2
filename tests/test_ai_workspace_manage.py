@@ -25,6 +25,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("AIW_UPLOADS_DIR", str(tmp_path / "uploads"))
     monkeypatch.setenv("AIW_AUDIT_LOG", str(tmp_path / "audit.jsonl"))
     seed_db.seed()
+    # Keep hermetic: stub the EK indexing hook (no Qdrant/embeddings in tests).
+    monkeypatch.setattr(workspace.ek_index, "index_document", lambda **kw: True)
+    monkeypatch.setattr(workspace.ek_index, "remove_document", lambda **kw: True)
     return tmp_path
 
 
