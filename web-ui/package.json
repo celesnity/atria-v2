@@ -12,6 +12,8 @@
   "dependencies": {
     "@flowgram.ai/free-layout-editor": "^1.0.12",
     "@heroicons/react": "^2.2.0",
+    "@module-federation/runtime": "^2.7.0",
+    "@module-federation/vite": "^1.16.14",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-resizable": "^3.0.8",
     "@univerjs/preset-sheets-core": "^0.25.0",

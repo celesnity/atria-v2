@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { federation } from '@module-federation/vite'
 
 // Get backend URL from environment or default to the backend's IPv4 bind.
 // Use 127.0.0.1 (not "localhost"): on Windows "localhost" resolves to IPv6
@@ -10,7 +11,21 @@ const apiUrl = process.env.VITE_API_URL || 'http://127.0.0.1:8080';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    federation({
+      name: 'atria_host',
+      // No static remotes — service-modules are registered at RUNTIME (Task 3.2)
+      // from their connector manifests. This keeps the host decoupled from any
+      // specific module at build time.
+      remotes: {},
+      shared: {
+        react: { singleton: true, requiredVersion: '^18.3.1' },
+        'react-dom': { singleton: true, requiredVersion: '^18.3.1' },
+      },
+      filename: 'remoteEntry.js',
+    }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
