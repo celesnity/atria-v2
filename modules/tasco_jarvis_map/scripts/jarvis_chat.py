@@ -34,18 +34,17 @@ from pathlib import Path
 from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _data import fold, load_abbreviations, load_json, normalize_query  # noqa: E402
-from search import _category_index, _detect_category, cmd_near, cmd_search  # noqa: E402
+from _data import fold, haversine_km, load_abbreviations, load_json, normalize_query  # noqa: E402
+from search import (  # noqa: E402
+    _category_index, _category_radius, _detect_category, _time_ok, cmd_near, cmd_search,
+)
 
 MODULE_NAME = "tasco_jarvis_map"
 
 _GREETING_RE = re.compile(r"^(hi|hii+|hey+|hello|helo|yo|chao|xin chao|alo|hallo)\b")
-_ROUTE_RE = re.compile(
-    r"duong di|chi duong|dan duong|di den|di toi|\bdi tu\b|tu .{2,40} den |"
-    r"direction|\broute\b|how (do i|to) get|navigate"
-)
-_NEAR_RE = re.compile(r"\bgan day\b|\bgan toi\b|quanh day|xung quanh|near me|nearby|around here")
-# Reasoning-ish questions go to the agent even when short.
+# Navigation / nearby / coordinate intents are now detected by the query_intent
+# router (via cmd_search), not by regex here. Reasoning questions still bypass
+# the plain-search fast path so the agent handles them.
 _COMPLEX_RE = re.compile(
     r"\bnen\b|nao tot|nao ngon|vi sao|tai sao|so sanh|compare|recommend|goi y|"
     r"tu van|\bwhy\b|\bbest\b|tot nhat|ngon nhat|re nhat|đat nhat|danh gia|review|"
@@ -63,6 +62,16 @@ PREAMBLE_HEAD = (
     "Answer ONLY from the CANDIDATES list below — never invent places, addresses "
     "or coordinates, and never explore the filesystem. Reply in the user's "
     "language, 2-4 short sentences, numbering your picks 1..k to match the pins. "
+    "Never fabricate an attribute or opening hours that the CANDIDATES rows do "
+    "not show; if the data cannot confirm a requested detail (parking, a private "
+    "room, a named feature), still pick the closest candidates but briefly note "
+    "the data cannot confirm that detail rather than presenting them as a full match. "
+    "Treat any city / district / street / anchor / coordinate the user gave as a "
+    "HARD constraint: candidates are already scoped to it, so never widen to another "
+    "city, and never replace a location-scoped search with unrelated global results. "
+    "When the requested district or place has no exact match, the candidates are the "
+    "nearest in the SAME city -- say so instead of implying they sit in it. "
+    "When a candidate row carries a distance, state it. "
     "End your reply with EXACTLY one fenced block in this form:\n"
     "```map-json\n"
     '{"actions":[{"type":"pins","items":[{"n":1,"poi_id":"POI001"}]}]}\n'
@@ -96,61 +105,172 @@ def _pin_items(results: list[dict], with_distance: bool = False) -> list[dict]:
             "n": i + 1, "poi_id": r["poi_id"], "name": r["name"],
             "lat": r["lat"], "lng": r["lng"], "category": r["category"],
             "rating": r.get("rating"), "detail": detail,
+            "opening_hours": r.get("opening_hours"),
         })
     return items
 
 
-def _fast_reply_lines(items: list[dict], vi: bool) -> str:
+def _fast_reply_lines(items: list[dict], vi: bool, want_hours: bool = False) -> str:
     lines = []
     for it in items:
         star = f" ★{it['rating']}" if it.get("rating") else ""
-        lines.append(f"{it['n']}. {it['name']}{star}")
+        hrs = f" · {it['opening_hours']}" if want_hours and it.get("opening_hours") else ""
+        lines.append(f"{it['n']}. {it['name']}{star}{hrs}")
     return "\n".join(lines)
 
 
+def _want_hours(res: dict) -> bool:
+    return bool((res.get("entities") or {}).get("time"))
+
+
+def _scope_prefix(res: dict, vi: bool) -> str:
+    """Disclosure line when the requested district/street had no match, so the
+    reply is honest that the shown places are the nearest alternatives."""
+    scope = res.get("place_scope")
+    if not scope or scope.get("matched", True):
+        return ""
+    where = scope.get("district") or scope.get("street") or ""
+    return (f"Không có kết quả đúng tại '{where}' trong dữ liệu — đây là các lựa chọn gần nhất:\n"
+            if vi else f"No exact match in '{where}' in the data — here are the nearest options:\n")
+
+
 def _try_fast_path(message: str, folded: str, viewport: dict | None) -> dict | None:
-    """Deterministic answers for simple intents. Returns a full response payload
-    or None to fall through to the agent."""
+    """Deterministic answers driven by the intent router. Navigation, coordinate
+    and anchored-nearby intents are resolved locally (the LLM is never called);
+    plain hits pin when confident. Returns a full response payload or None to
+    fall through to the agent."""
     vi = _is_vietnamese(message)
+    res = cmd_search(SimpleNamespace(query=message, limit=5, city=None, category=None))
+    intent = res.get("intent")
+    results = res.get("results") or []
+    anchor = res.get("anchor")
+    want_hours = _want_hours(res)
+    origin = (res.get("entities") or {}).get("origin")
+    action = (res.get("entities") or {}).get("action")
 
-    if _ROUTE_RE.search(folded):
-        reply = ("Chỉ đường sẽ có trong bản cập nhật tới — hiện tại tôi có thể tìm "
-                 "địa điểm và ghim lên bản đồ giúp bạn."
+    # "Toa do cua X" — state the coordinates of the resolved POI. No LLM.
+    if action == "coordinate_lookup" and results:
+        top = results[0]
+        loc = ", ".join(x for x in (top.get("district"), top.get("city")) if x)
+        actions = [{"type": "pins", "items": _pin_items([top]), "fit": False},
+                   {"type": "focus", "lat": top["lat"], "lng": top["lng"], "zoom": 15}]
+        tail = f" ({loc})" if loc else ""
+        reply = (f"{top['name']} ở toạ độ {top['lat']:.5f}, {top['lng']:.5f}{tail}."
                  if vi else
-                 "Directions are coming in the next update — for now I can find "
-                 "places and pin them on the map for you.")
-        return {"reply": reply, "map_actions": [], "source": "fast"}
+                 f"{top['name']} is at {top['lat']:.5f}, {top['lng']:.5f}{tail}.")
+        return {"reply": reply, "map_actions": actions, "source": "fast"}
 
-    if _NEAR_RE.search(folded) and viewport and viewport.get("lat") is not None:
+    # Reverse geocode ("<coord> là chỗ nào"): describe the spot, don't list options.
+    if res.get("reverse_geocode") and anchor and results:
+        top = results[0]
+        items = _pin_items(results[:3], with_distance=True)
+        actions = [{"type": "pins", "items": items, "fit": True},
+                   {"type": "focus", "lat": anchor["lat"], "lng": anchor["lng"], "zoom": 15}]
+        d = top.get("distance_km")
+        dtxt = (f", cách ~{d} km" if vi else f", ~{d} km away") if d is not None else ""
+        loc = ", ".join(x for x in (top.get("district"), top.get("city")) if x)
+        addr = top.get("address") or ""
+        where = (f" ({addr})" if addr else "") + dtxt + (f" — {loc}" if loc else "")
+        reply = (f"Vị trí đó nằm gần {top['name']}{where}."
+                 if vi else f"That location is near {top['name']}{where}.")
+        return {"reply": reply, "map_actions": actions, "source": "fast"}
+
+    # Navigation: focus the destination, pin it, draw a straight route from the
+    # current viewport, and report the as-the-crow-flies distance. No LLM.
+    if intent == "Navigation" and results:
+        dest = results[0]
+        actions = [{"type": "pins", "items": _pin_items([dest]), "fit": False},
+                   {"type": "focus", "lat": dest["lat"], "lng": dest["lng"], "zoom": 15}]
+        dist_txt = ""
+        if viewport and viewport.get("lat") is not None:
+            km = haversine_km(float(viewport["lat"]), float(viewport["lng"]),
+                              dest["lat"], dest["lng"])
+            actions.append({"type": "route",
+                            "from": {"lat": float(viewport["lat"]), "lng": float(viewport["lng"])},
+                            "to": {"lat": dest["lat"], "lng": dest["lng"]}})
+            dist_txt = (f" (~{km:.1f} km đường chim bay)" if vi else f" (~{km:.1f} km as the crow flies)")
+        frm = (f" từ {origin}" if origin and vi else f" from {origin}" if origin else "")
+        reply = (f"Chỉ đường{frm} tới {dest['name']}{dist_txt} — đã ghim và vẽ tuyến trên bản đồ."
+                 if vi else
+                 f"Directions{frm} to {dest['name']}{dist_txt} — pinned and drawn on the map.")
+        return {"reply": reply, "map_actions": actions, "source": "fast"}
+
+    # Coordinate / anchored-nearby: results are already distance-ranked; pin them
+    # and focus the anchor so the user sees what "near" was measured from.
+    if intent in ("Coordinate Search", "Nearby Search") and anchor and results:
+        items = _pin_items(results, with_distance=True)
+        actions = [{"type": "pins", "items": items, "fit": True}]
+        if anchor.get("lat") is not None:
+            actions.append({"type": "focus", "lat": anchor["lat"], "lng": anchor["lng"], "zoom": 14})
+        near_what = anchor.get("label") or ("vị trí đã chọn" if vi else "the chosen spot")
+        far = anchor.get("resolution") == "nearest_available"
+        head = (f"Không có địa điểm ngay gần {near_what}; gần nhất trong bán kính ~{anchor.get('radius_km')} km:\n"
+                if far and vi else
+                f"None right next to {near_what}; nearest within ~{anchor.get('radius_km')} km:\n" if far else
+                f"Có {len(items)} địa điểm gần {near_what}:\n" if vi else
+                f"Found {len(items)} places near {near_what}:\n")
+        reply = head + _fast_reply_lines(items, vi, want_hours)
+        return {"reply": reply, "map_actions": actions, "source": "fast"}
+
+    # Nearby with no resolvable anchor ("cafe gần đây"): use the live viewport.
+    if intent == "Nearby Search" and not anchor and viewport and viewport.get("lat") is not None:
         terms, max_ngram = load_abbreviations()
         norm = normalize_query(message, terms, max_ngram)
         categories = load_json("pois.json")["categories"]
         cat_key, _ = _detect_category(norm, _category_index(categories))
-        res = cmd_near(SimpleNamespace(
+        near = cmd_near(SimpleNamespace(
             lat=float(viewport["lat"]), lng=float(viewport["lng"]),
-            radius_km=3.0, category=cat_key, limit=5))
-        items = _pin_items(res["results"], with_distance=True)
+            radius_km=_category_radius(cat_key, 3.0), category=cat_key, limit=12))
+        near_rows = near["results"]
+        # Apply the router's opening-hours constraint (cmd_near ignores it).
+        time_c = (res.get("entities") or {}).get("time")
+        time_note = ""
+        if time_c and near_rows:
+            open_rows = [r for r in near_rows if _time_ok(r, time_c, 12 * 60)]
+            if open_rows:
+                near_rows = open_rows
+            else:
+                # Nothing nearby matches the requested hours. Rather than a bare
+                # not-found, disclose honestly and still offer the nearest
+                # same-category places (their real hours are shown, want_hours=True).
+                time_note = (
+                    "Không có nơi mở đúng khung giờ bạn hỏi ở gần đây; gần nhất cùng loại:\n"
+                    if vi else "No place open at that time nearby; nearest of the same type:\n")
+        items = _pin_items(near_rows[:5], with_distance=True)
         if not items:
             reply = ("Không tìm thấy địa điểm phù hợp trong ~3 km quanh khu vực bản đồ."
                      if vi else "No matching places within ~3 km of the map view.")
             return {"reply": reply, "map_actions": [], "source": "fast"}
-        reply = (f"Có {len(items)} địa điểm gần khu vực bạn đang xem:\n"
-                 if vi else f"Found {len(items)} places near the current map view:\n")
-        reply += _fast_reply_lines(items, vi)
+        reply = time_note or (f"Có {len(items)} địa điểm gần khu vực bạn đang xem:\n"
+                              if vi else f"Found {len(items)} places near the current map view:\n")
+        reply += _fast_reply_lines(items, vi, want_hours)
         return {"reply": reply,
                 "map_actions": [{"type": "pins", "items": items, "fit": True}],
                 "source": "fast"}
 
     # Plain search: short message, no reasoning language, and a confident hit.
     if not _COMPLEX_RE.search(folded) and len(folded.split()) <= 6:
-        res = cmd_search(SimpleNamespace(query=message, limit=5, city=None, category=None))
-        results = res.get("results") or []
         if results and results[0].get("score", 0) >= 55:
-            items = _pin_items(results)
-            reply = (f"Tìm thấy {len(items)} địa điểm cho \"{message}\" — đã ghim lên bản đồ:\n"
-                     if vi else
-                     f"Found {len(items)} places for \"{message}\" — pinned on the map:\n")
-            reply += _fast_reply_lines(items, vi)
+            # When a real origin (viewport) exists, attach honest distances — but
+            # only when the viewport is actually LOCAL to the result (<50 km). A
+            # viewport in another city is not a meaningful origin for a city-scoped
+            # search (e.g. an HCMC map view vs a "... Hà Nội" query), so we never
+            # show a cross-city distance, and never fabricate one with no origin.
+            has_origin = bool(viewport and viewport.get("lat") is not None)
+            shown = False
+            if has_origin:
+                for r in results:
+                    d = round(haversine_km(float(viewport["lat"]), float(viewport["lng"]),
+                                           r["lat"], r["lng"]), 2)
+                    if d <= 50.0:
+                        r["distance_km"] = d
+                        shown = True
+            items = _pin_items(results, with_distance=shown)
+            head = _scope_prefix(res, vi) or (
+                f"Tìm thấy {len(items)} địa điểm cho \"{message}\" — đã ghim lên bản đồ:\n"
+                if vi else
+                f"Found {len(items)} places for \"{message}\" — pinned on the map:\n")
+            reply = head + _fast_reply_lines(items, vi, want_hours)
             return {"reply": reply,
                     "map_actions": [{"type": "pins", "items": items, "fit": True}],
                     "source": "fast"}
@@ -200,11 +320,19 @@ def _extract_map_actions(reply: str) -> tuple[str, list[dict]]:
 
 def _candidates_block(message: str, viewport: dict | None, pins: list[dict]) -> str:
     res = cmd_search(SimpleNamespace(query=message, limit=10, city=None, category=None))
-    lines = ["CANDIDATES (poi_id | name | category | district | city | rating):"]
+    intent = res.get("intent")
+    lines = []
+    if intent:
+        # The router's read of the query — helps the model frame its reply
+        # (navigation vs nearby vs a bare ambiguous brand).
+        anchor = res.get("anchor") or {}
+        anchor_note = f" near {anchor.get('label')}" if anchor.get("label") else ""
+        lines.append(f"INTENT: {intent}{anchor_note}")
+    lines.append("CANDIDATES (poi_id | name | category | district | city | rating | hours):")
     for r in res.get("results") or []:
         lines.append(f"  {r['poi_id']} | {r['name']} | {r['category']} | "
-                     f"{r['district']} | {r['city']} | {r['rating']}")
-    if len(lines) == 1:
+                     f"{r['district']} | {r['city']} | {r['rating']} | {r.get('opening_hours') or '?'}")
+    if not (res.get("results") or []):
         lines.append("  (no matches — say you could not find it in the dataset)")
     if viewport and viewport.get("lat") is not None:
         lines.append(f"VIEWPORT: {viewport['lat']:.4f},{viewport['lng']:.4f} z{viewport.get('zoom', '')}")

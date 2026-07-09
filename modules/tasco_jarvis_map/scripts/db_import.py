@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _db
 import gazetteer
-from _data import emit, expand_abbrev, fold, load_abbreviations, load_json
+from _data import emit, expand_abbrev, fold, load_abbreviations, load_json, parse_opening_hours
 
 
 def _norm(text: str, terms, max_ngram) -> str:
@@ -127,6 +127,17 @@ def main() -> None:
                     p["lat"],
                     json.dumps(p, ensure_ascii=False),
                 ),
+            )
+
+        # Backfill parsed opening-hours minutes (open_min..close_min) — see
+        # db_schema.sql. Kept separate from the POI insert so the raw jsonb
+        # (pois-dump parity) stays the source of truth.
+        for p in pois:
+            hrs = parse_opening_hours(p.get("opening_hours"))
+            open_min, close_min = hrs if hrs else (None, None)
+            cur.execute(
+                "UPDATE map_pois SET open_min=%s, close_min=%s WHERE poi_id=%s",
+                (open_min, close_min, p["poi_id"]),
             )
 
         for a in addresses:
