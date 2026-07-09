@@ -64,3 +64,15 @@ def test_seed_is_idempotent(env):
     again = seed_db.seed()
     assert again["documents"] == 40
     assert len(repo.list_documents()) == 40
+
+
+def test_document_has_index_status_default_pending(env):
+    repo.insert_document(
+        doc_id="DOC900", title="t", dept_code="ENG", classification_code="Internal",
+        file_path="ENG/DOC900_t.txt", original_filename="t.txt", mime_type="text/plain",
+        size_bytes=3, uploaded_by="U004",
+    )
+    assert repo.get_document("DOC900")["index_status"] == "pending"
+    assert repo.set_index_status("DOC900", "indexed") is True
+    assert repo.get_document("DOC900")["index_status"] == "indexed"
+    assert repo.set_index_status("NOPE", "indexed") is False

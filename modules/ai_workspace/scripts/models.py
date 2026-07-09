@@ -87,4 +87,6 @@ class Document(Base):
         ForeignKey("users.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(16), default="active")
+    # EK index lifecycle: pending | indexed | failed | skipped
+    index_status: Mapped[str] = mapped_column(String(16), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
