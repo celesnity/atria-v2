@@ -58,6 +58,8 @@ def _default_protected_paths() -> "list[ProtectedPath]":
     """Built-in protected roots that apply even with no settings file."""
     return [
         ProtectedPath(pattern="modules/*/sample_manuals", message=_MAINTENANCE_CORPUS_MESSAGE),
+        ProtectedPath(pattern="modules/*/backend/sample_manuals",
+                      message=_MAINTENANCE_CORPUS_MESSAGE),
     ]
 
 
