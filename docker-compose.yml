@@ -156,6 +156,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      neo4j:
+        condition: service_started
 
   # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
   redis:
@@ -296,6 +298,41 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      neo4j:
+        condition: service_started
+
+  # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
+  # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
+  vetc-sandbox:
+    build: .
+    entrypoint: []
+    command: ["python", "modules/vetc_copilot/tools/vetc_sandbox.py"]
+    environment:
+      - SANDBOX_CLIENT_ID=${SANDBOX_CLIENT_ID:-sandbox-client}
+      - SANDBOX_CLIENT_SECRET=${SANDBOX_CLIENT_SECRET:-sandbox-secret}
+      - SANDBOX_HMAC_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
+      - SANDBOX_AUTOCOMPLETE_SECONDS=${SANDBOX_AUTOCOMPLETE_SECONDS:-2}
+      - SANDBOX_PORT=9099
+    expose:
+      - "9099"
+    volumes:
+      - ./modules:/app/modules
+
+  # vetc_copilot module `serve`, run persistently as the /ipn receiver so the
+  # sandbox can push signed payment-completion callbacks back to the module.
+  vetc-copilot:
+    build: .
+    entrypoint: []
+    command: ["python", "modules/vetc_copilot/scripts/autopilot.py", "serve", "--port", "8770"]
+    environment:
+      - VETC_IPN_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
+      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
+      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    expose:
+      - "8770"
+    volumes:
+      - ./modules:/app/modules
 
   # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
   # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
@@ -352,6 +389,13 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  # Shared knowledge-graph store for maintenance_copilot AND enterprise_knowledge.
+  # Community edition = a single database, so the two modules co-tenant here.
+  # enterprise_knowledge namespaces every node with an :EKNode label and scopes
+  # all its reads/writes/reset to it. WARNING: maintenance_copilot's own graph
+  # `reset` is an UNSCOPED `MATCH (n) DETACH DELETE n` — running it wipes the
+  # enterprise_knowledge graph too. Rebuild EK afterwards (`knowledge.py graph
+  # build`). Tracked follow-up: namespace maintenance_copilot's graph as well.
   neo4j:
     image: neo4j:5
     environment:
