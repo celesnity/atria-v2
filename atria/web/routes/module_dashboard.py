@@ -25,7 +25,9 @@ from pydantic import BaseModel, Field
 from atria.core.modules import store as _store
 from atria.core.modules.registry import ModuleRegistry
 from atria.core.modules.store import InvalidModuleName, ModuleNotFound
+from atria.core.services.module_chat_service import ModuleChatService
 from atria.web.dependencies.modules import get_modules_registry
+from atria.web.dependencies.services import get_module_chat_service
 
 router = APIRouter(prefix="/api/modules", tags=["module-dashboard"])
 
@@ -574,23 +576,16 @@ async def module_chat_save(
     name: str,
     body: ChatSaveBody,
     reg: ModuleRegistry = Depends(get_modules_registry),
+    service: "ModuleChatService" = Depends(get_module_chat_service),
 ) -> dict:
     """Store a Minder conversation in the module's workspace project.
 
-    Ensures a project titled after the module (manifest display_name, e.g.
-    "Warehouse") for the conversation's owner — creating it only when the
-    widget passes ``create_workspace: true`` (the user confirmed) — moves the
-    conversation into it, and re-titles the conversation by LLM-summarizing
-    the recent messages (heuristic fallback if the LLM is unavailable).
+    Thin adapter: resolve the module (registry concern) and the workspace name,
+    then delegate all DB/session orchestration to :class:`ModuleChatService`.
+    Service failures raise :class:`ServiceError` carrying the widget ``kind``;
+    we reproduce the exact ``{"kind", "message"}`` payload the widget expects.
     """
-    import asyncio
-
-    from atria.core.workspace.manager import ensure_path, project_path, slugify
-    from atria.db.connection import get_sessionmaker
-    from atria.db.repositories.conversation_repo import ConversationRepository
-    from atria.db.repositories.project_repo import ProjectRepository
-    from atria.db.repositories.user_repo import UserRepository
-    from atria.web.state import get_state
+    from atria.core.services.errors import ServiceError
 
     try:
         module = reg.get(name)
@@ -600,99 +595,23 @@ async def module_chat_save(
             detail={"kind": "unknown-module", "message": f"module {name!r} not found"},
         ) from None
 
-    state = get_state()
-    sm = state.session_manager
+    manifest = getattr(module, "manifest", None)
+    workspace_name = (getattr(manifest, "display_name", None) or name.capitalize()).strip()
 
     try:
-        try:
-            session = await sm.get_session_by_id(body.chat_session_id)
-        except FileNotFoundError:
-            raise HTTPException(
-                status_code=404,
-                detail={"kind": "unknown-session",
-                        "message": f"session {body.chat_session_id!r} not found"},
-            ) from None
-
-        # Resolve the owning user: browser user (via /run) wins, then the
-        # session's owner, then the caller's context session.
-        user_id = int(body.user_id) if body.user_id else None
-        for candidate in (getattr(session, "owner_id", None), body.context_session_id):
-            if user_id is not None:
-                break
-            if candidate is None:
-                continue
-            if str(candidate).isdigit():
-                user_id = int(candidate)
-            else:
-                try:
-                    ctx = await sm.get_session_by_id(str(candidate))
-                    if ctx is not None and str(ctx.owner_id or "").isdigit():
-                        user_id = int(ctx.owner_id)
-                except FileNotFoundError:
-                    pass
-        if user_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail={"kind": "no-user",
-                        "message": "cannot resolve the conversation's owner"},
-            )
-
-        manifest = getattr(module, "manifest", None)
-        workspace_name = (getattr(manifest, "display_name", None) or name.capitalize()).strip()
-
-        db = await get_sessionmaker()
-        project_repo = ProjectRepository(db)
-        projects = await project_repo.list_by_user(user_id)
-        target = next(
-            (p for p in projects
-             if str(p.get("title", "")).strip().lower() == workspace_name.lower()),
-            None,
+        return await service.save_chat(
+            workspace_name=workspace_name,
+            chat_session_id=body.chat_session_id,
+            create_workspace=body.create_workspace,
+            context_session_id=body.context_session_id,
+            user_id=body.user_id,
+            generate_title=_generate_title_sync,
+            strip_preamble=_strip_minder_preamble,
         )
-
-        if target is None:
-            if not body.create_workspace:
-                return {"ok": False, "needs_workspace": True,
-                        "workspace_name": workspace_name}
-            user_row = await UserRepository(db).get_by_id(user_id)
-            email = str(user_row["email"]) if user_row else f"user-{user_id}"
-            user_slug = slugify(email.split("@")[0])
-            path = project_path(user_slug, workspace_name)
-            ensure_path(path)
-            project_id = await project_repo.create(
-                user_id=user_id, title=workspace_name, workspace_path=str(path)
-            )
-        else:
-            project_id = int(target["id"])
-
-        conv_repo = ConversationRepository(db)
-        await conv_repo.set_project(int(body.chat_session_id), project_id)
-
-        # LLM title with heuristic fallback (first user message, 50 chars).
-        loop = asyncio.get_event_loop()
-        messages = list(getattr(session, "messages", None) or [])
-        title = await loop.run_in_executor(None, _generate_title_sync, messages)
-        if not title:
-            last_user = next(
-                (_strip_minder_preamble(str(getattr(m, "content", "") or ""))
-                 for m in reversed(messages)
-                 if str(getattr(getattr(m, "role", None), "value",
-                                getattr(m, "role", "")) or "") == "user"),
-                "",
-            )
-            title = (last_user.strip()[:50] or f"{workspace_name} chat").strip()
-        await sm.set_title(body.chat_session_id, title)
-
-        return {"ok": True, "workspace": workspace_name, "title": title,
-                "project_id": project_id, "session_id": body.chat_session_id}
-    except HTTPException:
-        raise
-    except Exception as exc:
-        import logging
-
-        logging.getLogger("atria.web").exception("module chat save failed")
+    except ServiceError as exc:
         raise HTTPException(
-            status_code=500,
-            detail={"kind": "save-failed", "message": f"{type(exc).__name__}: {exc}"},
+            status_code=exc.status,
+            detail={"kind": getattr(exc, "kind", "save-failed"), "message": exc.detail},
         ) from exc
 
 

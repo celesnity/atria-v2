@@ -79,7 +79,7 @@ class ToolSchemaBuilder:
 
         # Add task tool schema if subagent manager is configured
         # Only add if spawn_subagent is in allowed_tools or no filter
-        if self._allowed_tools is None or "subagent" in self._allowed_tools:
+        if self._allowed_tools is None or "request_help" in self._allowed_tools:
             task_schema = self._build_task_schema()
             if task_schema:
                 schemas.append(task_schema)
@@ -113,7 +113,7 @@ class ToolSchemaBuilder:
         return schemas
 
     def _build_task_schema(self) -> dict[str, Any] | None:
-        """Build task tool schema with available subagent types."""
+        """Build the ``request_help`` tool schema from available helper profiles."""
         if not self._tool_registry:
             return None
 
@@ -121,9 +121,9 @@ class ToolSchemaBuilder:
         if not subagent_manager:
             return None
 
-        from atria.core.agents.subagents.task_tool import create_task_tool_schema
+        from atria.core.agents.subagents.task_tool import create_request_help_schema
 
-        return create_task_tool_schema(subagent_manager)
+        return create_request_help_schema(subagent_manager)
 
     def _build_mcp_schemas(self) -> Sequence[dict[str, Any]]:
         """Build MCP tool schemas - only returns discovered tools for token efficiency.
