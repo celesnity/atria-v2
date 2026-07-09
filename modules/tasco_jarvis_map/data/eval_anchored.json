@@ -1,0 +1,17 @@
+{
+ "_comment": "Gold set for anchored/proximity, coordinate and navigation intents. anchor_kind: poi|address|coordinate|null (null = graceful revert to plain search, e.g. an anchor absent from the synthetic dataset). min_results 0 = a disclosed coverage gap (anchor resolved but nothing of the category is near it); the pass still requires the intent + category + anchor_kind to be right.",
+ "queries": [
+  {"id": "ANC001", "query": "atm gan san bay", "intent": "Nearby Search", "category": "bank", "anchor_kind": "poi", "min_results": 1, "all_category": true},
+  {"id": "ANC002", "query": "coffee near ben thanh market", "intent": "Nearby Search", "category": "cafe", "anchor_kind": "poi", "min_results": 1, "all_category": true},
+  {"id": "ANC003", "query": "pharmacy near ho guom", "intent": "Nearby Search", "category": "pharmacy", "anchor_kind": "poi", "min_results": 1, "all_category": true},
+  {"id": "ANC004", "query": "bv gan san bay noi bai", "intent": "Nearby Search", "category": "hospital", "anchor_kind": "poi", "min_results": 0, "all_category": true},
+  {"id": "ANC005", "query": "tiem thuoc gan 72 le thanh ton", "intent": "Nearby Search", "category": "pharmacy", "anchor_kind": null, "min_results": 1, "all_category": true},
+  {"id": "ANC006", "query": "tram sac gan cau rong", "intent": "Nearby Search", "category": "ev_charging", "anchor_kind": null, "min_results": 1, "all_category": true},
+  {"id": "ANC007", "query": "quan cafe gan vincom dong khoi", "intent": "Nearby Search", "category": "cafe", "anchor_kind": "poi", "min_results": 1, "all_category": true},
+  {"id": "ANC008", "query": "khach san gan 16.0678,108.2208", "intent": "Nearby Search", "category": "hotel", "anchor_kind": "coordinate", "min_results": 1, "all_category": true},
+  {"id": "ANC009", "query": "10.7769,106.7009", "intent": "Coordinate Search", "category": null, "anchor_kind": "coordinate", "min_results": 1, "all_category": false},
+  {"id": "ANC010", "query": "cafe gan day", "intent": "Nearby Search", "category": "cafe", "anchor_kind": null, "min_results": 1, "all_category": true},
+  {"id": "ANC011", "query": "chi duong den ben thanh", "intent": "Navigation", "category": null, "anchor_kind": "poi", "min_results": 1, "all_category": false},
+  {"id": "ANC012", "query": "di san bay tu quan 1", "intent": "Navigation", "category": "airport", "anchor_kind": "poi", "min_results": 1, "all_category": false}
+ ]
+}

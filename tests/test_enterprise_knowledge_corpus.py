@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+_MOD = Path(__file__).resolve().parent.parent / "modules" / "enterprise_knowledge" / "scripts"
+
+
+def _load():
+    spec = importlib.util.spec_from_file_location("ek_corpus_uut", _MOD / "corpus.py")
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["ek_corpus_uut"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+_DOC = """---
+doc_id: DOC007
+title: Khung lương tham khảo
+department: HR
+classification: Confidential
+owner: HR
+knowledge_space: Department Knowledge
+last_updated: 2025-08-22
+language: vi
+---
+# Khung lương tham khảo
+Nội dung mật của phòng Nhân sự.
+"""
+
+
+def test_parse_document_reads_frontmatter(tmp_path):
+    c = _load()
+    p = tmp_path / "DOC007.md"
+    p.write_text(_DOC, encoding="utf-8")
+    doc = c.parse_document(str(p))
+    assert doc.doc_id == "DOC007"
+    assert doc.department == "HR"
+    assert doc.classification == "Confidential"
+    assert doc.text.startswith("# Khung lương")
+
+
+def test_missing_required_key_raises(tmp_path):
+    c = _load()
+    p = tmp_path / "bad.md"
+    p.write_text("---\ntitle: x\n---\nbody\n", encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError):
+        c.parse_document(str(p))
+
+
+def test_knowledge_space_derived_when_absent(tmp_path):
+    c = _load()
+    body = "---\ndoc_id: DOC001\ntitle: t\ndepartment: COMP\nclassification: Public\n---\nx\n"
+    p = tmp_path / "DOC001.md"
+    p.write_text(body, encoding="utf-8")
+    doc = c.parse_document(str(p))
+    assert doc.knowledge_space == "Company Knowledge"
+
+
+def test_unterminated_frontmatter_raises(tmp_path):
+    c = _load()
+    p = tmp_path / "unterminated.md"
+    p.write_text("---\ndoc_id: DOC001\ntitle: t\ndepartment: COMP\nclassification: Public\nbody line without closing fence\n", encoding="utf-8")
+    import pytest
+    with pytest.raises(ValueError):
+        c.parse_document(str(p))
+
+
+def test_parse_document_reads_tags(tmp_path):
+    corpus = _load()
+    p = tmp_path / "DOC001.md"
+    p.write_text(
+        "---\n"
+        "doc_id: DOC001\ntitle: Sổ tay\ndepartment: COMP\n"
+        "classification: Public\ntags: sổ, company, public\n---\nBody\n",
+        encoding="utf-8",
+    )
+    doc = corpus.parse_document(str(p))
+    assert doc.tags == ("sổ", "company", "public")
+
+
+def test_parse_document_tags_default_empty(tmp_path):
+    corpus = _load()
+    p = tmp_path / "DOC002.md"
+    p.write_text(
+        "---\ndoc_id: DOC002\ntitle: X\ndepartment: HR\n"
+        "classification: Internal\n---\nBody\n",
+        encoding="utf-8",
+    )
+    assert corpus.parse_document(str(p)).tags == ()

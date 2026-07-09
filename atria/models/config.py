@@ -267,8 +267,20 @@ class AppConfig(BaseModel):
 
     api_key: Optional[str] = None
     api_base_url: Optional[str] = None  # defaults to https://api.openai.com/v1/chat/completions
+    agent_mode: str = "normal"  # "normal" | "assistant" — which suite agent serves chats
     max_tokens: int = 8192
     temperature: float = 0.6
+
+    @field_validator("agent_mode")
+    @classmethod
+    def _validate_agent_mode(cls, v: str) -> str:
+        """Reject anything but the two known modes — fail closed, never silently
+        degrade to the unrestricted normal agent on a typo (e.g. settings.json or
+        ATRIA_AGENT_MODE with a bad value)."""
+        valid_modes = {"normal", "assistant"}
+        if v not in valid_modes:
+            raise ValueError(f"agent_mode must be one of 'normal', 'assistant'; got {v!r}")
+        return v
 
     # Session settings
     auto_save_interval: int = 5  # Save every N turns
