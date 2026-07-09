@@ -1,0 +1,23 @@
+{
+  "display_name": "Tasco Jarvis Map",
+  "tooltip": "Vietnam places map with the Jarvis AI copilot",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Tasco · Jarvis Map",
+    "default_height": 780,
+    "badge_color": "info"
+  },
+  "activity": {
+    "default": { "running": "Working on the map…", "done": "Done" },
+    "actions": {
+      "search":  { "running": "Searching places…",  "done": "Places found" },
+      "near":    { "running": "Finding nearby…",    "done": "Nearby places found" },
+      "geocode": { "running": "Locating address…",  "done": "Address located" },
+      "pois":    { "running": "Loading map data…",  "done": "Map data loaded" },
+      "go":      { "running": "Calculating route…", "done": "Route ready" },
+      "reverse_geocode": { "running": "Locating coordinates…", "done": "Location identified" },
+      "find_duplicates": { "running": "Auditing for duplicates…", "done": "Duplicate audit done" },
+      "explain_match":   { "running": "Explaining match…", "done": "Match explained" }
+    }
+  }
+}
