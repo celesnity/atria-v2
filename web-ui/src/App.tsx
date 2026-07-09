@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { ChatPage } from './pages/ChatPage';
 import { DispatchPage } from './pages/DispatchPage';
+import { BlackboardPage } from './pages/BlackboardPage';
 import './stores/solverJobs';
 import './stores/blackboardStore';
 import { LoginPage } from './pages/LoginPage';
@@ -61,6 +62,7 @@ function AppRoutes() {
       <Route element={<AuthGuard><AppShell /></AuthGuard>}>
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/dispatch" element={<DispatchPage />} />
+        <Route path="/blackboard" element={<BlackboardPage />} />
       </Route>
 
       {/* Old split routes now fold into the unified Dispatch view */}
