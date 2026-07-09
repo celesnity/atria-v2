@@ -456,6 +456,38 @@ def cmd_health() -> int:
     return 0 if all(v == "ok" for v in out.values()) else 1
 
 
+def cmd_reindex(user_id: str) -> int:
+    """Rebuild the EK search index from all active documents (Executive only)."""
+    user = _require_user(user_id)
+    if user.role != "Executive":
+        _print({"reindexed": False, "reason": "cần Executive"})
+        return 1
+    docs = []
+    for d in repo.list_documents(None):
+        rel = d.get("file_path", "")
+        text = ""
+        try:
+            sidecar = storage.sidecar_path(rel)
+            if rel and storage.exists(sidecar):
+                text = storage.read_text(sidecar)
+            elif (rel and storage.exists(rel)
+                  and storage.is_text(d.get("mime_type", ""), d.get("original_filename", ""))):
+                text = storage.read_text(rel)
+        except OSError:
+            text = ""
+        docs.append({
+            "doc_id": d["doc_id"], "title": d["title"], "department": d["department"],
+            "classification": d["classification"], "text": text,
+            "owner": d.get("uploaded_by") or "",
+        })
+    ok = ek_index.reindex(docs)
+    for d in docs:
+        status = "skipped" if not d["text"].strip() else ("indexed" if ok else "failed")
+        repo.set_index_status(d["doc_id"], status)
+    _print({"reindexed": ok, "documents": len(docs)})
+    return 0 if ok else 1
+
+
 def _force_utf8_output() -> None:
     for stream in (sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
@@ -520,6 +552,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_audit = sub.add_parser("audit", help="Show recent audit events.")
     p_audit.add_argument("--limit", type=int, default=50)
 
+    p_reindex = sub.add_parser("reindex", help="Rebuild the EK search index (Executive).")
+    p_reindex.add_argument("--user", required=True)
+
     sub.add_parser("health", help="Check DB + uploads dir.")
     return parser
 
@@ -556,6 +591,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_stats(args.user)
     if args.command == "audit":
         return cmd_audit(args.limit)
+    if args.command == "reindex":
+        return cmd_reindex(args.user)
     if args.command == "health":
         return cmd_health()
     return 2
