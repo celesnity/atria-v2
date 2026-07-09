@@ -95,12 +95,7 @@ def guard_accessible(user: "identity.User", hits: list[dict]) -> tuple[list[dict
     blocked: list[dict] = []
     for hit in hits:
         decision = acl.can_access(
-            user,
-            {
-                "classification": hit["classification"],
-                "department": hit["department"],
-                "knowledge_space": hit.get("knowledge_space", ""),
-            },
+            user, {"classification": hit["classification"], "department": hit["department"]}
         )
         (safe if decision.allowed else blocked).append(hit)
     return safe, blocked
@@ -113,7 +108,6 @@ def load_doc_meta(samples: str) -> dict[str, dict]:
         meta[doc.doc_id] = {
             "classification": doc.classification,
             "department": doc.department,
-            "knowledge_space": doc.knowledge_space,
             "title": doc.title,
         }
     return meta
