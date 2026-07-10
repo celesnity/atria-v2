@@ -318,8 +318,10 @@ def _make_handler(
 ) -> Callable[..., dict]:
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
-        # Identity (username/email via ctx.principal + session via ctx.session_id)
-        # is forwarded first-party from the session context on every call.
+        # Identity is forwarded first-party from the session: ctx.principal
+        # (derived from the session owner) + ctx.session_id go to the connector
+        # as X-Atria-Principal / X-Atria-Session, so a tool can gate on auth and
+        # reverse-push into the right session.
         if streaming:
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
