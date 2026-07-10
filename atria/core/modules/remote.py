@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import httpx
 
@@ -155,8 +155,35 @@ class RemoteConnector:
             raise ConnectorUnreachable(str(exc)) from exc
 
     # ponytail: no Atria-side stream client — the ReAct tool loop is sync
-    # request/response, so nothing here consumes the SDK's /stream SSE endpoint.
-    # Add a stream_tool() when the agent loop learns to stream tool results.
+    def stream_tool(self, tool: str, arguments: dict,
+                    timeout: float = 300.0) -> "Iterator[dict]":
+        """Yield decoded SSE events from ``/connector/tools/{tool}/stream``.
+
+        The tool handler consumes these synchronously (pumping progress/card
+        events to the UI, then returning the ``final``), so the ReAct loop stays
+        request/response while the UI sees live progress. Raises
+        ``ConnectorUnreachable`` if the stream can't be opened.
+        """
+        try:
+            with self._client.stream("POST", f"/connector/tools/{tool}/stream",
+                                     json={"arguments": arguments},
+                                     headers={**_auth_headers(self.name, None),
+                                              "Accept": "text/event-stream"},
+                                     timeout=timeout) as r:
+                r.raise_for_status()
+                for line in r.iter_lines():
+                    if not line or not line.startswith("data:"):
+                        continue
+                    payload = line[len("data:"):].strip()
+                    if not payload:
+                        continue
+                    try:
+                        yield json.loads(payload)
+                    except ValueError:
+                        logger.debug("connector %s stream: bad event %r", self.name, payload)
+        except httpx.HTTPError as exc:
+            logger.warning("connector %s stream_tool(%s) failed: %s", self.name, tool, exc)
+            raise ConnectorUnreachable(str(exc)) from exc
 
     # -- generic passthrough (used by the core proxy route) -------------------
 
@@ -216,37 +243,79 @@ def _broadcast_card(ctx: "SkillToolContext", card_type: str, card: dict) -> None
         ctx.logger.warning("card broadcast failed: %s", exc)
 
 
+def _broadcast_progress(ctx: "SkillToolContext", module: str, evt: dict) -> None:
+    """Push a streaming progress/partial event to the UI (live, mid-tool-call)."""
+    if not ctx.broadcaster:
+        return
+    try:
+        ctx.broadcaster({"type": "module_progress", "module": module,
+                         "message": evt.get("message", ""), "pct": evt.get("pct"),
+                         "output": evt.get("output")})
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning("progress broadcast failed: %s", exc)
+
+
+def _emit_response(ctx: "SkillToolContext", conn: "RemoteConnector", resp: dict) -> dict:
+    """Broadcast a response's card + blocks and shape the agent-facing result."""
+    _broadcast_card(ctx, _card_type(resp, conn.name), resp.get("card"))
+    for block in resp.get("blocks") or []:
+        if ctx.push_block and block.get("remote_entry"):
+            try:
+                ctx.push_block(block, conn.name)
+            except Exception as exc:  # noqa: BLE001 — a block push must never fail the tool
+                ctx.logger.warning("block push failed for %s: %s", conn.name, exc)
+    out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
+    if resp.get("llm_suffix"):
+        out["_llm_suffix"] = resp["llm_suffix"]
+    return out
+
+
+def _unavailable_result(ctx: "SkillToolContext", conn: "RemoteConnector", query: str) -> dict:
+    card = unavailable_card(query, conn.name)
+    _broadcast_card(ctx, f"{conn.name}_card", card)
+    return {"success": True, "output": card,
+            "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
+
+
+def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
+                tool_name: str, kwargs: dict, query: str) -> dict:
+    """Consume the tool's SSE stream: pump progress/card events to the UI live,
+    then return the ``final`` result to the agent. Falls back to the non-stream
+    endpoint if the connector doesn't actually stream."""
+    final: Optional[dict] = None
+    try:
+        for evt in conn.stream_tool(tool_name, kwargs):
+            etype = evt.get("event")
+            if etype == "card":
+                _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
+            elif etype in ("progress", "partial"):
+                _broadcast_progress(ctx, conn.name, evt)
+            elif etype == "final":
+                final = evt
+            elif etype == "error":
+                final = {"success": False, "output": evt.get("message", "stream error")}
+    except ConnectorUnreachable:
+        return _unavailable_result(ctx, conn, query)
+    if final is None:
+        return {"success": False, "output": "tool stream ended without a final event"}
+    return _emit_response(ctx, conn, final)
+
+
 def _make_handler(
-    ctx: "SkillToolContext", conn: "RemoteConnector", tool_name: str
+    ctx: "SkillToolContext", conn: "RemoteConnector", tool_name: str, streaming: bool = False
 ) -> Callable[..., dict]:
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
         # ponytail: agent tool calls carry no user identity (there's no producer
         # for one on this path). Identity is forwarded on the passthrough route
         # (get_json/post_json), which is where authorization actually matters.
+        if streaming:
+            return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
             resp = conn.call_tool(tool_name, kwargs)
         except ConnectorUnreachable:
-            card = unavailable_card(query, conn.name)
-            _broadcast_card(ctx, f"{conn.name}_card", card)
-            return {
-                "success": True,
-                "output": card,
-                "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name),
-            }
-
-        card = resp.get("card")
-        _broadcast_card(ctx, _card_type(resp, conn.name), card)
-        for block in resp.get("blocks") or []:
-            if ctx.push_block and block.get("remote_entry"):
-                try:
-                    ctx.push_block(block, conn.name)
-                except Exception as exc:  # noqa: BLE001 — a block push must never fail the tool
-                    ctx.logger.warning("block push failed for %s: %s", conn.name, exc)
-        out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
-        if resp.get("llm_suffix"):
-            out["_llm_suffix"] = resp["llm_suffix"]
-        return out
+            return _unavailable_result(ctx, conn, query)
+        return _emit_response(ctx, conn, resp)
 
     return handler
 
@@ -302,7 +371,7 @@ def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -
                     name=name,
                     description=tool.get("description", ""),
                     parameters=tool.get("parameters", {"type": "object", "properties": {}}),
-                    handler=_make_handler(ctx, conn, name),
+                    handler=_make_handler(ctx, conn, name, bool(tool.get("streaming"))),
                 )
             )
     return specs

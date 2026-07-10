@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 
 import httpx
 
@@ -215,3 +215,46 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
         logger.info("announce: module %r deregistered", module)
     except Exception as exc:  # noqa: BLE001
         logger.debug("announce: deregister failed (best-effort, ignoring): %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat
+# ---------------------------------------------------------------------------
+
+# Re-announce interval (seconds). Atria holds connector records in memory, so a
+# one-shot startup announce is lost if Atria restarts while this module keeps
+# running. Re-announcing on a timer means a restarted Atria re-learns this live
+# module within one interval. 0 disables. register is idempotent, so a heartbeat
+# that changes nothing is cheap.
+HEARTBEAT_ENV = "ATRIA_MODULE_HEARTBEAT_SEC"
+DEFAULT_HEARTBEAT_SEC = 30.0
+
+
+def start_heartbeat(module: str, cfg: AnnounceConfig,
+                    interval: Optional[float] = None) -> Callable[[], None]:
+    """Re-announce ``module`` every ``interval`` seconds on a daemon thread.
+
+    Returns a stop function. Interval defaults to ``$ATRIA_MODULE_HEARTBEAT_SEC``
+    (or 30s); a value <= 0 disables the heartbeat and returns a no-op stop.
+    """
+    import threading
+
+    if interval is None:
+        try:
+            interval = float(os.environ.get(HEARTBEAT_ENV, DEFAULT_HEARTBEAT_SEC))
+        except ValueError:
+            interval = DEFAULT_HEARTBEAT_SEC
+    if interval <= 0:
+        return lambda: None
+
+    stop = threading.Event()
+
+    def _loop() -> None:
+        while not stop.wait(interval):
+            try:
+                announce(module, cfg)
+            except Exception as exc:  # noqa: BLE001 — a flaky Atria must not crash the module
+                logger.debug("heartbeat announce failed (ignoring): %s", exc)
+
+    threading.Thread(target=_loop, name=f"atria-heartbeat-{module}", daemon=True).start()
+    return stop.set

@@ -205,17 +205,22 @@ class Connector:
 
     def asgi(self, *, cors_origins: Optional[list[str]] = None) -> FastAPI:
         """Build the FastAPI app implementing the full connector contract."""
-        from .announce import resolve_announce_config, announce, deregister
+        from .announce import resolve_announce_config, announce, deregister, start_heartbeat
 
         @asynccontextmanager
         async def _lifespan(_app):  # type: ignore[no-untyped-def]
             cfg = resolve_announce_config()
+            stop_heartbeat = None
             if cfg is not None:
                 try:
                     announce(self.name, cfg)
                 except Exception as exc:  # noqa: BLE001 — don't crash the module on a flaky Atria
                     logger.warning("announce failed: %s", exc)
+                # Keep re-announcing so a restarted Atria re-learns this live module.
+                stop_heartbeat = start_heartbeat(self.name, cfg)
             yield
+            if stop_heartbeat is not None:
+                stop_heartbeat()
             if cfg is not None:
                 deregister(self.name, cfg)
 
@@ -278,7 +283,8 @@ class Connector:
         return app
 
     def _tool_specs(self) -> list[dict]:
-        return [{"name": t.name, "description": t.description, "parameters": t.parameters}
+        return [{"name": t.name, "description": t.description, "parameters": t.parameters,
+                 "streaming": t.streaming}
                 for t in self._tools.values()]
 
     def _sse(self, tool: _Tool, args: dict, principal: Principal) -> Iterator[bytes]:
