@@ -15,8 +15,9 @@ never imports ``atria``. Domain specifics preserved from the hand-rolled version
 """
 from __future__ import annotations
 
-from atria_module_sdk import Connector
+from atria_module_sdk import Connector, block
 
+import os
 import service  # backend/service.py (pipeline dir already on sys.path via service import)
 
 # Keep the existing env-var names so docker-compose / the Dockerfile stay unchanged.
@@ -29,6 +30,12 @@ conn = Connector(
 )
 
 _CARD_TYPE = "maintenance_answer"
+
+
+def _answer_block(card: dict) -> dict:
+    remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY") or "http://localhost:9200/dashboard/remoteEntry.js"
+    return block("./MaintenanceAnswer", card,
+                 remote_name="maintenance_copilot", remote_entry=remote_entry)
 
 
 @conn.tool(
@@ -58,14 +65,14 @@ def maintenance_copilot_query(query: str = "", k: int = 5, ata: str | None = Non
         return {"success": False, "output": "query is required", "card": None}
     try:
         card = service.run_query(text, int(k), ata, revision)
-        return {"success": True, "output": card, "card": card, "card_type": _CARD_TYPE}
+        return {"success": True, "output": card, "blocks": [_answer_block(card)]}
     except service.ServiceUnavailableError as exc:
         # Preserve the module's own strict-schema fail-closed card + corpus-specific
         # suffix (don't fall back to the SDK's generic ServiceUnavailable card).
         card = service.unavailable_payload(text, exc.service)
         suffix = service.UNAVAILABLE_SUFFIX.format(service=exc.service)
-        return {"success": True, "output": card, "card": card,
-                "card_type": _CARD_TYPE, "llm_suffix": suffix}
+        return {"success": True, "output": card, "blocks": [_answer_block(card)],
+                "llm_suffix": suffix}
 
 
 @conn.route("/run", methods=["POST"])
