@@ -8,17 +8,41 @@
 
 Make an Atria service-module the deepest-integrated unit possible — its tools appear to the agent, its dashboard and chat UI render natively — while requiring **zero edits to atria source** to add one. A module is an independent microservice that lives anywhere, ships its own heavy deps in its own container, and **registers itself at runtime through the SDK**. If the module service is not running, Atria loses its tools *live*.
 
+## The two ownership layers (hybrid — settled after inspecting `maintenance_copilot`)
+
+`maintenance_copilot` is the reference module. Inspecting it shows a module folder
+carries two very different kinds of content, and they get split by owner:
+
+- **Atria-side guidance/config (stays in the module folder):** `SKILL.md`
+  (when/how-to-use + runbook for the prompt catalog and subagent routing),
+  and the *presentation* half of `manifest.json` — `display_name`, `tooltip`,
+  `icon`, `dashboard`, `activity` labels, `subagent`, `remote`, and
+  **`protected_paths`**. The connector process does not naturally own these, so
+  they remain file-based. **This folder may live outside the atria repo** via
+  `ATRIA_MODULES_DIR` — it is *module data*, not `atria/**` source, so keeping it
+  still satisfies "no atria-source edit."
+- **Runtime-owned (self-registered, live):** the connector's existence, its
+  **tool schemas** (from `GET /connector/manifest`, no longer from
+  `manifest.service.tools`), and **liveness**. These come from the running
+  microservice via a startup announce + health-gating. Service down → tools
+  disappear live.
+
+So "no atria-source edit" means **zero edits to `atria/**` and `web-ui/**`** to
+add a module. A module still owns a guidance folder; that folder can live wholly
+outside the atria repo.
+
 ## Non-goals
 
-- Persisting module registrations across Atria restarts (explicitly rejected — the running microservice is the sole source of truth; if it is down, its tools are gone).
+- Persisting *runtime tool/liveness* state across Atria restarts (rejected — the running microservice is the source of truth for tools; if it is down, its tools are gone). The guidance folder is a separate, on-disk concern and is unaffected.
+- Moving `SKILL.md` / `protected_paths` into `/connector/manifest` (considered and rejected — the guidance folder stays file-based).
 - A marketplace / package registry for modules.
 - Sandboxing federated block code (first-party trust model, unchanged).
 - Changing the tool-call proxy, card broadcast, or generic passthrough wire contracts (reused as-is).
 
 ## Core decisions (from brainstorming)
 
-1. **Registration model:** self-register at runtime via the SDK. Modules live outside the atria repo; running the container against `ATRIA_URL` is all it takes to appear.
-2. **Persistence:** none. Live service-discovery. Module down → tools disappear live. `manifest.json` in-repo is no longer the source of truth for discovery.
+1. **Registration model:** self-register at runtime via the SDK for the *connector layer*. The module's guidance folder (`SKILL.md` + presentation manifest + `protected_paths`) stays file-based and may live outside the atria repo (`ATRIA_MODULES_DIR`). Running the container against `ATRIA_URL` is what makes its tools appear.
+2. **Tool-schema & liveness source of truth:** the running connector. `manifest.service.tools` is no longer read for schemas — tool specs come from `GET /connector/manifest`; liveness from the health-poll. No persistence of this runtime state across restarts.
 3. **Chat render:** kill the bespoke card path. Every module output is either a **generic card** (auto, keyed on `card_type`) or a **federated React block** the module ships. `maintenance_answer` migrates to a federated block. web-ui is never edited to add a module.
 4. **Liveness:** connector **push-announces once** at startup (`POST /api/modules/register`); Atria then reuses its existing pull-poll of `GET /connector/manifest` (tool-schema source of truth) + `GET /connector/health` to decide `READY` / `DOWN`.
 5. **Auth:** reuse `require_service_principal` (Keycloak JWKS, already built for `blocks_remote`); add a dedicated realm role `module-register` (separate from `module-push`).
@@ -47,18 +71,20 @@ Registry stays **versioned** (as today), so the prompt catalog and subagent rout
 
 ### Atria core
 
-- **`core/modules/registry.py` → `DynamicModuleRegistry`.** Replace boot-time directory scan with runtime registration. Record: `{module, connector_url, remote_entry, api_base, state, manifest, last_seen, fail_count}`; state machine `PENDING → READY → DOWN`. Keep the versioned API (`version()`, `list_modules()`) so downstream consumers are untouched. `list_modules()` returns only `READY` records to the agent catalog.
-  - `register(announce)` — upsert `PENDING`, bump version.
-  - `mark_ready(module, manifest)` / `mark_down(module)` — reconciler-driven, bump version on state change.
-- **`web/routes/module_connector.py`** (extend; no new route file) — `POST /api/modules/register` gated by `require_service_principal` + role `module-register`; body `{module, connector_url, remote_entry, api_base?}`; writes to registry and kicks an immediate reconcile. Optional `POST /api/modules/deregister` for clean shutdown.
-- **`core/modules/watcher.py` → HealthReconciler.** Repurpose from directory watching to polling registered connectors: `GET /connector/manifest` (schema source of truth; on change update + bump version = hot-reload of tools) + `GET /connector/health` (liveness; N fails → `mark_down`).
-- **`core/modules/remote.py`.** `build_remote_tool_specs` reads the manifest from the registry record instead of a `manifest.json` file. Proxy handler, fail-closed behavior, and card broadcast unchanged.
-- **Backward-compat shim.** At boot, scan any in-repo `modules/` folders and call `register()` on their behalf (migration path for `maintenance_copilot` during dev). Not a second source of truth — just auto-announces local modules.
+- **`core/modules/registry.py` — keep the file-based `ModuleRegistry`, add a live connector layer.** The existing folder-scan registry keeps owning the **guidance layer**: it still loads each module's `Module` (SKILL.md, `dir`, presentation `manifest`, `protected_paths`) from `resolve_modules_root()`, so `skills.py`, `prompt.py`, `subagent.py`, and `module_dashboard.py` keep reading `module.dir` unchanged. Add, alongside it, a **connector-liveness table** keyed by module name: `{connector_url, remote_entry, api_base, state, tools, last_seen, fail_count}` with a `PENDING → READY → DOWN` state machine. Bump the *same* registry `version` when a connector's state or tool set changes, so the prompt catalog / subagent routing rebuild on connector appear/disappear.
+  - `register_connector(announce)` — upsert `PENDING`, bump version.
+  - `mark_connector_ready(name, tools)` / `mark_connector_down(name)` — reconciler-driven, bump version on change.
+  - `connector_tools(name)` — `READY` connector's live tool specs, else `[]`.
+  - `live_service_modules()` — the guidance `Module`s whose connector is `READY` (what the agent tool builder consumes).
+- **`web/routes/module_connector.py`** (extend; no new route file) — `POST /api/modules/register` gated by `require_service_principal` + role `module-register`; body `{module, connector_url, remote_entry, api_base?}`; writes to the connector table and kicks an immediate reconcile. Optional `POST /api/modules/deregister` for clean shutdown.
+- **`core/modules/watcher.py`** — keep the filesystem watcher for the *guidance folder* (SKILL.md edits still hot-reload). **Add a separate `ConnectorReconciler`** thread that polls each registered connector: `GET /connector/manifest` (tool-schema source of truth; on change → `mark_connector_ready(name, tools)` + bump version = hot-reload) + `GET /connector/health` (liveness; N consecutive fails → `mark_connector_down`).
+- **`core/modules/remote.py`.** `build_remote_tool_specs` iterates `live_service_modules()` and builds tool specs from `connector_tools(name)` (live manifest) rather than `module.manifest.service.tools`. Proxy handler, fail-closed behavior, and card broadcast unchanged.
+- **Announce reconciliation with the guidance folder.** A registered connector whose name matches a known guidance `Module` binds to it (tools + liveness attach to that module). A registered connector with *no* matching folder is still allowed but logs a warning and contributes tools with no SKILL block (tools-only). `maintenance_copilot`'s folder stays; only its `manifest.service.tools` stops being the schema source.
 
 ### SDK (`atria_module_sdk`) — never imports `atria`
 
 - **Auto-announce.** `Connector` reads `ATRIA_URL` + Keycloak client credentials from env. The `conn.asgi()` app gets a **startup hook** that POSTs `/api/modules/register` (token via client-credentials, role `module-register`) and a **shutdown hook** that best-effort POSTs `/api/modules/deregister`. No heartbeat loop in the SDK — Atria's health-poll owns liveness.
-- **Manifest is derived, not committed.** `GET /connector/manifest` (already SDK-generated from decorators) becomes the single source of truth. `manifest.json` is no longer read for discovery; `atria-module new` still emits it as dev documentation/cache only.
+- **Tool schemas are derived from the connector, not from `manifest.service.tools`.** `GET /connector/manifest` (already SDK-generated from decorators) becomes the source of truth for tool specs and liveness. The module folder's `manifest.json` keeps its *presentation* half (`display_name`, `dashboard`, `activity`, `remote`, `protected_paths`); its `service.tools` array is now optional/documentation-only. `atria-module new` still emits the full manifest.
 - **Federated chat block helper.** Add `conn.block(component, props, *, remote_name, remote_entry, height, title)` alongside `card(...)`; handler returns `{"output": text, "blocks": [conn.block(...)]}`. SDK emits the `render:"remote"` descriptor matching the existing federated-chat-blocks contract.
 - **CLI (`module_dev.py`).** `atria-module dev` sets `ATRIA_URL=http://localhost:8000` and announces into the dev Atria (module appears in chat without restarting Atria). Scaffold `frontend/` with an exposed chat-block component, not just a dashboard.
 
@@ -77,7 +103,7 @@ Registry stays **versioned** (as today), so the prompt catalog and subagent rout
 
 ## Testing
 
-- **pytest:** `test_dynamic_registry` (register / mark_ready / mark_down + version bump), `test_register_route` (auth 403 vs 200, kick reconcile), `test_health_reconciler` (manifest change → hot-reload; N fails → DOWN → tools hidden), `test_remote_tool_from_registry`.
+- **pytest:** `test_connector_registry` (register_connector / mark_connector_ready / mark_connector_down + version bump; `live_service_modules` reflects state), `test_register_route` (auth 403 vs 200, kick reconcile), `test_connector_reconciler` (manifest change → hot-reload tools; N fails → DOWN → tools hidden), `test_remote_tool_from_connector` (build_remote_tool_specs uses live tools).
 - **Vitest:** `RemoteBlock` renders; `cardRegistry` exposes only the generic path.
 - **E2E (with `OPENAI_API_KEY`, per CLAUDE.md):** run Atria + `maintenance_copilot` container → announce → tool appears → agent calls it → federated block renders in chat → kill container → tool disappears live.
 
