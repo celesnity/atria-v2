@@ -28,8 +28,10 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -38,10 +40,25 @@ from _data import fold, haversine_km, load_abbreviations, load_json, normalize_q
 from search import (  # noqa: E402
     _category_index, _category_radius, _detect_category, _time_ok, cmd_near, cmd_search,
 )
+from session_context import clear_context, load_context, save_context  # noqa: E402
 
 MODULE_NAME = "tasco_jarvis_map"
 
 _GREETING_RE = re.compile(r"^(hi|hii+|hey+|hello|helo|yo|chao|xin chao|alo|hallo)\b")
+
+# Chit-chat guard for the deterministic fast path: a message that is ENTIRELY a
+# greeting / thanks / farewell (+ optional politeness particles and punctuation).
+# Full-match anchored on the folded text, so real queries like "highlands coffee"
+# (starts with "hi") or "bv bach mai" never match. Reused by _chitchat_kind below.
+_CHIT_FILLER = r"(?:\s+(?:there|ban|nhe|nha|oi|a|jarvis|you|u|all|guys))*"
+_CHIT_GREET_RE = re.compile(
+    rf"^\s*(?:hi+|hey+|hello+|helo|hallo|halo|yo+|chao|xin chao|alo|hola|"
+    rf"good (?:morning|afternoon|evening)){_CHIT_FILLER}[\s!.,?~]*$")
+_CHIT_THANKS_RE = re.compile(
+    rf"^\s*(?:thank you|thank u|thankyou|thanks|thank|thx|tks|ty|"
+    rf"cam on|cang on|cam ang){_CHIT_FILLER}[\s!.,?~]*$")
+_CHIT_BYE_RE = re.compile(
+    rf"^\s*(?:bye+|byebye|good ?bye|see you|tam biet){_CHIT_FILLER}[\s!.,?~]*$")
 # Navigation / nearby / coordinate intents are now detected by the query_intent
 # router (via cmd_search), not by regex here. Reasoning questions still bypass
 # the plain-search fast path so the agent handles them.
@@ -134,13 +151,69 @@ def _scope_prefix(res: dict, vi: bool) -> str:
             if vi else f"No exact match in '{where}' in the data — here are the nearest options:\n")
 
 
-def _try_fast_path(message: str, folded: str, viewport: dict | None) -> dict | None:
-    """Deterministic answers driven by the intent router. Navigation, coordinate
-    and anchored-nearby intents are resolved locally (the LLM is never called);
-    plain hits pin when confident. Returns a full response payload or None to
-    fall through to the agent."""
+def _should_ask_city(res: dict) -> bool:
+    """A category/brand turn with no resolved city whose candidates span more than
+    one city — the interactive agent should ask which city rather than guess."""
+    if res.get("anchor") is not None or res.get("city"):
+        return False
+    if not (res.get("category") or (res.get("entities") or {}).get("category")):
+        return False
+    cities = {r.get("city") for r in (res.get("results") or []) if r.get("city")}
+    return len(cities) > 1
+
+
+def _ask_city_payload(res: dict, vi: bool) -> dict:
+    """Clarifying question naming the cities found; no pins. The pending category
+    is remembered by the caller so the city reply re-runs the search (rule R1)."""
+    cities = sorted({r["city"] for r in res.get("results") or [] if r.get("city")})
+    listed = ", ".join(cities)
+    reply = (f"Mình thấy kết quả ở {listed}. Bạn muốn tìm ở thành phố nào?"
+             if vi else f"I found results in {listed}. Which city do you want?")
+    return {"reply": reply, "map_actions": [], "source": "fast"}
+
+
+def _chitchat_kind(folded: str) -> str | None:
+    """'thanks' | 'bye' | 'greet' | None — None unless the WHOLE message is chit-chat."""
+    if _CHIT_THANKS_RE.match(folded):
+        return "thanks"
+    if _CHIT_BYE_RE.match(folded):
+        return "bye"
+    if _CHIT_GREET_RE.match(folded):
+        return "greet"
+    return None
+
+
+def _chitchat_payload(kind: str, vi: bool) -> dict:
+    """A friendly, place-less reply so a greeting never triggers a search."""
+    if kind == "thanks":
+        reply = ("Không có gì! Cần tìm địa điểm nào nữa cứ nhắn mình nhé."
+                 if vi else "Happy to help! Ask me about any place whenever you like.")
+    elif kind == "bye":
+        reply = ("Tạm biệt! Hẹn gặp lại." if vi else "Goodbye! See you next time.")
+    else:
+        reply = ("Xin chào! Mình là Jarvis — hỏi mình về địa điểm ở TP.HCM, Hà Nội "
+                 "hay Đà Nẵng nhé." if vi else
+                 "Hi! I'm Jarvis — ask me about places in HCMC, Hà Nội or Đà Nẵng.")
+    return {"reply": reply, "map_actions": [], "source": "fast"}
+
+
+def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
+                   interactive: bool = False) -> dict | None:
+    """Deterministic answers driven by the intent router (``res`` is a prebuilt
+    cmd_search result so the caller can reuse it for context saving). Navigation,
+    coordinate and anchored-nearby intents are resolved locally (the LLM is never
+    called); plain hits pin when confident. Returns a full response payload or
+    None to fall through to the agent."""
     vi = _is_vietnamese(message)
-    res = cmd_search(SimpleNamespace(query=message, limit=5, city=None, category=None))
+    # Greeting / thanks / farewell — reply conversationally, never run a place
+    # search (fixes "hi" pinning Highlands Coffee via a "hi"->"highlands" prefix
+    # score). Full-match anchored, so real queries fall through untouched.
+    chit = _chitchat_kind(folded)
+    if chit:
+        return _chitchat_payload(chit, vi)
+    # Interactive-only: ask which city when a category turn is city-ambiguous.
+    if interactive and _should_ask_city(res):
+        return _ask_city_payload(res, vi)
     intent = res.get("intent")
     results = res.get("results") or []
     anchor = res.get("anchor")
@@ -318,8 +391,32 @@ def _extract_map_actions(reply: str) -> tuple[str, list[dict]]:
     return stripped, actions
 
 
-def _candidates_block(message: str, viewport: dict | None, pins: list[dict]) -> str:
-    res = cmd_search(SimpleNamespace(query=message, limit=10, city=None, category=None))
+def _next_ctx(prior: dict, res: dict) -> dict:
+    """Carry the last turn's resolved slots forward for the soft-cache. A slot is
+    updated only when this turn resolved it, so a coordinate/POI turn never wipes
+    an established city or category."""
+    ctx = dict(prior) if isinstance(prior, dict) else {}
+    ctx.pop("v", None)  # re-stamped by save_context
+    ent = res.get("entities") or {}
+    if res.get("city"):
+        ctx["city_canonical"] = res["city"]
+        if ent.get("city"):
+            ctx["city_name"] = ent["city"]
+    cat = res.get("category") or ent.get("category")
+    if cat:
+        ctx["category"] = cat
+    if res.get("intent"):
+        ctx["intent"] = res["intent"]
+    if ent.get("brand"):
+        ctx["brands"] = ent["brand"]
+    ctx["ts"] = int(time.time())
+    return ctx
+
+
+def _candidates_block(message: str, viewport: dict | None, pins: list[dict],
+                      prior: dict | None = None) -> str:
+    res = cmd_search(SimpleNamespace(query=message, limit=10, city=None,
+                                     category=None, prior=prior))
     intent = res.get("intent")
     lines = []
     if intent:
@@ -352,6 +449,17 @@ def main() -> int:
         return 1
 
     chat_session_id = req_payload.get("chat_session_id") or None
+    # Multi-turn soft-cache is interactive-only: the benchmark/eval never set this
+    # flag, so they make zero Redis calls and carry no cross-turn state.
+    interactive = bool(req_payload.get("interactive"))
+
+    # Chat reset / "new conversation": wipe the soft-cache for this session.
+    if req_payload.get("reset"):
+        if chat_session_id:
+            clear_context(chat_session_id)
+        return _emit({"reply": "", "session_id": None, "error": None,
+                      "map_actions": [], "source": "fast"})
+
     message = (req_payload.get("message") or "").strip()
     if not message:
         print("ERROR: message is required", file=sys.stderr)
@@ -360,13 +468,30 @@ def main() -> int:
     pins = req_payload.get("pins") or []
     folded = fold(message)
 
+    # A stable id so a fast-path-only conversation still has a cache key (the
+    # dashboard sends null on turn 1 and adopts whatever id we echo back).
+    if interactive and not chat_session_id:
+        chat_session_id = uuid.uuid4().hex
+    ctx = load_context(chat_session_id) if interactive else {}
+
+    # One router call, reused for the fast path and for saving the next context.
+    # A dataset/engine failure must degrade to the agent path, never kill the turn.
+    try:
+        res = cmd_search(SimpleNamespace(query=message, limit=5, city=None,
+                                         category=None, prior=ctx or None))
+    except Exception as exc:
+        print(f"WARN: search failed: {exc}", file=sys.stderr)
+        res = {}
+
     # Deterministic fast path — the LLM is never called for simple intents.
     fast = None
     try:
-        fast = _try_fast_path(message, folded, viewport)
+        fast = _try_fast_path(res, message, folded, viewport, interactive)
     except Exception as exc:  # dataset problems must not kill chat entirely
         print(f"WARN: fast path failed: {exc}", file=sys.stderr)
     if fast is not None:
+        if interactive:
+            save_context(chat_session_id, _next_ctx(ctx, res))
         return _emit({"reply": fast["reply"], "session_id": chat_session_id,
                       "error": None, "map_actions": fast["map_actions"],
                       "source": "fast"})
@@ -390,7 +515,7 @@ def main() -> int:
         grounded = GREETING_PREAMBLE + "\nUser: " + message
     else:
         try:
-            data_block = _candidates_block(message, viewport, pins)
+            data_block = _candidates_block(message, viewport, pins, prior=ctx or None)
         except Exception:
             data_block = ""
         grounded = PREAMBLE_HEAD + "\n" + data_block + "\nUser: " + message
@@ -421,9 +546,16 @@ def main() -> int:
                       "map_actions": [], "source": "agent"})
 
     reply, actions = _extract_map_actions(data.get("reply") or "")
+    if interactive:
+        # Keep the map soft-cache id stable across turns (don't adopt a different
+        # backend id); persist the slots this turn resolved.
+        save_context(chat_session_id, _next_ctx(ctx, res))
+        session_id = chat_session_id
+    else:
+        session_id = data.get("session_id") or chat_session_id
     return _emit({
         "reply": reply,
-        "session_id": data.get("session_id") or chat_session_id,
+        "session_id": session_id,
         "error": data.get("error"),
         "map_actions": actions,
         "source": "agent",

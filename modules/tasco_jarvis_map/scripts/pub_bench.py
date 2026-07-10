@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
 import statistics
 import subprocess
@@ -44,6 +45,7 @@ sys.path.insert(0, str(SCRIPTS))
 import _db  # noqa: E402
 import eval as evalh  # noqa: E402  (module eval.py; reused deterministic passes)
 from _data import fold, load_json  # noqa: E402
+from _sample import stratified_sample  # noqa: E402
 from search import cmd_search  # noqa: E402
 
 BENCH_USER_ID = os.environ.get("BENCH_USER_ID", "1")
@@ -345,8 +347,27 @@ def _grouped_rate(records: list[dict], key: str, ok_field: str) -> str:
 
 def render_report(records: list[dict], baseline: dict, backends: list[str],
                   gate_backend: str, agent_model: str, judge_model: str,
-                  temp_note: str, total_cases: int) -> str:
+                  temp_note: str, total_cases: int,
+                  sample_meta: dict | None = None) -> str:
     tpl = TEMPLATE.read_text(encoding="utf-8")
+
+    # A stratified subset ran (fast quick check) — annotate the report so the
+    # numbers aren't mistaken for the full run. Empty on a full/on-demand run,
+    # which keeps the full report structurally identical to before.
+    if sample_meta:
+        pl = sample_meta["per_level"]
+        ids = ", ".join(sample_meta["picked_ids"])
+        sample_note = (
+            f"\n\n**Sample: {len(records)} of {sample_meta['n_full']} cases** — "
+            f"stratified {int(sample_meta['fraction'] * 100)}% by "
+            f"{sample_meta['level_key']} ({', '.join(f'{k} {pl[k]}' for k in pl)}), "
+            f"seed {sample_meta['seed']} (reproduce with `--seed {sample_meta['seed']}`; "
+            f"`--full` runs all {sample_meta['n_full']}). "
+            f"A random subset is a fast smoke check, not a regression sign-off. "
+            f"Cases: {ids}."
+        )
+    else:
+        sample_note = ""
 
     # --- baseline aggregate (gate backend) ---
     m = baseline["search"][gate_backend]["metrics"]
@@ -440,7 +461,8 @@ def render_report(records: list[dict], baseline: dict, backends: list[str],
                              "jarvis_chat.py loopback to /api/modules/tasco_jarvis_map/chat, "
                              f"bench user_id={BENCH_USER_ID}"),
         "{{N_CASES}}": str(total_cases),
-        "{{LAST_ID}}": records[-1]["query_id"][3:] if records else "060",
+        "{{LAST_ID}}": f"{total_cases:03d}",
+        "{{SAMPLE_NOTE}}": sample_note,
         "{{BASELINE_BACKENDS}}": ", ".join(backends),
         "{{GATE_BACKEND}}": gate_backend,
         "{{INTENT_ACC}}": intent_acc,
@@ -483,7 +505,14 @@ def render_report(records: list[dict], baseline: dict, backends: list[str],
 # ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--limit", type=int, default=0, help="only first N cases")
+    ap.add_argument("--limit", type=int, default=0, help="only first N cases (head slice; debug)")
+    ap.add_argument("--sample", type=float, default=0.2,
+                    help="fraction of the eval set to run, stratified by difficulty "
+                         "(default 0.2 = a fast ~20%% quick check)")
+    ap.add_argument("--full", action="store_true",
+                    help="run all cases (regression sign-off / Proof of Done); overrides --sample")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="seed for the stratified sample (default: random each run, recorded)")
     ap.add_argument("--backend", choices=["json", "db", "both"], default="both",
                     help="baseline backend(s) (default both)")
     ap.add_argument("--agent-backend", choices=["json", "db"], default=None,
@@ -496,9 +525,16 @@ def main() -> None:
                          "(recomputes the fast deterministic baseline; no agent/judge calls)")
     args = ap.parse_args()
 
-    queries = load_json("eval_queries.json")["queries"]
-    if args.limit:
-        queries = queries[: args.limit]
+    full_queries = load_json("eval_queries.json")["queries"]
+    n_full = len(full_queries)
+    sample_meta: dict | None = None
+    if args.full or args.sample >= 1.0:
+        queries = full_queries                       # full set (on demand)
+    elif args.limit:
+        queries = full_queries[: args.limit]         # legacy head slice (debug)
+    else:
+        seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2 ** 32)
+        queries, sample_meta = stratified_sample(full_queries, args.sample, seed)
     backends = ["json", "db"] if args.backend == "both" else [args.backend]
     gate_backend = args.agent_backend or _db.backend()
     if gate_backend not in backends:
@@ -508,17 +544,27 @@ def main() -> None:
         out_dir = Path(args.out)
         raw = json.loads((out_dir / "raw_results.json").read_text(encoding="utf-8"))
         records = raw["cases"]
-        baseline = deterministic_baseline(queries, backends)
+        prev_sample = raw["meta"].get("sample")
+        # rebuild the exact case subset that ran, so the baseline matches the records
+        ran_ids = {r["query_id"] for r in records}
+        ran_queries = [q for q in full_queries if q["query_id"] in ran_ids]
+        baseline = deterministic_baseline(ran_queries, backends)
         report = render_report(records, baseline, backends, gate_backend,
                                raw["meta"].get("agent_model", "app-default"),
                                raw["meta"].get("judge_model", DEFAULT_JUDGE),
                                "temperature not settable on gpt-5 family (default only)",
-                               len(records))
+                               raw["meta"].get("n_full", n_full), prev_sample)
         (out_dir / "REPORT.md").write_text(report, encoding="utf-8")
         print(f"[pub_bench] re-rendered {out_dir / 'REPORT.md'} from raw_results.json",
               file=sys.stderr)
         return
 
+    if sample_meta:
+        pl = sample_meta["per_level"]
+        print(f"[pub_bench] SAMPLE {len(queries)}/{n_full} cases, stratified by difficulty "
+              f"({', '.join(f'{k} {pl[k]}' for k in pl)}), seed={sample_meta['seed']} "
+              f"-- reproduce with --seed {sample_meta['seed']}; --full runs all {n_full}",
+              file=sys.stderr)
     print(f"[pub_bench] {len(queries)} cases | baseline backends={backends} "
           f"| agent={'off' if args.no_agent else 'on'} | judge={args.judge_model}",
           file=sys.stderr)
@@ -568,13 +614,14 @@ def main() -> None:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     report = render_report(records, baseline, backends, gate_backend,
-                           agent_model, args.judge_model, temp_note, len(queries))
+                           agent_model, args.judge_model, temp_note, n_full, sample_meta)
     (out_dir / "REPORT.md").write_text(report, encoding="utf-8")
     (out_dir / "raw_results.json").write_text(
         json.dumps({
             "meta": {
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
-                "n_cases": len(queries), "baseline_backends": backends,
+                "n_cases": len(queries), "n_full": n_full, "sample": sample_meta,
+                "baseline_backends": backends,
                 "gate_backend": gate_backend, "agent_model": agent_model,
                 "judge_model": args.judge_model, "no_agent": args.no_agent,
             },

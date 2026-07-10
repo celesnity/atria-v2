@@ -17,7 +17,7 @@
 
 Source: `ai_maps_track1_dataset_participants_v2.xlsx` → sheet "Public Evaluation"
 (`PUB001..PUB{{LAST_ID}}`), mirrored verbatim in `data/eval_queries.json`. Output
-contract (README): `normalized_query, intent, entities, confidence_score`.
+contract (README): `normalized_query, intent, entities, confidence_score`.{{SAMPLE_NOTE}}
 
 ### Deterministic baseline (router vs PUB gold — free, reproducible)
 
