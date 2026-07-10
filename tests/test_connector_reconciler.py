@@ -38,3 +38,29 @@ def test_repeated_unhealthy_polls_go_down(monkeypatch, tmp_path):
     for _ in range(RECONCILE_FAIL_LIMIT):
         r.reconcile_once("m")
     assert reg.connector_records()[0].state is ConnectorState.DOWN
+
+
+def test_on_change_fired_when_state_changes(monkeypatch, tmp_path):
+    """on_change is called when a reconcile pass changes registry state."""
+    tools = [{"name": "m_q", "parameters": {"type": "object"}}]
+    _install(monkeypatch, tmp_path, {"tools": tools}, healthy=True)
+    fired = []
+    r = watcher.ConnectorReconciler(on_change=lambda: fired.append(1))
+    r.reconcile_once("m")
+    assert fired, "on_change should be called when state flips to READY"
+
+
+def test_on_change_not_fired_when_state_unchanged(monkeypatch, tmp_path):
+    """on_change is NOT called on a no-op reconcile pass (already READY, same tools)."""
+    tools = [{"name": "m_q", "parameters": {"type": "object"}}]
+    reg = _install(monkeypatch, tmp_path, {"tools": tools}, healthy=True)
+    # First pass: PENDING -> READY (state changes, on_change fires — ignore this)
+    r = watcher.ConnectorReconciler(on_change=lambda: None)
+    r.reconcile_once("m")
+    assert reg.connector_records()[0].state is ConnectorState.READY
+
+    # Second pass: already READY with same tools — version should not bump
+    fired = []
+    r2 = watcher.ConnectorReconciler(on_change=lambda: fired.append(1))
+    r2.reconcile_once("m")
+    assert not fired, "on_change must not fire when registry version did not change"
