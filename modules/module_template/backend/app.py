@@ -291,11 +291,11 @@ def route_media_upload(body):
     import base64
     from fastapi import HTTPException
 
+    if not body.get("filename"):
+        raise HTTPException(400, "filename required")
     data = base64.b64decode(body.get("content_b64", ""))
     if len(data) > 25 * 1024 * 1024:
         raise HTTPException(413, "file too large (max 25MB)")
-    if not body.get("filename"):
-        raise HTTPException(400, "filename required")
     return media.put_media(
         body["filename"], data, body.get("content_type", "application/octet-stream")
     )
