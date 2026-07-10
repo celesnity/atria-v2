@@ -91,7 +91,7 @@ def _module_token(name: str) -> Optional[str]:
     )
 
 
-def _auth_headers(name: str, principal: Optional[dict]) -> dict:
+def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str] = None) -> dict:
     """Best-effort identity + secret headers for a connector call (v2)."""
     headers: dict[str, str] = {}
     token = _module_token(name)
@@ -102,6 +102,8 @@ def _auth_headers(name: str, principal: Optional[dict]) -> dict:
             headers["X-Atria-Principal"] = json.dumps(principal, separators=(",", ":"))
         except (TypeError, ValueError):
             pass
+    if session_id:
+        headers["X-Atria-Session"] = session_id
     return headers
 
 
@@ -139,13 +141,14 @@ class RemoteConnector:
     # -- tool calls -----------------------------------------------------------
 
     def call_tool(
-        self, tool: str, arguments: dict, timeout: float = 110.0, principal: Optional[dict] = None
+        self, tool: str, arguments: dict, timeout: float = 110.0,
+        principal: Optional[dict] = None, session_id: Optional[str] = None
     ) -> dict:
         try:
             r = self._client.post(
                 f"/connector/tools/{tool}",
                 json={"arguments": arguments},
-                headers=_auth_headers(self.name, principal),
+                headers=_auth_headers(self.name, principal, session_id),
                 timeout=timeout,
             )
             r.raise_for_status()
@@ -156,7 +159,8 @@ class RemoteConnector:
 
     # ponytail: no Atria-side stream client — the ReAct tool loop is sync
     def stream_tool(self, tool: str, arguments: dict,
-                    timeout: float = 300.0) -> "Iterator[dict]":
+                    timeout: float = 300.0, principal: Optional[dict] = None,
+                    session_id: Optional[str] = None) -> "Iterator[dict]":
         """Yield decoded SSE events from ``/connector/tools/{tool}/stream``.
 
         The tool handler consumes these synchronously (pumping progress/card
@@ -167,7 +171,7 @@ class RemoteConnector:
         try:
             with self._client.stream("POST", f"/connector/tools/{tool}/stream",
                                      json={"arguments": arguments},
-                                     headers={**_auth_headers(self.name, None),
+                                     headers={**_auth_headers(self.name, principal, session_id),
                                               "Accept": "text/event-stream"},
                                      timeout=timeout) as r:
                 r.raise_for_status()
@@ -284,7 +288,8 @@ def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
     endpoint if the connector doesn't actually stream."""
     final: Optional[dict] = None
     try:
-        for evt in conn.stream_tool(tool_name, kwargs):
+        for evt in conn.stream_tool(tool_name, kwargs,
+                                    principal=ctx.principal, session_id=ctx.session_id):
             etype = evt.get("event")
             if etype == "card":
                 _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
@@ -312,7 +317,8 @@ def _make_handler(
         if streaming:
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
-            resp = conn.call_tool(tool_name, kwargs)
+            resp = conn.call_tool(tool_name, kwargs,
+                                  principal=ctx.principal, session_id=ctx.session_id)
         except ConnectorUnreachable:
             return _unavailable_result(ctx, conn, query)
         return _emit_response(ctx, conn, resp)
