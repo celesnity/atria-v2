@@ -102,7 +102,7 @@
       "username": "service-account-atria-module",
       "enabled": true,
       "serviceAccountClientId": "atria-module",
-      "realmRoles": ["module-register"]
+      "realmRoles": ["module-register", "module-push"]
     }
   ]
 }

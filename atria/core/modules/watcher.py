@@ -191,8 +191,17 @@ class ConnectorReconciler:
                 manifest = conn.fetch_manifest()
             except Exception:  # noqa: BLE001 — network failure == unhealthy
                 manifest = None
-            if manifest is None or not conn.is_healthy():
+            if manifest is None:
                 reg.record_health_failure(rec.name)
+                continue
+            health = conn.health()
+            if not health.get("ok", False):
+                # Unreachable / error payload — count it a liveness failure.
+                reg.record_health_failure(rec.name)
+                continue
+            if health.get("ready") is False:
+                # Alive but not serving yet — keep tools out of the catalog,
+                # but do NOT count it a health failure.
                 continue
             tools = manifest.get("tools") or []
             reg.mark_connector_ready(rec.name, tools)
