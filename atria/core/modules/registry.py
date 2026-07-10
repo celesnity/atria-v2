@@ -6,8 +6,10 @@ import logging
 import os
 import re
 import threading
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from atria.core.modules import store
 from atria.core.modules.deps import install_module_deps
@@ -15,6 +17,26 @@ from atria.core.modules.store import Module, ModuleNotFound
 from atria.core.paths import atria_dir
 
 logger = logging.getLogger(__name__)
+
+RECONCILE_FAIL_LIMIT = 3
+
+
+class ConnectorState(str, Enum):
+    PENDING = "pending"
+    READY = "ready"
+    DOWN = "down"
+
+
+@dataclass
+class ConnectorRecord:
+    name: str
+    connector_url: str
+    remote_entry: Optional[str] = None
+    api_base: Optional[str] = None
+    state: ConnectorState = ConnectorState.PENDING
+    tools: List[dict] = field(default_factory=list)
+    fail_count: int = 0
+    last_seen: float = 0.0
 
 
 def load_disabled_modules() -> set[str]:
@@ -64,6 +86,7 @@ class ModuleRegistry:
     def __init__(self, root: Path):
         self.root = root
         self._modules: Dict[str, Module] = {}
+        self._connectors: Dict[str, ConnectorRecord] = {}
         self._version: int = 0
         self._lock = threading.Lock()
 
@@ -123,6 +146,67 @@ class ModuleRegistry:
     def get(self, name: str) -> Module:
         with self._lock:
             return self._modules[name]
+
+    def register_connector(self, *, name: str, connector_url: str,
+                           remote_entry: Optional[str] = None,
+                           api_base: Optional[str] = None) -> None:
+        """Runtime announce: upsert a PENDING connector record and bump version."""
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None:
+                rec = ConnectorRecord(name=name, connector_url=connector_url)
+                self._connectors[name] = rec
+            rec.connector_url = connector_url
+            rec.remote_entry = remote_entry
+            rec.api_base = api_base
+            rec.state = ConnectorState.PENDING
+            rec.fail_count = 0
+            self._version += 1
+
+    def mark_connector_ready(self, name: str, tools: List[dict]) -> None:
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None:
+                return
+            changed = rec.state != ConnectorState.READY or rec.tools != tools
+            rec.state = ConnectorState.READY
+            rec.tools = list(tools)
+            rec.fail_count = 0
+            if changed:
+                self._version += 1
+
+    def mark_connector_down(self, name: str) -> None:
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None or rec.state == ConnectorState.DOWN:
+                return
+            rec.state = ConnectorState.DOWN
+            self._version += 1
+
+    def record_health_failure(self, name: str) -> None:
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None:
+                return
+            rec.fail_count += 1
+            over_limit = rec.fail_count >= RECONCILE_FAIL_LIMIT
+        if over_limit:
+            self.mark_connector_down(name)
+
+    def connector_records(self) -> List[ConnectorRecord]:
+        with self._lock:
+            return [self._connectors[n] for n in sorted(self._connectors)]
+
+    def connector_tools(self, name: str) -> List[dict]:
+        with self._lock:
+            rec = self._connectors.get(name)
+            return list(rec.tools) if rec and rec.state == ConnectorState.READY else []
+
+    def live_service_modules(self) -> List[Module]:
+        """Guidance Modules whose connector is READY (agent tool-builder input)."""
+        with self._lock:
+            ready = {n for n, r in self._connectors.items() if r.state == ConnectorState.READY}
+            return [self._modules[n] for n in sorted(self._modules) if n in ready]
 
 
 _GLOBAL: ModuleRegistry | None = None
