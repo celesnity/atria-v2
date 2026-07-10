@@ -12,3 +12,14 @@ def test_conn_block_fills_name_and_remote_entry(monkeypatch):
     assert d["remote_entry"] == "http://h:9300/dashboard/remoteEntry.js"
     assert d["api_base"] == "http://h:9300"
     assert d["props"] == {"answer": "hi"}
+
+
+def test_conn_invoke_runs_tool_in_process():
+    conn = Connector("m")
+
+    @conn.tool("echo", parameters={"type": "object", "properties": {"q": {"type": "string"}}})
+    def echo(q: str = ""):
+        return {"output": q.upper()}
+
+    out = conn.invoke("echo", {"q": "hi"})
+    assert out["success"] is True and out["output"] == "HI"
