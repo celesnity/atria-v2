@@ -1,0 +1,2 @@
+# module_template ships no heavy deps — it only needs the SDK (installed separately
+# in the Dockerfile from the repo root) and pydantic, which the SDK already requires.
