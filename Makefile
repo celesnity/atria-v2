@@ -17,6 +17,8 @@ help:
 
 install:
 	uv venv && uv pip install -e ".[dev]"
+	# Shared connector SDK (separate package) for the connector tests + `atria-module`.
+	uv pip install -e ./atria_module_sdk
 
 format:
 	black $(PYTHON_DIRS) --line-length $(LINE_LENGTH)

@@ -88,13 +88,13 @@ dev = [
     "ruff>=0.14.1",
     "mypy>=1.18.2",
     "fakeredis>=2.0.0",
-    # Shared service-module connector SDK (path source below) — needed by the
-    # connector tests and `atria-module dev`.
-    "atria-module-sdk",
 ]
 
-[tool.uv.sources]
-atria-module-sdk = { path = "atria_module_sdk", editable = true }
+# NOTE: the shared connector SDK (atria_module_sdk/) is a SEPARATE package, not an
+# atria dependency — declaring it here as a path source broke the Docker build
+# (`uv run` re-resolves it before the dir is copied). `make install` installs it
+# editable for the connector tests / `atria-module`; module containers ship their
+# own copy via their Dockerfile.
 
 [project.urls]
 Homepage = "https://github.com/atria-to/atria"

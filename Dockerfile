@@ -29,7 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 # ── Layer 2: pre-cache tiktoken encodings so the container works offline ──────
-RUN uv run python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
+# --no-dev: the image never installs dev-only deps (e.g. the atria_module_sdk
+# path dep, which isn't in this layer's build context — module containers ship
+# their own copy). Without it, `uv run` re-syncs dev and fails to resolve the path.
+RUN uv run --no-dev python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
 
 # ── Layer 3: project source + install the package itself ──────────────────────
 COPY . .
