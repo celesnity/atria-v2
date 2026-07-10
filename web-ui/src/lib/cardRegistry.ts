@@ -1,5 +1,4 @@
 import type { Message } from '../types';
-import { mapMaintenanceAnswer } from './maintenanceAnswer';
 import { mapModuleCard } from './moduleCard';
 
 /**
@@ -9,17 +8,15 @@ import { mapModuleCard } from './moduleCard';
  * message whose `type` is a per-module `card_type` string: either one the module
  * chose (e.g. `maintenance_answer`) or the default `"{module}_card"`. This registry
  * maps that payload to a chat Message; MessageList then routes the Message.role to
- * a component. Known card_types get a bespoke mapper; everything else falls back to
- * the generic module card (mapped in the WS handler via mapModuleCard).
+ * a component. All card_types fall back to the generic module card (mapModuleCard).
+ * Federated blocks (render:"remote") are handled by the custom_block path instead.
  *
- * Add a new bespoke card by registering its mapper here and a `role` branch in
- * MessageList — no switch to grow, and unknown types keep working via the fallback.
+ * To add a new module card, register it in the federated block system — no bespoke
+ * mappers here, no MessageList branches to grow.
  */
 export type CardMapper = (data: any) => Message;
 
-export const CARD_MAPPERS: Record<string, CardMapper> = {
-  maintenance_answer: mapMaintenanceAnswer,
-};
+export const CARD_MAPPERS: Record<string, CardMapper> = {};
 
 /** True for any WS message type this registry can render as a chat card. */
 export function isCardType(type: string): boolean {
