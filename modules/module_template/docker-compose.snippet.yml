@@ -1,0 +1,22 @@
+# Paste into docker-compose.yml (same network as `atria`). Build context = repo root.
+  module-template:
+    build:
+      context: .
+      dockerfile: modules/module_template/backend/Dockerfile
+    ports:
+      - "9300:9300"
+    environment:
+      # Runtime self-registration (announce) — see modules/module_integration.md §4.2
+      ATRIA_URL: "http://atria:8000"
+      ATRIA_MODULE_CONNECTOR_URL: "http://module-template:9300"
+      ATRIA_MODULE_REMOTE_ENTRY: "http://localhost:9300/dashboard/remoteEntry.js"
+      MT_PUBLIC_BASE: "http://localhost:9300"
+      # Reverse-push + artifact push (module-push role):
+      KEYCLOAK_TOKEN_URL: "http://keycloak:8080/realms/atria/protocol/openid-connect/token"
+      ATRIA_MODULE_CLIENT_ID: "atria-module"
+      ATRIA_MODULE_CLIENT_SECRET: "CHANGE-ME-IN-ENV"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9300/connector/health')"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
