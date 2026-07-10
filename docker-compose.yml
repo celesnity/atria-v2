@@ -193,8 +193,9 @@ services:
 
   maintenance-copilot:
     build:
-      context: ./modules/maintenance_copilot
-      dockerfile: backend/Dockerfile
+      # Repo-root context so the image can install the shared atria_module_sdk.
+      context: .
+      dockerfile: modules/maintenance_copilot/backend/Dockerfile
     ports:
       - "9200:9200"
     environment:
@@ -209,8 +210,15 @@ services:
       - MC_NEO4J_PASSWORD=atria-neo4j
       - MC_PUBLIC_BASE=http://localhost:9200
       - MC_AUDIT_LOG=/app/data/audit.log.jsonl
+      # Startup ingest: on boot, chunk+embed every frontmatter'd .md/.txt dropped
+      # in the mounted ingest_data/ folder into qdrant (idempotent, resilient).
+      - MC_INGEST_ON_STARTUP=${MC_INGEST_ON_STARTUP:-1}
+      - MC_INGEST_DIR=/app/ingest_data
     volumes:
       - mc_audit:/app/data
+      # Input drop-folder — add documents here (no rebuild) and restart the
+      # module to ingest them.
+      - ./modules/maintenance_copilot/ingest_data:/app/ingest_data
     depends_on:
       - qdrant
       - neo4j

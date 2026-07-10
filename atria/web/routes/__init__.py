@@ -12,10 +12,12 @@ from atria.web.routes.artifacts import router as artifacts_router
 from atria.web.routes.fs import router as fs_router
 from atria.web.routes.personas import router as personas_router
 from atria.web.routes.transcribe import router as transcribe_router
-from atria.web.routes.maintenance import router as maintenance_router
 from atria.web.routes.modules import router as modules_router
 from atria.web.routes.blocks import router as blocks_router
+from atria.web.routes.blocks_remote import router as blocks_remote_router
+from atria.web.routes.artifacts_remote import router as artifacts_remote_router
 from atria.web.routes.module_dashboard import router as module_dashboard_router
+from atria.web.routes.module_connector import router as module_connector_router
 from atria.web.routes.connect import router as connect_router
 from atria.web.routes.me import router as me_router
 from atria.web.routes.admin_tenants import router as admin_tenants_router
@@ -38,10 +40,12 @@ __all__ = [
     "fs_router",
     "personas_router",
     "transcribe_router",
-    "maintenance_router",
     "modules_router",
     "blocks_router",
+    "blocks_remote_router",
+    "artifacts_remote_router",
     "module_dashboard_router",
+    "module_connector_router",
     "me_router",
     "admin_tenants_router",
     "admin_tenant_users_router",

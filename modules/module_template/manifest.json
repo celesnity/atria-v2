@@ -1,0 +1,11 @@
+{
+  "display_name": "Module Template",
+  "tooltip": "SDK showcase — every atria-module-sdk capability",
+  "icon": "icon.svg",
+  "dashboard": { "title": "Module Template · SDK showcase", "default_height": 760, "badge_color": "info" },
+  "remote": {
+    "name": "module_template",
+    "remoteEntry": "http://localhost:9300/dashboard/remoteEntry.js",
+    "exposed": { "dashboard": "./Dashboard", "./ShowcaseBlock": "./ShowcaseBlock" }
+  }
+}

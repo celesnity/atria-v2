@@ -53,6 +53,7 @@ class WebSocketToolBroadcaster:
         loop: asyncio.AbstractEventLoop,
         working_dir: Optional[Path] = None,
         session_id: Optional[str] = None,
+        principal: Optional[dict] = None,
     ):
         """Initialize broadcaster.
 
@@ -62,12 +63,14 @@ class WebSocketToolBroadcaster:
             loop: Event loop for async operations
             working_dir: Working directory for path resolution
             session_id: Session ID for scoping broadcasts
+            principal: Acting user identity dict (e.g. {"username": ..., "email": ...})
         """
         self.tool_registry = tool_registry
         self.ws_manager = ws_manager
         self.loop = loop
         self.working_dir = Path(working_dir).resolve() if working_dir else None
         self.session_id = session_id
+        self.principal = principal
 
         # Wire skill-tool broadcaster — any skill that emits typed events
         # routes through here. Each skill's tools.py decides which events
@@ -75,6 +78,9 @@ class WebSocketToolBroadcaster:
         skill_ctx = getattr(tool_registry, "skill_ctx", None)
         if skill_ctx is not None:
             skill_ctx.broadcaster = self._broadcast_skill_event
+            skill_ctx.push_block = self._push_remote_block
+            skill_ctx.session_id = self.session_id
+            skill_ctx.principal = self.principal
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Execute tool with WebSocket broadcasting.
@@ -166,6 +172,22 @@ class WebSocketToolBroadcaster:
             future.result(timeout=5)
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to broadcast skill event: {e}")
+
+    def _push_remote_block(self, descriptor: Dict[str, Any], module: str) -> None:
+        """Render a module tool-response federated block natively in the chat."""
+        from atria.web import ui_bridge
+
+        ui_bridge.push_remote_block(
+            module=module,
+            remote_name=descriptor["remote_name"],
+            remote_entry=descriptor["remote_entry"],
+            component=descriptor["component"],
+            props=descriptor.get("props"),
+            api_base=descriptor.get("api_base"),
+            height=descriptor.get("height", "auto"),
+            title=descriptor.get("title"),
+            session_id=self.session_id,
+        )
 
     def _broadcast_tool_result(self, payload: Dict[str, Any]) -> None:
         """Broadcast tool result event."""

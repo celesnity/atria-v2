@@ -83,7 +83,7 @@ export interface Todo {
 }
 
 export interface Message {
-  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'maintenance_answer' | 'deep_research' | 'image_message' | 'custom_block' | 'todos';
+  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'module_card' | 'module_progress' | 'deep_research' | 'image_message' | 'custom_block' | 'todos';
   // live todo list (role === 'todos')
   todos?: Todo[];
   // custom_block fields
@@ -94,6 +94,11 @@ export interface Message {
   block_props?: Record<string, any>;
   block_height?: number | 'auto';
   block_title?: string;
+  block_render?: 'iframe' | 'remote';
+  block_remote_name?: string;
+  block_remote_entry?: string;
+  block_component?: string;
+  block_api_base?: string;
   content: string;
   timestamp?: string;
   // Groups all assistant text chunks from a single agent turn into one bubble,
@@ -120,7 +125,7 @@ export interface Message {
   search_result_count?: number;
   search_results?: SearchResultItem[];
   search_provider?: string;
-  // maintenance_answer fields (from the maintenance_copilot skill tool)
+  // maintenance_answer fields (legacy optional; formerly populated by the maintenance_copilot skill tool)
   ma_answer?: string;               // response.primary_answer
   ma_answer_type?: MaintenanceAnswerType;
   ma_exact_quote?: string | null;   // verbatim substring of the cited source
@@ -134,6 +139,17 @@ export interface Message {
   ma_review_required?: boolean;
   ma_advisory_note?: string;
   ma_validation_warnings?: string[];
+  // generic module_card fields (any card_type routed to GenericModuleCard)
+  card_type?: string;                       // the WS type, e.g. "enterprise_knowledge_card"
+  card_module?: string;                      // module name derived from card_type
+  card_answer?: string;
+  card_confidence_band?: 'high' | 'medium' | 'low';
+  card_validation_warnings?: string[];
+  card_raw?: Record<string, any>;            // full card payload, for future renderers
+  // module_progress fields (live progress during a streaming module tool call)
+  progress_module?: string;
+  progress_message?: string;
+  progress_pct?: number | null;
   // deep_research fields
   dr_job_id?: string;
   dr_topic?: string;
@@ -213,7 +229,11 @@ export interface ParallelSolverDoneData {
 
 // WebSocket event types
 export interface WSMessage {
-  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'image_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note' | 'blackboard.request' | 'blackboard.bid' | 'blackboard.response' | 'maintenance_answer';
+  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'image_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note' | 'blackboard.request' | 'blackboard.bid' | 'blackboard.response'
+    // Service-module UI cards arrive as a per-module `card_type` string (either a
+    // module-chosen type or the default `{module}_card`).
+    // `(string & {})` keeps arbitrary card_type values assignable without collapsing the union to `string`.
+    | (string & {});
   data: any;
 }
 

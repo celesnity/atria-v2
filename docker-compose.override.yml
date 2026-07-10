@@ -20,6 +20,35 @@ services:
   tei:
     platform: linux/amd64
 
+  # maintenance_copilot connector container. The tei/copilot-llm sidecars are
+  # GPU/profile-gated, so point embeddings + synthesis at the host's LM Studio
+  # (:1234), mirroring the atria/atria-worker override above — same embedding
+  # model (nomic, 768d) => same vector space for index + query. This container
+  # was missing extra_hosts, so add it so host.docker.internal resolves.
+  # Prereq: LM Studio running on the host with the nomic embed + a chat model.
+  maintenance-copilot:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
+      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
+      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
+      - MC_INDEX_EMBED_PROVIDER=lmstudio
+      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
+      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
+      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
+      - MC_CHUNK_EMBED_PROVIDER=lmstudio
+      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
+      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
+      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
+      - MC_SYNTHESIS_PROVIDER=lmstudio
+      - MC_EMBED_DIM=768
+      - MC_SYNTHESIS_JSON_MODE=prompt
+      # G1 graph-augmented retrieval: over-recall by vector, then rerank
+      # seed -> BFS over deterministic ref/hier edges -> RRF (edges.py). Set to
+      # anything else (or unset) to fall back to plain vector retrieval.
+      - MC_RETRIEVER=graph
+
   atria:
     environment:
       - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
@@ -35,11 +64,11 @@ services:
       # Point the chat roles (synthesis + kg_extract) at the host LM Studio
       # chat model instead, mirroring the embedding override above.
       - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=gemma-4-e2b-heretic-uncensored-mlx
+      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
       - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
       - MC_SYNTHESIS_PROVIDER=lmstudio
       - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=gemma-4-e2b-heretic-uncensored-mlx
+      - MC_KG_EXTRACT_MODEL=ternary-bonsai-1.7b-mlx
       - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
       - MC_KG_EXTRACT_PROVIDER=lmstudio
       # Real token budget for the deployed model's 30000-token window.
@@ -67,11 +96,11 @@ services:
       - MC_CHUNK_EMBED_PROVIDER=lmstudio
       - MC_EMBED_DIM=768
       - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=gemma-4-e2b-heretic-uncensored-mlx
+      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
       - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
       - MC_SYNTHESIS_PROVIDER=lmstudio
       - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=gemma-4-e2b-heretic-uncensored-mlx
+      - MC_KG_EXTRACT_MODEL=ternary-bonsai-1.7b-mlx
       - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
       - MC_KG_EXTRACT_PROVIDER=lmstudio
       - ATRIA_MAX_CONTEXT_TOKENS=${ATRIA_MAX_CONTEXT_TOKENS:-24000}

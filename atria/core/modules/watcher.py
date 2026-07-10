@@ -18,7 +18,8 @@ from typing import Callable, Dict, Optional
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from atria.core.modules.registry import ModuleRegistry
+from atria.core.modules.registry import ModuleRegistry, get_registry
+from atria.core.modules.remote import RemoteConnector
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +155,6 @@ def start_global_watcher(
     global _WATCHER
     if _WATCHER is not None:
         return _WATCHER
-    from atria.core.modules.registry import get_registry
 
     _WATCHER = ModuleWatcher(get_registry(), on_change=on_change)
     _WATCHER.start()
@@ -166,3 +166,90 @@ def stop_global_watcher() -> None:
     if _WATCHER is not None:
         _WATCHER.stop()
         _WATCHER = None
+
+
+RECONCILE_INTERVAL_SEC = 5.0
+
+
+class ConnectorReconciler:
+    """Poll every registered connector: refresh live tool schemas + liveness."""
+
+    def __init__(self, on_change: Optional[Callable[[], None]] = None) -> None:
+        self._stop = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._on_change = on_change
+
+    def reconcile_once(self, name: Optional[str] = None) -> None:
+        reg = get_registry()
+        before = reg.version
+        for rec in reg.connector_records():
+            if name is not None and rec.name != name:
+                continue
+            conn = RemoteConnector(rec.name, rec.connector_url)
+            manifest = None
+            try:
+                manifest = conn.fetch_manifest()
+            except Exception:  # noqa: BLE001 — network failure == unhealthy
+                manifest = None
+            if manifest is None:
+                reg.record_health_failure(rec.name)
+                continue
+            health = conn.health()
+            if not health.get("ok", False):
+                # Unreachable / error payload — count it a liveness failure.
+                reg.record_health_failure(rec.name)
+                continue
+            if health.get("ready") is False:
+                # Alive but not serving yet — keep tools out of the catalog,
+                # but do NOT count it a health failure.
+                continue
+            tools = manifest.get("tools") or []
+            reg.mark_connector_ready(rec.name, tools)
+        if reg.version != before and self._on_change is not None:
+            try:
+                self._on_change()
+            except Exception:  # noqa: BLE001 — broadcast failure must not kill the reconcile loop
+                logger.warning("ConnectorReconciler on_change callback failed")
+
+    def _run(self) -> None:
+        while not self._stop.wait(RECONCILE_INTERVAL_SEC):
+            try:
+                self.reconcile_once()
+            except Exception:  # noqa: BLE001 — never let the loop die
+                logger.exception("connector reconcile pass failed")
+
+    def start(self) -> None:
+        if self._thread is not None:
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._run, name="connector-reconciler", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=2.0)
+            self._thread = None
+
+
+_RECONCILER: Optional[ConnectorReconciler] = None
+
+
+def start_connector_reconciler(on_change: Optional[Callable[[], None]] = None) -> None:
+    global _RECONCILER
+    if _RECONCILER is None:
+        _RECONCILER = ConnectorReconciler(on_change=on_change)
+        _RECONCILER.start()
+
+
+def stop_connector_reconciler() -> None:
+    global _RECONCILER
+    if _RECONCILER is not None:
+        _RECONCILER.stop()
+        _RECONCILER = None
+
+
+def kick_reconcile(name: str) -> None:
+    """Reconcile a single connector immediately (called from the register route)."""
+    if _RECONCILER is not None:
+        _RECONCILER.reconcile_once(name)

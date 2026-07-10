@@ -14,10 +14,12 @@ import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
-import { MaintenanceAnswerBlock } from './MaintenanceAnswer/MaintenanceAnswerBlock';
+import { GenericModuleCard } from './GenericModuleCard';
+import { ModuleProgress } from './ModuleProgress';
 import { DeepResearchBlock } from './DeepResearchBlock';
 import { ImageMessage } from './ImageMessage';
 import { SandboxedBlock } from './SandboxedBlock';
+import { RemoteBlock } from './RemoteBlock';
 import { THINKING_VERBS } from '../../constants/spinner';
 import { computeTurns, type TurnInfo } from '../../lib/turns';
 import { MessageActions } from './MessageActions';
@@ -230,8 +232,20 @@ function MessageBody({
     return <ThinkingBlock content={message.content} level={message.metadata?.level} isActive={isLastThinking} />;
   }
   if (message.role === 'search_result') return <SearchResultBlock message={message} />;
-  if (message.role === 'maintenance_answer') return <MaintenanceAnswerBlock message={message} />;
+  if (message.role === 'module_card') return <GenericModuleCard message={message} />;
+  if (message.role === 'module_progress') return <ModuleProgress message={message} />;
   if (message.role === 'image_message') return <ImageMessage message={message} />;
+  if (message.role === 'custom_block' && message.block_render === 'remote' && message.block_remote_name) {
+    return (
+      <RemoteBlock
+        remoteName={message.block_remote_name}
+        remoteEntry={message.block_remote_entry || ''}
+        component={message.block_component || ''}
+        props={message.block_props || {}}
+        apiBase={message.block_api_base}
+      />
+    );
+  }
   if (message.role === 'custom_block' && message.block_id && message.block_src) {
     return (
       <SandboxedBlock

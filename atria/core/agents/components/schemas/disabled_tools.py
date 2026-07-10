@@ -98,7 +98,6 @@ def _build_category_map() -> dict[str, str]:
         knowledge_tools,
         orchestration_tools,
         process_tools,
-        symbol_tools,
         system_tools,
         web_tools,
     )
@@ -109,7 +108,6 @@ def _build_category_map() -> dict[str, str]:
         ("Web", web_tools),
         ("Interaction", interaction_tools),
         ("System", system_tools),
-        ("Code Symbols", symbol_tools),
         ("Knowledge", knowledge_tools),
         ("Agents", agent_tools),
         ("Orchestration", orchestration_tools),

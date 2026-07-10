@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
-import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
+import { isCardType, mapCard } from '../lib/cardRegistry';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -105,6 +105,11 @@ function expandMessages(rawMessages: Message[]): Message[] {
         block_module: meta.module,
         block_file: meta.block,
         block_src: meta.src,
+        block_render: meta.render === 'remote' ? 'remote' : 'iframe',
+        block_remote_name: meta.remote_name,
+        block_remote_entry: meta.remote_entry,
+        block_component: meta.component,
+        block_api_base: meta.api_base,
         block_props: meta.props || {},
         block_height: meta.height ?? 'auto',
         block_title: meta.title,
@@ -799,6 +804,11 @@ wsClient.on('custom_block', (message) => {
           block_module: message.data.module,
           block_file: message.data.block,
           block_src: message.data.src,
+          block_render: message.data.render === 'remote' ? 'remote' : 'iframe',
+          block_remote_name: message.data.remote_name,
+          block_remote_entry: message.data.remote_entry,
+          block_component: message.data.component,
+          block_api_base: message.data.api_base,
           block_props: message.data.props || {},
           block_height: message.data.height ?? 'auto',
           block_title: message.data.title,
@@ -1092,16 +1102,57 @@ wsClient.on('search_done', (message) => {
   });
 });
 
-// ─── Maintenance Copilot Answer Card ──────────────────────────────────────────
-
-wsClient.on('maintenance_answer', (message) => {
+// ─── Service-Module UI Cards ──────────────────────────────────────────────────
+//
+// Every service module broadcasts its UI card as a WS message whose `type` is a
+// per-module `card_type` string — either a module-chosen type (e.g.
+// `maintenance_answer`) or the default `"{module}_card"`. Because those types are
+// dynamic, we can't register a per-type `wsClient.on(...)` for each; instead we
+// listen on the wildcard and route any card_type through the card registry:
+// known type → its bespoke mapper/renderer, unknown → GenericModuleCard.
+wsClient.on('*', (message) => {
+  if (!isCardType(message.type)) return;
   const sid = resolveSessionId(message.data);
   if (!sid) return;
-  const maMsg = mapMaintenanceAnswer(message.data);
+  const cardMsg = mapCard(message.type, message.data);
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, maMsg] });
+    // A card ends a streaming call — drop any trailing live-progress message so
+    // the card replaces it rather than piling up beneath it.
+    const msgs = sessionState.messages.filter(
+      (m, i) => !(i === sessionState.messages.length - 1 && m.role === 'module_progress'),
+    );
+    return patchSession(state, sid, { messages: [...msgs, cardMsg] });
+  });
+});
+
+// Live progress during a streaming module tool call (module_progress events from
+// _run_stream). Upsert a single progress line at the tail: update it in place
+// while events arrive; the next card (above) clears it.
+wsClient.on('module_progress', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const { module, message: text, pct } = message.data;
+
+  useChatStore.setState(state => {
+    const sessionState = getSessionState(state.sessionStates, sid);
+    const msgs = sessionState.messages;
+    const last = msgs[msgs.length - 1];
+    const progressMsg = {
+      role: 'module_progress' as const,
+      content: text ?? '',
+      progress_module: module,
+      progress_message: text ?? '',
+      progress_pct: typeof pct === 'number' ? pct : null,
+      timestamp: new Date().toISOString(),
+    };
+    if (last && last.role === 'module_progress') {
+      const updated = [...msgs];
+      updated[updated.length - 1] = progressMsg;
+      return patchSession(state, sid, { messages: updated });
+    }
+    return patchSession(state, sid, { messages: [...msgs, progressMsg] });
   });
 });
 
