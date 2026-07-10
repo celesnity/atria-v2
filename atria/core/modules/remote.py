@@ -229,6 +229,12 @@ def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
 
         card = resp.get("card")
         _broadcast_card(ctx, _card_type(resp, conn.name), card)
+        for block in resp.get("blocks") or []:
+            if ctx.push_block and block.get("remote_entry"):
+                try:
+                    ctx.push_block(block, conn.name)
+                except Exception as exc:  # noqa: BLE001 — a block push must never fail the tool
+                    ctx.logger.warning("block push failed for %s: %s", conn.name, exc)
         out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
         if resp.get("llm_suffix"):
             out["_llm_suffix"] = resp["llm_suffix"]

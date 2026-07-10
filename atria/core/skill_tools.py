@@ -43,6 +43,10 @@ class SkillToolContext:
 
     working_dir: str | None = None
     broadcaster: Callable[[dict[str, Any]], None] | None = None
+    # Federated chat-block sink: (descriptor, module) -> None. The web session
+    # layer wires this to ui_bridge.push_remote_block so a module's tool response
+    # can render a native federated block. No-op when unset (e.g. headless/TUI).
+    push_block: Callable[[dict[str, Any], str], None] | None = None
     # (job_id, request_id, event_payload) -> result. The callback must
     # register pending state BEFORE emitting `event_payload` over the
     # broadcaster, then block on the user's response. Putting register +
