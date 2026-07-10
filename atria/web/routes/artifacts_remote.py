@@ -20,7 +20,6 @@ class PushArtifactBody(BaseModel):
     session_id: str = Field(min_length=1)
     filename: str = Field(min_length=1)
     content_b64: str = Field(min_length=1)
-    type: str = "report"
 
 
 @router.post("/push")
@@ -31,10 +30,24 @@ async def push_artifact(body: PushArtifactBody,
     if not conversation_id:
         raise HTTPException(404, f"session {body.session_id!r} has no conversation")
     try:
+        conv_int = int(conversation_id)
+    except (TypeError, ValueError):
+        raise HTTPException(404, f"session {body.session_id!r} has an invalid conversation")
+    try:
         content = base64.b64decode(body.content_b64)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(400, f"invalid content_b64: {exc}") from exc
     result = await service.upload_artifact(
         file_content=content, filename=body.filename, content_length=len(content),
-        scope="conversation", conversation_id=int(conversation_id), project_id=None)
+        scope="conversation", conversation_id=conv_int, project_id=None)
+    try:
+        from atria.web.state import broadcast_to_all_clients
+        await broadcast_to_all_clients({
+            "type": "artifact.changed",
+            "scope": "conversation",
+            "conversation_id": conv_int,
+            "artifact_id": result["artifact_id"],
+        })
+    except Exception:  # noqa: BLE001 — a failed broadcast must not break the push
+        pass
     return {"artifact_id": result["artifact_id"]}

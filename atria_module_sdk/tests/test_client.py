@@ -55,4 +55,4 @@ def test_push_artifact(monkeypatch):
     assert captured["json"]["filename"] == "report.pdf"
     # Verify content was base64-encoded correctly
     assert base64.b64decode(captured["json"]["content_b64"]) == b"hello artifact"
-    assert captured["json"]["type"] == "report"
+    assert "type" not in captured["json"]

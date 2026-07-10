@@ -318,9 +318,8 @@ def _make_handler(
 ) -> Callable[..., dict]:
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
-        # ponytail: agent tool calls carry no user identity (there's no producer
-        # for one on this path). Identity is forwarded on the passthrough route
-        # (get_json/post_json), which is where authorization actually matters.
+        # Identity (username/email via ctx.principal + session via ctx.session_id)
+        # is forwarded first-party from the session context on every call.
         if streaming:
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
