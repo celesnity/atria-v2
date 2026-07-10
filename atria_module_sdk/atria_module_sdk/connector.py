@@ -169,6 +169,14 @@ class Connector:
                 "card_type": tool.card_type if card is not None else None,
                 "llm_suffix": None, "blocks": None}
 
+    def invoke(self, tool_name: str, arguments: dict, *,
+               principal: Optional[Principal] = None,
+               session_id: Optional[str] = None) -> dict:
+        """Invoke a registered tool in-process (for unit tests) — bypasses HTTP.
+        Returns the same envelope the /connector/tools/{name} endpoint returns."""
+        tool = self._tools[tool_name]
+        return self._call(tool, arguments, principal or Principal(), session_id=session_id)
+
     def _call(self, tool: _Tool, arguments: dict, principal: Principal) -> dict:
         kwargs = dict(arguments)
         if _accepts_principal(tool.handler):
