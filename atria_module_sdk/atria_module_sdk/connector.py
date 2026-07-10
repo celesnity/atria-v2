@@ -30,6 +30,7 @@ Handlers return either a plain value (becomes ``output``) or a dict with any of
 ``ServiceUnavailable("qdrant")`` when a sidecar is down — the SDK converts it to
 a fail-closed card + LLM suffix instead of a 500.
 """
+
 from __future__ import annotations
 
 import inspect
@@ -39,14 +40,17 @@ import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
+
+if TYPE_CHECKING:
+    from .client import AtriaClient
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .cards import unavailable_card, unavailable_suffix, block as _block_descriptor
+from .cards import unavailable_card, unavailable_suffix
 
 logger = logging.getLogger("atria_module_sdk")
 
@@ -88,11 +92,16 @@ class Principal:
 class Connector:
     """Builds an Atria service-module's connector app from decorated handlers."""
 
-    def __init__(self, name: str, *, version: str = "1",
-                 display_name: Optional[str] = None,
-                 public_base_env: str = "MODULE_PUBLIC_BASE",
-                 dashboard_dist_env: str = "MODULE_DASHBOARD_DIST",
-                 min_core_version: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        *,
+        version: str = "1",
+        display_name: Optional[str] = None,
+        public_base_env: str = "MODULE_PUBLIC_BASE",
+        dashboard_dist_env: str = "MODULE_DASHBOARD_DIST",
+        min_core_version: Optional[str] = None,
+    ) -> None:
         self.name = name
         self.version = version
         self.display_name = display_name or name.replace("_", " ").title()
@@ -114,21 +123,38 @@ class Connector:
 
     # -- registration ---------------------------------------------------------
 
-    def tool(self, name: str, *, description: str = "", parameters: Optional[dict] = None,
-             card_type: Optional[str] = None, streaming: bool = False,
-             requires_auth: bool = False, params_model: Optional[type] = None
-             ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def tool(
+        self,
+        name: str,
+        *,
+        description: str = "",
+        parameters: Optional[dict] = None,
+        card_type: Optional[str] = None,
+        streaming: bool = False,
+        requires_auth: bool = False,
+        params_model: Optional[type] = None,
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register an agent tool. The decorated function's return becomes the
         tool result (see module docstring)."""
         if params_model is not None and parameters is not None:
             raise ValueError("pass either params_model or parameters, not both")
-        params = (params_model.model_json_schema() if params_model is not None  # type: ignore[attr-defined]
-                  else (parameters or {"type": "object", "properties": {}}))
+        params = (
+            params_model.model_json_schema()
+            if params_model is not None  # type: ignore[attr-defined]
+            else (parameters or {"type": "object", "properties": {}})
+        )
 
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
-            self._tools[name] = _Tool(name, description, params, fn, card_type,
-                                      streaming, requires_auth=requires_auth,
-                                      params_model=params_model)
+            self._tools[name] = _Tool(
+                name,
+                description,
+                params,
+                fn,
+                card_type,
+                streaming,
+                requires_auth=requires_auth,
+                params_model=params_model,
+            )
             return fn
 
         return deco
@@ -165,33 +191,51 @@ class Connector:
         self._startup_hooks.append(fn)
         return fn
 
-    def route(self, path: str, *, methods: Iterable[str] = ("POST",)
-              ) -> Callable[[Callable], Callable]:
+    def route(
+        self, path: str, *, methods: Iterable[str] = ("POST",)
+    ) -> Callable[[Callable], Callable]:
         """Register an extra connector endpoint, reachable via Atria's passthrough
         at ``/api/modules/{name}/connector{path}``. Handler may take ``principal``.
         """
+
         def deco(fn: Callable) -> Callable:
             self._extra_routes.append((path, list(methods), fn))
             return fn
 
         return deco
 
-    def block(self, component: str, props: Optional[dict] = None, *,
-              height: Any = "auto", title: Optional[str] = None) -> dict:
+    def block(
+        self,
+        component: str,
+        props: Optional[dict] = None,
+        *,
+        height: Any = "auto",
+        title: Optional[str] = None,
+    ) -> dict:
         """Build a federated chat-block descriptor for THIS module — fills
         remote_name (self.name) and remote_entry ($ATRIA_MODULE_REMOTE_ENTRY)."""
         from .cards import block as _b
+
         remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")
-        return _b(component, props, remote_name=self.name,
-                  remote_entry=remote_entry, height=height, title=title)
+        return _b(
+            component,
+            props,
+            remote_name=self.name,
+            remote_entry=remote_entry,
+            height=height,
+            title=title,
+        )
 
     # -- tool invocation ------------------------------------------------------
 
     def _normalize(self, tool: _Tool, raw: Any) -> dict:
         """Coerce a handler return into the tool-response envelope."""
         if isinstance(raw, dict) and (
-            "output" in raw or "card" in raw or "blocks" in raw
-            or "success" in raw or "llm_suffix" in raw
+            "output" in raw
+            or "card" in raw
+            or "blocks" in raw
+            or "success" in raw
+            or "llm_suffix" in raw
         ):
             card = raw.get("card")
             return {
@@ -204,35 +248,64 @@ class Connector:
             }
         # A bare value: it's both the agent output and (if a dict) the card.
         card = raw if isinstance(raw, dict) else None
-        return {"success": True, "output": raw, "card": card,
-                "card_type": tool.card_type if card is not None else None,
-                "llm_suffix": None, "blocks": None}
+        return {
+            "success": True,
+            "output": raw,
+            "card": card,
+            "card_type": tool.card_type if card is not None else None,
+            "llm_suffix": None,
+            "blocks": None,
+        }
 
-    def invoke(self, tool_name: str, arguments: dict, *,
-               principal: Optional[Principal] = None,
-               session_id: Optional[str] = None) -> dict:
+    def invoke(
+        self,
+        tool_name: str,
+        arguments: dict,
+        *,
+        principal: Optional[Principal] = None,
+        session_id: Optional[str] = None,
+    ) -> dict:
         """Invoke a registered tool in-process (for unit tests) — bypasses HTTP.
         Returns the same envelope the /connector/tools/{name} endpoint returns."""
         tool = self._tools[tool_name]
         return self._call(tool, arguments, principal or Principal(), session_id=session_id)
 
-    def _call(self, tool: _Tool, arguments: dict, principal: Principal, *,
-              session_id: Optional[str] = None) -> dict:
+    def _call(
+        self,
+        tool: _Tool,
+        arguments: dict,
+        principal: Principal,
+        *,
+        session_id: Optional[str] = None,
+    ) -> dict:
         if tool.params_model is not None:
             try:
                 validated = tool.params_model(**arguments)
                 arguments = validated.model_dump()
             except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
-                return {"success": False, "output": f"invalid arguments: {exc}",
-                        "card": None, "card_type": None, "llm_suffix": None, "blocks": None}
+                return {
+                    "success": False,
+                    "output": f"invalid arguments: {exc}",
+                    "card": None,
+                    "card_type": None,
+                    "llm_suffix": None,
+                    "blocks": None,
+                }
         if tool.requires_auth and not principal.is_authenticated:
-            return {"success": False, "output": "authentication required",
-                    "card": None, "card_type": None, "llm_suffix": None, "blocks": None}
+            return {
+                "success": False,
+                "output": "authentication required",
+                "card": None,
+                "card_type": None,
+                "llm_suffix": None,
+                "blocks": None,
+            }
         kwargs = dict(arguments)
         if _accepts_principal(tool.handler):
             kwargs["principal"] = principal
-        if session_id is not None and (_accepts_arg(tool.handler, "session_id")
-                                       or _has_var_keyword(tool.handler)):
+        if session_id is not None and (
+            _accepts_arg(tool.handler, "session_id") or _has_var_keyword(tool.handler)
+        ):
             kwargs["session_id"] = session_id
         try:
             raw = tool.handler(**kwargs)
@@ -243,12 +316,17 @@ class Connector:
                 raw = self._drain(raw)
             return self._normalize(tool, raw)
         except ServiceUnavailable as exc:
-            reason = (f"The {self.display_name} is unavailable ({exc.service} unreachable), "
-                      "so this request cannot be completed with grounded results right now.")
-            return {"success": True, "output": unavailable_card(reason, service=exc.service),
-                    "card": unavailable_card(reason, service=exc.service),
-                    "card_type": tool.card_type or f"{self.name}_card",
-                    "llm_suffix": unavailable_suffix(self.name, exc.service)}
+            reason = (
+                f"The {self.display_name} is unavailable ({exc.service} unreachable), "
+                "so this request cannot be completed with grounded results right now."
+            )
+            return {
+                "success": True,
+                "output": unavailable_card(reason, service=exc.service),
+                "card": unavailable_card(reason, service=exc.service),
+                "card_type": tool.card_type or f"{self.name}_card",
+                "llm_suffix": unavailable_suffix(self.name, exc.service),
+            }
 
     @staticmethod
     def _drain(gen: Iterator[Any]) -> Any:
@@ -277,8 +355,10 @@ class Connector:
         return out
 
     def _capabilities(self) -> dict:
-        return {"streaming": any(t.streaming for t in self._tools.values()),
-                "cards": any(t.card_type for t in self._tools.values())}
+        return {
+            "streaming": any(t.streaming for t in self._tools.values()),
+            "cards": any(t.card_type for t in self._tools.values()),
+        }
 
     # -- app assembly ---------------------------------------------------------
 
@@ -288,11 +368,13 @@ class Connector:
         import threading
 
         for fn in self._startup_hooks:
+
             def _run(f=fn) -> None:
                 try:
                     f()
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("startup hook %s failed: %s", getattr(f, "__name__", f), exc)
+
             threading.Thread(target=_run, name=f"{self.name}-startup", daemon=True).start()
 
     def asgi(self, *, cors_origins: Optional[list[str]] = None) -> FastAPI:
@@ -318,17 +400,25 @@ class Connector:
                 deregister(self.name, cfg)
 
         app = FastAPI(title=f"{self.name}-connector", lifespan=_lifespan)
-        origins = cors_origins or [
-            o for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o
-        ] or ["*"]
-        app.add_middleware(CORSMiddleware, allow_origins=origins,
-                           allow_methods=["*"], allow_headers=["*"])
+        origins = (
+            cors_origins
+            or [o for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o]
+            or ["*"]
+        )
+        app.add_middleware(
+            CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"]
+        )
 
         @app.get("/connector/health")
         def health() -> dict:
-            return {"ok": True, "module": self.name, "version": self.version,
-                    "capabilities": self._capabilities(), "sidecars": self._sidecars(),
-                    "ready": self._ready()}
+            return {
+                "ok": True,
+                "module": self.name,
+                "version": self.version,
+                "capabilities": self._capabilities(),
+                "sidecars": self._sidecars(),
+                "ready": self._ready(),
+            }
 
         @app.get("/connector/manifest")
         def manifest() -> dict:
@@ -337,15 +427,21 @@ class Connector:
             if base:
                 exposed = {"dashboard": "./Dashboard"}
                 exposed.update({k: k for k in self._exposed_blocks})
-                remote = {"name": self.name,
-                          "remoteEntry": f"{base}/dashboard/remoteEntry.js",
-                          "exposed": exposed}
-            return {"name": self.name, "display_name": self.display_name,
-                    "version": self.version, "tools": self._tool_specs(),
-                    "remote": remote,
-                    "card_types": sorted({t.card_type for t in self._tools.values() if t.card_type}),
-                    "contract_version": CONTRACT_VERSION,
-                    "min_core_version": self.min_core_version}
+                remote = {
+                    "name": self.name,
+                    "remoteEntry": f"{base}/dashboard/remoteEntry.js",
+                    "exposed": exposed,
+                }
+            return {
+                "name": self.name,
+                "display_name": self.display_name,
+                "version": self.version,
+                "tools": self._tool_specs(),
+                "remote": remote,
+                "card_types": sorted({t.card_type for t in self._tools.values() if t.card_type}),
+                "contract_version": CONTRACT_VERSION,
+                "min_core_version": self.min_core_version,
+            }
 
         @app.post("/connector/tools/{name}")
         async def call_tool(name: str, request: Request) -> dict:
@@ -356,14 +452,20 @@ class Connector:
             principal = _principal_from_headers(request)
             session_id = _session_from_headers(request)
             try:
-                return self._call(tool, body.get("arguments") or {}, principal,
-                                  session_id=session_id)
+                return self._call(
+                    tool, body.get("arguments") or {}, principal, session_id=session_id
+                )
             except HTTPException:
                 raise
             except Exception as exc:  # noqa: BLE001 — never 500 the agent
                 logger.exception("tool %s failed", name)
-                return {"success": False, "output": f"{name} failed: {exc}",
-                        "card": None, "card_type": None, "llm_suffix": None}
+                return {
+                    "success": False,
+                    "output": f"{name} failed: {exc}",
+                    "card": None,
+                    "card_type": None,
+                    "llm_suffix": None,
+                }
 
         @app.post("/connector/tools/{name}/stream")
         async def stream_tool(name: str, request: Request) -> StreamingResponse:
@@ -374,8 +476,10 @@ class Connector:
             principal = _principal_from_headers(request)
             session_id = _session_from_headers(request)
             args = body.get("arguments") or {}
-            return StreamingResponse(self._sse(tool, args, principal, session_id=session_id),
-                                     media_type="text/event-stream")
+            return StreamingResponse(
+                self._sse(tool, args, principal, session_id=session_id),
+                media_type="text/event-stream",
+            )
 
         for path, methods, fn in self._extra_routes:
             self._mount_extra(app, path, methods, fn)
@@ -385,12 +489,19 @@ class Connector:
         return app
 
     def _tool_specs(self) -> list[dict]:
-        return [{"name": t.name, "description": t.description, "parameters": t.parameters,
-                 "streaming": t.streaming}
-                for t in self._tools.values()]
+        return [
+            {
+                "name": t.name,
+                "description": t.description,
+                "parameters": t.parameters,
+                "streaming": t.streaming,
+            }
+            for t in self._tools.values()
+        ]
 
-    def _sse(self, tool: _Tool, args: dict, principal: Principal, *,
-             session_id: Optional[str] = None) -> Iterator[bytes]:
+    def _sse(
+        self, tool: _Tool, args: dict, principal: Principal, *, session_id: Optional[str] = None
+    ) -> Iterator[bytes]:
         def emit(obj: dict) -> bytes:
             return f"data: {json.dumps(obj)}\n\n".encode()
 
@@ -400,8 +511,9 @@ class Connector:
                 kwargs = dict(args)
                 if _accepts_principal(tool.handler):
                     kwargs["principal"] = principal
-                if session_id is not None and (_accepts_arg(tool.handler, "session_id")
-                                               or _has_var_keyword(tool.handler)):
+                if session_id is not None and (
+                    _accepts_arg(tool.handler, "session_id") or _has_var_keyword(tool.handler)
+                ):
                     kwargs["session_id"] = session_id
                 last: Any = None
                 for evt in tool.handler(**kwargs):
@@ -420,8 +532,7 @@ class Connector:
             logger.exception("stream tool %s failed", tool.name)
             yield emit({"event": "error", "message": str(exc)})
 
-    def _mount_extra(self, app: FastAPI, path: str, methods: list[str],
-                     fn: Callable) -> None:
+    def _mount_extra(self, app: FastAPI, path: str, methods: list[str], fn: Callable) -> None:
         async def endpoint(request: Request) -> Any:
             principal = _principal_from_headers(request)
             kwargs: dict = {}
@@ -439,6 +550,7 @@ class Connector:
         module-push service token). Raises AtriaClientError if unconfigured."""
         from .announce import resolve_announce_config
         from .client import AtriaClient, AtriaClientError
+
         cfg = resolve_announce_config()
         if cfg is None:
             raise AtriaClientError("announce config absent (ATRIA_URL/CONNECTOR_URL unset)")
@@ -451,6 +563,7 @@ class Connector:
 
 
 # -- helpers ------------------------------------------------------------------
+
 
 def _accepts_principal(fn: Callable) -> bool:
     return _accepts_arg(fn, "principal") or _has_var_keyword(fn)
@@ -465,8 +578,10 @@ def _accepts_arg(fn: Callable, arg: str) -> bool:
 
 def _has_var_keyword(fn: Callable) -> bool:
     try:
-        return any(p.kind == inspect.Parameter.VAR_KEYWORD
-                   for p in inspect.signature(fn).parameters.values())
+        return any(
+            p.kind == inspect.Parameter.VAR_KEYWORD
+            for p in inspect.signature(fn).parameters.values()
+        )
     except (TypeError, ValueError):
         return False
 
@@ -491,7 +606,8 @@ def _principal_from_headers(request: Request) -> Principal:
         return Principal()
     try:
         data = json.loads(raw)
-        return Principal(username=str(data.get("username") or "unknown"),
-                         email=str(data.get("email") or ""))
+        return Principal(
+            username=str(data.get("username") or "unknown"), email=str(data.get("email") or "")
+        )
     except (ValueError, AttributeError):
         return Principal()

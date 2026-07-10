@@ -8,15 +8,21 @@ These helpers are intentionally minimal and domain-agnostic. Modules with a
 richer schema (citations, confidence bands, …) can return any dict they like —
 the SDK never forces this shape.
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional
 
 
-def card(answer: str, *, card_type: Optional[str] = None,
-         confidence: Optional[float] = None, review_required: bool = False,
-         validation_warnings: Optional[list[str]] = None,
-         **extra: Any) -> dict:
+def card(
+    answer: str,
+    *,
+    card_type: Optional[str] = None,
+    confidence: Optional[float] = None,
+    review_required: bool = False,
+    validation_warnings: Optional[list[str]] = None,
+    **extra: Any,
+) -> dict:
     """Build a generic card dict. ``extra`` merges arbitrary domain fields."""
     band = None
     if confidence is not None:
@@ -34,8 +40,15 @@ def card(answer: str, *, card_type: Optional[str] = None,
     return out
 
 
-def block(component: str, props: Optional[dict] = None, *, remote_name: str,
-          remote_entry: str, height: Any = "auto", title: Optional[str] = None) -> dict:
+def block(
+    component: str,
+    props: Optional[dict] = None,
+    *,
+    remote_name: str,
+    remote_entry: str,
+    height: Any = "auto",
+    title: Optional[str] = None,
+) -> dict:
     """Federated chat-block descriptor matching Atria's ``custom_block`` render:'remote'."""
     return {
         "render": "remote",
