@@ -1,6 +1,6 @@
 from atria.core.modules import watcher
 from atria.core.modules.registry import (
-    ConnectorState, ModuleRegistry, RECONCILE_FAIL_LIMIT, reset_registry_for_tests,
+    ConnectorState, RECONCILE_FAIL_LIMIT, reset_registry_for_tests,
 )
 
 

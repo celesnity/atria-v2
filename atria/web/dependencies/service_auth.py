@@ -2,6 +2,7 @@
 ``module-push`` realm role. Distinct from human-user login
 (``require_authenticated_user``) — used to gate the module reverse-push ingress.
 """
+
 from __future__ import annotations
 
 from fastapi import HTTPException, Request, status
