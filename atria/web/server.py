@@ -32,9 +32,10 @@ from atria.web.routes import (
     personas_router,
     modules_router,
     transcribe_router,
-    maintenance_router,
     blocks_router,
+    blocks_remote_router,
     module_dashboard_router,
+    module_connector_router,
     connect_router,
     me_router,
     admin_tenants_router,
@@ -301,9 +302,10 @@ def create_app() -> FastAPI:
     app.include_router(knowledge_facade_router)
     app.include_router(modules_router)
     app.include_router(transcribe_router)
-    app.include_router(maintenance_router)
     app.include_router(blocks_router)
+    app.include_router(blocks_remote_router)
     app.include_router(module_dashboard_router)
+    app.include_router(module_connector_router)
     app.include_router(connect_router)
     app.include_router(me_router)
     app.include_router(admin_tenants_router)

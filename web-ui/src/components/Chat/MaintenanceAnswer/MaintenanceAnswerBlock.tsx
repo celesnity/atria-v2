@@ -57,7 +57,9 @@ export function MaintenanceAnswerBlock({ message }: Props) {
     if (signing || signedOff) return;
     setSigning(true);
     try {
-      const resp = await fetch('/api/maintenance/signoff', {
+      // Generic connector passthrough — core no longer has a module-specific
+      // maintenance route; every module reaches its connector the same way.
+      const resp = await fetch('/api/modules/maintenance_copilot/connector/signoff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

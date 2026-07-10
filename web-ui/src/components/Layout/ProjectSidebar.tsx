@@ -20,6 +20,8 @@ import type { Project } from "../../types";
 import { SettingsModal } from "../Settings/SettingsModal";
 import { CreateConversationModal } from "./CreateConversationModal";
 import { CreateProjectModal } from "./CreateProjectModal";
+import { ModuleHealthDot } from "./ModuleHealthDot";
+import { useModuleHealth } from "../../hooks/useModuleHealth";
 
 /** Short relative time, e.g. "Just now", "5m ago", "3h ago", "2d ago", or a date. */
 function formatRelativeTime(dateString: string): string {
@@ -106,6 +108,9 @@ export function ProjectSidebar() {
   const openModuleDashboard = useModulesStore((s) => s.openDashboard);
   const closeModuleDashboard = useModulesStore((s) => s.closeDashboard);
   const refreshModules = useModulesStore((s) => s.refresh);
+  // Connector health per service module, polled on mount + every ~30s. Drives the
+  // status dot on module tiles (green ok / red down / grey loading).
+  const moduleHealth = useModuleHealth();
 
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [createConvFor, setCreateConvFor] = useState<Project | null>(null);
@@ -263,6 +268,10 @@ export function ProjectSidebar() {
               ) : (
                 <Package className="h-4 w-4" />
               )}
+              <ModuleHealthDot
+                status={moduleHealth[m.name]}
+                className="absolute right-1 top-1 ring-1 ring-canvas"
+              />
             </button>
           );
         })}
@@ -488,6 +497,7 @@ export function ProjectSidebar() {
                     <span className="flex-1 truncate text-xs font-medium">
                       {m.display_name}
                     </span>
+                    <ModuleHealthDot status={moduleHealth[m.name]} />
                   </button>
                 );
               })}

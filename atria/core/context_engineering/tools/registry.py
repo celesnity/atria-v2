@@ -98,9 +98,9 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             Path.cwd() / ".atria" / "skills",
             _paths.global_skills_dir,
         ]
-        # Also discover code-bearing skills shipped inside modules (e.g.
-        # maintenance_copilot ships a tools.py). Modules declare `tools:` in their
-        # SKILL.md frontmatter; modules without it are silently skipped.
+        # Also discover code-bearing skills shipped inside modules. Modules
+        # declare `tools:` in their SKILL.md frontmatter; modules without it are
+        # silently skipped.
         _modules_root = None
         try:
             from atria.core.modules.registry import resolve_modules_root
@@ -135,10 +135,9 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 logger.info("registered %d remote proxy tool(s)", len(_remote_specs))
         except Exception as exc:  # noqa: BLE001 — never block registry init
             logger.warning("remote proxy tool registration failed: %s", exc)
-        # Protected-path guard: denies tool access to configured corpus roots
-        # (defaults protect modules/*/sample_manuals even without a settings
-        # file — ProtectedPathGuard falls back to defaults on a missing or
-        # mocked config).
+        # Protected-path guard: denies tool access to corpus roots declared in
+        # settings.json plus each module's own `protected_paths` manifest block
+        # (core hardcodes no module-specific paths).
         from atria.core.context_engineering.tools.protected_paths import ProtectedPathGuard
 
         _protected_entries = None
@@ -146,6 +145,14 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             _protected_entries = app_config.permissions.protected_paths  # type: ignore[union-attr]
         except AttributeError:
             pass
+        try:
+            from atria.core.modules.store import module_protected_paths
+
+            _module_entries = module_protected_paths(_get_mod_registry().all())
+            if _module_entries:
+                _protected_entries = list(_protected_entries or []) + _module_entries
+        except Exception as exc:  # noqa: BLE001 — guard wiring must never block init
+            logger.warning("module protected-path collection failed: %s", exc)
         self._protected_guard = ProtectedPathGuard(
             _protected_entries, _skill_working_dir, _modules_root
         )

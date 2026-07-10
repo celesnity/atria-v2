@@ -88,7 +88,13 @@ dev = [
     "ruff>=0.14.1",
     "mypy>=1.18.2",
     "fakeredis>=2.0.0",
+    # Shared service-module connector SDK (path source below) — needed by the
+    # connector tests and `atria-module dev`.
+    "atria-module-sdk",
 ]
+
+[tool.uv.sources]
+atria-module-sdk = { path = "atria_module_sdk", editable = true }
 
 [project.urls]
 Homepage = "https://github.com/atria-to/atria"
@@ -99,6 +105,7 @@ Changelog = "https://github.com/atria-to/atria/releases"
 
 [project.scripts]
 atria = "atria.serve:main"
+atria-module = "atria.module_dev:main"
 
 [tool.setuptools]
 include-package-data = true

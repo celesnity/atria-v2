@@ -15,6 +15,7 @@ import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/act
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
 import { MaintenanceAnswerBlock } from './MaintenanceAnswer/MaintenanceAnswerBlock';
+import { GenericModuleCard } from './GenericModuleCard';
 import { DeepResearchBlock } from './DeepResearchBlock';
 import { ImageMessage } from './ImageMessage';
 import { SandboxedBlock } from './SandboxedBlock';
@@ -231,6 +232,7 @@ function MessageBody({
   }
   if (message.role === 'search_result') return <SearchResultBlock message={message} />;
   if (message.role === 'maintenance_answer') return <MaintenanceAnswerBlock message={message} />;
+  if (message.role === 'module_card') return <GenericModuleCard message={message} />;
   if (message.role === 'image_message') return <ImageMessage message={message} />;
   if (message.role === 'custom_block' && message.block_id && message.block_src) {
     return (

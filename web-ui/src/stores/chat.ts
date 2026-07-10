@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Message, ApprovalRequest, StatusInfo, AskUserRequest, PlanApprovalRequest, PerSessionState, ToolCallInfo } from '../types';
 import { applyTodosUpdate } from '../lib/todos';
-import { mapMaintenanceAnswer } from '../lib/maintenanceAnswer';
+import { isCardType, mapCard } from '../lib/cardRegistry';
 import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
@@ -1092,16 +1092,23 @@ wsClient.on('search_done', (message) => {
   });
 });
 
-// ─── Maintenance Copilot Answer Card ──────────────────────────────────────────
-
-wsClient.on('maintenance_answer', (message) => {
+// ─── Service-Module UI Cards ──────────────────────────────────────────────────
+//
+// Every service module broadcasts its UI card as a WS message whose `type` is a
+// per-module `card_type` string — either a module-chosen type (e.g.
+// `maintenance_answer`) or the default `"{module}_card"`. Because those types are
+// dynamic, we can't register a per-type `wsClient.on(...)` for each; instead we
+// listen on the wildcard and route any card_type through the card registry:
+// known type → its bespoke mapper/renderer, unknown → GenericModuleCard.
+wsClient.on('*', (message) => {
+  if (!isCardType(message.type)) return;
   const sid = resolveSessionId(message.data);
   if (!sid) return;
-  const maMsg = mapMaintenanceAnswer(message.data);
+  const cardMsg = mapCard(message.type, message.data);
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, maMsg] });
+    return patchSession(state, sid, { messages: [...sessionState.messages, cardMsg] });
   });
 });
 

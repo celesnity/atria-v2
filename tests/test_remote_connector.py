@@ -90,7 +90,7 @@ def test_build_specs_registers_declared_tools(monkeypatch):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok", "review_required": False}, "llm_suffix": None}
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
@@ -101,7 +101,28 @@ def test_build_specs_registers_declared_tools(monkeypatch):
     out = specs[0].handler(query="torque?")
     assert out["success"] is True
     assert out["output"]["answer"] == "ok"
-    assert broadcasts == [{"type": "maintenance_answer", "answer": "ok", "review_required": False}]
+    # No card_type in the response → broadcast under the generic "{module}_card"
+    # type. A module names its own renderer by returning card_type explicitly.
+    assert broadcasts == [
+        {"type": "maintenance_copilot_card", "answer": "ok", "review_required": False}
+    ]
+
+
+def test_explicit_card_type_is_honored(monkeypatch):
+    from atria.core.skill_tools import SkillToolContext
+
+    broadcasts = []
+    ctx = SkillToolContext(broadcaster=broadcasts.append)
+
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None):
+        return {"success": True, "output": {"answer": "ok"},
+                "card": {"answer": "ok"}, "card_type": "maintenance_answer",
+                "llm_suffix": None}
+    monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
+
+    specs = remote.build_remote_tool_specs(ctx, [_module_with_tool()])
+    specs[0].handler(query="torque?")
+    assert broadcasts[0]["type"] == "maintenance_answer"
 
 
 def test_handler_connector_down_fails_closed(monkeypatch):
@@ -110,7 +131,7 @@ def test_handler_connector_down_fails_closed(monkeypatch):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def boom(self, tool, arguments, timeout=110.0):
+    def boom(self, tool, arguments, timeout=110.0, principal=None):
         raise remote.ConnectorUnreachable("refused")
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", boom)
 
@@ -119,7 +140,7 @@ def test_handler_connector_down_fails_closed(monkeypatch):
     assert out["success"] is True
     assert out["output"]["review_required"] is True
     assert "connector unreachable" in out["_llm_suffix"].lower()
-    assert broadcasts[0]["type"] == "maintenance_answer"
+    assert broadcasts[0]["type"] == "maintenance_copilot_card"
 
 
 def test_module_without_service_yields_no_specs():
