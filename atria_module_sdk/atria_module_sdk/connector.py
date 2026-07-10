@@ -93,6 +93,7 @@ class Connector:
         self.display_name = display_name or name.replace("_", " ").title()
         self._tools: dict[str, _Tool] = {}
         self._health_probes: list[Callable[[], dict]] = []
+        self._readiness_probes: list[Callable[[], Any]] = []
         self._extra_routes: list[tuple[str, list[str], Callable]] = []
         self._startup_hooks: list[Callable[[], None]] = []
         self._public_base_env = public_base_env
@@ -117,6 +118,25 @@ class Connector:
         """Register a probe returning ``{sidecar: 'ok'|'error: …'}`` for /health."""
         self._health_probes.append(fn)
         return fn
+
+    def readiness_probe(self, fn: Callable[[], Any]) -> Callable[[], Any]:
+        """Register a readiness check: () -> bool | {"ready": bool, ...}. While any
+        probe reports not-ready, Atria keeps this module's tools OUT of the agent
+        catalog (the connector is alive but not serving yet)."""
+        self._readiness_probes.append(fn)
+        return fn
+
+    def _ready(self) -> bool:
+        for probe in self._readiness_probes:
+            try:
+                res = probe()
+                ok = res.get("ready", True) if isinstance(res, dict) else bool(res)
+                if not ok:
+                    return False
+            except Exception as exc:  # noqa: BLE001 — a failing probe means not-ready
+                logger.warning("readiness probe failed: %s", exc)
+                return False
+        return True
 
     def on_startup(self, fn: Callable[[], None]) -> Callable[[], None]:
         """Register a callback run once when the connector boots. It runs on a
@@ -274,7 +294,8 @@ class Connector:
         @app.get("/connector/health")
         def health() -> dict:
             return {"ok": True, "module": self.name, "version": self.version,
-                    "capabilities": self._capabilities(), "sidecars": self._sidecars()}
+                    "capabilities": self._capabilities(), "sidecars": self._sidecars(),
+                    "ready": self._ready()}
 
         @app.get("/connector/manifest")
         def manifest() -> dict:
