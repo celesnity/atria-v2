@@ -44,7 +44,7 @@ from atria.web.routes import (
 )
 from atria.web.websocket import websocket_endpoint
 from atria.web.transcribe_ws import transcribe_ws_endpoint
-from atria.core.modules.watcher import start_global_watcher, stop_global_watcher
+from atria.core.modules.watcher import start_global_watcher, stop_global_watcher, start_connector_reconciler, stop_connector_reconciler
 from atria.web.state import init_state, get_state
 from atria.core.runtime import ConfigManager, ModeManager
 from atria.core.context_engineering.history import SessionManager, UndoManager
@@ -117,6 +117,7 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
+    start_connector_reconciler()
 
     # Start the cross-process message bus.
     from atria.web.bus import make_bus, set_bus
@@ -217,6 +218,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
+        stop_connector_reconciler()
         try:
             from atria.web.connect_runtime import get_connect_manager
 
