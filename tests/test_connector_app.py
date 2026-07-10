@@ -81,7 +81,12 @@ def test_tool_call_returns_card(monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert body["success"] is True
-    assert body["card"]["answer"] == "Torque to 40 Nm."
+    assert body["card"] is None  # maintenance now emits a federated block, not a card
+    block = body["blocks"][0]
+    assert block["render"] == "remote"
+    assert block["component"] == "./MaintenanceAnswer"
+    assert block["remote_name"] == "maintenance_copilot"
+    assert block["props"]["answer"] == "Torque to 40 Nm."
     assert body["llm_suffix"] is None
 
 
@@ -103,7 +108,8 @@ def test_tool_call_sidecar_down_returns_unavailable_card_and_suffix(monkeypatch)
                     json={"arguments": {"query": "torque?"}})
     body = r.json()
     assert body["success"] is True  # fail-closed but structured, not an error
-    assert body["card"]["review_required"] is True
+    block = body["blocks"][0]
+    assert block["props"]["review_required"] is True
     assert "qdrant" in body["llm_suffix"]
 
 
