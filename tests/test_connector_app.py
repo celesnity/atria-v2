@@ -61,11 +61,15 @@ def test_health_ok(monkeypatch):
 
 
 def test_manifest_lists_the_query_tool(monkeypatch):
+    # The SDK emits the federation remote in the manifest only when the public
+    # base is known (always set in the container via MC_PUBLIC_BASE).
+    monkeypatch.setenv("MC_PUBLIC_BASE", "http://localhost:9200")
     client, _ = _client(monkeypatch, lambda *a, **k: {})
     body = client.get("/connector/manifest").json()
     names = [t["name"] for t in body["tools"]]
     assert "maintenance_copilot_query" in names
     assert body["remote"]["exposed"]["dashboard"] == "./Dashboard"
+    assert body["remote"]["remoteEntry"] == "http://localhost:9200/dashboard/remoteEntry.js"
 
 
 def test_tool_call_returns_card(monkeypatch):

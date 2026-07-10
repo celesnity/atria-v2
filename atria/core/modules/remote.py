@@ -1,16 +1,39 @@
 """Atria-side client for a module's out-of-process connector service.
 
-Registration is deterministic from the committed manifest (Task 2.3); this
-client is only touched at *call time*. A dead connector fails closed with a
-structured card, never a crash and never freelancing over the corpus.
+Registration is deterministic from the committed manifest; this client is only
+touched at *call time*. A dead connector fails closed with a structured card,
+never a crash and never freelancing over the corpus.
+
+Contract: docs/connector-contract.md. v2 adds (all backward-compatible):
+  * ``card_type`` on tool responses so any module gets its own UI renderer
+    (v1 modules broadcast as ``{module}_card``).
+  * best-effort identity/secret headers on every call.
+  * streaming tool calls over SSE (``/connector/tools/{name}/stream``).
+  * manifest reconciliation against the live ``/connector/manifest``.
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Connector contract version this core speaks (docs/connector-contract.md). A
+# module can declare service.min_core_version; core warns if it needs a newer one.
+CORE_CONNECTOR_VERSION = 2
+
+
+def _needs_newer_core(min_core_version: Optional[str]) -> bool:
+    if not min_core_version:
+        return False
+    try:
+        return int(str(min_core_version).split(".")[0]) > CORE_CONNECTOR_VERSION
+    except (ValueError, TypeError):
+        return False
 
 
 class ConnectorUnreachable(RuntimeError):
@@ -19,28 +42,28 @@ class ConnectorUnreachable(RuntimeError):
     service = "connector"
 
 
-# Connector-down directive for the model (mirrors the service's UNAVAILABLE_SUFFIX
-# but built on the Atria side, deps-free, when the whole container is down).
+# Connector-down directive for the model. Generic (not module-specific): tells the
+# model the service is down and not to answer from its own knowledge. A module can
+# ship a more specific suffix in its own graceful-unavailable response (llm_suffix);
+# this is only used when the whole container is unreachable.
 UNAVAILABLE_SUFFIX = (
-    "\n\n[SYSTEM: The maintenance copilot service is unavailable (connector "
-    "unreachable). Tell the user the copilot cannot answer right now and that the "
-    "structured card above explains why. Do NOT read the manual files in "
-    "sample_manuals, do NOT grep or cat them via bash, and do NOT answer the "
-    "maintenance question from your own knowledge.]"
+    "\n\n[SYSTEM: The {module} module service is unavailable (connector unreachable). "
+    "Tell the user this tool cannot answer right now and that the card above explains "
+    "why. Do NOT answer the question from your own knowledge, and do NOT read or grep "
+    "the module's data files to work around the outage.]"
 )
 
 _UNAVAILABLE_ANSWER = (
-    "The maintenance copilot service is currently unavailable (connector "
-    "unreachable), so this question cannot be answered with grounded citations "
-    "right now. Please retry once the service is restored."
+    "The {module} service is currently unavailable (connector unreachable), so this "
+    "request cannot be completed right now. Please retry once the service is restored."
 )
 
 
 def unavailable_card(query: str, connector_name: str) -> dict:
-    """A deps-free, fail-closed card matching the maintenance-answer shape."""
+    """A deps-free, fail-closed card. Generic across modules."""
     return {
         "query": query,
-        "answer": _UNAVAILABLE_ANSWER,
+        "answer": _UNAVAILABLE_ANSWER.format(module=connector_name),
         "answer_type": "clarification_needed",
         "exact_quote": "",
         "is_sensitive": False,
@@ -56,6 +79,31 @@ def unavailable_card(query: str, connector_name: str) -> dict:
     }
 
 
+def _module_token(name: str) -> Optional[str]:
+    """Per-module shared secret, if configured via env.
+
+    Looked up as ``ATRIA_MODULE_TOKEN_<UPPER_NAME>`` then ``ATRIA_MODULE_TOKEN``.
+    Lets a module authenticate that a call really came from Atria core.
+    """
+    return os.environ.get(f"ATRIA_MODULE_TOKEN_{name.upper()}") or os.environ.get(
+        "ATRIA_MODULE_TOKEN"
+    )
+
+
+def _auth_headers(name: str, principal: Optional[dict]) -> dict:
+    """Best-effort identity + secret headers for a connector call (v2)."""
+    headers: dict[str, str] = {}
+    token = _module_token(name)
+    if token:
+        headers["X-Atria-Module-Token"] = token
+    if principal:
+        try:
+            headers["X-Atria-Principal"] = json.dumps(principal, separators=(",", ":"))
+        except (TypeError, ValueError):
+            pass
+    return headers
+
+
 class RemoteConnector:
     """Thin HTTP client for one module's connector service."""
 
@@ -66,6 +114,8 @@ class RemoteConnector:
         self.health_path = health_path
         self._client = httpx.Client(base_url=self.base_url)
 
+    # -- health / capabilities ------------------------------------------------
+
     def is_healthy(self, timeout: float = 2.0) -> bool:
         try:
             r = self._client.get(self.health_path, timeout=timeout)
@@ -73,69 +123,140 @@ class RemoteConnector:
         except httpx.HTTPError:
             return False
 
-    def call_tool(self, tool: str, arguments: dict, timeout: float = 110.0) -> dict:
+    def health(self, timeout: float = 2.0) -> dict:
+        """Full health payload: ``{ok, version, capabilities, sidecars}`` or an
+        error dict. Never raises — used for the UI status dot."""
+        try:
+            r = self._client.get(self.health_path, timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+            return data if isinstance(data, dict) else {"ok": True}
+        except (httpx.HTTPError, ValueError) as exc:
+            return {"ok": False, "error": str(exc)}
+
+    # -- tool calls -----------------------------------------------------------
+
+    def call_tool(self, tool: str, arguments: dict, timeout: float = 110.0,
+                  principal: Optional[dict] = None) -> dict:
         try:
             r = self._client.post(f"/connector/tools/{tool}",
-                                  json={"arguments": arguments}, timeout=timeout)
+                                  json={"arguments": arguments},
+                                  headers=_auth_headers(self.name, principal),
+                                  timeout=timeout)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
             logger.warning("connector %s call_tool(%s) failed: %s", self.name, tool, exc)
             raise ConnectorUnreachable(str(exc)) from exc
 
-    def get_json(self, path: str, timeout: float = 5.0) -> dict:
+    # ponytail: no Atria-side stream client — the ReAct tool loop is sync
+    # request/response, so nothing here consumes the SDK's /stream SSE endpoint.
+    # Add a stream_tool() when the agent loop learns to stream tool results.
+
+    # -- generic passthrough (used by the core proxy route) -------------------
+
+    def get_json(self, path: str, timeout: float = 5.0,
+                 principal: Optional[dict] = None) -> dict:
         try:
-            r = self._client.get(path, timeout=timeout)
+            r = self._client.get(path, headers=_auth_headers(self.name, principal),
+                                 timeout=timeout)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
             logger.warning("connector %s GET %s failed: %s", self.name, path, exc)
             raise ConnectorUnreachable(str(exc)) from exc
 
-    def post_json(self, path: str, payload: dict, timeout: float = 15.0) -> dict:
+    def post_json(self, path: str, payload: dict, timeout: float = 15.0,
+                  principal: Optional[dict] = None) -> dict:
         try:
-            r = self._client.post(path, json=payload, timeout=timeout)
+            r = self._client.post(path, json=payload,
+                                  headers=_auth_headers(self.name, principal),
+                                  timeout=timeout)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
             logger.warning("connector %s POST %s failed: %s", self.name, path, exc)
             raise ConnectorUnreachable(str(exc)) from exc
 
+    # -- manifest reconciliation ---------------------------------------------
 
-from typing import TYPE_CHECKING, Any, Callable  # noqa: E402
+    def fetch_manifest(self, timeout: float = 3.0) -> Optional[dict]:
+        """Fetch the live ``/connector/manifest`` (authoritative tool specs), or
+        None if the service is down / doesn't expose it."""
+        try:
+            r = self._client.get("/connector/manifest", timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+            return data if isinstance(data, dict) else None
+        except (httpx.HTTPError, ValueError):
+            return None
+
 
 if TYPE_CHECKING:  # avoid import cycles / heavy imports at module load
     from atria.core.modules.store import Module
     from atria.core.skill_tools import SkillToolContext, ToolSpec
 
 
+def _card_type(resp: dict, module_name: str) -> str:
+    """Pick the UI renderer key: explicit ``card_type`` else ``{module}_card``."""
+    ct = resp.get("card_type")
+    return ct if isinstance(ct, str) and ct.strip() else f"{module_name}_card"
+
+
+def _broadcast_card(ctx: "SkillToolContext", card_type: str, card: dict) -> None:
+    if not (card and ctx.broadcaster):
+        return
+    try:
+        ctx.broadcaster({"type": card_type, **card})
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning("card broadcast failed: %s", exc)
+
+
 def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
                   tool_name: str) -> Callable[..., dict]:
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
+        # ponytail: agent tool calls carry no user identity (there's no producer
+        # for one on this path). Identity is forwarded on the passthrough route
+        # (get_json/post_json), which is where authorization actually matters.
         try:
             resp = conn.call_tool(tool_name, kwargs)
         except ConnectorUnreachable:
             card = unavailable_card(query, conn.name)
-            if ctx.broadcaster:
-                try:
-                    ctx.broadcaster({"type": "maintenance_answer", **card})
-                except Exception as exc:  # noqa: BLE001
-                    ctx.logger.warning("card broadcast failed: %s", exc)
-            return {"success": True, "output": card, "_llm_suffix": UNAVAILABLE_SUFFIX}
+            _broadcast_card(ctx, f"{conn.name}_card", card)
+            return {"success": True, "output": card,
+                    "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
 
         card = resp.get("card")
-        if card and ctx.broadcaster:
-            try:
-                ctx.broadcaster({"type": "maintenance_answer", **card})
-            except Exception as exc:  # noqa: BLE001
-                ctx.logger.warning("card broadcast failed: %s", exc)
+        _broadcast_card(ctx, _card_type(resp, conn.name), card)
         out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
         if resp.get("llm_suffix"):
             out["_llm_suffix"] = resp["llm_suffix"]
         return out
 
     return handler
+
+
+def reconcile_manifest(module: "Module", conn: "RemoteConnector") -> None:
+    """Warn if the committed manifest's tool specs drift from the live service.
+
+    Non-fatal, best-effort — the committed manifest remains authoritative for
+    registration; this only surfaces skew in logs so it gets fixed.
+    """
+    live = conn.fetch_manifest()
+    if not live:
+        return
+    svc = getattr(module.manifest, "service", None) if module.manifest else None
+    committed = {t.get("name") for t in (svc.tools if svc else []) if t.get("name")}
+    live_tools = {t.get("name") for t in live.get("tools", []) if isinstance(t, dict) and t.get("name")}
+    missing = committed - live_tools
+    extra = live_tools - committed
+    if missing:
+        logger.warning("connector %s: manifest declares tools the service lacks: %s",
+                       module.name, sorted(missing))
+    if extra:
+        logger.warning("connector %s: service exposes tools not in manifest: %s",
+                       module.name, sorted(extra))
 
 
 def build_remote_tool_specs(ctx: "SkillToolContext",
@@ -148,7 +269,19 @@ def build_remote_tool_specs(ctx: "SkillToolContext",
         svc = getattr(module.manifest, "service", None) if module.manifest else None
         if not svc:
             continue
+        if _needs_newer_core(getattr(svc, "min_core_version", None)):
+            logger.warning(
+                "module %s declares min_core_version=%s but core connector version is %s; "
+                "some features may not work.", module.name, svc.min_core_version,
+                CORE_CONNECTOR_VERSION)
         conn = RemoteConnector(module.name, svc.connector_url, svc.health_path)
+        # Opt-in drift check against the live service. Off by default so it never
+        # adds a network round-trip (or startup latency) when the service is down.
+        if os.environ.get("ATRIA_RECONCILE_CONNECTORS") in ("1", "true", "yes"):
+            try:
+                reconcile_manifest(module, conn)
+            except Exception as exc:  # noqa: BLE001 — never block registration
+                logger.debug("connector %s reconcile skipped: %s", module.name, exc)
         for tool in svc.tools:
             name = tool.get("name")
             if not name:

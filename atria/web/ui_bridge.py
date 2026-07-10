@@ -328,6 +328,76 @@ def push_block(
     return bid
 
 
+def push_remote_block(
+    *,
+    module: str,
+    remote_name: str,
+    remote_entry: str,
+    component: str,
+    props: Optional[Dict[str, Any]] = None,
+    block_id: Optional[str] = None,
+    api_base: Optional[str] = None,
+    height: Any = "auto",
+    title: Optional[str] = None,
+    session_id: Optional[str] = None,
+    persist: bool = True,
+) -> str:
+    """Render a module's federated React component natively in the chat — no iframe.
+
+    Mirrors :func:`push_block` but carries a ``render="remote"`` descriptor
+    (Module Federation ``remote_name``/``component``) instead of an iframe
+    ``src``. The frontend loads the remote at runtime and mounts it in-host.
+
+    Args:
+        module: Owning module name.
+        remote_name: Module Federation remote name (matches ``manifest.remote.name``).
+        remote_entry: Browser-facing ``remoteEntry.js`` URL served by the module.
+        component: Exposed component key, e.g. ``"./AlertsBlock"``.
+        props: JSON-serializable props for the component.
+        block_id: Stable id; auto-generated if omitted.
+        api_base: Browser base for the block's own connector calls; derived from
+            ``remote_entry`` when omitted.
+        height: ``"auto"`` or a pixel int/string.
+        title: Optional title shown above the block.
+        session_id: Target session; falls back to the active-turn contextvar.
+        persist: When True, append a ``custom_block`` ChatMessage carrying the
+            descriptor so the block re-loads after a reload.
+
+    Returns:
+        The resolved ``block_id``.
+    """
+    bid = block_id or secrets.token_hex(8)
+    safe_props = _serialize_props(props)
+    api = api_base or (remote_entry.split("/dashboard/")[0] if "/dashboard/" in remote_entry else "")
+    payload: Dict[str, Any] = {
+        "block_id": bid,
+        "render": "remote",
+        "module": module,
+        "remote_name": remote_name,
+        "remote_entry": remote_entry,
+        "component": component,
+        "api_base": api,
+        "props": safe_props,
+        "height": height,
+        "title": title,
+    }
+    envelope = {
+        "type": WSMessageType.CUSTOM_BLOCK,
+        "data": {**payload, "session_id": session_id},
+    }
+    if not _publish_or_broadcast(session_id, envelope):
+        raise RuntimeError("no active session")
+    if persist:
+        _persist_block(session_id, payload, cb=get_current_ui_callback(session_id))
+    return bid
+
+
+def current_session_id() -> Optional[str]:
+    """Best-effort: the session id of the active agent turn (from the contextvar)."""
+    cb = get_current_ui_callback(None)
+    return getattr(cb, "session_id", None)
+
+
 def update_block(
     block_id: str,
     props: Dict[str, Any],

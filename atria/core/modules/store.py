@@ -50,7 +50,9 @@ _MAX_DATA_ROWS = 50_000
 _MAX_DATA_COLS = 200
 _MAX_DATA_BYTES = 50 * 1024 * 1024  # 50 MB, matching the upload limit
 
-Template = Literal["blank", "skill", "skill_script", "skill_dashboard", "data"]
+Template = Literal[
+    "blank", "skill", "skill_script", "skill_dashboard", "data", "service"
+]
 
 
 class InvalidModuleName(ValueError):
@@ -96,6 +98,10 @@ class ModuleServiceManifest:
     connector_url: str
     tools: List[Dict[str, Any]] = field(default_factory=list)
     health_path: str = "/connector/health"
+    # v2, optional: the module's tools may be invoked over the SSE streaming
+    # endpoint, and the minimum connector-contract version it needs from core.
+    streaming: bool = False
+    min_core_version: Optional[str] = None
 
 
 @dataclass
@@ -124,6 +130,9 @@ class ModuleManifest:
     subagent: Optional[ModuleSubagentManifest] = None
     service: Optional[ModuleServiceManifest] = None
     remote: Optional[ModuleRemoteManifest] = None
+    # Corpus dirs (relative to the module) the agent's tools must never read/list/
+    # search directly — e.g. a RAG corpus. Each entry: {"path", "message"}.
+    protected_paths: List[Dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -240,7 +249,25 @@ def _read_manifest(module_dir: Path) -> Optional[ModuleManifest]:
         subagent=_parse_subagent(raw.get("subagent")),
         service=_parse_service(raw.get("service")),
         remote=_parse_remote(raw.get("remote")),
+        protected_paths=_parse_protected_paths(raw.get("protected_paths")),
     )
+
+
+def _parse_protected_paths(raw: Any) -> List[Dict[str, str]]:
+    """Lenient parser for the optional ``protected_paths`` block.
+
+    Accepts a list of ``{"path", "message"?}`` dicts or bare path strings.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: List[Dict[str, str]] = []
+    for item in raw:
+        if isinstance(item, dict) and _nonempty_str(item.get("path")):
+            out.append({"path": str(item["path"]).strip("/"),
+                        "message": _nonempty_str(item.get("message")) or ""})
+        elif isinstance(item, str) and item.strip():
+            out.append({"path": item.strip().strip("/"), "message": ""})
+    return out
 
 
 def _nonempty_str(v: Any) -> Optional[str]:
@@ -293,7 +320,9 @@ def _parse_service(raw: Any) -> Optional[ModuleServiceManifest]:
         tools_raw, list) else []
     health_path = _nonempty_str(raw.get("health_path")) or "/connector/health"
     return ModuleServiceManifest(
-        connector_url=connector_url, tools=tools, health_path=health_path)
+        connector_url=connector_url, tools=tools, health_path=health_path,
+        streaming=bool(raw.get("streaming", False)),
+        min_core_version=_nonempty_str(raw.get("min_core_version")))
 
 
 def _parse_remote(raw: Any) -> Optional[ModuleRemoteManifest]:
@@ -872,6 +901,24 @@ def read_module(root: Path, name: str) -> Module:
     return _read_module(root, name)
 
 
+def module_protected_paths(modules: List[Module]) -> list:
+    """Collect every module's declared protected corpus paths as ProtectedPath
+    globs (``modules/<name>/<path>``), for the tool-layer guard. Generic: core
+    hardcodes nothing; each module declares its own in ``manifest.protected_paths``.
+    """
+    from atria.models.config import ProtectedPath  # local import: avoid import cycle
+
+    out: list = []
+    for m in modules:
+        for decl in (m.manifest.protected_paths if m.manifest else []):
+            path = decl.get("path")
+            if not path:
+                continue
+            out.append(ProtectedPath(pattern=f"modules/{m.name}/{path}",
+                                     message=decl.get("message") or ""))
+    return out
+
+
 def create_module(
     root: Path,
     name: str,
@@ -884,6 +931,16 @@ def create_module(
     if d.exists():
         raise ModuleExists(name)
     d.mkdir()
+
+    if template == "service":
+        # A full out-of-process service module: SDK-based connector backend +
+        # Module-Federation dashboard + manifest (service + remote) + compose
+        # snippet. See atria.core.modules.service_template.
+        from atria.core.modules import service_template
+
+        for rel, content in service_template.files(name, summary).items():
+            _atomic_write(d / rel, content)
+        return _read_module(root, name)
 
     if template == "data":
         # A warehouse-style, dataset-agnostic module: generic explorer script +

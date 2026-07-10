@@ -193,8 +193,9 @@ services:
 
   maintenance-copilot:
     build:
-      context: ./modules/maintenance_copilot
-      dockerfile: backend/Dockerfile
+      # Repo-root context so the image can install the shared atria_module_sdk.
+      context: .
+      dockerfile: modules/maintenance_copilot/backend/Dockerfile
     ports:
       - "9200:9200"
     environment:

@@ -56,9 +56,10 @@ PROTECTED_TEXT_PARAMS: dict[str, tuple[str, ...]] = {
 class ProtectedPathGuard:
     """Deny tool access to configured protected roots.
 
-    Roots are declared as globs (``modules/*/sample_manuals``) and expanded at
-    construction against both the working directory and the modules root, so
-    protection holds regardless of which base the agent addresses files from.
+    Roots are declared as globs (e.g. ``modules/<name>/<corpus-dir>``) and
+    expanded at construction against both the working directory and the modules
+    root, so protection holds regardless of which base the agent addresses files
+    from.
     """
 
     def __init__(
@@ -76,7 +77,7 @@ class ProtectedPathGuard:
             bases.append(Path(working_dir))
         if modules_root is not None:
             # Patterns are written relative to the repo/deploy root (the
-            # modules root's parent), e.g. "modules/*/sample_manuals".
+            # modules root's parent), e.g. "modules/<name>/<corpus-dir>".
             bases.append(modules_root.parent)
         for entry in safe_entries:
             message = entry.message or _GENERIC_MESSAGE

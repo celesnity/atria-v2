@@ -45,5 +45,15 @@
     "name": "maintenance_copilot",
     "remoteEntry": "http://localhost:9200/dashboard/remoteEntry.js",
     "exposed": {"dashboard": "./Dashboard"}
-  }
+  },
+  "protected_paths": [
+    {
+      "path": "sample_manuals",
+      "message": "Access denied: this path is part of the maintenance_copilot RAG corpus and must not be read, listed, or searched directly. Reading corpus files bypasses retrieval, citations, revision-awareness, and guardrails. To answer a maintenance question, call the maintenance_copilot_query tool. If that tool reports its service unavailable, report the outage to the user — do not fall back to reading these files."
+    },
+    {
+      "path": "backend/sample_manuals",
+      "message": "Access denied: this path is part of the maintenance_copilot RAG corpus and must not be read, listed, or searched directly. Reading corpus files bypasses retrieval, citations, revision-awareness, and guardrails. To answer a maintenance question, call the maintenance_copilot_query tool. If that tool reports its service unavailable, report the outage to the user — do not fall back to reading these files."
+    }
+  ]
 }
