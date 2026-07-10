@@ -205,7 +205,8 @@ class Connector:
         tool = self._tools[tool_name]
         return self._call(tool, arguments, principal or Principal(), session_id=session_id)
 
-    def _call(self, tool: _Tool, arguments: dict, principal: Principal) -> dict:
+    def _call(self, tool: _Tool, arguments: dict, principal: Principal, *,
+              session_id: Optional[str] = None) -> dict:
         if tool.params_model is not None:
             try:
                 validated = tool.params_model(**arguments)
@@ -219,6 +220,9 @@ class Connector:
         kwargs = dict(arguments)
         if _accepts_principal(tool.handler):
             kwargs["principal"] = principal
+        if session_id is not None and (_accepts_arg(tool.handler, "session_id")
+                                       or _has_var_keyword(tool.handler)):
+            kwargs["session_id"] = session_id
         try:
             raw = tool.handler(**kwargs)
             # A streaming tool invoked via the non-stream endpoint: drain it and
@@ -334,8 +338,10 @@ class Connector:
                 raise HTTPException(404, f"unknown tool {name!r}")
             body = await _json_body(request)
             principal = _principal_from_headers(request)
+            session_id = _session_from_headers(request)
             try:
-                return self._call(tool, body.get("arguments") or {}, principal)
+                return self._call(tool, body.get("arguments") or {}, principal,
+                                  session_id=session_id)
             except HTTPException:
                 raise
             except Exception as exc:  # noqa: BLE001 — never 500 the agent
@@ -350,8 +356,9 @@ class Connector:
                 raise HTTPException(404, f"unknown tool {name!r}")
             body = await _json_body(request)
             principal = _principal_from_headers(request)
+            session_id = _session_from_headers(request)
             args = body.get("arguments") or {}
-            return StreamingResponse(self._sse(tool, args, principal),
+            return StreamingResponse(self._sse(tool, args, principal, session_id=session_id),
                                      media_type="text/event-stream")
 
         for path, methods, fn in self._extra_routes:
@@ -366,7 +373,8 @@ class Connector:
                  "streaming": t.streaming}
                 for t in self._tools.values()]
 
-    def _sse(self, tool: _Tool, args: dict, principal: Principal) -> Iterator[bytes]:
+    def _sse(self, tool: _Tool, args: dict, principal: Principal, *,
+             session_id: Optional[str] = None) -> Iterator[bytes]:
         def emit(obj: dict) -> bytes:
             return f"data: {json.dumps(obj)}\n\n".encode()
 
@@ -376,6 +384,9 @@ class Connector:
                 kwargs = dict(args)
                 if _accepts_principal(tool.handler):
                     kwargs["principal"] = principal
+                if session_id is not None and (_accepts_arg(tool.handler, "session_id")
+                                               or _has_var_keyword(tool.handler)):
+                    kwargs["session_id"] = session_id
                 last: Any = None
                 for evt in tool.handler(**kwargs):
                     if isinstance(evt, dict) and evt.get("event"):
@@ -387,7 +398,7 @@ class Connector:
                 final = self._normalize(tool, last)
                 yield emit({"event": "final", **final})
             else:
-                final = self._call(tool, args, principal)
+                final = self._call(tool, args, principal, session_id=session_id)
                 yield emit({"event": "final", **final})
         except Exception as exc:  # noqa: BLE001
             logger.exception("stream tool %s failed", tool.name)
@@ -442,6 +453,10 @@ async def _json_body(request: Request) -> dict:
         return data if isinstance(data, dict) else {}
     except ValueError:
         return {}
+
+
+def _session_from_headers(request: Request) -> Optional[str]:
+    return request.headers.get("X-Atria-Session") or None
 
 
 def _principal_from_headers(request: Request) -> Principal:

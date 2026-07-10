@@ -87,3 +87,16 @@ def test_requires_auth_blocks_anonymous():
     assert anon["success"] is False and anon["output"] == "authentication required"
     authed = conn.invoke("secret", {}, principal=Principal(username="alice", email="a@x"))
     assert authed["output"] == "ok"
+
+
+def test_session_id_injected_into_handler():
+    conn = Connector("m")
+    seen = {}
+
+    @conn.tool("cap")
+    def cap(session_id=None, **kwargs):
+        seen["sid"] = session_id
+        return {"output": "ok"}
+
+    conn.invoke("cap", {}, session_id="sess-123")
+    assert seen["sid"] == "sess-123"
