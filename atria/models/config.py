@@ -30,24 +30,13 @@ class ToolPermission(BaseModel):
         return not any(pattern.match(target) for pattern in self.compiled_patterns)
 
 
-_MAINTENANCE_CORPUS_MESSAGE = (
-    "Access denied: this path is part of the maintenance_copilot RAG corpus and "
-    "must not be read, listed, or searched directly. Reading corpus files bypasses "
-    "retrieval, citations, revision-awareness, and guardrails. To answer a "
-    "maintenance question, call the maintenance_copilot_query tool. If that tool "
-    "reports its service unavailable, report the outage to the user — do not fall "
-    "back to reading these files."
-)
-
-
 class ProtectedPath(BaseModel):
     """A directory tools may never touch, with a redirect message for the agent.
 
     ``pattern`` is a glob, resolved against the working directory and the
     modules root. Entries come from ``permissions.protected_paths`` in
-    settings.json; a plain string entry is coerced to a pattern with the
-    generic message. Module-declared protected folders could be appended to
-    the same list at registry init in the future.
+    settings.json and from each module's ``protected_paths`` manifest block
+    (collected at registry init) — core hardcodes no module-specific paths.
     """
 
     pattern: str
@@ -55,12 +44,9 @@ class ProtectedPath(BaseModel):
 
 
 def _default_protected_paths() -> "list[ProtectedPath]":
-    """Built-in protected roots that apply even with no settings file."""
-    return [
-        ProtectedPath(pattern="modules/*/sample_manuals", message=_MAINTENANCE_CORPUS_MESSAGE),
-        ProtectedPath(pattern="modules/*/backend/sample_manuals",
-                      message=_MAINTENANCE_CORPUS_MESSAGE),
-    ]
+    """Built-in protected roots. Empty by design: protection is declared by
+    modules (their manifest ``protected_paths``) or settings.json, not by core."""
+    return []
 
 
 class PermissionConfig(BaseModel):

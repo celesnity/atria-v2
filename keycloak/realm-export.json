@@ -15,7 +15,8 @@
   "ssoSessionMaxLifespan": 36000,
   "roles": {
     "realm": [
-      { "name": "platform:admin", "description": "Platform super-admin" }
+      { "name": "platform:admin", "description": "Platform super-admin" },
+      { "name": "module-register", "description": "May self-register a service-module connector" }
     ]
   },
   "groups": [
@@ -67,6 +68,17 @@
       "standardFlowEnabled": false,
       "secret": "CHANGE-ME-IN-ENV",
       "attributes": {}
+    },
+    {
+      "clientId": "atria-module",
+      "name": "Atria Service Module",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "secret": "CHANGE-ME-IN-ENV",
+      "attributes": {}
     }
   ],
   "users": [
@@ -85,6 +97,12 @@
       "clientRoles": {
         "realm-management": ["manage-users", "manage-clients", "view-realm", "view-users", "query-users", "query-groups"]
       }
+    },
+    {
+      "username": "service-account-atria-module",
+      "enabled": true,
+      "serviceAccountClientId": "atria-module",
+      "realmRoles": ["module-register", "module-push"]
     }
   ]
 }

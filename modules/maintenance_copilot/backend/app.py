@@ -1,146 +1,182 @@
-"""maintenance_copilot connector service — the HTTP contract Atria speaks.
+"""maintenance_copilot connector service — now built on atria-module-sdk.
 
-Endpoints:
-  GET  /connector/health          liveness
-  GET  /connector/manifest        module info + agent tool specs + remote entry
-  POST /connector/tools/{name}    agent tool call → {success, output, card, llm_suffix}
-  POST /connector/run             dashboard action {action, args} → result dict
+The SDK generates the /connector/* contract (health, manifest, tool calls,
+streaming, dashboard static mount) from the decorated handlers below; this file
+never imports ``atria``. Domain specifics preserved from the hand-rolled version:
+
+  * the tool returns a rich, strict-schema maintenance-answer card and now
+    returns ``blocks: [block("./MaintenanceAnswer", ...)]`` — a federated chat
+    block the module ships — so the web UI renders the MaintenanceAnswerBlock
+    via the federated block system, not a bespoke card mapper;
+  * a sidecar-down raises inside ``service.run_query`` and is converted here to
+    the module's own fail-closed card + its corpus-specific LLM suffix;
+  * dashboard ``/connector/run`` (retrieve), ``/connector/sidecar-health``, and
+    the licensed-engineer ``/connector/signoff`` are registered as extra routes,
+    reachable directly by the dashboard and through Atria's generic passthrough.
 """
+
 from __future__ import annotations
 
+from atria_module_sdk import Connector, block
+
 import os
-from pathlib import Path
-
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
-
 import service  # backend/service.py (pipeline dir already on sys.path via service import)
 
-PUBLIC_BASE = os.environ.get("MC_PUBLIC_BASE", "http://localhost:9200").rstrip("/")
-CORS_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o]
-
-# Agent-facing tool specs. Mirrors the old in-process ToolSpec exactly.
-TOOLS: list[dict] = [
-    {
-        "name": "maintenance_copilot_query",
-        "description": (
-            "Answer an aircraft-maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA) "
-            "with grounded RAG: returns a cited, confidence-scored answer and renders it as "
-            "a maintenance-answer card in the UI. Advisory only — never a dispatch decision."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "The maintenance question, in English."},
-                "k": {"type": "integer", "default": 5, "description": "Passages to retrieve."},
-                "ata": {"type": "string", "description": "Optional ATA chapter filter, e.g. '32'."},
-                "revision": {"type": "string", "default": "current",
-                             "description": "'current', a specific revision, or 'none'."},
-            },
-            "required": ["query"],
-        },
-    },
-]
-
-app = FastAPI(title="maintenance-copilot-service")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS or ["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Keep the existing env-var names so docker-compose / the Dockerfile stay unchanged.
+conn = Connector(
+    "maintenance_copilot",
+    version="1",
+    display_name="Maintenance Copilot",
+    public_base_env="MC_PUBLIC_BASE",
+    dashboard_dist_env="MC_DASHBOARD_DIST",
 )
 
-
-@app.get("/connector/health")
-def health() -> dict:
-    return {"ok": True, "module": "maintenance_copilot", "version": "1"}
+_CARD_TYPE = "maintenance_answer"
 
 
-@app.get("/connector/manifest")
-def manifest() -> dict:
-    return {
-        "name": "maintenance_copilot",
-        "display_name": "Maintenance Copilot",
-        "tools": TOOLS,
-        "remote": {
-            "name": "maintenance_copilot",
-            "remoteEntry": f"{PUBLIC_BASE}/dashboard/remoteEntry.js",
-            "exposed": {
-                "dashboard": "./Dashboard",
+def _answer_block(card: dict) -> dict:
+    remote_entry = (
+        os.environ.get("ATRIA_MODULE_REMOTE_ENTRY")
+        or "http://localhost:9200/dashboard/remoteEntry.js"
+    )
+    return block(
+        "./MaintenanceAnswer", card, remote_name="maintenance_copilot", remote_entry=remote_entry
+    )
+
+
+@conn.tool(
+    "maintenance_copilot_query",
+    description=(
+        "Answer an aircraft-maintenance question (AMM/MEL/CDL/TSM/defect/dispatch/ATA) "
+        "with grounded RAG: returns a cited, confidence-scored answer and renders it as "
+        "a maintenance-answer card in the UI. Advisory only — never a dispatch decision."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "The maintenance question, in English."},
+            "k": {"type": "integer", "default": 5, "description": "Passages to retrieve."},
+            "ata": {"type": "string", "description": "Optional ATA chapter filter, e.g. '32'."},
+            "revision": {
+                "type": "string",
+                "default": "current",
+                "description": "'current', a specific revision, or 'none'.",
             },
         },
-        "version": "1",
-    }
-
-
-class ToolBody(BaseModel):
-    arguments: dict = Field(default_factory=dict)
-
-
-@app.post("/connector/tools/{name}")
-def call_tool(name: str, body: ToolBody) -> dict:
-    if name != "maintenance_copilot_query":
-        raise HTTPException(404, f"unknown tool {name!r}")
-    args = body.arguments or {}
-    text = (args.get("query") or args.get("text") or "").strip()
+        "required": ["query"],
+    },
+    card_type=_CARD_TYPE,
+)
+def maintenance_copilot_query(
+    query: str = "", k: int = 5, ata: str | None = None, revision: str = "current", **kwargs
+) -> dict:
+    text = (query or kwargs.get("text") or "").strip()
     if not text:
-        return {"success": False, "output": "query is required", "card": None, "llm_suffix": None}
+        return {"success": False, "output": "query is required"}
     try:
-        card = service.run_query(
-            text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current")
-        )
-        return {"success": True, "output": card, "card": card, "llm_suffix": None}
+        card = service.run_query(text, int(k), ata, revision)
+        return {"success": True, "output": card, "blocks": [_answer_block(card)]}
     except service.ServiceUnavailableError as exc:
+        # Preserve the module's own strict-schema fail-closed card + corpus-specific
+        # suffix (don't fall back to the SDK's generic ServiceUnavailable card).
         card = service.unavailable_payload(text, exc.service)
         suffix = service.UNAVAILABLE_SUFFIX.format(service=exc.service)
-        return {"success": True, "output": card, "card": card, "llm_suffix": suffix}
-    except Exception as exc:  # noqa: BLE001 — surface as tool error, never 500 the agent
-        return {"success": False, "output": f"query failed: {exc}", "card": None, "llm_suffix": None}
+        return {
+            "success": True,
+            "output": card,
+            "blocks": [_answer_block(card)],
+            "llm_suffix": suffix,
+        }
 
 
-class RunBody(BaseModel):
-    action: str = Field(min_length=1)
-    args: dict = Field(default_factory=dict)
+@conn.route("/run", methods=["POST"])
+def run(body: dict) -> dict:
+    """Dashboard action. Only the data-bearing 'retrieve' action needs the server;
+    the other views render from the frontend's own state."""
+    from fastapi import HTTPException
 
-
-# Dashboard actions (manifest.json activity: brief/usecases/validate/retrieve).
-# 'retrieve' maps to a grounded query; the others are static views the frontend
-# renders from its own state, so run() only needs the data-bearing one for now.
-@app.post("/connector/run")
-def run(body: RunBody) -> dict:
-    if body.action == "retrieve":
-        text = (body.args.get("query") or "").strip()
+    action = (body or {}).get("action")
+    args = (body or {}).get("args") or {}
+    if action == "retrieve":
+        text = (args.get("query") or "").strip()
         if not text:
             raise HTTPException(400, "retrieve requires args.query")
-        return service.run_query(text, int(body.args.get("k", 5)),
-                                 body.args.get("ata"), body.args.get("revision", "current"))
-    raise HTTPException(400, f"unsupported action {body.action!r}")
+        try:
+            return service.run_query(
+                text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current")
+            )
+        except service.ServiceUnavailableError as exc:
+            # Graceful fail-closed card (200) instead of a 500, so the dashboard
+            # can render a clean "retrieval offline" state.
+            return service.unavailable_payload(text, exc.service)
+    if action == "passages":
+        # Phase 1: fast retrieval only (no LLM) — dashboard shows results first.
+        text = (args.get("query") or "").strip()
+        if not text:
+            raise HTTPException(400, "passages requires args.query")
+        try:
+            return service.retrieve_passages(
+                text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current"))
+        except service.ServiceUnavailableError as exc:
+            return {"query": text, "passages": [], "validation_warnings": [f"service_unavailable:{exc.service}"]}
+    if action == "pipeline_stats":
+        # Ingestion/pipeline snapshot for the dashboard visualization.
+        try:
+            return service.pipeline_stats()
+        except Exception as exc:  # noqa: BLE001 — never 500 the dashboard
+            return {"error": str(exc), "total_chunks": 0, "documents": []}
+    if action == "document":
+        title = (args.get("title") or "").strip()
+        if not title:
+            raise HTTPException(400, "document requires args.title")
+        try:
+            return service.get_document(title)
+        except Exception as exc:  # noqa: BLE001
+            return {"title": title, "error": str(exc), "chunks": []}
+    raise HTTPException(400, f"unsupported action {action!r}")
 
 
-@app.get("/connector/sidecar-health")
+@conn.route("/sidecar-health", methods=["GET"])
 def sidecar_health() -> dict:
+    """Probe the copilot sidecars (tei/llm/qdrant/neo4j)."""
     return service.sidecar_health()
 
 
-class SignoffBody(BaseModel):
-    engineer: str
-    query: str | None = None
-    answer_summary: str | None = None
-    decision: str = "acknowledged"
-    note: str | None = None
-    citations: list[dict] = Field(default_factory=list)
-    answer_type: str | None = None
-    is_sensitive: bool | None = None
-    exact_quote: str | None = None
+@conn.route("/signoff", methods=["POST"])
+def signoff(body: dict, principal) -> dict:
+    """Record a licensed-engineer sign-off. The acting engineer comes from the
+    forwarded Atria principal (X-Atria-Principal), not the request body."""
+    payload = {"type": "signoff", "engineer": principal.username, **(body or {})}
+    return {"ok": True, "event": service.record_signoff(payload)}
 
 
-@app.post("/connector/signoff")
-def signoff(body: SignoffBody) -> dict:
-    return {"ok": True, "event": service.record_signoff({"type": "signoff", **body.model_dump()})}
+@conn.on_startup
+def _ingest_on_startup() -> None:
+    """Auto-ingest the input drop-folder on boot (opt-in via MC_INGEST_ON_STARTUP).
+    Drop frontmatter'd .md/.txt files into MC_INGEST_DIR and they are chunked +
+    embedded into qdrant when the container starts. Idempotent + resilient (waits
+    for the embedding sidecar). Runs on a daemon thread, so it never blocks boot."""
+    import logging
+    import os
+
+    log = logging.getLogger("maintenance_copilot.ingest")
+    if os.environ.get("MC_INGEST_ON_STARTUP", "").lower() not in ("1", "true", "yes"):
+        return
+    ingest_dir = os.environ.get("MC_INGEST_DIR", "/app/ingest_data")
+    print(f"[startup-ingest] scanning {ingest_dir} …", flush=True)  # print: always visible in container logs
+    try:
+        summary = service.ingest_dir(ingest_dir)
+        log.info("startup ingest done: %s", summary)
+        print(f"[startup-ingest] done: {summary}", flush=True)
+    except service.ServiceUnavailableError as exc:
+        print(f"[startup-ingest] skipped — {exc.service} unavailable; run it later via the CLI", flush=True)
 
 
-_DASHBOARD_DIST = Path(os.environ.get("MC_DASHBOARD_DIST", "/app/frontend_dist"))
-if _DASHBOARD_DIST.is_dir():
-    app.mount("/dashboard", StaticFiles(directory=str(_DASHBOARD_DIST)), name="dashboard")
+@conn.health_probe
+def _liveness() -> dict:
+    # Cheap liveness marker only; the heavy sidecar probes live at /sidecar-health
+    # so /connector/health stays fast.
+    return {"service": "ok"}
+
+
+app = conn.asgi()
