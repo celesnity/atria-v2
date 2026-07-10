@@ -11,6 +11,8 @@ class _FakeConn:
         return self._manifest
     def is_healthy(self, timeout=2.0):
         return self._healthy
+    def health(self, timeout=2.0):
+        return {"ok": True, "ready": True}
 
 
 def _install(monkeypatch, tmp_path, manifest, healthy):

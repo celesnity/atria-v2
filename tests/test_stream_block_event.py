@@ -4,7 +4,7 @@ from atria.core.skill_tools import SkillToolContext
 
 class _StreamConn:
     name = "m"
-    def stream_tool(self, tool, arguments, timeout=300.0):
+    def stream_tool(self, tool, arguments, timeout=300.0, **kwargs):
         yield {"event": "block", "block": {"remote_entry": "http://h/dashboard/x", "component": "./J"}}
         yield {"event": "final", "success": True, "output": "done"}
     def call_tool(self, *a, **k):

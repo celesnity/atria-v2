@@ -52,13 +52,11 @@ def app_client(monkeypatch):
                 return _FakeSessionWithoutConv()
             return None  # unknown
 
-    # Patch get_state() to return an object with a session_manager
-    _orig_get_state = _state_mod.get_state
-
+    # Patch get_state() in the route's module namespace (it was imported directly)
     class _FakeState:
         session_manager = _FakeSM()
 
-    monkeypatch.setattr(_state_mod, "get_state", lambda: _FakeState())
+    monkeypatch.setattr("atria.web.routes.artifacts_remote.get_state", lambda: _FakeState())
 
     app = FastAPI()
     app.include_router(router)
