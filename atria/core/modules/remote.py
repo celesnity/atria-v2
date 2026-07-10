@@ -295,6 +295,13 @@ def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
                 _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
             elif etype in ("progress", "partial"):
                 _broadcast_progress(ctx, conn.name, evt)
+            elif etype == "block":
+                blk = evt.get("block") or {}
+                if ctx.push_block and blk.get("remote_entry"):
+                    try:
+                        ctx.push_block(blk, conn.name)
+                    except Exception as exc:  # noqa: BLE001 — a block push must never break the stream
+                        ctx.logger.warning("stream block push failed for %s: %s", conn.name, exc)
             elif etype == "final":
                 final = evt
             elif etype == "error":
