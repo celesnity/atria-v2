@@ -156,9 +156,17 @@ class ModuleRegistry:
         remote_entry: Optional[str] = None,
         api_base: Optional[str] = None,
     ) -> None:
-        """Runtime announce: upsert a PENDING connector record and bump version."""
+        """Runtime announce: ensure a connector record exists, bumping version
+        only on a real change. A repeat announce/heartbeat with the same URL just
+        refreshes ``last_seen`` — it must not demote a READY connector back to
+        PENDING or churn the version (the reconciler owns state transitions)."""
         with self._lock:
             rec = self._connectors.get(name)
+            if rec is not None and rec.connector_url == connector_url:
+                rec.remote_entry = remote_entry
+                rec.api_base = api_base
+                rec.last_seen = time.time()
+                return
             if rec is None:
                 rec = ConnectorRecord(name=name, connector_url=connector_url)
                 self._connectors[name] = rec
