@@ -261,28 +261,18 @@ def reconcile_manifest(module: "Module", conn: "RemoteConnector") -> None:
 
 def build_remote_tool_specs(ctx: "SkillToolContext",
                             modules: "list[Module]") -> "list[ToolSpec]":
-    """Build proxy ToolSpecs for every service-module, from its committed manifest."""
+    """Build proxy ToolSpecs for every READY service-module connector, from its
+    live ``/connector/manifest`` tool schemas (not the committed manifest)."""
     from atria.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
+    from atria.core.modules.registry import get_registry, ConnectorState
 
+    reg = get_registry()
     specs: list[ToolSpec] = []
-    for module in modules:
-        svc = getattr(module.manifest, "service", None) if module.manifest else None
-        if not svc:
+    for rec in reg.connector_records():
+        if rec.state is not ConnectorState.READY:
             continue
-        if _needs_newer_core(getattr(svc, "min_core_version", None)):
-            logger.warning(
-                "module %s declares min_core_version=%s but core connector version is %s; "
-                "some features may not work.", module.name, svc.min_core_version,
-                CORE_CONNECTOR_VERSION)
-        conn = RemoteConnector(module.name, svc.connector_url, svc.health_path)
-        # Opt-in drift check against the live service. Off by default so it never
-        # adds a network round-trip (or startup latency) when the service is down.
-        if os.environ.get("ATRIA_RECONCILE_CONNECTORS") in ("1", "true", "yes"):
-            try:
-                reconcile_manifest(module, conn)
-            except Exception as exc:  # noqa: BLE001 — never block registration
-                logger.debug("connector %s reconcile skipped: %s", module.name, exc)
-        for tool in svc.tools:
+        conn = RemoteConnector(rec.name, rec.connector_url)
+        for tool in rec.tools:
             name = tool.get("name")
             if not name:
                 continue

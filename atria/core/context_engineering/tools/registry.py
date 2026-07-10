@@ -128,7 +128,8 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             from atria.core.modules.registry import get_registry as _get_mod_registry
             from atria.core.modules.remote import build_remote_tool_specs
 
-            _remote_specs = build_remote_tool_specs(self.skill_ctx, _get_mod_registry().all())
+            _mod_reg = _get_mod_registry()
+            _remote_specs = build_remote_tool_specs(self.skill_ctx, _mod_reg.live_service_modules())
             for _spec in _remote_specs:
                 self._skill_specs[_spec.name] = _spec
             if _remote_specs:
