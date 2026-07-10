@@ -14,13 +14,16 @@ The acting user's identity is forwarded to the connector as ``X-Atria-Principal`
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from atria.core.modules.registry import get_registry
 from atria.core.modules.remote import ConnectorUnreachable, RemoteConnector
+from atria.core.modules.watcher import kick_reconcile
 from atria.web.dependencies.auth import require_authenticated_user
+from atria.web.dependencies.service_auth import require_module_register
 
 router = APIRouter(prefix="/api/modules", tags=["module-connector"])
 
@@ -79,3 +82,36 @@ async def connector_passthrough(
         return conn.post_json(target, body, principal=principal)
     except ConnectorUnreachable as exc:
         raise HTTPException(503, f"module {name!r} connector unreachable: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# Runtime self-registration ingress
+# ---------------------------------------------------------------------------
+
+class RegisterBody(BaseModel):
+    module: str = Field(min_length=1)
+    connector_url: str = Field(min_length=1)
+    remote_entry: Optional[str] = None
+    api_base: Optional[str] = None
+
+
+class DeregisterBody(BaseModel):
+    module: str = Field(min_length=1)
+
+
+@router.post("/register")
+def register_connector(body: RegisterBody, _svc=Depends(require_module_register)) -> dict:
+    """Runtime self-registration of a module connector. Health-poll takes over."""
+    get_registry().register_connector(
+        name=body.module,
+        connector_url=body.connector_url,
+        remote_entry=body.remote_entry,
+        api_base=body.api_base,
+    )
+    kick_reconcile(body.module)  # reconcile now rather than waiting a poll cycle
+    return {"ok": True}
+
+
+@router.post("/deregister", status_code=204)
+def deregister_connector(body: DeregisterBody, _svc=Depends(require_module_register)) -> None:
+    get_registry().mark_connector_down(body.module)
