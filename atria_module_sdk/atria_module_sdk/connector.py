@@ -46,7 +46,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .cards import unavailable_card, unavailable_suffix
+from .cards import unavailable_card, unavailable_suffix, block as _block_descriptor
 
 logger = logging.getLogger("atria_module_sdk")
 
@@ -136,6 +136,15 @@ class Connector:
             return fn
 
         return deco
+
+    def block(self, component: str, props: Optional[dict] = None, *,
+              height: Any = "auto", title: Optional[str] = None) -> dict:
+        """Build a federated chat-block descriptor for THIS module — fills
+        remote_name (self.name) and remote_entry ($ATRIA_MODULE_REMOTE_ENTRY)."""
+        from .cards import block as _b
+        remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")
+        return _b(component, props, remote_name=self.name,
+                  remote_entry=remote_entry, height=height, title=title)
 
     # -- tool invocation ------------------------------------------------------
 
