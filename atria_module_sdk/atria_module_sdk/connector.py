@@ -418,6 +418,16 @@ class Connector:
 
         app.add_api_route(f"/connector{path}", endpoint, methods=methods)
 
+    def atria_client(self) -> "AtriaClient":
+        """Build a reverse-push client for this module (needs ATRIA_URL + a
+        module-push service token). Raises AtriaClientError if unconfigured."""
+        from .announce import resolve_announce_config
+        from .client import AtriaClient, AtriaClientError
+        cfg = resolve_announce_config()
+        if cfg is None:
+            raise AtriaClientError("announce config absent (ATRIA_URL/CONNECTOR_URL unset)")
+        return AtriaClient(self.name, cfg)
+
     def _mount_dashboard(self, app: FastAPI) -> None:
         dist = Path(os.environ.get(self._dashboard_dist_env, "/app/frontend_dist"))
         if dist.is_dir():

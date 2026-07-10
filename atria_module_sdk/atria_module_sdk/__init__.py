@@ -7,9 +7,12 @@ Never imports ``atria``; runs standalone in the module's own container.
 from __future__ import annotations
 
 from .cards import block, card, unavailable_card, unavailable_suffix
+from .client import AtriaClient, AtriaClientError
 from .connector import Connector, Principal, ServiceUnavailable
 
 __all__ = [
+    "AtriaClient",
+    "AtriaClientError",
     "Connector",
     "Principal",
     "ServiceUnavailable",
