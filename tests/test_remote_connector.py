@@ -85,7 +85,7 @@ def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok", "review_required": False}, "llm_suffix": None}
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
@@ -110,7 +110,7 @@ def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok"}, "card_type": "maintenance_answer",
                 "llm_suffix": None}
@@ -128,7 +128,7 @@ def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def boom(self, tool, arguments, timeout=110.0, principal=None):
+    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
         raise remote.ConnectorUnreachable("refused")
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", boom)
 
