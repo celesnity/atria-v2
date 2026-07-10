@@ -490,6 +490,7 @@
             <span class="pop-title">Jarvis</span><br>
             <span class="pop-sub" id="jarvisStatus">bi&#7871;t &#273;&#7883;a &#273;i&#7875;m Vi&#7879;t Nam</span>
           </span>
+          <button class="pop-close" id="jarvisReset" aria-label="New chat" title="Cu&#7897;c tr&#242; chuy&#7879;n m&#7899;i">&#8635;</button>
           <button class="pop-close" id="jarvisClose" aria-label="Close chat">&#10005;</button>
         </div>
         <div id="msgs" class="msgs" role="log" aria-live="polite">
@@ -966,6 +967,7 @@
       var payload = {
         message: text,
         chat_session_id: sessionId,
+        interactive: true,
         viewport: { lat: c.lat, lng: c.lng, zoom: map.getZoom() },
         pins: activePins,
       };
@@ -1000,6 +1002,22 @@
       var v = $('chatInput').value.trim();
       if (v) { $('chatInput').value = ''; askJarvis(v); }
     });
+    function resetChat() {
+      // Wipe the server-side soft-cache for this session, then start fresh.
+      if (sessionId) {
+        AtriaDash.json('jarvis_chat.py', [], {
+          stdin: JSON.stringify({ reset: true, interactive: true, chat_session_id: sessionId }),
+          timeout_ms: 8000,
+        }).catch(function () { /* best-effort; TTL clears it anyway */ });
+      }
+      sessionId = null;
+      clearAiPins();
+      $('msgs').innerHTML =
+        '<div class="msg ai">Cu&#7897;c tr&#242; chuy&#7879;n m&#7899;i &#8212; h&#7887;i t&#244;i v&#7873; &#273;&#7883;a &#273;i&#7875;m nh&#233;.</div>';
+      renderSuggestions();
+      $('chatInput').focus();
+    }
+    $('jarvisReset').addEventListener('click', resetChat);
     $('chatInput').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') {
         var v = e.target.value.trim();
