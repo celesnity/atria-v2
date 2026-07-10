@@ -103,12 +103,15 @@ def template_async_job(steps: int = 3, session_id=None):
         except AtriaClientError as exc:
             logger.warning("async job: atria client unavailable: %s", exc)
             return
-        bid = client.push_block(sid, "./ShowcaseBlock", {"kind": "job", "pct": 0})
-        for i in range(1, n + 1):
-            import time
-            time.sleep(1)
-            client.update_block(sid, bid, {"kind": "job", "pct": int(i / n * 100),
-                                           "done": i == n})
+        import time
+        try:
+            bid = client.push_block(sid, "./ShowcaseBlock", {"kind": "job", "pct": 0})
+            for i in range(1, n + 1):
+                time.sleep(1)
+                client.update_block(sid, bid, {"kind": "job", "pct": int(i / n * 100),
+                                               "done": i == n})
+        except Exception as exc:  # noqa: BLE001 — isolated demo job; keep logs clean
+            logger.warning("async job: reverse-push failed: %s", exc)
 
     threading.Thread(target=_run, args=(session_id, max(1, int(steps))),
                      name="module_template-job", daemon=True).start()
