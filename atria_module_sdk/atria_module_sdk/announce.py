@@ -26,6 +26,7 @@ ATRIA_MODULE_CLIENT_SECRET
     Client-secret for the client-credentials grant. Required when
     ``KEYCLOAK_TOKEN_URL`` is set; token fetch is skipped if absent.
 """
+
 from __future__ import annotations
 
 import logging
@@ -230,8 +231,9 @@ HEARTBEAT_ENV = "ATRIA_MODULE_HEARTBEAT_SEC"
 DEFAULT_HEARTBEAT_SEC = 30.0
 
 
-def start_heartbeat(module: str, cfg: AnnounceConfig,
-                    interval: Optional[float] = None) -> Callable[[], None]:
+def start_heartbeat(
+    module: str, cfg: AnnounceConfig, interval: Optional[float] = None
+) -> Callable[[], None]:
     """Re-announce ``module`` every ``interval`` seconds on a daemon thread.
 
     Returns a stop function. Interval defaults to ``$ATRIA_MODULE_HEARTBEAT_SEC``
