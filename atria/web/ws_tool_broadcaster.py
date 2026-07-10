@@ -76,6 +76,8 @@ class WebSocketToolBroadcaster:
         if skill_ctx is not None:
             skill_ctx.broadcaster = self._broadcast_skill_event
             skill_ctx.push_block = self._push_remote_block
+            skill_ctx.session_id = self.session_id
+            # principal is left None: no acting user is in scope at this wiring point
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Execute tool with WebSocket broadcasting.
