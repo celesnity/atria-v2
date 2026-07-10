@@ -32,3 +32,16 @@ def test_manifest_advertises_block_and_min_core():
     assert mani["remote"]["exposed"]["./ShowcaseBlock"] == "./ShowcaseBlock"
     assert mani["min_core_version"] == "2"
     assert "template_card" in mani["card_types"]
+
+
+def test_start_and_list_jobs(monkeypatch, tmp_path):
+    monkeypatch.setenv("MT_TEST", "1")
+    monkeypatch.setenv("MT_DATABASE_URL", f"sqlite:///{tmp_path}/t.db")
+    import importlib, db as _db
+    importlib.reload(_db); _db.init_db()
+    import app as mt; importlib.reload(mt)
+    monkeypatch.setattr(mt.tasks.run_job, "delay", lambda *a, **k: None)
+    out = mt.conn.invoke("template_start_job", {"steps": 2})
+    assert "started job" in out["output"]
+    lst = mt.conn.invoke("template_list_jobs", {})
+    assert len(lst["output"]["jobs"]) == 1

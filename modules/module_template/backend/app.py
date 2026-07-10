@@ -14,6 +14,9 @@ from atria_module_sdk import Connector, card
 from atria_module_sdk.client import AtriaClientError
 
 import service
+import db
+import media
+import tasks
 
 logger = logging.getLogger("module_template")
 
@@ -134,10 +137,71 @@ def template_export(topic: str = "demo", session_id=None):
     return {"output": f"attached report artifact #{aid} to the conversation."}
 
 
-# --- lifecycle & extra endpoint ------------------------------------------------
+# --- 8. job tools: start, list, db overview ------------------------------------
+@conn.tool("template_start_job",
+           description="Start a background job (Celery). Watch a live progress block update.",
+           parameters={"type": "object", "properties": {"steps": {"type": "integer"}}})
+def template_start_job(steps: int = 3, session_id=None):
+    with db.db_session() as s:
+        job = db.MtJob(kind="demo", status="queued", pct=0)
+        s.add(job); s.flush()
+        job_id = job.id
+    tasks.run_job.delay(job_id, session_id, int(steps))
+    return {"output": f"started job #{job_id} ({steps} steps) — watch the block update live.",
+            "card": card(f"Job #{job_id} queued.", card_type="template_card")}
+
+
+@conn.tool("template_list_jobs", description="List recent background jobs.")
+def template_list_jobs():
+    with db.db_session() as s:
+        rows = [j.as_dict() for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(10)]
+    return {"output": {"jobs": rows}}
+
+
+@conn.tool("template_db_overview",
+           description="Module DB counts + read-only Atria aggregates (shared database).")
+def template_db_overview():
+    with db.db_session() as s:
+        jobs = s.query(db.MtJob).count()
+        mediac = s.query(db.MtMedia).count()
+    return {"output": {"mt_jobs": jobs, "mt_media": mediac,
+                       "atria_conversations": db.list_conversations(5),
+                       "atria_artifacts_count": db.count_artifacts()}}
+
+
+# --- lifecycle & extra endpoints -----------------------------------------------
+@conn.on_startup
+def _init_infra() -> None:
+    try:
+        db.init_db()
+        media.ensure_bucket()
+        logger.info("module_template infra ready (db + bucket)")
+    except Exception as exc:  # noqa: BLE001 — readiness reports not-ready if this fails
+        logger.warning("infra init failed (will report not-ready): %s", exc)
+
+
 @conn.readiness_probe
 def _ready():
-    return {"ready": service.is_warm(), "detail": "warming up" if not service.is_warm() else "ready"}
+    checks = {"db": False, "redis": False, "s3": False, "celery": False}
+    try:
+        with db.engine.connect() as c:
+            c.exec_driver_sql("SELECT 1"); checks["db"] = True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        import redis  # celery[redis] pulls this in
+        redis.Redis.from_url(tasks.celery_app.conf.broker_url).ping(); checks["redis"] = True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        media.s3_client().head_bucket(Bucket=media.MT_S3_BUCKET); checks["s3"] = True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        checks["celery"] = bool(tasks.celery_app.control.ping(timeout=1))
+    except Exception:  # noqa: BLE001
+        pass
+    return {"ready": all(checks.values()), "detail": checks}
 
 
 @conn.health_probe
@@ -145,11 +209,52 @@ def _health():
     return {"showcase": "ok"}
 
 
-@conn.on_startup
-def _warm_up():
-    logger.info("module_template starting — warming up…")
-    service.warm_up()
-    logger.info("module_template warm and ready.")
+@conn.route("/jobs", methods=["GET"])
+def route_jobs():
+    with db.db_session() as s:
+        return {"jobs": [j.as_dict() for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(50)]}
+
+
+@conn.route("/media", methods=["GET"])
+def route_media():
+    with db.db_session() as s:
+        rows = [m.as_dict() for m in s.query(db.MtMedia).order_by(db.MtMedia.id.desc()).limit(50)]
+    for r in rows:
+        r["url"] = media.presigned_url(r["s3_key"])
+    return {"media": rows}
+
+
+@conn.route("/media/upload", methods=["POST"])
+def route_media_upload(body):
+    # body carries {"filename", "content_b64", "content_type"} (dashboard posts JSON;
+    # the SDK route handler receives the parsed JSON body).
+    import base64
+    from fastapi import HTTPException
+    data = base64.b64decode(body.get("content_b64", ""))
+    if len(data) > 25 * 1024 * 1024:
+        raise HTTPException(413, "file too large (max 25MB)")
+    if not body.get("filename"):
+        raise HTTPException(400, "filename required")
+    return media.put_media(body["filename"], data, body.get("content_type", "application/octet-stream"))
+
+
+@conn.route("/overview", methods=["GET"])
+def route_overview():
+    with db.db_session() as s:
+        return {"mt_jobs": s.query(db.MtJob).count(), "mt_media": s.query(db.MtMedia).count(),
+                "atria_conversations": db.list_conversations(10),
+                "atria_artifacts_count": db.count_artifacts(),
+                "atria_recent_artifacts": db.recent_artifacts(10)}
+
+
+@conn.route("/metrics", methods=["GET"])
+def route_metrics():
+    with db.db_session() as s:
+        by_status: dict = {}
+        for (st,) in s.query(db.MtJob.status).all():
+            by_status[st] = by_status.get(st, 0) + 1
+        total_bytes = sum(m.size for m in s.query(db.MtMedia).all())
+    return {"jobs_by_status": by_status, "media_total_bytes": total_bytes}
 
 
 @conn.route("/ping", methods=["GET"])
