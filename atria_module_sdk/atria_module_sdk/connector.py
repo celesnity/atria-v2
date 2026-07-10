@@ -94,6 +94,7 @@ class Connector:
         self._tools: dict[str, _Tool] = {}
         self._health_probes: list[Callable[[], dict]] = []
         self._extra_routes: list[tuple[str, list[str], Callable]] = []
+        self._startup_hooks: list[Callable[[], None]] = []
         self._public_base_env = public_base_env
         self._dashboard_dist_env = dashboard_dist_env
 
@@ -115,6 +116,14 @@ class Connector:
     def health_probe(self, fn: Callable[[], dict]) -> Callable[[], dict]:
         """Register a probe returning ``{sidecar: 'ok'|'error: …'}`` for /health."""
         self._health_probes.append(fn)
+        return fn
+
+    def on_startup(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """Register a callback run once when the connector boots. It runs on a
+        daemon thread (so it never blocks readiness) — use it for slow, best-
+        effort work like ingesting a data directory. Exceptions are logged, not
+        fatal."""
+        self._startup_hooks.append(fn)
         return fn
 
     def route(self, path: str, *, methods: Iterable[str] = ("POST",)
@@ -203,6 +212,19 @@ class Connector:
 
     # -- app assembly ---------------------------------------------------------
 
+    def _run_startup_hooks(self) -> None:
+        """Fire each on_startup callback on its own daemon thread (never blocks
+        readiness; a failing hook is logged, not fatal)."""
+        import threading
+
+        for fn in self._startup_hooks:
+            def _run(f=fn) -> None:
+                try:
+                    f()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("startup hook %s failed: %s", getattr(f, "__name__", f), exc)
+            threading.Thread(target=_run, name=f"{self.name}-startup", daemon=True).start()
+
     def asgi(self, *, cors_origins: Optional[list[str]] = None) -> FastAPI:
         """Build the FastAPI app implementing the full connector contract."""
         from .announce import resolve_announce_config, announce, deregister, start_heartbeat
@@ -218,6 +240,7 @@ class Connector:
                     logger.warning("announce failed: %s", exc)
                 # Keep re-announcing so a restarted Atria re-learns this live module.
                 stop_heartbeat = start_heartbeat(self.name, cfg)
+            self._run_startup_hooks()
             yield
             if stop_heartbeat is not None:
                 stop_heartbeat()

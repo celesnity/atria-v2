@@ -101,9 +101,38 @@ def run(body: dict) -> dict:
         text = (args.get("query") or "").strip()
         if not text:
             raise HTTPException(400, "retrieve requires args.query")
-        return service.run_query(
-            text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current")
-        )
+        try:
+            return service.run_query(
+                text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current")
+            )
+        except service.ServiceUnavailableError as exc:
+            # Graceful fail-closed card (200) instead of a 500, so the dashboard
+            # can render a clean "retrieval offline" state.
+            return service.unavailable_payload(text, exc.service)
+    if action == "passages":
+        # Phase 1: fast retrieval only (no LLM) — dashboard shows results first.
+        text = (args.get("query") or "").strip()
+        if not text:
+            raise HTTPException(400, "passages requires args.query")
+        try:
+            return service.retrieve_passages(
+                text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current"))
+        except service.ServiceUnavailableError as exc:
+            return {"query": text, "passages": [], "validation_warnings": [f"service_unavailable:{exc.service}"]}
+    if action == "pipeline_stats":
+        # Ingestion/pipeline snapshot for the dashboard visualization.
+        try:
+            return service.pipeline_stats()
+        except Exception as exc:  # noqa: BLE001 — never 500 the dashboard
+            return {"error": str(exc), "total_chunks": 0, "documents": []}
+    if action == "document":
+        title = (args.get("title") or "").strip()
+        if not title:
+            raise HTTPException(400, "document requires args.title")
+        try:
+            return service.get_document(title)
+        except Exception as exc:  # noqa: BLE001
+            return {"title": title, "error": str(exc), "chunks": []}
     raise HTTPException(400, f"unsupported action {action!r}")
 
 
@@ -119,6 +148,28 @@ def signoff(body: dict, principal) -> dict:
     forwarded Atria principal (X-Atria-Principal), not the request body."""
     payload = {"type": "signoff", "engineer": principal.username, **(body or {})}
     return {"ok": True, "event": service.record_signoff(payload)}
+
+
+@conn.on_startup
+def _ingest_on_startup() -> None:
+    """Auto-ingest the input drop-folder on boot (opt-in via MC_INGEST_ON_STARTUP).
+    Drop frontmatter'd .md/.txt files into MC_INGEST_DIR and they are chunked +
+    embedded into qdrant when the container starts. Idempotent + resilient (waits
+    for the embedding sidecar). Runs on a daemon thread, so it never blocks boot."""
+    import logging
+    import os
+
+    log = logging.getLogger("maintenance_copilot.ingest")
+    if os.environ.get("MC_INGEST_ON_STARTUP", "").lower() not in ("1", "true", "yes"):
+        return
+    ingest_dir = os.environ.get("MC_INGEST_DIR", "/app/ingest_data")
+    print(f"[startup-ingest] scanning {ingest_dir} …", flush=True)  # print: always visible in container logs
+    try:
+        summary = service.ingest_dir(ingest_dir)
+        log.info("startup ingest done: %s", summary)
+        print(f"[startup-ingest] done: {summary}", flush=True)
+    except service.ServiceUnavailableError as exc:
+        print(f"[startup-ingest] skipped — {exc.service} unavailable; run it later via the CLI", flush=True)
 
 
 @conn.health_probe

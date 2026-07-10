@@ -75,7 +75,10 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
           </button>
           <span className="text-sm text-text-100">{title}</span>
         </header>
-        <div className="flex-1 overflow-auto">
+        {/* min-h-0: without it a flex child keeps min-height:auto and grows to
+            content height, so overflow-auto never scrolls (the panel overflows
+            the viewport instead). This also lets the remote's height:100% resolve. */}
+        <div className="flex-1 min-h-0 overflow-auto">
           <RemoteDashboard summary={summary as any} />
         </div>
       </div>
