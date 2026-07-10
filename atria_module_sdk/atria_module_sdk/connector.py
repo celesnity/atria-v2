@@ -132,7 +132,8 @@ class Connector:
     def _normalize(self, tool: _Tool, raw: Any) -> dict:
         """Coerce a handler return into the tool-response envelope."""
         if isinstance(raw, dict) and (
-            "output" in raw or "card" in raw or "success" in raw or "llm_suffix" in raw
+            "output" in raw or "card" in raw or "blocks" in raw
+            or "success" in raw or "llm_suffix" in raw
         ):
             card = raw.get("card")
             return {
@@ -141,12 +142,13 @@ class Connector:
                 "card": card,
                 "card_type": raw.get("card_type") or tool.card_type,
                 "llm_suffix": raw.get("llm_suffix"),
+                "blocks": raw.get("blocks"),
             }
         # A bare value: it's both the agent output and (if a dict) the card.
         card = raw if isinstance(raw, dict) else None
         return {"success": True, "output": raw, "card": card,
                 "card_type": tool.card_type if card is not None else None,
-                "llm_suffix": None}
+                "llm_suffix": None, "blocks": None}
 
     def _call(self, tool: _Tool, arguments: dict, principal: Principal) -> dict:
         kwargs = dict(arguments)
