@@ -4,26 +4,36 @@ from __future__ import annotations
 from atria.core.skill_tools import SkillToolContext, ToolSpec
 
 
-def test_build_remote_specs_produces_named_proxy_tool():
-    from atria.core.modules import remote
+def test_build_remote_specs_produces_named_proxy_tool(monkeypatch, tmp_path):
+    from atria.core.modules.registry import reset_registry_for_tests, get_registry
+    from atria.core.modules.remote import build_remote_tool_specs
 
-    class _Svc:
-        connector_url = "http://mc:9200"
-        health_path = "/connector/health"
-        tools = [{"name": "maintenance_copilot_query", "description": "q",
-                  "parameters": {"type": "object"}}]
-
-    class _Manifest:
-        service = _Svc()
-
-    class _Mod:
-        name = "maintenance_copilot"
-        manifest = _Manifest()
-
-    specs = remote.build_remote_tool_specs(SkillToolContext(), [_Mod()])
+    reset_registry_for_tests()
+    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    reg = get_registry()
+    reg.register_connector(name="maintenance_copilot", connector_url="http://mc:9200")
+    reg.mark_connector_ready("maintenance_copilot", [{"name": "maintenance_copilot_query",
+                                                      "description": "q",
+                                                      "parameters": {"type": "object"}}])
+    specs = build_remote_tool_specs(SkillToolContext(), reg.live_service_modules())
     by_name = {s.name: s for s in specs}
     assert "maintenance_copilot_query" in by_name
     assert isinstance(by_name["maintenance_copilot_query"], ToolSpec)
+
+
+def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
+    from atria.core.modules.registry import reset_registry_for_tests, get_registry
+    from atria.core.modules.remote import build_remote_tool_specs
+
+    reset_registry_for_tests()
+    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    reg = get_registry()
+    reg.register_connector(name="m", connector_url="http://m:9200")
+    # PENDING → no specs
+    assert build_remote_tool_specs(SkillToolContext(), reg.live_service_modules()) == []
+    reg.mark_connector_ready("m", [{"name": "m_q", "parameters": {"type": "object"}}])
+    specs = build_remote_tool_specs(SkillToolContext(), reg.live_service_modules())
+    assert [s.name for s in specs] == ["m_q"]
 
 
 def test_core_hardcodes_no_protected_paths():
