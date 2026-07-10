@@ -67,6 +67,8 @@ class _Tool:
     handler: Callable[..., Any]
     card_type: Optional[str]
     streaming: bool
+    requires_auth: bool = False
+    params_model: Optional[type] = None
 
 
 @dataclass
@@ -102,14 +104,20 @@ class Connector:
     # -- registration ---------------------------------------------------------
 
     def tool(self, name: str, *, description: str = "", parameters: Optional[dict] = None,
-             card_type: Optional[str] = None, streaming: bool = False
+             card_type: Optional[str] = None, streaming: bool = False,
+             requires_auth: bool = False, params_model: Optional[type] = None
              ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register an agent tool. The decorated function's return becomes the
         tool result (see module docstring)."""
-        params = parameters or {"type": "object", "properties": {}}
+        if params_model is not None and parameters is not None:
+            raise ValueError("pass either params_model or parameters, not both")
+        params = (params_model.model_json_schema() if params_model is not None  # type: ignore[attr-defined]
+                  else (parameters or {"type": "object", "properties": {}}))
 
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
-            self._tools[name] = _Tool(name, description, params, fn, card_type, streaming)
+            self._tools[name] = _Tool(name, description, params, fn, card_type,
+                                      streaming, requires_auth=requires_auth,
+                                      params_model=params_model)
             return fn
 
         return deco
@@ -198,6 +206,13 @@ class Connector:
         return self._call(tool, arguments, principal or Principal(), session_id=session_id)
 
     def _call(self, tool: _Tool, arguments: dict, principal: Principal) -> dict:
+        if tool.params_model is not None:
+            try:
+                validated = tool.params_model(**arguments)
+                arguments = validated.model_dump()
+            except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
+                return {"success": False, "output": f"invalid arguments: {exc}",
+                        "card": None, "card_type": None, "llm_suffix": None, "blocks": None}
         kwargs = dict(arguments)
         if _accepts_principal(tool.handler):
             kwargs["principal"] = principal
