@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
-    start_connector_reconciler()
+    start_connector_reconciler(on_change=lambda: _broadcast_modules_changed("*"))
 
     # Start the cross-process message bus.
     from atria.web.bus import make_bus, set_bus

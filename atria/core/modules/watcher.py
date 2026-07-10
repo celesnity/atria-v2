@@ -175,12 +175,14 @@ RECONCILE_INTERVAL_SEC = 5.0
 class ConnectorReconciler:
     """Poll every registered connector: refresh live tool schemas + liveness."""
 
-    def __init__(self) -> None:
+    def __init__(self, on_change: Optional[Callable[[], None]] = None) -> None:
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._on_change = on_change
 
     def reconcile_once(self, name: Optional[str] = None) -> None:
         reg = get_registry()
+        before = reg.version
         for rec in reg.connector_records():
             if name is not None and rec.name != name:
                 continue
@@ -195,6 +197,11 @@ class ConnectorReconciler:
                 continue
             tools = manifest.get("tools") or []
             reg.mark_connector_ready(rec.name, tools)
+        if reg.version != before and self._on_change is not None:
+            try:
+                self._on_change()
+            except Exception:  # noqa: BLE001 — broadcast failure must not kill the reconcile loop
+                logger.warning("ConnectorReconciler on_change callback failed")
 
     def _run(self) -> None:
         while not self._stop.wait(RECONCILE_INTERVAL_SEC):
@@ -220,10 +227,10 @@ class ConnectorReconciler:
 _RECONCILER: Optional[ConnectorReconciler] = None
 
 
-def start_connector_reconciler() -> None:
+def start_connector_reconciler(on_change: Optional[Callable[[], None]] = None) -> None:
     global _RECONCILER
     if _RECONCILER is None:
-        _RECONCILER = ConnectorReconciler()
+        _RECONCILER = ConnectorReconciler(on_change=on_change)
         _RECONCILER.start()
 
 
