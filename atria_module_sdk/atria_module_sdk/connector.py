@@ -257,6 +257,24 @@ class Connector:
             self._mount_extra(app, path, methods, fn)
 
         self._mount_dashboard(app)
+
+        from .announce import resolve_announce_config, announce, deregister
+
+        @app.on_event("startup")
+        def _atria_announce() -> None:
+            cfg = resolve_announce_config()
+            if cfg is not None:
+                try:
+                    announce(self.name, cfg)
+                except Exception as exc:  # noqa: BLE001 — don't crash the module on a flaky Atria
+                    logger.warning("announce failed: %s", exc)
+
+        @app.on_event("shutdown")
+        def _atria_deregister() -> None:
+            cfg = resolve_announce_config()
+            if cfg is not None:
+                deregister(self.name, cfg)
+
         return app
 
     def _tool_specs(self) -> list[dict]:

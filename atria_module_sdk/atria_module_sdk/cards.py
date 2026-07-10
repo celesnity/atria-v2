@@ -34,6 +34,21 @@ def card(answer: str, *, card_type: Optional[str] = None,
     return out
 
 
+def block(component: str, props: Optional[dict] = None, *, remote_name: str,
+          remote_entry: str, height: Any = "auto", title: Optional[str] = None) -> dict:
+    """Federated chat-block descriptor matching Atria's ``custom_block`` render:'remote'."""
+    return {
+        "render": "remote",
+        "remote_name": remote_name,
+        "remote_entry": remote_entry,
+        "component": component,
+        "props": props or {},
+        "api_base": remote_entry.split("/dashboard/")[0],
+        "height": height,
+        "title": title,
+    }
+
+
 def unavailable_card(reason: str, *, service: str = "service") -> dict:
     """A fail-closed card for a downstream sidecar/service being unreachable."""
     return {
