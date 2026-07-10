@@ -15,6 +15,7 @@ from atria.web.routes.transcribe import router as transcribe_router
 from atria.web.routes.modules import router as modules_router
 from atria.web.routes.blocks import router as blocks_router
 from atria.web.routes.blocks_remote import router as blocks_remote_router
+from atria.web.routes.artifacts_remote import router as artifacts_remote_router
 from atria.web.routes.module_dashboard import router as module_dashboard_router
 from atria.web.routes.module_connector import router as module_connector_router
 from atria.web.routes.connect import router as connect_router
@@ -42,6 +43,7 @@ __all__ = [
     "modules_router",
     "blocks_router",
     "blocks_remote_router",
+    "artifacts_remote_router",
     "module_dashboard_router",
     "module_connector_router",
     "me_router",

@@ -34,3 +34,25 @@ def test_push_error_raises(monkeypatch):
     import pytest
     with pytest.raises(AtriaClientError):
         c.update_block("sess", "b1", {"pct": 9})
+
+
+def test_push_artifact(monkeypatch):
+    import base64
+    captured = {}
+
+    def fake_post(url, json, headers, timeout):
+        captured["url"] = url
+        captured["json"] = json
+        return httpx.Response(200, json={"artifact_id": 9},
+                              request=httpx.Request("POST", url))
+
+    monkeypatch.setattr("atria_module_sdk.client.httpx.post", fake_post)
+    c, _ = _client(None)
+    artifact_id = c.push_artifact("sess", "report.pdf", b"hello artifact")
+    assert artifact_id == 9
+    assert captured["url"] == "http://atria:8000/api/artifacts/remote/push"
+    assert captured["json"]["session_id"] == "sess"
+    assert captured["json"]["filename"] == "report.pdf"
+    # Verify content was base64-encoded correctly
+    assert base64.b64decode(captured["json"]["content_b64"]) == b"hello artifact"
+    assert captured["json"]["type"] == "report"

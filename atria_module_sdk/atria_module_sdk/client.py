@@ -53,3 +53,10 @@ class AtriaClient:
     def remove_block(self, session_id: str, block_id: str) -> None:
         self._post("/api/blocks/remote/remove",
                    {"session_id": session_id, "block_id": block_id})
+
+    def push_artifact(self, session_id: str, filename: str, content: bytes,
+                      type: str = "report") -> int:
+        import base64
+        payload = {"session_id": session_id, "filename": filename,
+                   "content_b64": base64.b64encode(content).decode(), "type": type}
+        return self._post("/api/artifacts/remote/push", payload).json()["artifact_id"]
