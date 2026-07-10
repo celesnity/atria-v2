@@ -1118,7 +1118,41 @@ wsClient.on('*', (message) => {
 
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, cardMsg] });
+    // A card ends a streaming call — drop any trailing live-progress message so
+    // the card replaces it rather than piling up beneath it.
+    const msgs = sessionState.messages.filter(
+      (m, i) => !(i === sessionState.messages.length - 1 && m.role === 'module_progress'),
+    );
+    return patchSession(state, sid, { messages: [...msgs, cardMsg] });
+  });
+});
+
+// Live progress during a streaming module tool call (module_progress events from
+// _run_stream). Upsert a single progress line at the tail: update it in place
+// while events arrive; the next card (above) clears it.
+wsClient.on('module_progress', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const { module, message: text, pct } = message.data;
+
+  useChatStore.setState(state => {
+    const sessionState = getSessionState(state.sessionStates, sid);
+    const msgs = sessionState.messages;
+    const last = msgs[msgs.length - 1];
+    const progressMsg = {
+      role: 'module_progress' as const,
+      content: text ?? '',
+      progress_module: module,
+      progress_message: text ?? '',
+      progress_pct: typeof pct === 'number' ? pct : null,
+      timestamp: new Date().toISOString(),
+    };
+    if (last && last.role === 'module_progress') {
+      const updated = [...msgs];
+      updated[updated.length - 1] = progressMsg;
+      return patchSession(state, sid, { messages: updated });
+    }
+    return patchSession(state, sid, { messages: [...msgs, progressMsg] });
   });
 });
 

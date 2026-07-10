@@ -83,7 +83,7 @@ export interface Todo {
 }
 
 export interface Message {
-  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'module_card' | 'deep_research' | 'image_message' | 'custom_block' | 'todos';
+  role: 'user' | 'assistant' | 'system' | 'tool_call' | 'tool_result' | 'thinking' | 'search_result' | 'module_card' | 'module_progress' | 'deep_research' | 'image_message' | 'custom_block' | 'todos';
   // live todo list (role === 'todos')
   todos?: Todo[];
   // custom_block fields
@@ -146,6 +146,10 @@ export interface Message {
   card_confidence_band?: 'high' | 'medium' | 'low';
   card_validation_warnings?: string[];
   card_raw?: Record<string, any>;            // full card payload, for future renderers
+  // module_progress fields (live progress during a streaming module tool call)
+  progress_module?: string;
+  progress_message?: string;
+  progress_pct?: number | null;
   // deep_research fields
   dr_job_id?: string;
   dr_topic?: string;
