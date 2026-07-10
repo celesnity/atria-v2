@@ -213,6 +213,9 @@ class Connector:
             except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
                 return {"success": False, "output": f"invalid arguments: {exc}",
                         "card": None, "card_type": None, "llm_suffix": None, "blocks": None}
+        if tool.requires_auth and not principal.is_authenticated:
+            return {"success": False, "output": "authentication required",
+                    "card": None, "card_type": None, "llm_suffix": None, "blocks": None}
         kwargs = dict(arguments)
         if _accepts_principal(tool.handler):
             kwargs["principal"] = principal
