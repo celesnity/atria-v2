@@ -1,5 +1,8 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, useMemo, type ComponentType } from 'react';
 import { registerRemote, loadRemoteComponent } from '../../lib/federation';
+import { useChatStore } from '../../stores/chat';
+import { useViewerTabsStore } from '../../stores/viewerTabs';
+import { useToastStore } from '../../stores/toast';
 
 interface RemoteBlockProps {
   remoteName: string;
@@ -18,6 +21,33 @@ export function RemoteBlock({ remoteName, remoteEntry, component, props = {}, ap
   const [Comp, setComp] = useState<ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const bridge = useMemo(() => ({
+    getSessionId: (): string | null => useChatStore.getState().currentSessionId,
+    isLoading: (): boolean => {
+      const s = useChatStore.getState();
+      const sid = s.currentSessionId;
+      return sid ? !!s.sessionStates[sid]?.isLoading : false;
+    },
+    openModuleFileTab: (
+      module: string, path: string,
+      opts: { start?: number; end?: number; text?: string; nonce?: number },
+    ): void => {
+      const sid = useChatStore.getState().currentSessionId;
+      if (sid) useViewerTabsStore.getState().openModuleFileTab(sid, module, path, opts);
+    },
+    prefillDraft: (text: string): void => {
+      const s = useChatStore.getState();
+      const sid = s.currentSessionId;
+      if (!sid) return;
+      const prev = s.sessionStates[sid]?.draft ?? '';
+      s.setDraft(sid, prev ? `${prev}\n${text}` : text);
+    },
+    sendMessage: (text: string): void => { useChatStore.getState().sendMessage(text); },
+    toast: (msg: string, kind: 'success' | 'error'): void => {
+      useToastStore.getState().addToast(msg, kind);
+    },
+  }), []);
+
   useEffect(() => {
     let alive = true;
     if (!remoteName || !remoteEntry || !component) {
@@ -33,5 +63,5 @@ export function RemoteBlock({ remoteName, remoteEntry, component, props = {}, ap
 
   if (error) return <div className="p-4 text-sm text-red-400">Block failed: {error}</div>;
   if (!Comp) return <div className="p-4 text-sm text-text-300">Loading…</div>;
-  return <Comp {...props} apiBase={apiBase} />;
+  return <Comp {...props} apiBase={apiBase} bridge={bridge} />;
 }
