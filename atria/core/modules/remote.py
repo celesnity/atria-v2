@@ -11,6 +11,7 @@ Contract: docs/connector-contract.md. v2 adds (all backward-compatible):
   * streaming tool calls over SSE (``/connector/tools/{name}/stream``).
   * manifest reconciliation against the live ``/connector/manifest``.
 """
+
 from __future__ import annotations
 
 import json
@@ -107,8 +108,9 @@ def _auth_headers(name: str, principal: Optional[dict]) -> dict:
 class RemoteConnector:
     """Thin HTTP client for one module's connector service."""
 
-    def __init__(self, name: str, connector_url: str,
-                 health_path: str = "/connector/health") -> None:
+    def __init__(
+        self, name: str, connector_url: str, health_path: str = "/connector/health"
+    ) -> None:
         self.name = name
         self.base_url = connector_url.rstrip("/")
         self.health_path = health_path
@@ -136,13 +138,16 @@ class RemoteConnector:
 
     # -- tool calls -----------------------------------------------------------
 
-    def call_tool(self, tool: str, arguments: dict, timeout: float = 110.0,
-                  principal: Optional[dict] = None) -> dict:
+    def call_tool(
+        self, tool: str, arguments: dict, timeout: float = 110.0, principal: Optional[dict] = None
+    ) -> dict:
         try:
-            r = self._client.post(f"/connector/tools/{tool}",
-                                  json={"arguments": arguments},
-                                  headers=_auth_headers(self.name, principal),
-                                  timeout=timeout)
+            r = self._client.post(
+                f"/connector/tools/{tool}",
+                json={"arguments": arguments},
+                headers=_auth_headers(self.name, principal),
+                timeout=timeout,
+            )
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
@@ -155,23 +160,22 @@ class RemoteConnector:
 
     # -- generic passthrough (used by the core proxy route) -------------------
 
-    def get_json(self, path: str, timeout: float = 5.0,
-                 principal: Optional[dict] = None) -> dict:
+    def get_json(self, path: str, timeout: float = 5.0, principal: Optional[dict] = None) -> dict:
         try:
-            r = self._client.get(path, headers=_auth_headers(self.name, principal),
-                                 timeout=timeout)
+            r = self._client.get(path, headers=_auth_headers(self.name, principal), timeout=timeout)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
             logger.warning("connector %s GET %s failed: %s", self.name, path, exc)
             raise ConnectorUnreachable(str(exc)) from exc
 
-    def post_json(self, path: str, payload: dict, timeout: float = 15.0,
-                  principal: Optional[dict] = None) -> dict:
+    def post_json(
+        self, path: str, payload: dict, timeout: float = 15.0, principal: Optional[dict] = None
+    ) -> dict:
         try:
-            r = self._client.post(path, json=payload,
-                                  headers=_auth_headers(self.name, principal),
-                                  timeout=timeout)
+            r = self._client.post(
+                path, json=payload, headers=_auth_headers(self.name, principal), timeout=timeout
+            )
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as exc:
@@ -212,8 +216,9 @@ def _broadcast_card(ctx: "SkillToolContext", card_type: str, card: dict) -> None
         ctx.logger.warning("card broadcast failed: %s", exc)
 
 
-def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
-                  tool_name: str) -> Callable[..., dict]:
+def _make_handler(
+    ctx: "SkillToolContext", conn: "RemoteConnector", tool_name: str
+) -> Callable[..., dict]:
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
         # ponytail: agent tool calls carry no user identity (there's no producer
@@ -224,8 +229,11 @@ def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
         except ConnectorUnreachable:
             card = unavailable_card(query, conn.name)
             _broadcast_card(ctx, f"{conn.name}_card", card)
-            return {"success": True, "output": card,
-                    "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
+            return {
+                "success": True,
+                "output": card,
+                "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name),
+            }
 
         card = resp.get("card")
         _broadcast_card(ctx, _card_type(resp, conn.name), card)
@@ -254,21 +262,28 @@ def reconcile_manifest(module: "Module", conn: "RemoteConnector") -> None:
         return
     svc = getattr(module.manifest, "service", None) if module.manifest else None
     committed = {t.get("name") for t in (svc.tools if svc else []) if t.get("name")}
-    live_tools = {t.get("name") for t in live.get("tools", []) if isinstance(t, dict) and t.get("name")}
+    live_tools = {
+        t.get("name") for t in live.get("tools", []) if isinstance(t, dict) and t.get("name")
+    }
     missing = committed - live_tools
     extra = live_tools - committed
     if missing:
-        logger.warning("connector %s: manifest declares tools the service lacks: %s",
-                       module.name, sorted(missing))
+        logger.warning(
+            "connector %s: manifest declares tools the service lacks: %s",
+            module.name,
+            sorted(missing),
+        )
     if extra:
-        logger.warning("connector %s: service exposes tools not in manifest: %s",
-                       module.name, sorted(extra))
+        logger.warning(
+            "connector %s: service exposes tools not in manifest: %s", module.name, sorted(extra)
+        )
 
 
-def build_remote_tool_specs(ctx: "SkillToolContext",
-                            modules: "list[Module]") -> "list[ToolSpec]":
+def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -> "list[ToolSpec]":
     """Build proxy ToolSpecs for every READY service-module connector, from its
-    live ``/connector/manifest`` tool schemas (not the committed manifest)."""
+    live ``/connector/manifest`` tool schemas (not the committed manifest).
+    The ``_modules`` param is accepted for API compatibility but unused; tools
+    come from the connector registry."""
     from atria.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
     from atria.core.modules.registry import get_registry, ConnectorState
 
@@ -282,10 +297,12 @@ def build_remote_tool_specs(ctx: "SkillToolContext",
             name = tool.get("name")
             if not name:
                 continue
-            specs.append(ToolSpec(
-                name=name,
-                description=tool.get("description", ""),
-                parameters=tool.get("parameters", {"type": "object", "properties": {}}),
-                handler=_make_handler(ctx, conn, name),
-            ))
+            specs.append(
+                ToolSpec(
+                    name=name,
+                    description=tool.get("description", ""),
+                    parameters=tool.get("parameters", {"type": "object", "properties": {}}),
+                    handler=_make_handler(ctx, conn, name),
+                )
+            )
     return specs

@@ -23,7 +23,7 @@ export function isCardType(type: string): boolean {
   return type in CARD_MAPPERS || type.endsWith('_card');
 }
 
-/** Map a card WS payload to a Message: bespoke mapper if known, else generic. */
+/** Map a card WS payload to a Message via the generic module-card mapper. */
 export function mapCard(cardType: string, data: any): Message {
   const mapper = CARD_MAPPERS[cardType];
   return mapper ? mapper(data) : mapModuleCard(cardType, data);

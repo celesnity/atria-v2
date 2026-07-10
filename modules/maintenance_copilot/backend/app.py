@@ -4,15 +4,17 @@ The SDK generates the /connector/* contract (health, manifest, tool calls,
 streaming, dashboard static mount) from the decorated handlers below; this file
 never imports ``atria``. Domain specifics preserved from the hand-rolled version:
 
-  * the tool returns a rich, strict-schema maintenance-answer card and names its
-    UI renderer via ``card_type="maintenance_answer"`` (so the web UI keeps
-    rendering the MaintenanceAnswerBlock, not the generic card);
+  * the tool returns a rich, strict-schema maintenance-answer card and now
+    returns ``blocks: [block("./MaintenanceAnswer", ...)]`` — a federated chat
+    block the module ships — so the web UI renders the MaintenanceAnswerBlock
+    via the federated block system, not a bespoke card mapper;
   * a sidecar-down raises inside ``service.run_query`` and is converted here to
     the module's own fail-closed card + its corpus-specific LLM suffix;
   * dashboard ``/connector/run`` (retrieve), ``/connector/sidecar-health``, and
     the licensed-engineer ``/connector/signoff`` are registered as extra routes,
     reachable directly by the dashboard and through Atria's generic passthrough.
 """
+
 from __future__ import annotations
 
 from atria_module_sdk import Connector, block
@@ -33,9 +35,13 @@ _CARD_TYPE = "maintenance_answer"
 
 
 def _answer_block(card: dict) -> dict:
-    remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY") or "http://localhost:9200/dashboard/remoteEntry.js"
-    return block("./MaintenanceAnswer", card,
-                 remote_name="maintenance_copilot", remote_entry=remote_entry)
+    remote_entry = (
+        os.environ.get("ATRIA_MODULE_REMOTE_ENTRY")
+        or "http://localhost:9200/dashboard/remoteEntry.js"
+    )
+    return block(
+        "./MaintenanceAnswer", card, remote_name="maintenance_copilot", remote_entry=remote_entry
+    )
 
 
 @conn.tool(
@@ -51,18 +57,22 @@ def _answer_block(card: dict) -> dict:
             "query": {"type": "string", "description": "The maintenance question, in English."},
             "k": {"type": "integer", "default": 5, "description": "Passages to retrieve."},
             "ata": {"type": "string", "description": "Optional ATA chapter filter, e.g. '32'."},
-            "revision": {"type": "string", "default": "current",
-                         "description": "'current', a specific revision, or 'none'."},
+            "revision": {
+                "type": "string",
+                "default": "current",
+                "description": "'current', a specific revision, or 'none'.",
+            },
         },
         "required": ["query"],
     },
     card_type=_CARD_TYPE,
 )
-def maintenance_copilot_query(query: str = "", k: int = 5, ata: str | None = None,
-                              revision: str = "current", **kwargs) -> dict:
+def maintenance_copilot_query(
+    query: str = "", k: int = 5, ata: str | None = None, revision: str = "current", **kwargs
+) -> dict:
     text = (query or kwargs.get("text") or "").strip()
     if not text:
-        return {"success": False, "output": "query is required", "card": None}
+        return {"success": False, "output": "query is required"}
     try:
         card = service.run_query(text, int(k), ata, revision)
         return {"success": True, "output": card, "blocks": [_answer_block(card)]}
@@ -71,8 +81,12 @@ def maintenance_copilot_query(query: str = "", k: int = 5, ata: str | None = Non
         # suffix (don't fall back to the SDK's generic ServiceUnavailable card).
         card = service.unavailable_payload(text, exc.service)
         suffix = service.UNAVAILABLE_SUFFIX.format(service=exc.service)
-        return {"success": True, "output": card, "blocks": [_answer_block(card)],
-                "llm_suffix": suffix}
+        return {
+            "success": True,
+            "output": card,
+            "blocks": [_answer_block(card)],
+            "llm_suffix": suffix,
+        }
 
 
 @conn.route("/run", methods=["POST"])
@@ -87,8 +101,9 @@ def run(body: dict) -> dict:
         text = (args.get("query") or "").strip()
         if not text:
             raise HTTPException(400, "retrieve requires args.query")
-        return service.run_query(text, int(args.get("k", 5)),
-                                 args.get("ata"), args.get("revision", "current"))
+        return service.run_query(
+            text, int(args.get("k", 5)), args.get("ata"), args.get("revision", "current")
+        )
     raise HTTPException(400, f"unsupported action {action!r}")
 
 

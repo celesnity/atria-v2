@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import threading
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -147,9 +148,14 @@ class ModuleRegistry:
         with self._lock:
             return self._modules[name]
 
-    def register_connector(self, *, name: str, connector_url: str,
-                           remote_entry: Optional[str] = None,
-                           api_base: Optional[str] = None) -> None:
+    def register_connector(
+        self,
+        *,
+        name: str,
+        connector_url: str,
+        remote_entry: Optional[str] = None,
+        api_base: Optional[str] = None,
+    ) -> None:
         """Runtime announce: upsert a PENDING connector record and bump version."""
         with self._lock:
             rec = self._connectors.get(name)
@@ -161,6 +167,7 @@ class ModuleRegistry:
             rec.api_base = api_base
             rec.state = ConnectorState.PENDING
             rec.fail_count = 0
+            rec.last_seen = time.time()
             self._version += 1
 
     def mark_connector_ready(self, name: str, tools: List[dict]) -> None:
@@ -172,6 +179,7 @@ class ModuleRegistry:
             rec.state = ConnectorState.READY
             rec.tools = list(tools)
             rec.fail_count = 0
+            rec.last_seen = time.time()
             if changed:
                 self._version += 1
 

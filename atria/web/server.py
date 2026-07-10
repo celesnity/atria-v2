@@ -44,7 +44,12 @@ from atria.web.routes import (
 )
 from atria.web.websocket import websocket_endpoint
 from atria.web.transcribe_ws import transcribe_ws_endpoint
-from atria.core.modules.watcher import start_global_watcher, stop_global_watcher, start_connector_reconciler, stop_connector_reconciler
+from atria.core.modules.watcher import (
+    start_global_watcher,
+    stop_global_watcher,
+    start_connector_reconciler,
+    stop_connector_reconciler,
+)
 from atria.web.state import init_state, get_state
 from atria.core.runtime import ConfigManager, ModeManager
 from atria.core.context_engineering.history import SessionManager, UndoManager

@@ -17,7 +17,7 @@ def _ctx_with_capture():
     return ctx, pushed
 
 
-def test_handler_forwards_blocks_to_push_block(monkeypatch):
+def test_handler_forwards_blocks_to_push_block():
     ctx, pushed = _ctx_with_capture()
     block = {"render": "remote", "remote_name": "mc", "component": "./X",
              "remote_entry": "http://h/dashboard/remoteEntry.js", "props": {"a": 1},
@@ -28,7 +28,7 @@ def test_handler_forwards_blocks_to_push_block(monkeypatch):
     assert pushed == [(block, "mc")]
 
 
-def test_handler_ignores_blocks_without_remote_entry(monkeypatch):
+def test_handler_ignores_blocks_without_remote_entry():
     ctx, pushed = _ctx_with_capture()
     conn = _Conn({"success": True, "output": "ok",
                   "blocks": [{"remote_name": "mc", "component": "./X"}]})  # no remote_entry

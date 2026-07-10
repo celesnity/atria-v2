@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from pathlib import Path
 from typing import Callable, Dict, Optional
 
