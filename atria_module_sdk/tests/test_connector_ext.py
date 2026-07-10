@@ -1,5 +1,6 @@
 import os
 from atria_module_sdk import Connector
+from atria_module_sdk.connector import Principal
 from fastapi.testclient import TestClient
 
 
@@ -73,3 +74,16 @@ def test_params_model_and_parameters_are_mutually_exclusive():
         @conn.tool("x", parameters={"type": "object"}, params_model=BaseModel)
         def x():
             return {}
+
+
+def test_requires_auth_blocks_anonymous():
+    conn = Connector("m")
+
+    @conn.tool("secret", requires_auth=True)
+    def secret(principal=None):
+        return {"output": "ok"}
+
+    anon = conn.invoke("secret", {})
+    assert anon["success"] is False and anon["output"] == "authentication required"
+    authed = conn.invoke("secret", {}, principal=Principal(username="alice", email="a@x"))
+    assert authed["output"] == "ok"
