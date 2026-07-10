@@ -100,3 +100,19 @@ def test_session_id_injected_into_handler():
 
     conn.invoke("cap", {}, session_id="sess-123")
     assert seen["sid"] == "sess-123"
+
+
+def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
+    monkeypatch.setenv("MODULE_PUBLIC_BASE", "http://h:9300")
+    conn = Connector("m", min_core_version="2")
+    conn.expose_block("./MyAnswer")
+
+    @conn.tool("q", card_type="m_answer")
+    def q():
+        return {}
+
+    from fastapi.testclient import TestClient
+    mani = TestClient(conn.asgi()).get("/connector/manifest").json()
+    assert mani["remote"]["exposed"] == {"dashboard": "./Dashboard", "./MyAnswer": "./MyAnswer"}
+    assert mani["card_types"] == ["m_answer"]
+    assert mani["contract_version"] == "2" and mani["min_core_version"] == "2"

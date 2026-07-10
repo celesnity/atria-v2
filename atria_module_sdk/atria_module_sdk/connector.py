@@ -50,6 +50,8 @@ from .cards import unavailable_card, unavailable_suffix, block as _block_descrip
 
 logger = logging.getLogger("atria_module_sdk")
 
+CONTRACT_VERSION = "2"
+
 
 class ServiceUnavailable(RuntimeError):
     """Raise from a handler when a downstream sidecar (LLM, vector DB, …) is down."""
@@ -89,10 +91,12 @@ class Connector:
     def __init__(self, name: str, *, version: str = "1",
                  display_name: Optional[str] = None,
                  public_base_env: str = "MODULE_PUBLIC_BASE",
-                 dashboard_dist_env: str = "MODULE_DASHBOARD_DIST") -> None:
+                 dashboard_dist_env: str = "MODULE_DASHBOARD_DIST",
+                 min_core_version: Optional[str] = None) -> None:
         self.name = name
         self.version = version
         self.display_name = display_name or name.replace("_", " ").title()
+        self.min_core_version = min_core_version
         self._tools: dict[str, _Tool] = {}
         self._health_probes: list[Callable[[], dict]] = []
         self._readiness_probes: list[Callable[[], Any]] = []
@@ -100,6 +104,13 @@ class Connector:
         self._startup_hooks: list[Callable[[], None]] = []
         self._public_base_env = public_base_env
         self._dashboard_dist_env = dashboard_dist_env
+        self._exposed_blocks: list[str] = []
+
+    def expose_block(self, component_key: str) -> None:
+        """Declare an extra Module-Federation exposed component (a chat block),
+        so the manifest advertises it alongside ./Dashboard."""
+        if component_key not in self._exposed_blocks:
+            self._exposed_blocks.append(component_key)
 
     # -- registration ---------------------------------------------------------
 
@@ -324,12 +335,17 @@ class Connector:
             base = os.environ.get(self._public_base_env, "").rstrip("/")
             remote = None
             if base:
+                exposed = {"dashboard": "./Dashboard"}
+                exposed.update({k: k for k in self._exposed_blocks})
                 remote = {"name": self.name,
                           "remoteEntry": f"{base}/dashboard/remoteEntry.js",
-                          "exposed": {"dashboard": "./Dashboard"}}
+                          "exposed": exposed}
             return {"name": self.name, "display_name": self.display_name,
                     "version": self.version, "tools": self._tool_specs(),
-                    "remote": remote}
+                    "remote": remote,
+                    "card_types": sorted({t.card_type for t in self._tools.values() if t.card_type}),
+                    "contract_version": CONTRACT_VERSION,
+                    "min_core_version": self.min_core_version}
 
         @app.post("/connector/tools/{name}")
         async def call_tool(name: str, request: Request) -> dict:
