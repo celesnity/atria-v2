@@ -94,6 +94,11 @@ export interface Message {
   block_props?: Record<string, any>;
   block_height?: number | 'auto';
   block_title?: string;
+  block_render?: 'iframe' | 'remote';
+  block_remote_name?: string;
+  block_remote_entry?: string;
+  block_component?: string;
+  block_api_base?: string;
   content: string;
   timestamp?: string;
   // Groups all assistant text chunks from a single agent turn into one bubble,
