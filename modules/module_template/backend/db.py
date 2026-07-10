@@ -1,5 +1,6 @@
 """module_template data layer. Reuses the shared `atria` Postgres INSTANCE but
 owns only the mt_* tables; reads Atria tables read-only. Never imports `atria`."""
+
 from __future__ import annotations
 
 import contextlib
@@ -8,7 +9,7 @@ import logging
 import os
 from typing import Iterator
 
-from sqlalchemy import (Column, DateTime, Integer, String, Text, create_engine, text)
+from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 logger = logging.getLogger("module_template.db")
@@ -36,9 +37,14 @@ class MtJob(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_now, onupdate=_now)
 
     def as_dict(self) -> dict:
-        return {"id": self.id, "kind": self.kind, "status": self.status, "pct": self.pct,
-                "created_at": self.created_at.isoformat() if self.created_at else None,
-                "updated_at": self.updated_at.isoformat() if self.updated_at else None}
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "status": self.status,
+            "pct": self.pct,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class MtMedia(Base):
@@ -51,9 +57,14 @@ class MtMedia(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
 
     def as_dict(self) -> dict:
-        return {"id": self.id, "filename": self.filename, "s3_key": self.s3_key,
-                "content_type": self.content_type, "size": self.size,
-                "created_at": self.created_at.isoformat() if self.created_at else None}
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "s3_key": self.s3_key,
+            "content_type": self.content_type,
+            "size": self.size,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 def init_db() -> None:
@@ -76,12 +87,16 @@ def db_session() -> Iterator[Session]:
 
 # --- read-only Atria reads (best-effort; degrade on schema drift) ---------------
 def list_conversations(limit: int = 10) -> list[dict]:
-    sql = text("SELECT id, title, mode, status, created_at FROM conversations "
-               "WHERE is_deleted = false ORDER BY id DESC LIMIT :limit")
+    sql = text(
+        "SELECT id, title, mode, status, created_at FROM conversations "
+        "WHERE is_deleted = false ORDER BY id DESC LIMIT :limit"
+    )
     try:
         with engine.connect() as c:
-            return [dict(r._mapping) | {"created_at": str(r._mapping["created_at"])}
-                    for r in c.execute(sql, {"limit": limit})]
+            return [
+                dict(r._mapping) | {"created_at": str(r._mapping["created_at"])}
+                for r in c.execute(sql, {"limit": limit})
+            ]
     except Exception as exc:  # noqa: BLE001 — read-only best-effort
         logger.warning("read conversations failed (degrading): %s", exc)
         return []
@@ -90,19 +105,26 @@ def list_conversations(limit: int = 10) -> list[dict]:
 def count_artifacts() -> int:
     try:
         with engine.connect() as c:
-            return int(c.execute(text("SELECT count(*) FROM artifacts WHERE is_deleted = false")).scalar() or 0)
+            return int(
+                c.execute(text("SELECT count(*) FROM artifacts WHERE is_deleted = false")).scalar()
+                or 0
+            )
     except Exception as exc:  # noqa: BLE001
         logger.warning("count artifacts failed (degrading): %s", exc)
         return 0
 
 
 def recent_artifacts(limit: int = 10) -> list[dict]:
-    sql = text("SELECT id, title, type, created_at FROM artifacts WHERE is_deleted = false "
-               "ORDER BY id DESC LIMIT :limit")
+    sql = text(
+        "SELECT id, title, type, created_at FROM artifacts WHERE is_deleted = false "
+        "ORDER BY id DESC LIMIT :limit"
+    )
     try:
         with engine.connect() as c:
-            return [dict(r._mapping) | {"created_at": str(r._mapping["created_at"])}
-                    for r in c.execute(sql, {"limit": limit})]
+            return [
+                dict(r._mapping) | {"created_at": str(r._mapping["created_at"])}
+                for r in c.execute(sql, {"limit": limit})
+            ]
     except Exception as exc:  # noqa: BLE001
         logger.warning("read artifacts failed (degrading): %s", exc)
         return []

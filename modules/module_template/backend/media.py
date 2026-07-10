@@ -1,4 +1,5 @@
 """module_template S3/MinIO media store. boto3 only; never imports `atria`."""
+
 from __future__ import annotations
 
 import logging
@@ -19,10 +20,13 @@ MT_S3_SECRET_KEY = os.environ.get("MT_S3_SECRET_KEY", "minioadmin")
 
 
 def s3_client():
-    return boto3.client("s3", endpoint_url=MT_S3_ENDPOINT,
-                        aws_access_key_id=MT_S3_ACCESS_KEY,
-                        aws_secret_access_key=MT_S3_SECRET_KEY,
-                        config=Config(signature_version="s3v4"))
+    return boto3.client(
+        "s3",
+        endpoint_url=MT_S3_ENDPOINT,
+        aws_access_key_id=MT_S3_ACCESS_KEY,
+        aws_secret_access_key=MT_S3_SECRET_KEY,
+        config=Config(signature_version="s3v4"),
+    )
 
 
 def ensure_bucket() -> None:
@@ -45,4 +49,5 @@ def put_media(filename: str, data: bytes, content_type: str = "application/octet
 
 def presigned_url(s3_key: str, expires: int = 3600) -> str:
     return s3_client().generate_presigned_url(
-        "get_object", Params={"Bucket": MT_S3_BUCKET, "Key": s3_key}, ExpiresIn=expires)
+        "get_object", Params={"Bucket": MT_S3_BUCKET, "Key": s3_key}, ExpiresIn=expires
+    )
