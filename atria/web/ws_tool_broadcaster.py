@@ -53,6 +53,7 @@ class WebSocketToolBroadcaster:
         loop: asyncio.AbstractEventLoop,
         working_dir: Optional[Path] = None,
         session_id: Optional[str] = None,
+        principal: Optional[dict] = None,
     ):
         """Initialize broadcaster.
 
@@ -62,12 +63,14 @@ class WebSocketToolBroadcaster:
             loop: Event loop for async operations
             working_dir: Working directory for path resolution
             session_id: Session ID for scoping broadcasts
+            principal: Acting user identity dict (e.g. {"username": ..., "email": ...})
         """
         self.tool_registry = tool_registry
         self.ws_manager = ws_manager
         self.loop = loop
         self.working_dir = Path(working_dir).resolve() if working_dir else None
         self.session_id = session_id
+        self.principal = principal
 
         # Wire skill-tool broadcaster — any skill that emits typed events
         # routes through here. Each skill's tools.py decides which events
@@ -77,7 +80,7 @@ class WebSocketToolBroadcaster:
             skill_ctx.broadcaster = self._broadcast_skill_event
             skill_ctx.push_block = self._push_remote_block
             skill_ctx.session_id = self.session_id
-            # principal is left None: no acting user is in scope at this wiring point
+            skill_ctx.principal = self.principal
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Execute tool with WebSocket broadcasting.

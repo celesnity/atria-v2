@@ -327,12 +327,15 @@ class AgentExecutor:
         runtime_suite.tool_registry.thinking_handler.set_level(thinking_level)
 
         # Wrap tool registry with WebSocket broadcaster (includes session_id)
+        _owner = getattr(session, "owner_id", "") or ""
+        _principal = {"username": _owner, "email": ""} if _owner else None
         wrapped_registry = WebSocketToolBroadcaster(
             runtime_suite.tool_registry,
             ws_manager,
             loop,
             working_dir=working_dir,
             session_id=session_id,
+            principal=_principal,
         )
 
         # Expose the live runtime suite to ui_bridge so block_rpc tool.invoke can

@@ -183,3 +183,17 @@ class TestCallToolSessionId:
         assert req.headers.get("x-atria-session") == "sess-xyz"
         decoded = json.loads(req.headers.get("x-atria-principal", "{}"))
         assert decoded["username"] == "carol"
+
+
+def test_broadcaster_wires_principal_onto_ctx():
+    from atria.web.ws_tool_broadcaster import WebSocketToolBroadcaster
+    from atria.core.skill_tools import SkillToolContext
+
+    class _Reg:
+        skill_ctx = SkillToolContext()
+
+    reg = _Reg()
+    WebSocketToolBroadcaster(reg, ws_manager=None, loop=None, session_id="s1",
+                             principal={"username": "alice", "email": "a@x"})
+    assert reg.skill_ctx.principal == {"username": "alice", "email": "a@x"}
+    assert reg.skill_ctx.session_id == "s1"
