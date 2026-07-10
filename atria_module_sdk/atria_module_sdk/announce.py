@@ -179,7 +179,7 @@ def announce(module: str, cfg: AnnounceConfig) -> None:
     """
     url = f"{cfg.atria_url}/api/modules/register"
     payload: dict = {
-        "name": module,
+        "module": module,
         "connector_url": cfg.connector_url,
     }
     if cfg.remote_entry:
@@ -207,7 +207,7 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
     try:
         resp = httpx.post(
             url,
-            json={"name": module},
+            json={"module": module},
             headers=_auth_headers(cfg),
             timeout=10,
         )
