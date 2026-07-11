@@ -30,10 +30,23 @@ services:
       db:
         condition: service_healthy
 
+  # Single public entry point (see nginx/nginx.conf). Only nginx publishes a
+  # host port; it reverse-proxies UI + /api + /ws to `atria`.
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - atria
+
   atria:
     build: .
-    ports:
-      - "8080:8080"
+    # Internal-only — reached through nginx (single exposed port).
+    expose:
+      - "8080"
     environment:
       - ATRIA_ASR_BASE_URL=http://asr:9000/v1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
