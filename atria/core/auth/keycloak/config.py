@@ -13,8 +13,8 @@ class AuthMode(str, Enum):
 @dataclass(frozen=True)
 class KeycloakConfig:
     auth_mode: AuthMode
-    internal_url: str  # used by backend <-> keycloak (e.g. http://keycloak:8080)
-    public_url: str  # used for issuer matching (e.g. http://localhost:8082)
+    internal_url: str  # used by backend <-> keycloak (the hosted Keycloak URL)
+    public_url: str  # used for issuer matching (the hosted Keycloak public URL)
     realm: str
     backend_client_id: str
     backend_client_secret: str
@@ -57,8 +57,12 @@ class KeycloakConfig:
 
         return cls(
             auth_mode=mode,
-            internal_url=os.getenv("KEYCLOAK_URL", "http://keycloak:8080"),
-            public_url=os.getenv("KEYCLOAK_PUBLIC_URL", "http://localhost:8082"),
+            internal_url=os.getenv(
+                "KEYCLOAK_URL", "https://iam-keycloak-2bc632-14-225-206-18.sslip.io"
+            ),
+            public_url=os.getenv(
+                "KEYCLOAK_PUBLIC_URL", "https://iam-keycloak-2bc632-14-225-206-18.sslip.io"
+            ),
             realm=os.getenv("KEYCLOAK_REALM", "atria"),
             backend_client_id=os.getenv("KEYCLOAK_BACKEND_CLIENT_ID", "atria-backend"),
             backend_client_secret=secret,

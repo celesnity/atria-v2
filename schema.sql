@@ -3,8 +3,6 @@
 -- atria/db/models.py via Base.metadata.create_all(). This file is kept as a
 -- human-readable reference for the column layout and may drift over time.
 
-CREATE DATABASE keycloak;
-
 DROP TABLE IF EXISTS "artifacts";
 DROP TABLE IF EXISTS "messages";
 DROP TABLE IF EXISTS "conversations";
