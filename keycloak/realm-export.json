@@ -77,7 +77,7 @@
       "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": false,
       "standardFlowEnabled": false,
-      "secret": "CHANGE-ME-IN-ENV",
+      "secret": "${ATRIA_MODULE_CLIENT_SECRET}",
       "attributes": {}
     }
   ],
