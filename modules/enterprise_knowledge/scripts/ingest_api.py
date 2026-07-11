@@ -29,7 +29,10 @@ def _build_store() -> IndexStore:
     from config import load_config  # type: ignore[import-not-found]
     from client import RoleClient  # type: ignore[import-not-found]
 
-    q = QdrantClient(url=os.environ.get("EK_QDRANT_URL", "http://localhost:6333"))
+    q = QdrantClient(
+        url=os.environ.get("EK_QDRANT_URL", "http://localhost:6333"),
+        api_key=os.environ.get("EK_QDRANT_API_KEY") or None,
+    )
     rc = RoleClient(load_config())
     store = IndexStore(q, lambda texts: rc.embed("index_embed", texts))
     store.ensure_collection(dim=int(os.environ.get("EK_EMBED_DIM", str(EMBED_DIM))))
