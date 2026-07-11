@@ -114,3 +114,14 @@ services:
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}"
         printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${ATRIA_MODEL}" "$${ATRIA_API_BASE_URL}" "$${ATRIA_MAX_TOKENS:-4096}" "$${ATRIA_MAX_CONTEXT_TOKENS:-24000}" > /home/atria/.atria/settings.json
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
+
+  # module_template full-stack services — reach in-compose db/redis/minio/atria/
+  # keycloak only; host.docker.internal added for parity so the module can
+  # optionally point at a host service (e.g. LM Studio) with no other change.
+  module-template-web:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  module-template-worker:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
