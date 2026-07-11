@@ -35,7 +35,11 @@ from _data import fold, load_abbreviations, normalize_query
 # search_db is only imported lazily from inside search.py's cmd_* wrappers
 # (or standalone), so this import is not circular.
 from search import (
+    _apply_need_filter,
     _apply_scope,
+    _attach_needs,
+    _validation_block,
+    _attr_frac,
     _brand_hit,
     _category_index,
     _confidence,
@@ -43,9 +47,12 @@ from search import (
     _detect_category,
     _geo_contract,
     _location_score,
+    _match_reasons,
+    _needs_summary,
     _now_minutes,
     _parse_with_flags,
     _poi_keys,
+    _popularity_bonus,
     _public,
     _score_text,
     _strip_noise,
@@ -215,6 +222,7 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None,
     )
     brands = parsed["brands"]
     brand_remainder = parsed["remainder"]
+    qattr = set(parsed.get("attr_tokens") or [])  # amenity ranking signal (parity w/ json)
 
     qvec = _embed_query(conn, query)
     rows = _poi_signal_rows(conn, norm, raw_q, qvec)
@@ -250,7 +258,9 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None,
         if cat_key and p["category"] == cat_key:
             loc = _location_score(remainder, p)
             rem_name = _score_text(remainder, keys) if remainder else 0
-            cat_s = 55 + 35 * max(loc, rem_name / 100)
+            # amenity match lifts an in-category POI the same way it does in the
+            # json engine, so attribute-rich Track-2 rows outrank bare legacy ones.
+            cat_s = 55 + 35 * max(loc, rem_name / 100, _attr_frac(qattr, p))
             s = max(name_s, cat_s)
             branch = "category_match"
         elif cat_key:
@@ -270,7 +280,7 @@ def _search_pipeline(conn, query: str, city: str | None, category: str | None,
             {
                 "poi": p,
                 "score": s,
-                "sort_key": s + (p["rating"] or 0) / 100,
+                "sort_key": s + _popularity_bonus(p),
                 "kept": s > _db.SCORE_THRESHOLD,
                 "signals": {**signals, "trgm": row["trgm"], "legacy": legacy, "loc": loc},
                 "fused": fused,
@@ -302,9 +312,18 @@ def cmd_search_db(args) -> dict:
     # in-street results when any exist, else disclose via place_scope.
     scored = [(d["sort_key"], d["poi"]) for d in pipe["kept"]]
     scored, scope_note = _apply_scope(scored, pipe["norm"])
+    # Graceful hard-need filter (mirror of the json engine).
+    needs = parsed.get("needs") or {}
+    scored, needs_relaxed = _apply_need_filter(scored, needs)
     top = scored[: args.limit]
     intent_label = query_intent.competition_intent(parsed)
-    results = [_public(p, score=s) for s, p in top]
+    qattr = set(parsed.get("attr_tokens") or [])
+    results = [
+        _attach_needs(
+            _public(p, score=s, reasons=_match_reasons(p, qattr, args.query, terms, max_ngram)),
+            p, needs)
+        for s, p in top
+    ]
     return {
         "query": args.query,
         "normalized_query": pipe["norm"],
@@ -315,6 +334,10 @@ def cmd_search_db(args) -> dict:
         "place_scope": scope_note,
         "geo_contract": _geo_contract(pipe["city"], scope_note, None, results),
         "entities": parsed["entities"],
+        "needs": _needs_summary(needs, needs_relaxed),
+        "validation": _validation_block(results, intent_label,
+                                        _geo_contract(pipe["city"], scope_note, None, results),
+                                        needs_relaxed),
         "confidence_score": _confidence(intent_label, results, None),
         "results": results,
         "count": len(top),
