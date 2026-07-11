@@ -30,10 +30,23 @@ services:
       db:
         condition: service_healthy
 
+  # Single public entry point (see nginx/nginx.conf). Only nginx publishes a
+  # host port; it reverse-proxies UI + /api + /ws to `atria`.
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - atria
+
   atria:
     build: .
-    ports:
-      - "8080:8080"
+    # Internal-only — reached through nginx (single exposed port).
+    expose:
+      - "8080"
     environment:
       - ATRIA_ASR_BASE_URL=http://asr:9000/v1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -43,14 +56,14 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_QDRANT_URL=http://qdrant:6333
+      # - MC_NEO4J_URI=bolt://neo4j:7687
+      # - MC_NEO4J_USER=neo4j
+      # - MC_NEO4J_PASSWORD=atria-neo4j
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -91,19 +104,19 @@ services:
       retries: 10
 
   # CPU speech-to-text sidecar (see docker-compose.yml for details).
-  asr:
-    build: ./services/asr
-    ports:
-      - "9000:9000"
-    volumes:
-      - asr_models:/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
+  # asr:
+  #   build: ./services/asr
+  #   ports:
+  #     - "9000:9000"
+  #   volumes:
+  #     - asr_models:/models
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
 
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool).
   atria-worker:
@@ -116,14 +129,14 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_QDRANT_URL=http://qdrant:6333
+      # - MC_NEO4J_URI=bolt://neo4j:7687
+      # - MC_NEO4J_USER=neo4j
+      # - MC_NEO4J_PASSWORD=atria-neo4j
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -152,15 +165,15 @@ services:
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
   # this local embedder explicitly with `--profile embed-tei` when wanted. Note
   # cpu-1.9 has no arm64 image, so on Apple Silicon it runs under emulation.
-  tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
-    profiles: ["embed-tei"]
-    ports:
-      - "8082:80"
-    volumes:
-      - tei_data:/data
-    restart: unless-stopped
+  # tei:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+  #   command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
+  #   profiles: ["embed-tei"]
+  #   ports:
+  #     - "8082:80"
+  #   volumes:
+  #     - tei_data:/data
+  #   restart: unless-stopped
 
   qdrant:
     image: qdrant/qdrant:latest
