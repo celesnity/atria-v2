@@ -68,6 +68,7 @@ services:
 
   atria:
     build: .
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
@@ -210,6 +211,10 @@ services:
       - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/atria/protocol/openid-connect/token
       - ATRIA_MODULE_CLIENT_ID=atria-module
       - ATRIA_MODULE_CLIENT_SECRET=${ATRIA_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      # Atria's connector registry is in-memory and cleared on every Atria restart.
+      # A short heartbeat re-registers this live module quickly (<=10s) rather than
+      # leaving the dashboard's health poll 400ing for up to the 30s default.
+      - ATRIA_MODULE_HEARTBEAT_SEC=10
     depends_on:
       db:
         condition: service_healthy
