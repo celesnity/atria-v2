@@ -105,14 +105,14 @@ services:
       - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_QDRANT_URL=http://qdrant:6333
+      # - MC_NEO4J_URI=bolt://neo4j:7687
+      # - MC_NEO4J_USER=neo4j
+      # - MC_NEO4J_PASSWORD=atria-neo4j
       # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
       # synthesis; Qdrant on the compose network (override models in .env).
       - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
@@ -177,50 +177,50 @@ services:
   # needed (push-to-talk latency ~2-6s per short clip). Swap ATRIA_ASR_BASE_URL
   # to a managed/GPU endpoint to replace it with zero code change. Not gated by a
   # profile, so it starts with the normal `docker compose up`.
-  asr:
-    build: ./services/asr
-    ports:
-      - "9000:9000"
-    volumes:
-      - asr_models:/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
+  # asr:
+  #   build: ./services/asr
+  #   ports:
+  #     - "9000:9000"
+  #   volumes:
+  #     - asr_models:/models
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
 
-  maintenance-copilot:
-    build:
-      context: ./modules/maintenance_copilot
-      dockerfile: backend/Dockerfile
-    ports:
-      - "9200:9200"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
-      - MC_PUBLIC_BASE=http://localhost:9200
-      - MC_AUDIT_LOG=/app/data/audit.log.jsonl
-    volumes:
-      - mc_audit:/app/data
-    depends_on:
-      - qdrant
-      - neo4j
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
+  # maintenance-copilot:
+  #   build:
+  #     context: ./modules/maintenance_copilot
+  #     dockerfile: backend/Dockerfile
+  #   ports:
+  #     - "9200:9200"
+  #   environment:
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
+  #     - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+  #     - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+  #     - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+  #     - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+  #     - MC_QDRANT_URL=http://qdrant:6333
+  #     - MC_NEO4J_URI=bolt://neo4j:7687
+  #     - MC_NEO4J_USER=neo4j
+  #     - MC_NEO4J_PASSWORD=atria-neo4j
+  #     - MC_PUBLIC_BASE=http://localhost:9200
+  #     - MC_AUDIT_LOG=/app/data/audit.log.jsonl
+  #   volumes:
+  #     - mc_audit:/app/data
+  #   depends_on:
+  #     - qdrant
+  #     - neo4j
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: unless-stopped
 
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
   # divide + parallel). Shares modules + ~/.atria with the web service so
@@ -339,15 +339,15 @@ services:
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
   # this local embedder explicitly with `--profile embed-tei` when wanted. Note
   # cpu-1.9 has no arm64 image, so on Apple Silicon it runs under emulation.
-  tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
-    profiles: ["embed-tei"]
-    ports:
-      - "8083:80"
-    volumes:
-      - tei_data:/data
-    restart: unless-stopped
+  # tei:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+  #   command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
+  #   profiles: ["embed-tei"]
+  #   ports:
+  #     - "8083:80"
+  #   volumes:
+  #     - tei_data:/data
+  #   restart: unless-stopped
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -370,23 +370,23 @@ services:
 
   # GPU-dependent. On a no-GPU host, do NOT start this service; instead point
   # MC_SYNTHESIS_BASE_URL / MC_KG_EXTRACT_BASE_URL at an external endpoint.
-  copilot-llm:
-    image: vllm/vllm-openai:latest
-    command: ["--model", "Qwen/Qwen2.5-1.5B-Instruct", "--port", "8000"]
-    ports:
-      - "8000:8000"
-    volumes:
-      - hf_cache:/root/.cache/huggingface
-    restart: unless-stopped
-    profiles: ["gpu"]
+  # copilot-llm:
+  #   image: vllm/vllm-openai:latest
+  #   command: ["--model", "Qwen/Qwen2.5-1.5B-Instruct", "--port", "8000"]
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - hf_cache:/root/.cache/huggingface
+  #   restart: unless-stopped
+  #   profiles: ["gpu"]
 
 volumes:
   atria_data:
   postgres_data:
   map_postgres_data:
-  tei_data:
+  # tei_data:
   qdrant_data:
   neo4j_data:
-  hf_cache:
-  asr_models:
-  mc_audit:
+  # hf_cache:
+  # asr_models:
+  # mc_audit:
