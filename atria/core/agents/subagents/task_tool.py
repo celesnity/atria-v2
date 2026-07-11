@@ -20,6 +20,13 @@ write their answers to a response board; you collect them with
 - You need information, analysis, or a focused change and are not sure which helper
   is best suited — describe WHAT you need and let helpers self-select.
 
+## When NOT to Use
+- To use a specific capability that is already a tool you can call — a module tool
+  (e.g. starting a job, querying a module), a file edit, a command — CALL THAT TOOL
+  DIRECTLY. Do NOT broadcast a request describing how to do it by hand. request_help
+  is for open-ended work that benefits from a helper's own reasoning, never for
+  invoking a tool you already have.
+
 ## Available Helpers (they decide, not you)
 {subagent_descriptions}
 
