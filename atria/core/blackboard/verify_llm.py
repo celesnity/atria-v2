@@ -60,14 +60,20 @@ def build_verify_llm(config: Any) -> Callable[[str, str], str] | None:
 
             client = OpenAI(api_key=api_key, base_url=base_url)
             client_box["client"] = client
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=0,
-        )
+        msgs = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        # Some models (notably the gpt-5 reasoning family) reject any temperature
+        # other than the default and 400 on ``temperature=0``. Try the deterministic
+        # call first, then retry once without the knob so verification/bidding still
+        # works on those models instead of failing every bid with "bid error".
+        try:
+            resp = client.chat.completions.create(model=model, messages=msgs, temperature=0)
+        except Exception as exc:  # noqa: BLE001 — only swallow the temperature rejection
+            if "temperature" not in str(exc).lower():
+                raise
+            resp = client.chat.completions.create(model=model, messages=msgs)
         return (resp.choices[0].message.content or "").strip()
 
     return llm_chat

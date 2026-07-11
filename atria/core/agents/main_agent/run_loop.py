@@ -26,6 +26,37 @@ PARALLELIZABLE_TOOLS = frozenset(
 )
 
 
+def seal_unanswered_tool_calls(messages: list, tool_calls: list) -> int:
+    """Append a synthetic tool result for any ``tool_calls`` id lacking one.
+
+    Every ``tool_calls`` entry in an assistant message must be followed by a tool
+    message answering its ``tool_call_id`` before the next model call. A break or
+    continue in the tool loop (a rejected ``task_complete``, a deferred completion)
+    can leave one unanswered, which OpenAI rejects with a 400 on the next request —
+    bricking the session in an unrecoverable error loop. This closes that gap.
+
+    Args:
+        messages: The running message history (mutated in place).
+        tool_calls: The tool_calls from the current assistant turn.
+
+    Returns:
+        The number of synthetic tool results appended.
+    """
+    answered = {m.get("tool_call_id") for m in messages if m.get("role") == "tool"}
+    sealed = 0
+    for tc in tool_calls:
+        if tc["id"] not in answered:
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": f"[no result recorded for {tc['function']['name']}]",
+                }
+            )
+            sealed += 1
+    return sealed
+
+
 class RunLoopMixin:
     """Mixin for the main agent run loop."""
 
@@ -632,6 +663,10 @@ class RunLoopMixin:
                             "content": tool_result,
                         }
                     )
+
+                # Safety net: every tool_call in this assistant turn MUST have a
+                # matching tool result before the next model call (see the helper).
+                seal_unanswered_tool_calls(messages, tool_calls)
         finally:
             self._final_drain_injection_queue()
             # Reset any "doing" todos back to "todo" when the run ends abnormally
