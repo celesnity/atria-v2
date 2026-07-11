@@ -20,12 +20,26 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 
 export default function JobsPanel({ apiBase }: { apiBase: string }) {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [starting, setStarting] = useState(false);
 
   const fetchJobs = () => {
     fetch(`${apiBase}/connector/jobs`)
       .then((r) => r.json())
       .then((d) => setJobs(d.jobs || []))
       .catch(() => {});
+  };
+
+  const startJob = () => {
+    setStarting(true);
+    fetch(`${apiBase}/connector/jobs/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ steps: 5 }),
+    })
+      .then((r) => r.json())
+      .then(() => fetchJobs())
+      .catch(() => {})
+      .finally(() => setStarting(false));
   };
 
   useEffect(() => {
@@ -41,23 +55,25 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
         <motion.button
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
-          onClick={fetchJobs}
+          onClick={startJob}
+          disabled={starting}
           style={{
             display: "flex", alignItems: "center", gap: 6, background: "#6366f1",
             border: "none", borderRadius: 8, padding: "7px 14px", color: "#fff",
-            fontSize: 13, cursor: "pointer", fontWeight: 500,
+            fontSize: 13, cursor: starting ? "wait" : "pointer", fontWeight: 500,
+            opacity: starting ? 0.7 : 1,
           }}
-          title="Start jobs from chat via template_start_job"
+          title="Start a demo background job (5 steps) via the worker"
         >
-          <Play size={14} />
-          Start via chat
+          {starting ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
+          {starting ? "Starting…" : "Start job"}
         </motion.button>
       </div>
 
       <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
 
       {jobs.length === 0 ? (
-        <div style={{ color: "#94a3b8", textAlign: "center", padding: "40px 0", fontSize: 14 }}>No jobs yet — start one from chat</div>
+        <div style={{ color: "#94a3b8", textAlign: "center", padding: "40px 0", fontSize: 14 }}>No jobs yet — click “Start job”, or ask the agent in chat</div>
       ) : (
         <motion.div
           variants={variants.listContainer}

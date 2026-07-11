@@ -275,6 +275,24 @@ def route_jobs():
         }
 
 
+@conn.route("/jobs/start", methods=["POST"])
+def route_jobs_start(body):
+    """Start a demo Celery job from the dashboard (no chat session).
+
+    Mirrors the ``template_start_job`` tool so the Jobs panel button can enqueue
+    work directly. There is no conversation to reverse-push into, so the live block
+    is skipped; the panel reflects progress by polling ``GET /jobs``.
+    """
+    steps = max(1, min(int((body or {}).get("steps", 3)), 20))
+    with db.db_session() as s:
+        job = db.MtJob(kind="demo", status="queued", pct=0)
+        s.add(job)
+        s.flush()
+        job_id = job.id
+    tasks.run_job.delay(job_id, None, steps)
+    return {"job_id": job_id, "steps": steps, "status": "queued"}
+
+
 @conn.route("/media", methods=["GET"])
 def route_media():
     with db.db_session() as s:
