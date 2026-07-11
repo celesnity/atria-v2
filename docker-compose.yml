@@ -250,14 +250,14 @@ services:
       - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
       - ATRIA_REDIS_URL=redis://redis:6379/0
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_QDRANT_URL=http://qdrant:6333
+      # - MC_NEO4J_URI=bolt://neo4j:7687
+      # - MC_NEO4J_USER=neo4j
+      # - MC_NEO4J_PASSWORD=atria-neo4j
       # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
       # synthesis; Qdrant on the compose network (override models in .env).
       - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
