@@ -1,19 +1,6 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=atria
-      - POSTGRES_USER=atria
-      - POSTGRES_PASSWORD=atria
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atria -d atria"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # Core app Postgres is external (remote) — set DATABASE_URL. No in-compose
+  # `db` service.
 
   adminer:
     image: adminer:latest
@@ -21,14 +8,10 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - ADMINER_DEFAULT_SERVER=db
-      - ADMINER_DEFAULT_DB=atria
-      - ADMINER_DEFAULT_USERNAME=atria
-      - ADMINER_DEFAULT_PASSWORD=atria
+      - ADMINER_DEFAULT_SERVER=14.225.206.18
+      - ADMINER_DEFAULT_DB=atriadb
+      - ADMINER_DEFAULT_USERNAME=postgres
       - ADMINER_DESIGN=pepa-linha
-    depends_on:
-      db:
-        condition: service_healthy
 
   # Single public entry point (see nginx/nginx.conf). Only nginx publishes a
   # host port; it reverse-proxies UI + /api + /ws to `atria`.
@@ -53,8 +36,8 @@ services:
       - SERPER_API_KEY=${SERPER_API_KEY}
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
+      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
       # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
       # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
@@ -87,21 +70,9 @@ services:
           --reload-delay 0.25
           --log-level info
       "
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+  # Redis is external (remote) — set ATRIA_REDIS_URL (default points at the
+  # remote host). No in-compose redis service.
 
   # CPU speech-to-text sidecar (see docker-compose.yml for details).
   # asr:
@@ -126,8 +97,8 @@ services:
       - SERPER_API_KEY=${SERPER_API_KEY}
       - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
       - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
+      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
       # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
       # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
@@ -155,11 +126,6 @@ services:
           "$${ATRIA_API_BASE_URL}"
           > /home/atria/.atria/settings.json &&
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   # Opt-in only (profile "embed-tei"). Embeddings default to an external
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
@@ -175,13 +141,8 @@ services:
   #     - tei_data:/data
   #   restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
+  # Qdrant is external (remote) — set EK_QDRANT_URL / MC_QDRANT_URL. No
+  # in-compose qdrant service.
 
   neo4j:
     image: neo4j:5
@@ -208,9 +169,7 @@ services:
 
 volumes:
   atria_data:
-  postgres_data:
   tei_data:
-  qdrant_data:
   neo4j_data:
   hf_cache:
   asr_models:

@@ -15,7 +15,8 @@ class DenseIndex:
     def __init__(self, collection: str, url: str | None = None) -> None:
         self.collection = collection
         self._client = QdrantClient(
-            url=url or os.environ.get("QDRANT_URL", "http://localhost:6333")
+            url=url or os.environ.get("QDRANT_URL", "http://localhost:6333"),
+            api_key=os.environ.get("QDRANT_API_KEY") or None,
         )
 
     def ensure(self, dim: int) -> None:

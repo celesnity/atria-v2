@@ -59,7 +59,10 @@ def _build_store(embed_fn: Callable | None = None, qdrant: object | None = None)
     from qdrant_client import QdrantClient
 
     if qdrant is None:
-        qdrant = QdrantClient(url=_env("EK_QDRANT_URL", "http://localhost:6333"))
+        qdrant = QdrantClient(
+            url=_env("EK_QDRANT_URL", "http://localhost:6333"),
+            api_key=_env("EK_QDRANT_API_KEY", "") or None,
+        )
     if embed_fn is None:
         rc = RoleClient(load_config())
         embed_fn = lambda texts: rc.embed("index_embed", texts)  # noqa: E731
@@ -139,7 +142,10 @@ def _cmd_health() -> int:
     def qdrant_probe() -> None:
         from qdrant_client import QdrantClient
 
-        QdrantClient(url=_env("EK_QDRANT_URL", "http://localhost:6333")).get_collections()
+        QdrantClient(
+            url=_env("EK_QDRANT_URL", "http://localhost:6333"),
+            api_key=_env("EK_QDRANT_API_KEY", "") or None,
+        ).get_collections()
 
     probe("qdrant", qdrant_probe)
 

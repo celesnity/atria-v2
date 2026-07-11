@@ -1,19 +1,7 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=atria
-      - POSTGRES_USER=atria
-      - POSTGRES_PASSWORD=atria
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atria -d atria"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # Core app Postgres is external (remote) — set DATABASE_URL (default points at
+  # the remote atriadb). No in-compose `db` service; schema is created from ORM
+  # models at startup (Base.metadata.create_all).
 
   # Dedicated PostGIS + pgvector Postgres for the tasco_jarvis_map module
   # (GeoRAG hybrid retrieval). Separate from the core `db` so the app database
@@ -41,14 +29,10 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - ADMINER_DEFAULT_SERVER=db
-      - ADMINER_DEFAULT_DB=atria
-      - ADMINER_DEFAULT_USERNAME=atria
-      - ADMINER_DEFAULT_PASSWORD=atria
+      - ADMINER_DEFAULT_SERVER=14.225.206.18
+      - ADMINER_DEFAULT_DB=atriadb
+      - ADMINER_DEFAULT_USERNAME=postgres
       - ADMINER_DESIGN=pepa-linha
-    depends_on:
-      db:
-        condition: service_healthy
 
   # Single public entry point. nginx is the only service that publishes a host
   # port; it reverse-proxies the whole app (UI + /api + /ws) to `atria`. Change
@@ -87,10 +71,10 @@ services:
       - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
       - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
       - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
       - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
       - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
+      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
       # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
       # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
@@ -107,7 +91,10 @@ services:
       - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
       - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
       - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
-      - EK_QDRANT_URL=http://qdrant:6333
+      - EK_QDRANT_URL=${EK_QDRANT_URL:-http://14.225.206.18:6333}
+      - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
+      - QDRANT_URL=${QDRANT_URL:-http://14.225.206.18:6333}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
       # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
       - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
       - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
@@ -139,26 +126,10 @@ services:
       - atria_data:/home/atria/.atria
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
-  # Loopback-published so a HOST-run backend (uvicorn on the host, not in-compose)
-  # can reach it at localhost:6379 — the map module's per-turn session cache
-  # (session_context.py) needs this. In-compose services still use redis:6379.
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+  # Redis is external (remote) — set ATRIA_REDIS_URL (default points at the
+  # remote host). No in-compose redis service; it backs the TaskIQ broker, job
+  # state, blackboard, and message bus.
 
   # CPU speech-to-text sidecar — nvidia/nemotron-3.5-asr-streaming-0.6b via HF
   # transformers, exposing an OpenAI-compatible /v1/audio/transcriptions. No GPU
@@ -179,36 +150,6 @@ services:
   #     start_period: 60s
   #   restart: unless-stopped
 
-  # maintenance-copilot:
-  #   build:
-  #     context: ./modules/maintenance_copilot
-  #     dockerfile: backend/Dockerfile
-  #   ports:
-  #     - "9200:9200"
-  #   environment:
-  #     - OPENAI_API_KEY=${OPENAI_API_KEY}
-  #     - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-  #     - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-  #     - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-  #     - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-  #     - MC_QDRANT_URL=http://qdrant:6333
-  #     - MC_NEO4J_URI=bolt://neo4j:7687
-  #     - MC_NEO4J_USER=neo4j
-  #     - MC_NEO4J_PASSWORD=atria-neo4j
-  #     - MC_PUBLIC_BASE=http://localhost:9200
-  #     - MC_AUDIT_LOG=/app/data/audit.log.jsonl
-  #   volumes:
-  #     - mc_audit:/app/data
-  #   depends_on:
-  #     - qdrant
-  #     - neo4j
-  #   healthcheck:
-  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9200/connector/health')"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 30s
-  #   restart: unless-stopped
 
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
   # divide + parallel). Shares modules + ~/.atria with the web service so
@@ -233,19 +174,11 @@ services:
       - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
       - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
       - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
       - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
       - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
+      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
       - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_QDRANT_URL=http://qdrant:6333
-      # - MC_NEO4J_URI=bolt://neo4j:7687
-      # - MC_NEO4J_USER=neo4j
-      # - MC_NEO4J_PASSWORD=atria-neo4j
       # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
       # synthesis; Qdrant on the compose network (override models in .env).
       - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
@@ -253,7 +186,10 @@ services:
       - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
       - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
       - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
-      - EK_QDRANT_URL=http://qdrant:6333
+      - EK_QDRANT_URL=${EK_QDRANT_URL:-http://14.225.206.18:6333}
+      - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
+      - QDRANT_URL=${QDRANT_URL:-http://14.225.206.18:6333}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
       # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
       - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
       - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
@@ -284,11 +220,6 @@ services:
           "$${ATRIA_API_BASE_URL}"
           > /home/atria/.atria/settings.json &&
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
   # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
@@ -337,13 +268,8 @@ services:
   #     - tei_data:/data
   #   restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
+  # Qdrant is external (remote) — set EK_QDRANT_URL / MC_QDRANT_URL. No
+  # in-compose qdrant service.
 
   neo4j:
     image: neo4j:5
@@ -370,10 +296,8 @@ services:
 
 volumes:
   atria_data:
-  postgres_data:
   map_postgres_data:
   # tei_data:
-  qdrant_data:
   neo4j_data:
   # hf_cache:
   # asr_models:
