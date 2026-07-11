@@ -33,8 +33,16 @@ _ALLOWED_PREFIX = "connector/"
 
 
 def _connector_for(name: str) -> RemoteConnector:
+    reg = get_registry()
+    # Prefer a runtime-registered connector record (self-registration path). A
+    # module that announced via POST /api/modules/register lives in the connector
+    # store even when its on-disk guidance manifest has no static ``service`` block.
+    rec = reg.connector(name)
+    if rec is not None:
+        return RemoteConnector(name, rec.connector_url)
+    # Fall back to a statically-configured ``service`` block in the guidance manifest.
     try:
-        module = get_registry().get(name)
+        module = reg.get(name)
     except KeyError as exc:
         raise HTTPException(404, f"module {name!r} not loaded") from exc
     svc = module.manifest.service if module.manifest else None

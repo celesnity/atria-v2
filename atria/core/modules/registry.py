@@ -209,6 +209,16 @@ class ModuleRegistry:
         if over_limit:
             self.mark_connector_down(name)
 
+    def connector(self, name: str) -> Optional[ConnectorRecord]:
+        """Return the runtime connector record for ``name`` (or ``None``).
+
+        This is the self-registration store, distinct from the on-disk guidance
+        ``Module`` (``get``). A module that announced at runtime lives here even
+        when its static ``manifest.service`` block is absent.
+        """
+        with self._lock:
+            return self._connectors.get(name)
+
     def connector_records(self) -> List[ConnectorRecord]:
         with self._lock:
             return [self._connectors[n] for n in sorted(self._connectors)]
