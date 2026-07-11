@@ -39,7 +39,11 @@ services:
       - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
       - KC_DB_USERNAME=atria
       - KC_DB_PASSWORD=atria
-      - KC_HOSTNAME=localhost
+      # Full URL fixes the token issuer to http://localhost:8082/realms/atria for
+      # ALL clients (browser AND in-compose backchannel), so it matches what Atria
+      # validates (KEYCLOAK_PUBLIC_URL). Without a fixed hostname, a token fetched
+      # via keycloak:8080 gets issuer localhost:8080 → issuer-mismatch 401.
+      - KC_HOSTNAME=http://localhost:8082
       - KC_HTTP_ENABLED=true
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
