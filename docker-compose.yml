@@ -43,6 +43,10 @@ services:
       - KC_HTTP_ENABLED=true
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Substituted into realm-export.json's atria-module client secret at
+      # --import-realm (Keycloak replaces ${VAR} via System.getenv by default).
+      # Must match ATRIA_MODULE_CLIENT_SECRET on module-template-web/worker.
+      - ATRIA_MODULE_CLIENT_SECRET=${ATRIA_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
     ports:
       - "8082:8080"
     volumes:
