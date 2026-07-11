@@ -1,76 +1,16 @@
-# Local dev override (untracked). Three purposes:
+# Local dev override (untracked). Purposes:
 #
-# 1. Run the TEI embeddings image under x86 emulation on Apple Silicon (arm64),
-#    since cpu-1.9 ships no arm64 manifest. Kept for fallback; not used while
-#    embeddings are pointed at LM Studio below.
-#
-# 2. Point the maintenance_copilot embedding + chat roles at the host's LM Studio
-#    server (OpenAI-compatible, :1234) instead of the emulated TEI / the
-#    GPU-only copilot-llm sidecar. host.docker.internal reaches the host from
-#    inside the containers (both already declare it via extra_hosts). Models +
-#    token come from .env. qwen3-embedding-0.6b-dwq is MLX and LM Studio won't
-#    serve it as embeddings, so we use the GGUF nomic-embed model, which works.
-#
-# 3. Bake the deployed model's token budget into settings.json via the
+# 1. Bake the deployed model's token budget into settings.json via the
 #    entrypoint. ATRIA_MODEL (Qwen3.5-35B-A3B-FP8) has a 30000-token window and
 #    is NOT in the models.dev registry, so Atria cannot auto-derive it and
 #    defaults to max_context_tokens=100000 / max_tokens=16384 — which overflows
 #    the real window. We write the correct values (from .env) instead.
+#
+# 2. host.docker.internal parity for the module_template services, so the module
+#    can optionally point at a host service (e.g. LM Studio) with no other change.
 services:
-  tei:
-    platform: linux/amd64
-
-  # maintenance_copilot connector container. The tei/copilot-llm sidecars are
-  # GPU/profile-gated, so point embeddings + synthesis at the host's LM Studio
-  # (:1234), mirroring the atria/atria-worker override above — same embedding
-  # model (nomic, 768d) => same vector space for index + query. This container
-  # was missing extra_hosts, so add it so host.docker.internal resolves.
-  # Prereq: LM Studio running on the host with the nomic embed + a chat model.
-  maintenance-copilot:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_INDEX_EMBED_PROVIDER=lmstudio
-      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_CHUNK_EMBED_PROVIDER=lmstudio
-      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
-      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_SYNTHESIS_PROVIDER=lmstudio
-      - MC_EMBED_DIM=768
-      - MC_SYNTHESIS_JSON_MODE=prompt
-      # G1 graph-augmented retrieval: over-recall by vector, then rerank
-      # seed -> BFS over deterministic ref/hier edges -> RRF (edges.py). Set to
-      # anything else (or unset) to fall back to plain vector retrieval.
-      - MC_RETRIEVER=graph
-
   atria:
     environment:
-      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_INDEX_EMBED_PROVIDER=lmstudio
-      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_CHUNK_EMBED_PROVIDER=lmstudio
-      - MC_EMBED_DIM=768
-      # No GPU on this host, so the copilot-llm (vLLM) sidecar is not started.
-      # Point the chat roles (synthesis + kg_extract) at the host LM Studio
-      # chat model instead, mirroring the embedding override above.
-      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
-      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_SYNTHESIS_PROVIDER=lmstudio
-      - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=ternary-bonsai-1.7b-mlx
-      - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_KG_EXTRACT_PROVIDER=lmstudio
       # Real token budget for the deployed model's 30000-token window.
       - ATRIA_MAX_CONTEXT_TOKENS=${ATRIA_MAX_CONTEXT_TOKENS:-24000}
       - ATRIA_MAX_TOKENS=${ATRIA_MAX_TOKENS:-4096}
@@ -86,23 +26,6 @@ services:
 
   atria-worker:
     environment:
-      - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_INDEX_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_INDEX_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_INDEX_EMBED_PROVIDER=lmstudio
-      - MC_CHUNK_EMBED_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_CHUNK_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
-      - MC_CHUNK_EMBED_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_CHUNK_EMBED_PROVIDER=lmstudio
-      - MC_EMBED_DIM=768
-      - MC_SYNTHESIS_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_SYNTHESIS_MODEL=ternary-bonsai-1.7b-mlx
-      - MC_SYNTHESIS_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_SYNTHESIS_PROVIDER=lmstudio
-      - MC_KG_EXTRACT_BASE_URL=http://host.docker.internal:1234/v1
-      - MC_KG_EXTRACT_MODEL=ternary-bonsai-1.7b-mlx
-      - MC_KG_EXTRACT_API_KEY=${LMSTUDIO_API_KEY}
-      - MC_KG_EXTRACT_PROVIDER=lmstudio
       - ATRIA_MAX_CONTEXT_TOKENS=${ATRIA_MAX_CONTEXT_TOKENS:-24000}
       - ATRIA_MAX_TOKENS=${ATRIA_MAX_TOKENS:-4096}
     entrypoint:
@@ -116,8 +39,7 @@ services:
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
 
   # module_template full-stack services — reach in-compose db/redis/minio/atria/
-  # keycloak only; host.docker.internal added for parity so the module can
-  # optionally point at a host service (e.g. LM Studio) with no other change.
+  # keycloak only; host.docker.internal added for parity.
   module-template-web:
     extra_hosts:
       - "host.docker.internal:host-gateway"
