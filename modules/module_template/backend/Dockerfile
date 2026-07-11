@@ -19,5 +19,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY modules/module_template/backend/ /app
 COPY --from=fe /fe/dist /app/frontend_dist
 ENV PYTHONUNBUFFERED=1 MT_PUBLIC_BASE=http://localhost:9300
+# Run as a non-root user (the app writes to Postgres/S3, not the local FS).
+RUN useradd --system --create-home appuser
+USER appuser
 EXPOSE 9300
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]

@@ -7,4 +7,7 @@ COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY modules/module_template/backend/ /app
 ENV PYTHONUNBUFFERED=1
+# Run Celery as a non-root user (Celery refuses/warns under root by default).
+RUN useradd --system --create-home appuser
+USER appuser
 CMD ["celery", "-A", "tasks", "worker", "--loglevel=info"]

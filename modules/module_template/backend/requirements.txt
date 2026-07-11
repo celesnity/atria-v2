@@ -1,3 +1,6 @@
+# uvicorn runs the FastAPI connector (the SDK ships fastapi but uvicorn is an
+# optional extra, so declare it here for the web image's `uvicorn app:app` CMD).
+uvicorn[standard]>=0.29
 sqlalchemy>=2.0
 psycopg2-binary>=2.9
 boto3>=1.34
