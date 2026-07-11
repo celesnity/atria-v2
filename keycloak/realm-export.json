@@ -16,7 +16,8 @@
   "roles": {
     "realm": [
       { "name": "platform:admin", "description": "Platform super-admin" },
-      { "name": "module-register", "description": "May self-register a service-module connector" }
+      { "name": "module-register", "description": "May self-register a service-module connector" },
+      { "name": "module-push", "description": "May reverse-push blocks/artifacts into a conversation" }
     ]
   },
   "groups": [
