@@ -356,6 +356,7 @@ class AgentHttpClient:
         *,
         task_monitor: Union[Any, None] = None,
         on_content_delta: Optional[Callable[[str], None]] = None,
+        on_tool_call_start: Optional[Callable[[str, str], None]] = None,
     ) -> StreamResult:
         """Execute a streaming POST and assemble the full response from SSE.
 
@@ -408,7 +409,10 @@ class AgentHttpClient:
                             status_code=response.status_code,
                             error=f"API Error {response.status_code}: {response.text}",
                         )
-                    return self._consume_sse(response, task_monitor, on_content_delta, counter)
+                    return self._consume_sse(
+                        response, task_monitor, on_content_delta, counter,
+                        on_tool_call_start=on_tool_call_start,
+                    )
             except RETRYABLE_NETWORK_EXCEPTIONS as exc:
                 emitted = counter["emitted"]
                 if self._should_interrupt(task_monitor):
@@ -451,11 +455,13 @@ class AgentHttpClient:
         task_monitor: Any,
         on_content_delta: Optional[Callable[[str], None]],
         counter: dict[str, int],
+        on_tool_call_start: Optional[Callable[[str, str], None]] = None,
     ) -> StreamResult:
         """Read SSE lines from *response* and assemble the final body."""
         content_parts: list[str] = []
         reasoning_parts: list[str] = []
         tool_calls_acc: dict[int, dict[str, Any]] = {}
+        tool_call_started: set[int] = set()
         usage: Optional[dict] = None
         finish_reason: Optional[str] = None
         model: Optional[str] = None
@@ -516,6 +522,18 @@ class AgentHttpClient:
                     acc["function"]["name"] += fn["name"]
                 if fn.get("arguments"):
                     acc["function"]["arguments"] += fn["arguments"]
+                # Surface the tool the moment its name is known so the UI can
+                # render activity mid-stream instead of after the whole call.
+                if (
+                    idx not in tool_call_started
+                    and acc["function"]["name"]
+                    and on_tool_call_start is not None
+                ):
+                    tool_call_started.add(idx)
+                    try:
+                        on_tool_call_start(acc["function"]["name"], acc["id"])
+                    except Exception:  # UI failure must not kill the LLM call
+                        logger.exception("on_tool_call_start callback failed")
 
         message: dict[str, Any] = {
             "role": "assistant",
