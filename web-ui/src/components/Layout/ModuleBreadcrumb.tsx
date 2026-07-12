@@ -2,6 +2,8 @@ import { ChevronDown, Package } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useModulesStore } from '../../stores/modules';
+import { useModuleHealth } from '../../hooks/useModuleHealth';
+import { ModuleHealthDot } from './ModuleHealthDot';
 
 /**
  * ModuleBreadcrumb — top-bar module picker. Shows the active module and opens
@@ -12,9 +14,18 @@ export function ModuleBreadcrumb() {
   const modules = useModulesStore((s) => s.modulesWithDashboards);
   const activeName = useModulesStore((s) => s.activeModuleDashboard);
   const openDashboard = useModulesStore((s) => s.openDashboard);
+  const refresh = useModulesStore((s) => s.refresh);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+  // Connector health per service module, polled on mount + every ~30s.
+  const moduleHealth = useModuleHealth();
+
+  // Populate the module list on startup. This used to live in the sidebar
+  // Modules list; the breadcrumb is now the sole owner of that responsibility.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,6 +94,7 @@ export function ModuleBreadcrumb() {
                       <span className="block truncate text-[11px] text-ink/45">{m.tooltip}</span>
                     )}
                   </span>
+                  <ModuleHealthDot status={moduleHealth[m.name]} />
                 </button>
               );
             })}
