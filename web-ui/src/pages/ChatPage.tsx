@@ -14,6 +14,7 @@ import { MobileTabBar, type MobilePanel } from '../components/Layout/MobileTabBa
 import { useChatStore } from '../stores/chat';
 import { useViewerTabsStore } from '../stores/viewerTabs';
 import { useModulesStore } from '../stores/modules';
+import { useProjectsStore } from '../stores/projects';
 import { ModuleDashboardView } from '../components/ModuleDashboard/ModuleDashboardView';
 
 export function ChatPage() {
@@ -25,9 +26,24 @@ export function ChatPage() {
   const activeModuleDashboard = useModulesStore(s => s.activeModuleDashboard);
   const modulesWithDashboards = useModulesStore(s => s.modulesWithDashboards);
   const openDashboard = useModulesStore(s => s.openDashboard);
+  const createWorkspaceConversation = useProjectsStore(s => s.createWorkspaceConversation);
 
   const openStatusDialog = useCallback(() => setStatusDialogOpen(true), []);
   const closeStatusDialog = useCallback(() => setStatusDialogOpen(false), []);
+
+  // Selecting a module from an empty (no-conversation) screen also starts a
+  // chat, so the layout transitions from the full-width landing straight into
+  // the split view (chat in the rail + the selected module in the center). The
+  // ref guards against duplicate creates while the async create is in flight.
+  const startingChatForModule = useRef(false);
+  useEffect(() => {
+    if (activeModuleDashboard && !currentSessionId && !startingChatForModule.current) {
+      startingChatForModule.current = true;
+      Promise.resolve(createWorkspaceConversation('New Chat')).finally(() => {
+        startingChatForModule.current = false;
+      });
+    }
+  }, [activeModuleDashboard, currentSessionId, createWorkspaceConversation]);
 
   // Chat-first → module-workspace transition: when a conversation becomes active
   // (the user opened or started a chat) and no module is open yet, auto-open the
