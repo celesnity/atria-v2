@@ -87,6 +87,29 @@ def build_temperature_param(model_id: str, temperature: float) -> dict[str, floa
     return {"temperature": temperature}
 
 
+def build_reasoning_effort_param(model_id: str, effort: str) -> dict[str, str]:
+    """Build the ``reasoning_effort`` parameter for OpenAI reasoning models.
+
+    Reasoning models (gpt-5 family, o1/o3/o4) spend internal reasoning tokens
+    before emitting any output, which dominates time-to-first-token. Lowering
+    ``reasoning_effort`` (e.g. ``"minimal"``) cuts that internal reasoning and
+    makes the first token — and thus visible streaming — arrive far sooner.
+
+    Args:
+        model_id: The model ID string.
+        effort: One of ``"minimal"``, ``"low"``, ``"medium"``, ``"high"``.
+            An empty/falsey value omits the parameter (provider default).
+
+    Returns:
+        ``{"reasoning_effort": effort}`` for reasoning models, else ``{}``.
+    """
+    if not effort:
+        return {}
+    if uses_max_completion_tokens(model_id):
+        return {"reasoning_effort": effort}
+    return {}
+
+
 _DEFAULT_API_URL = "https://api.openai.com/v1/chat/completions"
 
 
