@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
 import { useArtifactsStore } from './artifacts';
+import { trimCodePoints } from '../utils/stream';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -321,6 +322,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const persona = getSessionState(get().sessionStates, sessionId).selectedPersona ?? null;
+      // Start the latency clock at send. A queued message must not restart the
+      // clock of the turn already running; its own turn gets stamped at
+      // message_start instead.
+      if (!isQueuing) {
+        turnTimingBySession.set(sessionId, { sentAt: performance.now() });
+      }
       wsClient.send({
         type: 'query',
         data: {
@@ -503,6 +510,16 @@ let wasEverStable = false;
 // message_complete. See message_chunk handler below.
 const activeTurnBySession = new Map<string, string>();
 
+// Per-session latency timing for the in-flight turn, as the user perceives it:
+// sentAt is stamped when the query leaves sendMessage (or at message_start for
+// turns this client didn't initiate), ttftMs on the first assistant text chunk,
+// serverTtftMs from the backend's own first-token stamp. The final numbers are
+// attached to the turn's assistant bubble on message_complete.
+const turnTimingBySession = new Map<
+  string,
+  { sentAt: number; ttftMs?: number; serverTtftMs?: number }
+>();
+
 wsClient.on('connected', () => {
   useChatStore.getState().setConnected(true);
   if (wasEverStable) {
@@ -549,6 +566,11 @@ wsClient.on('message_start', (message) => {
   if (!sid) return;
   // Begin a new turn: all assistant chunks until message_complete group here.
   activeTurnBySession.set(sid, String(message.data.messageId ?? sid + ':' + Date.now()));
+  // Turns not initiated by this client (queued injection, another tab) have no
+  // send stamp — measure from turn start instead.
+  if (!turnTimingBySession.has(sid)) {
+    turnTimingBySession.set(sid, { sentAt: performance.now() });
+  }
   useChatStore.setState(state => ({
     ...patchSession(state, sid, { isLoading: true }),
   }));
@@ -631,6 +653,15 @@ wsClient.on('message_chunk', (message) => {
     activeTurnBySession.set(sid, turnId);
   }
 
+  // First assistant token of the turn → time-to-first-token as perceived here.
+  const timing = turnTimingBySession.get(sid);
+  if (timing && timing.ttftMs === undefined) {
+    timing.ttftMs = performance.now() - timing.sentAt;
+    if (typeof message.data.ttft_ms === 'number') {
+      timing.serverTtftMs = message.data.ttft_ms;
+    }
+  }
+
   const buf = _chunkBuffers.get(sid);
   if (buf && buf.turnId === turnId) {
     buf.text += message.data.content;
@@ -642,6 +673,39 @@ wsClient.on('message_chunk', (message) => {
   _scheduleChunkFlush();
 });
 
+// The backend withdrew streamed assistant text (e.g. an answer it decided to
+// withhold, or cleaned/replaced content): trim the last N code points from the
+// active turn's assistant bubble. The authoritative replacement, if any,
+// arrives as a normal message_chunk right after.
+wsClient.on('message_retract', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const trim = Number(message.data.trim_chars) || 0;
+  if (trim <= 0) return;
+  // Apply pending streamed text first so the trim sees the full bubble.
+  flushStreamingChunks();
+  const turnId = activeTurnBySession.get(sid);
+  if (!turnId) return;
+  useChatStore.setState(state => ({
+    ...patchSession(state, sid, prev => {
+      const msgs = prev.messages;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        if (m.role === 'assistant' && m.turnId === turnId) {
+          return {
+            messages: [
+              ...msgs.slice(0, i),
+              { ...m, content: trimCodePoints(m.content, trim) },
+              ...msgs.slice(i + 1),
+            ],
+          };
+        }
+      }
+      return {};
+    }),
+  }));
+});
+
 wsClient.on('message_complete', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
@@ -650,9 +714,36 @@ wsClient.on('message_complete', (message) => {
   // tokens are dropped.
   flushStreamingChunks();
   // End the turn: next agent turn starts a fresh bubble.
+  const closedTurnId = activeTurnBySession.get(sid);
   activeTurnBySession.delete(sid);
+  const timing = turnTimingBySession.get(sid);
+  turnTimingBySession.delete(sid);
   useChatStore.setState(state => ({
-    ...patchSession(state, sid, { isLoading: false, queuedMessages: [] }),
+    ...patchSession(state, sid, prev => {
+      let messages = prev.messages;
+      // Attach the turn's latency metrics to its assistant bubble.
+      if (timing && closedTurnId) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const m = messages[i];
+          if (m.role === 'assistant' && m.turnId === closedTurnId) {
+            const metrics = {
+              ...(timing.ttftMs !== undefined ? { ttftMs: timing.ttftMs } : {}),
+              totalMs: performance.now() - timing.sentAt,
+              ...(timing.serverTtftMs !== undefined
+                ? { serverTtftMs: timing.serverTtftMs }
+                : {}),
+            };
+            messages = [
+              ...messages.slice(0, i),
+              { ...m, metrics },
+              ...messages.slice(i + 1),
+            ];
+            break;
+          }
+        }
+      }
+      return { messages, isLoading: false, queuedMessages: [] };
+    }),
   }));
   // Re-scan artifacts — agent may have written new files during its turn
   if (!isNaN(parseInt(sid, 10))) {

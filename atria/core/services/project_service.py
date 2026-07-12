@@ -88,7 +88,13 @@ class ProjectService:
             for row in rows
         ]
 
-    async def create_conversation(self, user: User, project_id: int, name: str) -> dict:
+    async def create_conversation(
+        self,
+        user: User,
+        project_id: int,
+        name: str,
+        metadata: dict | None = None,
+    ) -> dict:
         name = name.strip()
         if not name:
             raise ServiceError.invalid("Conversation name cannot be empty")
@@ -107,6 +113,7 @@ class ProjectService:
             owner_id=str(user.id),
             project_id=project_id,
             user_id=user.id,
+            metadata=metadata,
         )
         await self._sessions.set_title(session.id, name)
         await self._sessions.save_session(force=True)

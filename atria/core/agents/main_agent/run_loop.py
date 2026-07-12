@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from atria.core.agents.components.api import (
     build_max_tokens_param,
+    build_reasoning_param,
     build_temperature_param,
 )
 from atria.core.agents.prompts import get_reminder
@@ -296,6 +297,9 @@ class RunLoopMixin:
                     "tool_choice": "auto",
                     **build_temperature_param(model_id, self.config.temperature),
                     **build_max_tokens_param(model_id, self.config.max_tokens),
+                    **build_reasoning_param(
+                        model_id, getattr(self.config, "reasoning_effort", None)
+                    ),
                 }
 
                 if getattr(self.config, "prompt_cache_key_enabled", False):

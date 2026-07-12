@@ -22,6 +22,29 @@ class CreateSessionRequest(BaseModel):
     """Request model for creating a new session."""
 
     workspace: str
+    metadata: Dict[str, Any] | None = None
+
+
+_GARAGE_REQUIRED_FIELDS = ("ro_number", "vin", "brand")
+
+
+def validate_garage_metadata(metadata: Dict[str, Any] | None) -> str | None:
+    """Return an error message if garage session metadata is incomplete.
+
+    A session declaring ``session_type: garage`` must be anchored to a Repair
+    Order: ``ro_number``, ``vin`` and ``brand`` are mandatory and non-blank
+    (design D3 layer 1 — the workshop treats work without an RO as a serious
+    violation). Non-garage metadata is not validated here.
+    """
+    if not metadata or metadata.get("session_type") != "garage":
+        return None
+    missing = [f for f in _GARAGE_REQUIRED_FIELDS if not str(metadata.get(f) or "").strip()]
+    if missing:
+        return (
+            "A garage session requires a Repair Order anchor; "
+            f"missing or blank: {', '.join(missing)}"
+        )
+    return None
 
 
 @router.get("/bridge-info")
@@ -57,6 +80,10 @@ async def create_session(
     Raises:
         HTTPException: If creation fails
     """
+    error = validate_garage_metadata(request.metadata)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
+
     try:
         state = get_state()
         owner_id = str(user.id)
@@ -69,8 +96,11 @@ async def create_session(
         else:
             workspace_str = str(Path(raw_workspace).expanduser().resolve())
 
-        # Reuse an existing empty session for this workspace if one exists
-        existing_sessions = await state.list_sessions(owner_id=owner_id)
+        # Reuse an existing empty session for this workspace if one exists.
+        # Sessions carrying metadata (e.g. garage RO anchoring) are always
+        # created fresh — an empty session for the workspace would not carry
+        # the requested anchor.
+        existing_sessions = [] if request.metadata else await state.list_sessions(owner_id=owner_id)
         empty_session = next(
             (
                 s
@@ -113,6 +143,7 @@ async def create_session(
             owner_id=owner_id,
             user_id=user.id,
             project_id=workspace.project_id,
+            metadata=request.metadata,
         )
 
         session = await state.session_manager.get_current_session()

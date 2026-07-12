@@ -8,11 +8,13 @@ import {
   Plus,
   Settings,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useLocalStorage, useMediaQuery } from "usehooks-ts";
 import { ResizeHandle } from "../ui/ResizeHandle";
+import { GarageSessionModal } from "./GarageSessionModal";
 import { useChatStore } from "../../stores/chat";
 import { useModulesStore } from "../../stores/modules";
 import { useProjectsStore } from "../../stores/projects";
@@ -108,6 +110,7 @@ export function ProjectSidebar() {
   const refreshModules = useModulesStore((s) => s.refresh);
 
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [garageOpen, setGarageOpen] = useState(false);
   const [createConvFor, setCreateConvFor] = useState<Project | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -407,6 +410,15 @@ export function ProjectSidebar() {
           <Plus className="h-4 w-4" />
           <span className="tracking-tight">New chat</span>
         </button>
+        <button
+          onClick={() => setGarageOpen(true)}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+          title="Garage repair session — anchored to a Repair Order (vibe repairing)"
+        >
+          <Wrench className="h-4 w-4" strokeWidth={1.5} />
+          <span className="tracking-tight">Garage repair session</span>
+        </button>
+        <GarageSessionModal isOpen={garageOpen} onClose={() => setGarageOpen(false)} />
       </div>
 
       <div className="relative flex-1 space-y-1 overflow-y-auto pb-3">

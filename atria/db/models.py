@@ -92,6 +92,9 @@ class Conversation(Base):
     mode: Mapped[str] = mapped_column(String(10), nullable=False)
     status: Mapped[str] = mapped_column(String(10), nullable=False)
     working_directory: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Free-form session metadata (Session.metadata round-trip). Previously only
+    # title survived persistence; garage sessions anchor RO/VIN/brand here.
+    meta: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     project: Mapped[Optional["Project"]] = relationship(back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(back_populates="conversation")
@@ -141,9 +144,7 @@ class ChannelSession(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "channel", "channel_user_id", "thread_id", name="uq_channel_user_thread"
-        ),
+        UniqueConstraint("channel", "channel_user_id", "thread_id", name="uq_channel_user_thread"),
     )
 
 

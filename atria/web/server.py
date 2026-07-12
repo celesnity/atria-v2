@@ -33,6 +33,7 @@ from atria.web.routes import (
     modules_router,
     transcribe_router,
     maintenance_router,
+    garage_router,
     blocks_router,
     module_dashboard_router,
     connect_router,
@@ -302,6 +303,7 @@ def create_app() -> FastAPI:
     app.include_router(modules_router)
     app.include_router(transcribe_router)
     app.include_router(maintenance_router)
+    app.include_router(garage_router)
     app.include_router(blocks_router)
     app.include_router(module_dashboard_router)
     app.include_router(connect_router)

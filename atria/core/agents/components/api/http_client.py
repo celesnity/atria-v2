@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import copy
+import json
 import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import httpx
 
@@ -38,6 +39,25 @@ class HttpResult:
     error: Union[str, None] = None
     interrupted: bool = False
     retryable: bool = False
+
+
+@dataclass
+class StreamResult:
+    """Outcome of a streaming chat-completion request.
+
+    ``data`` is the assembled response body in the same shape as a
+    non-streaming Chat Completions response, so callers can parse it
+    identically. ``emitted`` counts content deltas already forwarded to the
+    caller's callback — when > 0 on failure, a retry/fallback would show the
+    user the same text twice, so callers must not re-issue the request.
+    """
+
+    success: bool
+    data: Union[dict, None] = None
+    status_code: Union[int, None] = None
+    error: Union[str, None] = None
+    interrupted: bool = False
+    emitted: int = 0
 
 
 # Import ProviderAdapter lazily to avoid circular import at module level.
@@ -329,6 +349,212 @@ class AgentHttpClient:
             return HttpResult(success=False, error=str(exc), retryable=retryable)
 
         return HttpResult(success=True, response=response_container["response"])
+
+    # ------------------------------------------------------------------
+    # Streaming (SSE) chat completions
+    # ------------------------------------------------------------------
+
+    def stream_json(
+        self,
+        payload: dict[str, Any],
+        *,
+        task_monitor: Union[Any, None] = None,
+        on_content_delta: Optional[Callable[[str], None]] = None,
+    ) -> StreamResult:
+        """Execute a streaming POST and assemble the full response from SSE.
+
+        Sets ``stream: true`` on the payload, forwards each ``delta.content``
+        string to *on_content_delta* as it arrives, and returns the assembled
+        body in non-streaming Chat Completions shape (message content,
+        tool_calls, reasoning_content, usage via ``stream_options``).
+
+        Retries (429/503/transient network) only happen before the first
+        content delta reaches the callback — after that, a retry would
+        double-emit text to the UI, so mid-stream failures are terminal.
+        """
+        payload = dict(self._normalize_image_blocks(payload))
+        payload["stream"] = True
+        payload["stream_options"] = {"include_usage": True}
+
+        token = getattr(task_monitor, "interrupt_token", None) if task_monitor else None
+        # Mutable so delta emissions inside _consume_sse stay visible here even
+        # when the stream dies mid-read — the retry guard depends on it.
+        counter = {"emitted": 0}
+
+        for attempt in range(MAX_RETRIES + 1):
+            emitted = counter["emitted"]
+            if self._should_interrupt(task_monitor):
+                return StreamResult(
+                    success=False, error="Interrupted by user", interrupted=True, emitted=emitted
+                )
+            # Let force_interrupt() abort a blocked read by closing the client.
+            if token is not None and hasattr(token, "set_http_cancel_callback"):
+                token.set_http_cancel_callback(lambda: self._client.close())
+            try:
+                with self._client.stream("POST", self._api_url, json=payload) as response:
+                    if response.status_code != 200:
+                        response.read()
+                        if response.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_RETRIES:
+                            delay = self._get_retry_delay(response, attempt)
+                            logger.warning(
+                                "HTTP %d (stream) from %s — retrying in %.1fs (attempt %d/%d)",
+                                response.status_code,
+                                self._api_url,
+                                delay,
+                                attempt + 1,
+                                MAX_RETRIES,
+                            )
+                            if self._sleep_interruptible(delay, task_monitor):
+                                return StreamResult(
+                                    success=False, error="Interrupted by user", interrupted=True
+                                )
+                            continue
+                        return StreamResult(
+                            success=False,
+                            status_code=response.status_code,
+                            error=f"API Error {response.status_code}: {response.text}",
+                        )
+
+                    return self._consume_sse(response, task_monitor, on_content_delta, counter)
+            except RETRYABLE_NETWORK_EXCEPTIONS as exc:
+                emitted = counter["emitted"]
+                if self._should_interrupt(task_monitor):
+                    return StreamResult(
+                        success=False,
+                        error="Interrupted by user",
+                        interrupted=True,
+                        emitted=emitted,
+                    )
+                if emitted == 0 and attempt < MAX_RETRIES:
+                    delay = RETRY_DELAYS[min(attempt, len(RETRY_DELAYS) - 1)]
+                    logger.warning(
+                        "Network error (stream): %s — retrying in %.1fs (attempt %d/%d)",
+                        exc,
+                        delay,
+                        attempt + 1,
+                        MAX_RETRIES,
+                    )
+                    if self._client.is_closed:
+                        self._client = httpx.Client(headers=self._headers, timeout=self.TIMEOUT)
+                    if self._sleep_interruptible(delay, task_monitor):
+                        return StreamResult(
+                            success=False, error="Interrupted by user", interrupted=True
+                        )
+                    continue
+                return StreamResult(success=False, error=str(exc), emitted=emitted)
+            except Exception as exc:
+                return StreamResult(success=False, error=str(exc), emitted=counter["emitted"])
+            finally:
+                if token is not None and hasattr(token, "set_http_cancel_callback"):
+                    token.set_http_cancel_callback(None)
+
+        return StreamResult(
+            success=False, error="Unexpected retry exhaustion", emitted=counter["emitted"]
+        )
+
+    def _consume_sse(
+        self,
+        response: httpx.Response,
+        task_monitor: Any,
+        on_content_delta: Optional[Callable[[str], None]],
+        counter: dict[str, int],
+    ) -> StreamResult:
+        """Read SSE lines from *response* and assemble the final body.
+
+        ``counter["emitted"]`` is incremented per forwarded content delta —
+        mutably shared with the caller so its retry guard sees emissions even
+        when the stream raises mid-read.
+        """
+        content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        tool_calls_acc: dict[int, dict[str, Any]] = {}
+        usage: Optional[dict] = None
+        finish_reason: Optional[str] = None
+        model: Optional[str] = None
+
+        for line in response.iter_lines():
+            if self._should_interrupt(task_monitor):
+                return StreamResult(
+                    success=False,
+                    error="Interrupted by user",
+                    interrupted=True,
+                    emitted=counter["emitted"],
+                )
+            if not line or not line.startswith("data:"):
+                continue
+            data_str = line[len("data:") :].strip()
+            if data_str == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data_str)
+            except (ValueError, TypeError):
+                continue  # malformed keep-alive/comment line — skip
+
+            usage = chunk.get("usage") or usage
+            model = chunk.get("model") or model
+            choices = chunk.get("choices") or []
+            if not choices:
+                continue
+            choice = choices[0]
+            finish_reason = choice.get("finish_reason") or finish_reason
+            delta = choice.get("delta") or {}
+
+            text = delta.get("content")
+            if text:
+                content_parts.append(text)
+                counter["emitted"] += 1
+                if on_content_delta is not None:
+                    try:
+                        on_content_delta(text)
+                    except Exception:  # UI failure must not kill the LLM call
+                        logger.exception("on_content_delta callback failed")
+
+            reasoning = delta.get("reasoning_content")
+            if reasoning:
+                reasoning_parts.append(reasoning)
+
+            for tc in delta.get("tool_calls") or []:
+                idx = tc.get("index", 0)
+                acc = tool_calls_acc.setdefault(
+                    idx,
+                    {"id": "", "type": "function", "function": {"name": "", "arguments": ""}},
+                )
+                if tc.get("id"):
+                    acc["id"] = tc["id"]
+                if tc.get("type"):
+                    acc["type"] = tc["type"]
+                fn = tc.get("function") or {}
+                if fn.get("name"):
+                    acc["function"]["name"] += fn["name"]
+                if fn.get("arguments"):
+                    acc["function"]["arguments"] += fn["arguments"]
+
+        message: dict[str, Any] = {
+            "role": "assistant",
+            "content": "".join(content_parts) if content_parts else None,
+        }
+        if tool_calls_acc:
+            message["tool_calls"] = [tool_calls_acc[i] for i in sorted(tool_calls_acc)]
+        if reasoning_parts:
+            message["reasoning_content"] = "".join(reasoning_parts)
+
+        data: dict[str, Any] = {
+            "choices": [{"message": message, "finish_reason": finish_reason}],
+        }
+        if usage is not None:
+            data["usage"] = usage
+        if model is not None:
+            data["model"] = model
+        return StreamResult(success=True, data=data, status_code=200, emitted=counter["emitted"])
+
+    def _sleep_interruptible(self, delay: float, task_monitor: Any) -> bool:
+        """Sleep *delay* seconds in small increments; True if interrupted."""
+        deadline = time.monotonic() + delay
+        while time.monotonic() < deadline:
+            if self._should_interrupt(task_monitor):
+                return True
+            time.sleep(min(0.1, deadline - time.monotonic()))
+        return False
 
     # ------------------------------------------------------------------
     # ProviderAdapter interface (passthrough for generic OpenAI-compat)

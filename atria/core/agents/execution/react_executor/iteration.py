@@ -146,21 +146,29 @@ class IterationMixin:
                 ctx.ui_callback.on_interrupt()
             return LoopAction.BREAK
 
-    def _call_action_llm(self, agent, messages, task_monitor, thinking_visible):
+    def _call_action_llm(
+        self, agent, messages, task_monitor, thinking_visible, on_content_delta=None
+    ):
         """Call LLM for action phase. Uses llm_caller if available (TUI spinner), otherwise direct.
 
         Returns:
             Tuple of (response_dict, latency_ms)
         """
         if self._llm_caller:
+            # TUI path renders whole messages; token streaming is web-only.
             return self._llm_caller.call_llm_with_progress(
                 agent, messages, task_monitor, thinking_visible=thinking_visible
             )
         import time
 
+        # Pass the delta callback only when streaming is wanted, so agent
+        # classes with an older call_llm signature keep working.
+        kwargs = {}
+        if on_content_delta is not None:
+            kwargs["on_content_delta"] = on_content_delta
         start = time.monotonic()
         response = agent.call_llm(
-            messages, task_monitor=task_monitor, thinking_visible=thinking_visible
+            messages, task_monitor=task_monitor, thinking_visible=thinking_visible, **kwargs
         )
         latency = int((time.monotonic() - start) * 1000)
         return response, latency
@@ -307,8 +315,23 @@ class IterationMixin:
             message_count=len(ctx.messages),
             thinking_visible=thinking_visible,
         )
+        # Stream content tokens to UIs that opt in (web); each delta arrives
+        # as it is generated instead of after the full response.
+        on_content_delta = None
+        _cb = ctx.ui_callback
+        if (
+            _cb is not None
+            and getattr(_cb, "wants_stream_tokens", False)
+            and hasattr(_cb, "on_assistant_token")
+        ):
+            on_content_delta = _cb.on_assistant_token
+
         response, latency_ms = self._call_action_llm(
-            ctx.agent, ctx.messages, task_monitor, thinking_visible=thinking_visible
+            ctx.agent,
+            ctx.messages,
+            task_monitor,
+            thinking_visible=thinking_visible,
+            on_content_delta=on_content_delta,
         )
         debug_log("ReactExecutor", f"_call_action_llm returned, success={response.get('success')}")
         self._last_latency_ms = latency_ms
@@ -540,6 +563,10 @@ class IterationMixin:
                 ctx.messages.append({"role": "assistant", "content": raw_content or content})
                 self._add_assistant_message(content, raw_content)
                 ctx.deferred_completion_content = content
+                # Token-streaming UIs already showed this withheld answer live —
+                # pull those tokens back so only the post-nudge answer stays.
+                if ctx.ui_callback and hasattr(ctx.ui_callback, "on_assistant_retract"):
+                    ctx.ui_callback.on_assistant_retract()
             append_nudge(
                 ctx.messages,
                 get_reminder("implicit_completion_nudge", original_task=ctx.query),

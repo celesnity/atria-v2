@@ -24,6 +24,7 @@ class ConversationRepository(BaseRepository):
         title: Optional[str],
         mode: str,
         working_directory: Optional[str] = None,
+        meta: Optional[dict] = None,
     ) -> int:
         async with self._sessionmaker() as session:
             stmt = (
@@ -36,6 +37,7 @@ class ConversationRepository(BaseRepository):
                     mode=mode[:10],
                     status="active",
                     working_directory=working_directory,
+                    meta=meta,
                 )
                 .returning(Conversation.id)
             )
@@ -86,12 +88,15 @@ class ConversationRepository(BaseRepository):
         conversation_id: int,
         title: Optional[str] = None,
         status: Optional[str] = None,
+        meta: Optional[dict] = None,
     ) -> None:
         values: dict = {"updated_at": func.now()}
         if title is not None:
             values["title"] = title
         if status is not None:
             values["status"] = status
+        if meta is not None:
+            values["meta"] = meta
         async with self._sessionmaker() as session:
             await session.execute(
                 update(Conversation).where(Conversation.id == conversation_id).values(**values)

@@ -88,6 +88,7 @@ class ConfigManager:
             "fallback_model": os.environ.get("ATRIA_FALLBACK_MODEL"),
             "api_base_url": os.environ.get("ATRIA_API_BASE_URL"),
             "agent_mode": os.environ.get("ATRIA_AGENT_MODE"),
+            "reasoning_effort": os.environ.get("ATRIA_REASONING_EFFORT"),
         }
         for key, value in env_overrides.items():
             if value:

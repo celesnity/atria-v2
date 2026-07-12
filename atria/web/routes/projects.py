@@ -7,7 +7,7 @@ service; :class:`ServiceError` is mapped to a response by a global handler.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from atria.core.services.project_service import ProjectService
@@ -27,6 +27,9 @@ class CreateProjectRequest(BaseModel):
 
 class CreateConversationRequest(BaseModel):
     name: str
+    # Free-form session metadata; garage sessions anchor RO/VIN/brand here
+    # (validated on create — same rule as /api/sessions/create).
+    metadata: dict | None = None
 
 
 @router.get("")
@@ -72,7 +75,14 @@ async def create_conversation(
     user=Depends(require_authenticated_user),
     service: ProjectService = Depends(get_project_service),
 ) -> dict:
-    return await service.create_conversation(user, project_id, request.name)
+    from atria.web.routes.sessions import validate_garage_metadata
+
+    error = validate_garage_metadata(request.metadata)
+    if error:
+        raise HTTPException(status_code=422, detail=error)
+    return await service.create_conversation(
+        user, project_id, request.name, metadata=request.metadata
+    )
 
 
 @router.delete("/{project_id}/conversations/{conversation_id}")

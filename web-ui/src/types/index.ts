@@ -99,6 +99,9 @@ export interface Message {
   // Groups all assistant text chunks from a single agent turn into one bubble,
   // even when tool_call/tool_result messages are interleaved between chunks.
   turnId?: string;
+  // Latency of the turn as the user perceived it (query send → first assistant
+  // token / → turn complete), plus the server-measured TTFT when available.
+  metrics?: { ttftMs?: number; totalMs?: number; serverTtftMs?: number };
   tool_call_id?: string;
   tool_name?: string;
   tool_args?: Record<string, any>;

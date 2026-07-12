@@ -19,6 +19,20 @@ from atria.models.session import Session, SessionMetadata
 logger = logging.getLogger(__name__)
 
 
+def merge_row_metadata(row: dict) -> dict:
+    """Rebuild ``Session.metadata`` from a conversations row.
+
+    The ``meta`` JSON column carries the free-form dict; the ``title`` column
+    is authoritative and overwrites any stale ``title`` key inside ``meta``.
+    """
+    meta = dict(row.get("meta") or {})
+    if row.get("title"):
+        meta["title"] = row["title"]
+    else:
+        meta.pop("title", None)
+    return meta
+
+
 class PgSessionManager:
     """Async session manager backed by PostgreSQL.
 
@@ -71,6 +85,7 @@ class PgSessionManager:
         owner_id: Optional[str] = None,
         project_id: Optional[int] = None,
         user_id: Optional[int] = None,
+        metadata: Optional[dict] = None,
     ) -> Session:
         if project_id is not None and user_id is not None:
             p_user_id, p_project_id = user_id, project_id
@@ -87,6 +102,7 @@ class PgSessionManager:
             title=None,
             mode=channel[:10],
             working_directory=working_directory,
+            meta=metadata or None,
         )
         # Map channel conversations (channel+user+thread -> conversation) so repeat
         # messages from the same chat reuse this session. Skipped for cli/web.
@@ -102,6 +118,7 @@ class PgSessionManager:
             delivery_context=delivery_context or {},
             workspace_confirmed=workspace_confirmed,
             owner_id=owner_id,
+            metadata=metadata or {},
         )
         self.current_session = session
         self.turn_count = 0
@@ -126,7 +143,7 @@ class PgSessionManager:
 
         messages = await msg_repo.list_by_conversation(conv_id)
         row_user_id = row["user_id"]
-        _meta: dict = {"title": row["title"]} if row["title"] else {}
+        _meta: dict = merge_row_metadata(row)
         session = Session(
             id=str(row["id"]),
             created_at=row["created_at"],
@@ -172,7 +189,10 @@ class PgSessionManager:
                     break
 
         conv_repo, msg_repo = await self._get_repos()
-        await conv_repo.update(conv_id, title=title)
+        # Persist the free-form metadata alongside title; the title column stays
+        # authoritative, so strip any title key from the meta payload.
+        _meta_payload = {k: v for k, v in session.metadata.items() if k != "title"}
+        await conv_repo.update(conv_id, title=title, meta=_meta_payload or None)
 
         # Only insert messages that aren't yet persisted (track by count)
         sm = await get_sessionmaker()

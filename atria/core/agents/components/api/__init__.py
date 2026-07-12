@@ -3,6 +3,7 @@
 from .base_adapter import ProviderAdapter
 from .configuration import (
     build_max_tokens_param,
+    build_reasoning_param,
     build_temperature_param,
     create_http_client,
     resolve_api_config,
@@ -19,6 +20,7 @@ __all__ = [
     "HttpResult",
     "ProviderAdapter",
     "build_max_tokens_param",
+    "build_reasoning_param",
     "build_temperature_param",
     "create_http_client",
     "resolve_api_config",

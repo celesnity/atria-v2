@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, useMemo } from 'react';
+import React, { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -24,10 +24,58 @@ import { MessageActions } from './MessageActions';
 import { useMessageActions } from '../../hooks/useMessageActions';
 import { CosmicField } from '../ui/CosmicField';
 import { Eyebrow } from '../ui/Eyebrow';
+import { BrandMark } from '../ui/Logo';
+import { isUnverifiedSuggestion, splitCitations } from '../../utils/citations';
+import { latencySummary } from '../../utils/latency';
+
+// D7 conventions (garage copilot / RAG modules): inline [DOC#chunk] citation
+// refs render as badges; blockquotes starting with the unverified-suggestion
+// marker render as warning callouts. Pure logic lives in utils/citations.
+function wrapCitations(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    const parts = splitCitations(child);
+    if (parts.length === 1 && typeof parts[0] === 'string') return child;
+    return parts.map((part, i) =>
+      typeof part === 'string' ? (
+        part
+      ) : (
+        <span
+          key={`${part.cite}-${i}`}
+          className="mx-0.5 inline-block rounded-sm border border-hairline-soft bg-canvas/60 px-1.5 py-0.5 align-baseline font-mono text-[12px] font-[540] text-ink/80"
+          title="Trích dẫn tài liệu xưởng"
+        >
+          [{part.cite}]
+        </span>
+      )
+    );
+  });
+}
+
+function nodeText(node: React.ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (React.isValidElement(node)) return nodeText(node.props.children);
+  return '';
+}
 
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
 const MARKDOWN_COMPONENTS: Components = {
+  blockquote({ children }) {
+    if (isUnverifiedSuggestion(nodeText(children))) {
+      return (
+        <blockquote className="my-3 rounded-md border border-amber-500/40 border-l-4 border-l-amber-500 bg-amber-500/10 px-4 py-3 text-ink [&_p]:mb-0">
+          {children}
+        </blockquote>
+      );
+    }
+    return (
+      <blockquote className="my-3 border-l-4 border-hairline-soft pl-4 text-ink/80">
+        {children}
+      </blockquote>
+    );
+  },
   pre({ children }) {
     return (
       <pre className="rounded-md p-4 overflow-x-auto my-4 bg-inverse-canvas text-inverse-ink">
@@ -47,7 +95,11 @@ const MARKDOWN_COMPONENTS: Components = {
     );
   },
   p({ children }) {
-    return <p className="mb-3 last:mb-0 text-ink text-body leading-relaxed">{children}</p>;
+    return (
+      <p className="mb-3 last:mb-0 text-ink text-body leading-relaxed">
+        {wrapCitations(children)}
+      </p>
+    );
   },
   ul({ children }) {
     return <ul className="list-disc pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ul>;
@@ -56,7 +108,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return <ol className="list-decimal pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-body">{children}</li>;
+    return <li className="text-ink text-body">{wrapCitations(children)}</li>;
   },
   strong({ children }) {
     return <strong className="font-[540] text-ink">{children}</strong>;
@@ -105,29 +157,41 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-// Signature Atria avatar — nebula-gradient disc with a soft glow and the mark.
-// Shared by assistant turns and the loading spinner so the agent reads as one
-// consistent presence in the thread.
-function AtriaAvatar() {
+// Signature Minder AI avatar — nebula-gradient disc carrying the orbit-and-spark
+// mark. Shared by assistant turns and the loading spinner so the agent reads as
+// one consistent presence in the thread.
+function MinderAvatar() {
   return (
     <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
-      <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
+      <BrandMark className="h-[14px] w-[14px] text-white" />
     </div>
   );
 }
 
-const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content: string }) {
+const AssistantMarkdown = memo(function AssistantMarkdown({
+  content,
+  metrics,
+}: {
+  content: string;
+  metrics?: Message['metrics'];
+}) {
+  const latency = latencySummary(metrics);
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <AtriaAvatar />
-        <span className="font-mono text-[11px] uppercase tracking-[0.54px] text-ink/40">Atria</span>
+        <MinderAvatar />
+        <span className="font-mono text-[11px] uppercase tracking-[0.54px] text-ink/40">Minder AI</span>
       </div>
       <div className="prose max-w-none code-hover pl-[26px]">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
           {content}
         </ReactMarkdown>
       </div>
+      {latency && (
+        <div className="mt-2 pl-[26px] font-mono text-[11px] text-ink/35" title="Measured from when you sent the message">
+          ⚡ {latency}
+        </div>
+      )}
     </div>
   );
 });
@@ -149,7 +213,7 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
 function LoadingSpinner({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2.5 py-1">
-      <AtriaAvatar />
+      <MinderAvatar />
       <span className="braille-spinner text-sm text-ink/40" aria-hidden="true" />
       <span className="text-sm text-ink/45">{label}</span>
     </div>
@@ -246,7 +310,7 @@ function MessageBody({
   if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
   return message.role === 'user'
     ? <UserTurn content={message.content} />
-    : <AssistantMarkdown content={message.content} />;
+    : <AssistantMarkdown content={message.content} metrics={message.metrics} />;
 }
 
 const MessageItem = memo(function MessageItem({

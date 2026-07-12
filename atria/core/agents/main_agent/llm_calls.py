@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from atria.core.agents.components.api.configuration import (
     build_max_tokens_param,
+    build_reasoning_param,
     build_temperature_param,
 )
 
@@ -177,6 +178,7 @@ class LlmCallsMixin:
         messages: list[dict],
         task_monitor: Optional[Any] = None,
         thinking_visible: bool = True,
+        on_content_delta: Optional[Any] = None,
     ) -> dict:
         """Call LLM with tools for action phase.
 
@@ -184,6 +186,9 @@ class LlmCallsMixin:
             messages: Conversation messages
             task_monitor: Optional monitor for tracking progress
             thinking_visible: If False, excludes think tool from schemas
+            on_content_delta: When set (and the client supports it), the
+                request streams via SSE and each content delta is forwarded
+                here as it arrives; the returned dict is unchanged in shape.
 
         Returns:
             Dict with success status, content, tool_calls, etc.
@@ -206,6 +211,8 @@ class LlmCallsMixin:
         if fallback and fallback != model_id:
             candidates.append(fallback)
 
+        use_stream = on_content_delta is not None and hasattr(http_client, "stream_json")
+
         last_error = "Unknown error"
         for idx, candidate in enumerate(candidates):
             has_next = idx < len(candidates) - 1
@@ -216,7 +223,40 @@ class LlmCallsMixin:
                 "tool_choice": tool_choice,
                 **build_temperature_param(candidate, self.config.temperature),
                 **build_max_tokens_param(candidate, self.config.max_tokens),
+                **build_reasoning_param(
+                    candidate, getattr(self.config, "reasoning_effort", None)
+                ),
             }
+
+            if use_stream:
+                stream = http_client.stream_json(
+                    payload, task_monitor=task_monitor, on_content_delta=on_content_delta
+                )
+                if stream.interrupted:
+                    return {
+                        "success": False,
+                        "error": stream.error or "Interrupted",
+                        "interrupted": True,
+                    }
+                if not stream.success:
+                    last_error = stream.error or "Unknown error"
+                    # Fall back only while nothing streamed to the UI yet —
+                    # re-issuing after emitted deltas would show text twice.
+                    can_fallback = has_next and stream.emitted == 0
+                    status_retryable = (
+                        stream.status_code is None or stream.status_code in _RETRYABLE_STATUS
+                    )
+                    if can_fallback and status_retryable:
+                        _logger.warning(
+                            "Streaming LLM call failed on %s (%s); falling back to %s",
+                            candidate,
+                            last_error,
+                            candidates[idx + 1],
+                        )
+                        continue
+                    return {"success": False, "error": last_error}
+                response_data = stream.data or {}
+                return self._build_llm_result(response_data, candidate, idx, task_monitor)
 
             result = http_client.post_json(payload, task_monitor=task_monitor)
 
@@ -233,7 +273,9 @@ class LlmCallsMixin:
                 if has_next:
                     _logger.warning(
                         "LLM call failed on %s (%s); falling back to %s",
-                        candidate, last_error, candidates[idx + 1],
+                        candidate,
+                        last_error,
+                        candidates[idx + 1],
                     )
                     continue
                 return {"success": False, "error": last_error}
@@ -244,48 +286,61 @@ class LlmCallsMixin:
                 # DashScope returns 403 "FreeTierOnly" when a model's free quota
                 # is exhausted — treat that like a retryable error so we fall
                 # back to the next model instead of dead-ending.
-                quota_exhausted = (
-                    response.status_code == 403
-                    and "FreeTierOnly" in (response.text or "")
+                quota_exhausted = response.status_code == 403 and "FreeTierOnly" in (
+                    response.text or ""
                 )
-                if has_next and (
-                    response.status_code in _RETRYABLE_STATUS or quota_exhausted
-                ):
+                if has_next and (response.status_code in _RETRYABLE_STATUS or quota_exhausted):
                     _logger.warning(
                         "Model %s returned HTTP %s; falling back to %s",
-                        candidate, response.status_code, candidates[idx + 1],
+                        candidate,
+                        response.status_code,
+                        candidates[idx + 1],
                     )
                     continue
                 return {"success": False, "error": last_error}
 
             response_data = response.json()
-            choice = response_data["choices"][0]
-            message_data = choice["message"]
-
-            raw_content = message_data.get("content")
-            cleaned_content = self._response_cleaner.clean(raw_content) if raw_content else None
-
-            # Extract reasoning_content for OpenAI reasoning models (o1, o3, etc.)
-            # This is the native thinking/reasoning trace from models like o1-preview
-            reasoning_content = message_data.get("reasoning_content")
-
-            if task_monitor and "usage" in response_data:
-                usage = response_data["usage"]
-                total_tokens = usage.get("total_tokens", 0)
-                if total_tokens > 0:
-                    task_monitor.update_tokens(total_tokens)
-
-            if idx > 0:
-                _logger.info("LLM call succeeded on fallback model %s", candidate)
-
-            return {
-                "success": True,
-                "message": message_data,
-                "content": cleaned_content,
-                "tool_calls": message_data.get("tool_calls"),
-                "reasoning_content": reasoning_content,  # Native thinking trace from model
-                "usage": response_data.get("usage"),
-                "model_used": candidate,
-            }
+            return self._build_llm_result(response_data, candidate, idx, task_monitor)
 
         return {"success": False, "error": last_error}
+
+    def _build_llm_result(
+        self,
+        response_data: dict,
+        candidate: str,
+        idx: int,
+        task_monitor: Optional[Any],
+    ) -> dict:
+        """Assemble call_llm's result dict from a Chat Completions body.
+
+        Shared by the blocking and streaming paths — stream_json returns the
+        same body shape as a non-streaming response.
+        """
+        choice = response_data["choices"][0]
+        message_data = choice["message"]
+
+        raw_content = message_data.get("content")
+        cleaned_content = self._response_cleaner.clean(raw_content) if raw_content else None
+
+        # Extract reasoning_content for OpenAI reasoning models (o1, o3, etc.)
+        # This is the native thinking/reasoning trace from models like o1-preview
+        reasoning_content = message_data.get("reasoning_content")
+
+        if task_monitor and "usage" in response_data:
+            usage = response_data["usage"]
+            total_tokens = usage.get("total_tokens", 0)
+            if total_tokens > 0:
+                task_monitor.update_tokens(total_tokens)
+
+        if idx > 0:
+            _logger.info("LLM call succeeded on fallback model %s", candidate)
+
+        return {
+            "success": True,
+            "message": message_data,
+            "content": cleaned_content,
+            "tool_calls": message_data.get("tool_calls"),
+            "reasoning_content": reasoning_content,  # Native thinking trace from model
+            "usage": response_data.get("usage"),
+            "model_used": candidate,
+        }

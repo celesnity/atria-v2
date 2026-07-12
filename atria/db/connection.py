@@ -101,3 +101,12 @@ async def init_schema() -> None:
             await conn.execute(text("ALTER TABLE messages ALTER COLUMN role TYPE VARCHAR(32)"))
     except Exception as exc:  # noqa: BLE001
         logger.warning("Failed to widen messages.role: %s", exc)
+
+    # Session.metadata round-trip: conversations carry a free-form meta JSON
+    # column (garage sessions anchor RO/VIN/brand here). create_all only adds
+    # missing tables, not columns, so existing DBs need the idempotent ALTER.
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS meta JSON"))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to add conversations.meta: %s", exc)

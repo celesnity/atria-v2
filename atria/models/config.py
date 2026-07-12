@@ -31,12 +31,12 @@ class ToolPermission(BaseModel):
 
 
 _MAINTENANCE_CORPUS_MESSAGE = (
-    "Access denied: this path is part of the maintenance_copilot RAG corpus and "
-    "must not be read, listed, or searched directly. Reading corpus files bypasses "
-    "retrieval, citations, revision-awareness, and guardrails. To answer a "
-    "maintenance question, call the maintenance_copilot_query tool. If that tool "
-    "reports its service unavailable, report the outage to the user — do not fall "
-    "back to reading these files."
+    "Access denied: this path is part of a module's RAG corpus and must not be "
+    "read, listed, or searched directly. Reading corpus files bypasses retrieval, "
+    "citations, revision-awareness, and guardrails. To answer a question from this "
+    "corpus, call the owning module's query tool (e.g. garage_copilot_query, "
+    "enterprise_knowledge_query). If that tool reports its service unavailable, "
+    "report the outage to the user — do not fall back to reading these files."
 )
 
 
@@ -58,8 +58,9 @@ def _default_protected_paths() -> "list[ProtectedPath]":
     """Built-in protected roots that apply even with no settings file."""
     return [
         ProtectedPath(pattern="modules/*/sample_manuals", message=_MAINTENANCE_CORPUS_MESSAGE),
-        ProtectedPath(pattern="modules/*/backend/sample_manuals",
-                      message=_MAINTENANCE_CORPUS_MESSAGE),
+        ProtectedPath(
+            pattern="modules/*/backend/sample_manuals", message=_MAINTENANCE_CORPUS_MESSAGE
+        ),
     ]
 
 
@@ -270,6 +271,10 @@ class AppConfig(BaseModel):
     agent_mode: str = "normal"  # "normal" | "assistant" — which suite agent serves chats
     max_tokens: int = 8192
     temperature: float = 0.6
+    # reasoning_effort for reasoning-capable models (GPT-5 family, o-series):
+    # "minimal" | "low" | "medium" | "high". None → provider default. Lower
+    # values cut hidden-reasoning latency per call (interactive copilots).
+    reasoning_effort: Optional[str] = None
 
     @field_validator("agent_mode")
     @classmethod

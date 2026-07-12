@@ -177,7 +177,8 @@ SWE-ReX/
 ace/
 # claude-code-system-prompts/
 .ignore/
-docs/
+docs/*
+!docs/ai/
 figures/
 .atria/
 

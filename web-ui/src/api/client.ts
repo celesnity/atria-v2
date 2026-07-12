@@ -130,10 +130,10 @@ class APIClient {
     }
   }
 
-  createSession(workspace: string) {
+  createSession(workspace: string, metadata?: Record<string, string>) {
     return request<{ status: string; message: string; session: any }>('/sessions/create', {
       method: 'POST',
-      body: { workspace },
+      body: metadata ? { workspace, metadata } : { workspace },
     });
   }
 
@@ -336,10 +336,10 @@ class APIClient {
     return request<Conversation[]>(`/projects/${projectId}/conversations`);
   }
 
-  createConversation(projectId: string, name: string) {
+  createConversation(projectId: string, name: string, metadata?: Record<string, string>) {
     return request<Conversation>(`/projects/${projectId}/conversations`, {
       method: 'POST',
-      body: { name },
+      body: metadata ? { name, metadata } : { name },
     });
   }
 

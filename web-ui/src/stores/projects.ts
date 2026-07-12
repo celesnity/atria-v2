@@ -15,9 +15,9 @@ interface ProjectsState {
   loadConversations: (projectId: string) => Promise<void>;
   createProject: (name: string) => Promise<Project>;
   deleteProject: (projectId: string) => Promise<void>;
-  createConversation: (projectId: string, name: string) => Promise<Conversation>;
+  createConversation: (projectId: string, name: string, metadata?: Record<string, string>) => Promise<Conversation>;
   deleteConversation: (projectId: string, conversationId: string) => Promise<void>;
-  createWorkspaceConversation: (name?: string) => Promise<Conversation>;
+  createWorkspaceConversation: (name?: string, metadata?: Record<string, string>) => Promise<Conversation>;
   toggleProject: (projectId: string) => void;
   expandProject: (projectId: string) => void;
 }
@@ -83,8 +83,8 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     });
   },
 
-  createConversation: async (projectId: string, name: string) => {
-    const conv = await apiClient.createConversation(projectId, name);
+  createConversation: async (projectId: string, name: string, metadata?: Record<string, string>) => {
+    const conv = await apiClient.createConversation(projectId, name, metadata);
     set(state => ({
       conversations: {
         ...state.conversations,
@@ -95,10 +95,10 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     return conv;
   },
 
-  createWorkspaceConversation: async (name = 'New Chat') => {
+  createWorkspaceConversation: async (name = 'New Chat', metadata?: Record<string, string>) => {
     const { workspaceProjectId, createConversation, expandProject } = get();
     if (!workspaceProjectId) throw new Error('Workspace project not loaded yet');
-    const conv = await createConversation(workspaceProjectId, name);
+    const conv = await createConversation(workspaceProjectId, name, metadata);
     expandProject(workspaceProjectId);
     return conv;
   },

@@ -149,6 +149,11 @@ class BaseUICallback:
     See also ForwardingUICallback for a base class that forwards to a parent.
     """
 
+    # UIs that render token-by-token set this True; the executor then passes
+    # on_assistant_token as the LLM streaming callback. The final full message
+    # still arrives via on_assistant_message for display reconciliation.
+    wants_stream_tokens: bool = False
+
     def on_thinking_start(self) -> None:
         """Called when the agent starts thinking."""
         pass
@@ -167,6 +172,14 @@ class BaseUICallback:
 
     def on_assistant_message(self, content: str) -> None:
         """Called when assistant provides a message."""
+        pass
+
+    def on_assistant_token(self, token: str) -> None:
+        """Called per streamed content delta when wants_stream_tokens is True."""
+        pass
+
+    def on_assistant_retract(self) -> None:
+        """Called when streamed tokens must be withdrawn (message withheld)."""
         pass
 
     def on_message(self, message: str) -> None:

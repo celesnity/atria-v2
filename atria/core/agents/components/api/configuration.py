@@ -44,6 +44,30 @@ def build_max_tokens_param(model: str, max_tokens: int) -> dict[str, int]:
     return {"max_tokens": max_tokens}
 
 
+_VALID_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high")
+
+
+def build_reasoning_param(model_id: str, effort: str | None) -> dict[str, str]:
+    """Build the reasoning_effort parameter for reasoning-capable models.
+
+    Only GPT-5-family and O-series models accept ``reasoning_effort``; other
+    models get a 400 for the unknown parameter, so it is omitted for them.
+    An unset or invalid *effort* yields no parameter (provider default).
+
+    Note: on /v1/chat/completions, gpt-5.4 models reject function tools
+    combined with any effort except "none" — for tool-calling agents, "none"
+    is the only value that speeds things up without a 400.
+    """
+    if not effort:
+        return {}
+    effort = effort.strip().lower()
+    if effort not in _VALID_REASONING_EFFORTS:
+        return {}
+    if uses_max_completion_tokens(model_id) or _is_reasoning_model(model_id):
+        return {"reasoning_effort": effort}
+    return {}
+
+
 _NO_TEMPERATURE_PATTERNS = ("o1", "o3", "o4", "codex")
 
 

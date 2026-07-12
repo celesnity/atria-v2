@@ -12,6 +12,7 @@ from atria.web.routes.artifacts import router as artifacts_router
 from atria.web.routes.fs import router as fs_router
 from atria.web.routes.personas import router as personas_router
 from atria.web.routes.transcribe import router as transcribe_router
+from atria.web.routes.garage import router as garage_router
 from atria.web.routes.maintenance import router as maintenance_router
 from atria.web.routes.modules import router as modules_router
 from atria.web.routes.blocks import router as blocks_router
@@ -38,6 +39,7 @@ __all__ = [
     "fs_router",
     "personas_router",
     "transcribe_router",
+    "garage_router",
     "maintenance_router",
     "modules_router",
     "blocks_router",
