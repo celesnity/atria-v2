@@ -84,39 +84,6 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
 
   return (
     <div className="flex h-full w-full flex-col bg-bg-000">
-      <header className="flex items-center gap-3 px-4 py-2 border-b border-border-300/15 bg-bg-100">
-        <button
-          type="button"
-          onClick={closeDashboard}
-          className="flex items-center gap-1.5 text-xs text-text-300 hover:text-text-100 transition-colors"
-          aria-label="Back to chat"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Back</span>
-        </button>
-
-        <div className="h-3.5 w-px bg-border-300/20" aria-hidden />
-
-        <h2
-          className="text-xs font-medium text-text-200 truncate"
-          title={title}
-        >
-          {title}
-        </h2>
-
-        <div className="ml-auto flex items-center">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="p-1 rounded hover:bg-bg-200 text-text-400 hover:text-text-200 transition-colors"
-            aria-label="Reload dashboard"
-            title="Reload dashboard"
-          >
-            <RotateCw className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </header>
-
       <iframe
         ref={iframeRef}
         sandbox="allow-scripts allow-forms"
