@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 import { ProjectSidebar } from '../components/Layout/ProjectSidebar';
 import { ChatRail } from '../components/Layout/ChatRail';
@@ -23,9 +23,33 @@ export function ChatPage() {
   const closeCommandPalette = useChatStore(state => state.closeCommandPalette);
   const currentSessionId = useChatStore(state => state.currentSessionId);
   const activeModuleDashboard = useModulesStore(s => s.activeModuleDashboard);
+  const modulesWithDashboards = useModulesStore(s => s.modulesWithDashboards);
+  const openDashboard = useModulesStore(s => s.openDashboard);
 
   const openStatusDialog = useCallback(() => setStatusDialogOpen(true), []);
   const closeStatusDialog = useCallback(() => setStatusDialogOpen(false), []);
+
+  // Chat-first → module-workspace transition: when a conversation becomes active
+  // (the user opened or started a chat) and no module is open yet, auto-open the
+  // first available module so the center isn't empty. Tracked per session so
+  // manually closing a module later doesn't immediately reopen it. Retries once
+  // the module list finishes loading (deps include modulesWithDashboards).
+  const autoModuleSession = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentSessionId) {
+      autoModuleSession.current = null;
+      return;
+    }
+    if (currentSessionId === autoModuleSession.current) return;
+    if (activeModuleDashboard) {
+      autoModuleSession.current = currentSessionId;
+      return;
+    }
+    if (modulesWithDashboards.length > 0) {
+      openDashboard(modulesWithDashboards[0].name);
+      autoModuleSession.current = currentSessionId;
+    }
+  }, [currentSessionId, activeModuleDashboard, modulesWithDashboards, openDashboard]);
 
   // Phone: one panel at a time, switched by the bottom tab bar.
   const isPhone = useMediaQuery('(max-width: 767px)');
@@ -94,7 +118,22 @@ export function ChatPage() {
     );
   }
 
-  // ── Desktop / tablet: chat rail + module center + artifact panel ──
+  // ── Desktop / tablet, chat-first empty state: no conversation yet → a single
+  // full-width chat screen (the redesigned LandingPage). No rail, module, or
+  // artifact panel until a chat is opened. ──
+  if (!currentSessionId) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
+          <ChatInterface />
+        </main>
+        {dialogs}
+      </div>
+    );
+  }
+
+  // ── Desktop / tablet, active conversation: chat shifts into the left rail and
+  // a module opens in the center (auto-selected above). Artifacts on the right. ──
   return (
     <div className="flex-1 min-h-0 flex overflow-hidden bg-bg-000">
       <ChatRail />
