@@ -191,8 +191,13 @@ export function TopBar() {
         <ModuleBreadcrumb />
       </div>
 
-      {/* ── Active module's sub-view tabs (injected per module) ── */}
-      <div className="hidden md:flex min-w-0 items-center overflow-x-auto">
+      {/* ── Active module's sub-view tabs (injected per module) ──
+           self-stretch: fill the bar height so the active-tab underline has room
+           and isn't clipped. overflow-y-hidden: a lone overflow-x-auto is coerced
+           to auto on both axes by the CSS spec, so the 2px underline triggered a
+           stray vertical scrollbar — pin Y to hidden and hide the X scrollbar so
+           the row scrolls cleanly when a module ships many tabs. */}
+      <div className="hidden md:flex self-stretch min-w-0 items-center overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <ModuleTabs />
       </div>
 
