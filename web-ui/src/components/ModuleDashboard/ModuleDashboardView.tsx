@@ -2,8 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, RotateCw } from 'lucide-react';
 import { useChatStore } from '../../stores/chat';
 import { useModulesStore } from '../../stores/modules';
+import type { ModuleTab } from '../../stores/modules';
 import { useModuleBridge } from './useModuleBridge';
 import { RemoteDashboard } from './RemoteDashboard';
+
+/** Resolve the iframe URL for a module tab: entry file, hash mode, or base. */
+export function moduleTabSrc(moduleName: string, tab: ModuleTab | null): string {
+  const base = `/api/modules/${encodeURIComponent(moduleName)}`;
+  if (tab?.entry) return `${base}/${tab.entry.replace(/^\/+/, '')}`;
+  if (tab) return `${base}/dashboard.html#${tab.id}`;
+  return `${base}/dashboard.html`;
+}
 
 interface ModuleDashboardViewProps {
   moduleName: string;
@@ -22,6 +31,8 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
   const summary = useModulesStore((s) =>
     s.modulesWithDashboards.find((m) => m.name === moduleName) ?? null,
   );
+  const activeTabId = useModulesStore((s) => s.activeModuleTab);
+  const activeTab = summary?.tabs.find((t) => t.id === activeTabId) ?? null;
 
   const manifestTitle = summary?.dashboard_title ?? `${moduleName} · dashboard`;
   const [title, setTitle] = useState<string>(manifestTitle);
@@ -59,7 +70,7 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
     iframe.src = iframe.src;
   };
 
-  const iframeSrc = `/api/modules/${encodeURIComponent(moduleName)}/dashboard.html`;
+  const iframeSrc = moduleTabSrc(moduleName, activeTab);
 
   if (summary?.remote) {
     return (
