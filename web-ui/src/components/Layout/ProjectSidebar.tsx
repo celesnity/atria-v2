@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Folder,
   MessageSquare,
-  Package,
   Plus,
   Settings,
   Trash2,
@@ -20,8 +19,6 @@ import type { Project } from "../../types";
 import { SettingsModal } from "../Settings/SettingsModal";
 import { CreateConversationModal } from "./CreateConversationModal";
 import { CreateProjectModal } from "./CreateProjectModal";
-import { ModuleHealthDot } from "./ModuleHealthDot";
-import { useModuleHealth } from "../../hooks/useModuleHealth";
 
 /** Short relative time, e.g. "Just now", "5m ago", "3h ago", "2d ago", or a date. */
 function formatRelativeTime(dateString: string): string {
@@ -103,14 +100,7 @@ export function ProjectSidebar() {
   const mobileSidebarOpen = useChatStore((s) => s.mobileSidebarOpen);
   const closeMobileSidebar = useChatStore((s) => s.closeMobileSidebar);
 
-  const modulesWithDashboards = useModulesStore((s) => s.modulesWithDashboards);
-  const activeModuleDashboard = useModulesStore((s) => s.activeModuleDashboard);
-  const openModuleDashboard = useModulesStore((s) => s.openDashboard);
   const closeModuleDashboard = useModulesStore((s) => s.closeDashboard);
-  const refreshModules = useModulesStore((s) => s.refresh);
-  // Connector health per service module, polled on mount + every ~30s. Drives the
-  // status dot on module tiles (green ok / red down / grey loading).
-  const moduleHealth = useModuleHealth();
 
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [createConvFor, setCreateConvFor] = useState<Project | null>(null);
@@ -136,7 +126,6 @@ export function ProjectSidebar() {
 
   useEffect(() => {
     loadProjects();
-    refreshModules();
   }, []);
 
   // Default the active project to the user's workspace project once it loads.
@@ -244,37 +233,6 @@ export function ProjectSidebar() {
         >
           <Plus className="h-4 w-4" />
         </button>
-        {modulesWithDashboards.length > 0 && (
-          <div className="my-1 h-px w-7 bg-hairline-soft/30" />
-        )}
-        {modulesWithDashboards.map((m) => {
-          const isActive = activeModuleDashboard === m.name;
-          return (
-            <button
-              key={m.name}
-              onClick={() =>
-                isActive ? closeModuleDashboard() : openModuleDashboard(m.name)
-              }
-              className={`relative grid h-8 w-8 place-items-center rounded-md transition-colors ${
-                isActive
-                  ? "bg-accent-cobalt/15 text-accent-cobalt ring-1 ring-accent-cobalt/30"
-                  : "text-text-muted hover:bg-surface-soft hover:text-ink"
-              }`}
-              title={m.tooltip}
-              aria-label={m.display_name}
-            >
-              {m.icon_url ? (
-                <img src={m.icon_url} className="h-4 w-4" alt="" />
-              ) : (
-                <Package className="h-4 w-4" />
-              )}
-              <ModuleHealthDot
-                status={moduleHealth[m.name]}
-                className="absolute right-1 top-1 ring-1 ring-canvas"
-              />
-            </button>
-          );
-        })}
       </aside>
     );
   }
@@ -451,56 +409,6 @@ export function ProjectSidebar() {
               >
                 + New project
               </button>
-            </div>
-          </div>
-        )}
-
-        {modulesWithDashboards.length > 0 && (
-          <div className="pt-2">
-            <SectionEyebrow label="Modules" />
-            <div className="space-y-0.5 px-2">
-              {modulesWithDashboards.map((m) => {
-                const isActive = activeModuleDashboard === m.name;
-                return (
-                  <button
-                    key={m.name}
-                    onClick={() => {
-                      isActive
-                        ? closeModuleDashboard()
-                        : openModuleDashboard(m.name);
-                      closeMobileSidebar();
-                    }}
-                    title={m.tooltip}
-                    className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-all duration-fast ${
-                      isActive
-                        ? "bg-gradient-to-r from-accent-cobalt/15 via-accent-violet/10 to-transparent text-ink"
-                        : "text-text-secondary hover:bg-surface-soft/60 hover:text-ink"
-                    }`}
-                  >
-                    {isActive && (
-                      <span
-                        aria-hidden
-                        className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-md bg-gradient-brand"
-                      />
-                    )}
-                    {m.icon_url ? (
-                      <img
-                        src={m.icon_url}
-                        className="h-4 w-4 flex-shrink-0"
-                        alt=""
-                      />
-                    ) : (
-                      <Package
-                        className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-accent-cobalt" : "text-text-muted"}`}
-                      />
-                    )}
-                    <span className="flex-1 truncate text-xs font-medium">
-                      {m.display_name}
-                    </span>
-                    <ModuleHealthDot status={moduleHealth[m.name]} />
-                  </button>
-                );
-              })}
             </div>
           </div>
         )}
