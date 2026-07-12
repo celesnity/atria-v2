@@ -257,6 +257,13 @@ class AppConfig(BaseModel):
     max_tokens: int = 8192
     temperature: float = 0.6
 
+    # Reasoning models (e.g. gpt-5-mini) reason internally during the single
+    # streamed action call, so a separate prompted-thinking round-trip is
+    # redundant and only adds latency before the first token. When True (default)
+    # the executor skips the prompted thinking + self-critique phases. Set False
+    # for non-reasoning models that need an explicit prompted thinking trace.
+    native_reasoning: bool = True
+
     @field_validator("agent_mode")
     @classmethod
     def _validate_agent_mode(cls, v: str) -> str:
