@@ -1,7 +1,14 @@
+export interface ModuleTab {
+  id: string;
+  label: string;
+  entry?: string | null;
+}
+
 export interface ModuleDashboardManifest {
   title?: string | null;
   default_height?: number | null;
   badge_color?: string | null;
+  tabs?: ModuleTab[] | null;
 }
 
 export interface ModuleRemoteManifest {
