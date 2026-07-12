@@ -8,12 +8,13 @@ traceable for airworthiness/compliance.
 
 from __future__ import annotations
 
-import sys
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from atria.core.modules.registry import get_registry
+from atria.core.modules.remote import ConnectorUnreachable, RemoteConnector
 from atria.web.dependencies.auth import require_authenticated_user
 
 router = APIRouter(
@@ -22,39 +23,17 @@ router = APIRouter(
     dependencies=[Depends(require_authenticated_user)],
 )
 
-_audit_mod: Any | None = None
-_copilot_mod: Any | None = None
 
-
-def _scripts_on_path() -> None:
-    """Put the module's flat scripts dir on sys.path (idempotent)."""
-    from atria.core.modules.registry import resolve_modules_root
-
-    scripts = resolve_modules_root() / "maintenance_copilot" / "scripts"
-    if str(scripts) not in sys.path:
-        sys.path.insert(0, str(scripts))
-
-
-def _audit() -> Any:
-    """Lazily import the maintenance_copilot module's audit helper."""
-    global _audit_mod
-    if _audit_mod is None:
-        _scripts_on_path()
-        import audit  # noqa: E402 — flat scripts dir put on sys.path above
-
-        _audit_mod = audit
-    return _audit_mod
-
-
-def _copilot() -> Any:
-    """Lazily import the maintenance_copilot CLI module (health probes)."""
-    global _copilot_mod
-    if _copilot_mod is None:
-        _scripts_on_path()
-        import copilot  # noqa: E402 — flat scripts dir put on sys.path above
-
-        _copilot_mod = copilot
-    return _copilot_mod
+def _connector() -> RemoteConnector:
+    """Build a RemoteConnector from the maintenance_copilot module's manifest."""
+    try:
+        module = get_registry().get("maintenance_copilot")
+    except KeyError as exc:
+        raise HTTPException(503, "maintenance_copilot module not loaded") from exc
+    svc = module.manifest.service if module.manifest else None
+    if not svc:
+        raise HTTPException(503, "maintenance_copilot is not configured as a service")
+    return RemoteConnector("maintenance_copilot", svc.connector_url, svc.health_path)
 
 
 class SignoffBody(BaseModel):
@@ -80,36 +59,18 @@ def _engineer_of(user: Any) -> str:
 
 @router.get("/health")
 def maintenance_health() -> dict:
-    """Probe the copilot sidecars (tei/llm/qdrant/neo4j) → 'ok' or 'error: …'.
-
-    Sync on purpose: FastAPI runs it in the threadpool and the probes are
-    blocking clients with short timeouts (``MC_HEALTH_TIMEOUT``, default 3s).
-    """
+    """Sidecar health, proxied from the maintenance_copilot connector service."""
     try:
-        copilot = _copilot()
-        return copilot.check_health(copilot._build_probes())
-    except Exception as exc:  # noqa: BLE001 — health must answer, not raise
-        raise HTTPException(status_code=500, detail=f"health check failed: {exc}") from exc
+        return _connector().get_json("/connector/sidecar-health")
+    except ConnectorUnreachable as exc:
+        raise HTTPException(503, f"maintenance copilot service unreachable: {exc}") from exc
 
 
 @router.post("/signoff")
 async def signoff(body: SignoffBody, user=Depends(require_authenticated_user)) -> dict:
-    """Record a licensed-engineer sign-off on a copilot answer to the audit trail."""
+    """Record a licensed-engineer sign-off; the connector writes the audit trail."""
+    payload = {"engineer": _engineer_of(user), **body.model_dump()}
     try:
-        event = _audit().append_event(
-            {
-                "type": "signoff",
-                "engineer": _engineer_of(user),
-                "query": body.query,
-                "answer_summary": body.answer_summary,
-                "decision": body.decision,
-                "note": body.note,
-                "citations": body.citations or [],
-                "answer_type": body.answer_type,
-                "is_sensitive": body.is_sensitive,
-                "exact_quote": body.exact_quote,
-            }
-        )
-    except Exception as exc:  # noqa: BLE001 — surface audit-write failure to the client
-        raise HTTPException(status_code=500, detail=f"sign-off failed: {exc}") from exc
-    return {"ok": True, "event": event}
+        return _connector().post_json("/connector/signoff", payload)
+    except ConnectorUnreachable as exc:
+        raise HTTPException(503, f"sign-off failed (service unreachable): {exc}") from exc

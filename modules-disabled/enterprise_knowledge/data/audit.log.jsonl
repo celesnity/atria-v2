@@ -1,0 +1,52 @@
+{"ts": "2026-07-10T04:46:01.425807+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:46:01.427374+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:46:01.632998+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:46:02.182499+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:39.344886+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:39.349013+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:39.434739+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:39.484889+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:45.952443+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:45.955659+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:46.025962+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:51:46.059197+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:11.213887+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:11.215139+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:11.299148+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:11.345266+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:17.360128+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:17.361242+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:17.430060+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T04:56:17.462142+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:05.777175+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:05.778434+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:05.875917+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:05.928355+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:23.471179+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:23.472273+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:23.551108+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:14:23.593675+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:27.586021+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:27.587084+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:27.679034+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:27.731012+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:34.205391+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:34.206994+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:34.275449+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T16:17:34.308102+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:03:10.812756+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:03:10.814500+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:03:10.905675+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:03:10.957716+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:04:18.541548+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:04:18.542613+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:04:18.623508+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T17:04:18.675835+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:11:20.846329+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:11:20.847405+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:11:20.939959+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:11:20.988759+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:12:28.206787+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA", "DOCB"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:12:28.207739+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCA"], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:12:28.296369+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": [], "blocked_doc_ids": []}
+{"ts": "2026-07-10T18:12:28.347233+00:00", "type": "query", "user_id": "U001", "role": "Employee", "department": "HR", "query": "q", "returned_doc_ids": ["DOCG", "DOCV0", "DOCV1", "DOCV2", "DOCV3", "DOCV4"], "blocked_doc_ids": []}

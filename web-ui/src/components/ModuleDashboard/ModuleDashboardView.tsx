@@ -3,6 +3,7 @@ import { ArrowLeft, RotateCw } from 'lucide-react';
 import { useChatStore } from '../../stores/chat';
 import { useModulesStore } from '../../stores/modules';
 import { useModuleBridge } from './useModuleBridge';
+import { RemoteDashboard } from './RemoteDashboard';
 
 interface ModuleDashboardViewProps {
   moduleName: string;
@@ -59,6 +60,27 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
   };
 
   const iframeSrc = `/api/modules/${encodeURIComponent(moduleName)}/dashboard.html`;
+
+  if (summary?.remote) {
+    return (
+      <div className="flex h-full w-full flex-col bg-bg-000">
+        <header className="flex items-center gap-3 px-4 py-2 border-b border-border-300/15 bg-bg-100">
+          <button
+            type="button"
+            onClick={closeDashboard}
+            className="flex items-center gap-1.5 text-xs text-text-300 hover:text-text-100 transition-colors"
+            aria-label="Back to chat"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </button>
+          <span className="text-sm text-text-100">{title}</span>
+        </header>
+        <div className="flex-1 overflow-auto">
+          <RemoteDashboard summary={summary as any} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col bg-bg-000">

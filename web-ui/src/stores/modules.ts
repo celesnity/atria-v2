@@ -17,6 +17,11 @@ export interface ModuleSummary {
   dashboard_title: string;
   dashboard_default_height: number | null;
   badge_color: BadgeSeverity | null;
+  remote: boolean;
+  remote_name: string | null;
+  remote_entry: string | null;
+  remote_dashboard: string | null;
+  api_base: string | null;
 }
 
 interface State {
@@ -41,13 +46,18 @@ function asBadgeSeverity(v: string | null | undefined): BadgeSeverity | null {
 
 function summarize(modules: Module[]): ModuleSummary[] {
   return modules
-    .filter((m) => m.files.includes('dashboard.html'))
+    .filter((m) => m.files.includes('dashboard.html') || !!m.manifest?.remote)
     .map((m) => {
       const mf = m.manifest ?? null;
       const iconPath = mf?.icon ?? (m.files.includes('icon.svg') ? 'icon.svg' : null);
       const display = (mf?.display_name && mf.display_name.trim()) || m.name;
       const tooltip = (mf?.tooltip && mf.tooltip.trim()) || display;
       const dash = mf?.dashboard ?? null;
+      const remote = mf?.remote ?? null;
+      const remoteEntry = remote?.remote_entry ?? null;
+      const remoteDashboard =
+        (remote?.exposed && (remote.exposed as Record<string, any>).dashboard) || null;
+      const apiBase = remoteEntry ? remoteEntry.split('/dashboard/')[0] : null;
       return {
         name: m.name,
         display_name: display,
@@ -58,6 +68,11 @@ function summarize(modules: Module[]): ModuleSummary[] {
         dashboard_title: (dash?.title && dash.title.trim()) || `${display} · dashboard`,
         dashboard_default_height: dash?.default_height ?? null,
         badge_color: asBadgeSeverity(dash?.badge_color),
+        remote: !!remote,
+        remote_name: remote?.name ?? null,
+        remote_entry: remoteEntry,
+        remote_dashboard: remoteDashboard,
+        api_base: apiBase,
       };
     });
 }

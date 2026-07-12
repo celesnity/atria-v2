@@ -581,15 +581,15 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
           </div>
         )}
 
-        {/* Dispatch affordance — jump from chat to the live monitor */}
-        {(toolName === 'solve' || toolName === 'get_solve_result') && (
+        {/* Blackboard affordance — jump from chat to the live monitor */}
+        {(toolName === 'request_help' || toolName === 'get_help_responses') && (
           <div className="px-3 pb-2 pl-5">
             <Link
-              to="/dispatch"
+              to="/blackboard"
               className="inline-flex items-center gap-1.5 text-[12px] font-[450] text-semantic-success hover:underline cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring rounded"
             >
               <Network className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-              Mở Dispatch để theo dõi
+              Mở Blackboard để theo dõi
               <ArrowRight className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
             </Link>
           </div>

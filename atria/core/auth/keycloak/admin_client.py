@@ -96,7 +96,7 @@ class KeycloakAdminClient:
         return out
 
     def create_tenant(self, spec: TenantSpec) -> None:
-        # Create top-level group /tenants/<slug>. We assume /tenants exists (seeded in realm-export).
+        # Create top-level group /tenants/<slug>. We assume /tenants exists (seeded in the hosted realm).
         # Find the /tenants parent id.
         parents = self._req("GET", "/groups", params={"search": "tenants"}).json()
         parent_id = next((g["id"] for g in parents if g["name"] == "tenants"), None)

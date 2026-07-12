@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+data/audit.log.jsonl
+data/pending.jsonl
+data/renewals.jsonl
