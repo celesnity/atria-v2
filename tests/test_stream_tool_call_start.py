@@ -2,7 +2,7 @@
 
 import json
 
-from minder.core.agents.components.api.http_client import HttpClient
+from minder.core.agents.components.api.http_client import AgentHttpClient
 
 
 class _FakeResponse:
@@ -24,7 +24,7 @@ def _delta_chunk(delta):
 
 
 def test_on_tool_call_start_fires_once_with_name_and_id():
-    client = HttpClient.__new__(HttpClient)  # no network; call the reader directly
+    client = AgentHttpClient.__new__(AgentHttpClient)  # no network; call the reader directly
     started = []
 
     lines = [
