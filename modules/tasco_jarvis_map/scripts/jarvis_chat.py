@@ -41,6 +41,7 @@ from search import (  # noqa: E402
     _category_index, _category_radius, _detect_category, _time_ok, cmd_near, cmd_search,
 )
 from session_context import clear_context, load_context, save_context  # noqa: E402
+from query_intent import detect_ordinal  # noqa: E402
 
 MODULE_NAME = "tasco_jarvis_map"
 
@@ -534,8 +535,75 @@ def _next_ctx(prior: dict, res: dict) -> dict:
         ctx["intent"] = res["intent"]
     if ent.get("brand"):
         ctx["brands"] = ent["brand"]
+    # Carry the opening-hours constraint so a bare "còn mở cửa không?" can refine
+    # the prior category/city with it (see search._merge_prior R3). The ordered
+    # result list is set by _save_turn from the DISPLAYED pins, not here — so an
+    # ordinal always refers to the last list the user actually saw.
+    tconf = ent.get("time")
+    if tconf:
+        ctx["time"] = tconf
     ctx["ts"] = int(time.time())
     return ctx
+
+
+def _displayed_ids(map_actions: list) -> list:
+    """The poi_ids actually pinned on the map this turn, in display order — so a
+    follow-up ordinal ('cái thứ 2') selects what the user SEES, not an internal
+    search list that may differ (e.g. a nearby turn pins near-rows but the router
+    result is citywide)."""
+    ids = []
+    for a in map_actions or []:
+        if a.get("type") == "pins":
+            ids += [it["poi_id"] for it in (a.get("items") or []) if it.get("poi_id")]
+    return ids
+
+
+def _save_turn(sid: str, ctx: dict, res: dict, map_actions: list) -> None:
+    """Persist next context, storing the DISPLAYED pin list as the ordered result
+    set when this turn pinned >=2 places (falls back to the router results)."""
+    nxt = _next_ctx(ctx, res)
+    shown = _displayed_ids(map_actions)
+    if len(shown) >= 2:
+        nxt["results"] = shown[:10]
+    save_context(sid, nxt)
+
+
+def _ordinal_nav(message: str, ctx: dict, viewport: dict | None,
+                 user_location: dict | None):
+    """Multi-turn select-then-navigate: when the message is an ordinal reference
+    ("cái thứ 2", "the last one") and the prior turn stored a result list, resolve
+    the Nth prior poi_id and emit a navigation (pin + focus + straight route).
+    Returns a response payload, or None to fall through to a normal turn."""
+    n = detect_ordinal(message)
+    if n is None:
+        return None
+    results = (ctx or {}).get("results") or []
+    if not results:
+        return None
+    idx = len(results) + n if n < 0 else n - 1     # n == -1 -> last
+    if not (0 <= idx < len(results)):
+        return None
+    dest = {p["poi_id"]: p for p in load_json("pois.json")["pois"]}.get(results[idx])
+    if not dest:
+        return None
+    vi = _is_vietnamese(message)
+    actions = [{"type": "pins", "items": _pin_items([dest]), "fit": False},
+               {"type": "focus", "lat": dest["lat"], "lng": dest["lng"], "zoom": 15}]
+    user_here = bool(user_location and user_location.get("lat") is not None)
+    origin_pt = user_location if user_here else viewport
+    dist_txt = ""
+    if origin_pt and origin_pt.get("lat") is not None:
+        km = haversine_km(float(origin_pt["lat"]), float(origin_pt["lng"]),
+                          dest["lat"], dest["lng"])
+        actions.append({"type": "route",
+                        "from": {"lat": float(origin_pt["lat"]), "lng": float(origin_pt["lng"])},
+                        "to": {"lat": dest["lat"], "lng": dest["lng"]}})
+        dist_txt = (f" (~{km:.1f} km đường chim bay)" if vi
+                    else f" (~{km:.1f} km as the crow flies)")
+    reply = (f"Đã chọn {dest['name']}{dist_txt} — đã ghim và chỉ đường trên bản đồ."
+             if vi else
+             f"Selected {dest['name']}{dist_txt} — pinned and routed on the map.")
+    return {"reply": reply, "map_actions": actions, "source": "fast"}
 
 
 def _candidates_block(message: str, viewport: dict | None, pins: list[dict],
@@ -609,6 +677,18 @@ def main() -> int:
         chat_session_id = uuid.uuid4().hex
     ctx = load_context(chat_session_id) if interactive else {}
 
+    # Multi-turn select-then-navigate: an ordinal ("cái thứ 2", "the last one")
+    # resolves against the prior turn's stored result list and routes to that POI.
+    # Interactive-only and short-circuits before search, so the eval path (no ctx)
+    # never reaches it. The stored list is preserved so "the 3rd one" still works.
+    if interactive and ctx.get("results"):
+        pick = _ordinal_nav(message, ctx, viewport, user_location)
+        if pick is not None:
+            save_context(chat_session_id, {**ctx, "ts": int(time.time())})
+            return _emit({"reply": pick["reply"], "session_id": chat_session_id,
+                          "error": None, "map_actions": pick["map_actions"],
+                          "source": "fast"})
+
     # One router call, reused for the fast path and for saving the next context.
     # limit=7 so the fast path can show a top-3 block plus real "more suggestions"
     # extras below the divider. (The eval/bench call cmd_search directly with their
@@ -630,7 +710,7 @@ def main() -> int:
         print(f"WARN: fast path failed: {exc}", file=sys.stderr)
     if fast is not None:
         if interactive:
-            save_context(chat_session_id, _next_ctx(ctx, res))
+            _save_turn(chat_session_id, ctx, res, fast["map_actions"])
         # Honest disclosure when hard needs couldn't be confirmed (graceful fallback).
         reply = fast["reply"] + _needs_caveat(res, _is_vietnamese(message))
         return _emit({"reply": reply, "session_id": chat_session_id,
@@ -690,8 +770,8 @@ def main() -> int:
     reply, actions = _extract_map_actions(data.get("reply") or "")
     if interactive:
         # Keep the map soft-cache id stable across turns (don't adopt a different
-        # backend id); persist the slots this turn resolved.
-        save_context(chat_session_id, _next_ctx(ctx, res))
+        # backend id); persist the slots this turn resolved + the shown pin list.
+        _save_turn(chat_session_id, ctx, res, actions)
         session_id = chat_session_id
     else:
         session_id = data.get("session_id") or chat_session_id

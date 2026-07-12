@@ -1,0 +1,18 @@
+# Local voice worker (voice/agent.py) — Python 3.11.
+# Install into a MODULE-LOCAL voice/.venv (NOT the map module's ../../.venv), so
+# the heavy livekit stack stays out of the deterministic search/test env.
+# See voice/README.md for setup + run.
+
+# All-GPT pipeline: OpenAI STT (gpt-4o-mini-transcribe) + OpenAI TTS
+# (gpt-4o-mini-tts) + local silero VAD. Verified on 1.5.15.
+livekit-agents[openai,silero]~=1.5
+
+# Status channel (voice/status.py) shared with the map-env bridge.
+redis>=5
+
+# Optional: semantic multilingual turn detection (MAP_VOICE_TURN=multilingual).
+# Its ONNX InferenceRunner must be registered on the MAIN thread, which console
+# mode's THREAD job executor does not allow -> it only works in a real LiveKit
+# room, not the local console worker. The default (VAD endpointing) needs nothing
+# extra. Uncomment ONLY if you run the worker in a room instead of console.
+# livekit-plugins-turn-detector~=1.5

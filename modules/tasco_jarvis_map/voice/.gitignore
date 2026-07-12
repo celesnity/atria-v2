@@ -1,0 +1,4 @@
+# Local voice env + runtime — never commit
+.venv/
+__pycache__/
+*.pyc

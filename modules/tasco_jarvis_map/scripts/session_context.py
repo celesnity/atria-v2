@@ -22,7 +22,7 @@ import os
 import sys
 
 _TTL_SECONDS = 1800          # 30 min; refreshed on every write
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2          # v2 adds results[] (ordered poi_ids) + time carry-over
 _KEY_PREFIX = "map:ctx:"
 _CONNECT_TIMEOUT = 0.25      # seconds; keep the fast path fast when Redis is down
 _OP_TIMEOUT = 0.25

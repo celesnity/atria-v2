@@ -831,7 +831,9 @@ def cmd_polish(_args) -> dict:
     import urllib.request
 
     try:
-        req_body = json.loads(sys.stdin.read() or "{}")
+        # Decode stdin as bytes -> UTF-8 explicitly (codepage-independent): a
+        # Windows console/pipe defaults to cp1252 and would mangle Vietnamese.
+        req_body = json.loads(sys.stdin.buffer.read().decode("utf-8-sig") or "{}")
     except ValueError:
         return {"ok": True, "polished": False, "why": "bad stdin", "error": None}
     texts = [str(t) for t in (req_body.get("texts") or []) if str(t).strip()]
@@ -1218,6 +1220,10 @@ def cmd_calibrate(_args) -> dict:
 
 
 def main() -> int:
+    try:  # UTF-8 stdout so the bilingual JSON never crashes a cp1252 console
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
     ap = argparse.ArgumentParser(description="Group Drive simulated backend")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("users")

@@ -131,12 +131,18 @@ def resolve(text: str) -> dict:
 
 
 def main() -> int:
+    try:  # UTF-8 stdout so the Vietnamese JSON never crashes a cp1252 console
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--text", default=None)
     args = ap.parse_args()
     text = args.text
     if text is None:
-        raw = sys.stdin.read()
+        # Bytes -> UTF-8 explicitly so a Windows cp1252 console/pipe can't mangle
+        # Vietnamese stdin (matches jarvis_chat.py's robust decode).
+        raw = sys.stdin.buffer.read().decode("utf-8-sig")
         try:
             text = (json.loads(raw) or {}).get("text", "") if raw.strip() else ""
         except Exception:
