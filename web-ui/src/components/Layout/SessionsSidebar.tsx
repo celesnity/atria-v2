@@ -316,21 +316,21 @@ export function SessionsSidebar() {
                     }}
                     className={`w-10 h-10 rounded-md flex items-center justify-center ${
                       hasActiveSession
-                        ? 'bg-amber-100 border-2 border-amber-400 shadow-sm'
+                        ? 'bg-semantic-warning/15 border-2 border-semantic-warning/40 shadow-sm'
                         : 'bg-surface-soft hover:bg-surface-soft border border-hairline-soft hover:shadow-md'
                     }`}
                   >
-                    <Folder className={`w-5 h-5 ${hasActiveSession ? 'text-amber-600' : 'text-text-muted'}`} />
+                    <Folder className={`w-5 h-5 ${hasActiveSession ? 'text-semantic-warning' : 'text-text-muted'}`} />
                   </button>
                   {hasRunningSession && (
-                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-md border-[1.5px] border-amber-200 border-t-amber-500 animate-spin" />
+                    <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-md border-[1.5px] border-semantic-warning/30 border-t-semantic-warning animate-spin" />
                   )}
 
                   {/* Tooltip */}
                   <div data-surface="dark" className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-xs rounded-md px-3 py-2 whitespace-nowrap opacity-60 group-hover:opacity-100 pointer-events-none z-50 shadow-soft">
                     <div className="font-medium text-sm mb-1">{projectName}</div>
                     <div className="text-gray-300 text-xs">{workspace.sessions.length} session{workspace.sessions.length !== 1 ? 's' : ''}</div>
-                    {hasActiveSession && <div className="text-amber-300 text-xs mt-1">Active</div>}
+                    {hasActiveSession && <div className="text-semantic-warning text-xs mt-1">Active</div>}
                     <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ export function SessionsSidebar() {
           <div className="p-2 border-t border-hairline-soft bg-surface-soft">
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="w-full p-2 text-text-secondary hover:text-ink bg-canvas hover:bg-amber-50/30 border border-hairline-soft hover:border-amber-300 rounded-xl flex items-center justify-center"
+              className="w-full p-2 text-text-secondary hover:text-ink bg-canvas hover:bg-semantic-warning/10 border border-hairline-soft hover:border-semantic-warning/40 rounded-xl flex items-center justify-center"
               title="Settings"
             >
               <Settings className="w-5 h-5" />
@@ -443,7 +443,7 @@ export function SessionsSidebar() {
                               </span>
                               <span className={`ml-2 px-1.5 py-0.5 rounded-md text-xs flex-shrink-0 ${
                                 hasActiveSession
-                                  ? 'bg-amber-100 text-amber-700 font-medium'
+                                  ? 'bg-semantic-warning/15 text-semantic-warning font-medium'
                                   : 'bg-gray-200 text-text-secondary'
                               }`}>
                                 {workspace.sessions.length}
@@ -459,7 +459,7 @@ export function SessionsSidebar() {
                           e.stopPropagation();
                           handleDeleteWorkspace(workspace, e);
                         }}
-                        className="absolute top-3.5 right-3 w-7 h-7 rounded-md flex items-center justify-center hover:bg-red-100 text-text-muted hover:text-red-600 bg-surface-soft shadow-sm z-10 delete-glow"
+                        className="absolute top-3.5 right-3 w-7 h-7 rounded-md flex items-center justify-center hover:bg-semantic-danger/15 text-text-muted hover:text-semantic-danger bg-surface-soft shadow-sm z-10 delete-glow"
                         title="Delete workspace"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -482,7 +482,7 @@ export function SessionsSidebar() {
                             className={`w-full px-4 py-3 rounded-md text-left border-2 border-dashed flex items-center gap-2 ${
                               currentSessionIsEmpty
                                 ? 'bg-surface-soft border-hairline-soft text-text-muted cursor-not-allowed'
-                                : 'cursor-pointer bg-amber-50/50 hover:bg-amber-50 border-amber-300 hover:border-amber-400 text-amber-700'
+                                : 'cursor-pointer bg-semantic-warning/10 hover:bg-semantic-warning/10 border-semantic-warning/40 hover:border-semantic-warning/40 text-semantic-warning'
                             }`}
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -503,34 +503,34 @@ export function SessionsSidebar() {
                                   onClick={(e) => handleSessionClick(session, e)}
                                   className={`w-full px-4 py-3 pr-10 rounded-md text-left cursor-pointer ${
                                     isActiveSession
-                                      ? 'bg-amber-50 border-l-4 animate-border-breathe'
-                                      : 'bg-canvas border border-hairline-soft hover:border-amber-300 hover:bg-amber-50/30 hover:scale-[1.01] hover:shadow-sm transition-all duration-200'
+                                      ? 'bg-semantic-warning/10 border-l-4 animate-border-breathe'
+                                      : 'bg-canvas border border-hairline-soft hover:border-semantic-warning/40 hover:bg-semantic-warning/10 hover:scale-[1.01] hover:shadow-sm transition-all duration-200'
                                   }`}
                                 >
                                   <div className="flex items-center gap-1.5">
                                     {isRunning && (
-                                      <div className="w-3.5 h-3.5 rounded-md border-2 border-amber-200 border-t-amber-500 animate-spin flex-shrink-0" />
+                                      <div className="w-3.5 h-3.5 rounded-md border-2 border-semantic-warning/30 border-t-semantic-warning animate-spin flex-shrink-0" />
                                     )}
                                     {needsAttention && !isRunning && (
-                                      <div className="w-4 h-4 rounded-md bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
+                                      <div className="w-4 h-4 rounded-md bg-semantic-warning text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">!</div>
                                     )}
                                     <div className={`text-xs font-medium truncate ${
-                                      isActiveSession ? 'text-amber-900' : 'text-ink'
+                                      isActiveSession ? 'text-semantic-warning' : 'text-ink'
                                     }`} title={session.title || session.id}>
                                       {sessionLabel}
                                     </div>
                                     {session.has_session_model && (
-                                      <span className="text-[9px] font-medium text-purple-400 flex-shrink-0" title="Custom model">model</span>
+                                      <span className="text-[9px] font-medium text-accent-violet flex-shrink-0" title="Custom model">model</span>
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between text-xs mt-1">
                                     <span className={`${
-                                      isActiveSession ? 'text-amber-600' : 'text-text-muted'
+                                      isActiveSession ? 'text-semantic-warning' : 'text-text-muted'
                                     }`}>
                                       {formatDate(session.updated_at)}
                                     </span>
                                     <span className={`${
-                                      isActiveSession ? 'text-amber-600' : 'text-text-muted'
+                                      isActiveSession ? 'text-semantic-warning' : 'text-text-muted'
                                     }`}>
                                       {session.message_count} msgs
                                     </span>
@@ -546,7 +546,7 @@ export function SessionsSidebar() {
                                       setSessionModelSessionId(session.id);
                                       setSessionModelLabel(getSessionLabel(session));
                                     }}
-                                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-amber-100 text-text-muted hover:text-amber-600"
+                                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-semantic-warning/15 text-text-muted hover:text-semantic-warning"
                                     title="Session models"
                                   >
                                     <Settings className="w-3.5 h-3.5" />
@@ -554,7 +554,7 @@ export function SessionsSidebar() {
                                   {/* Delete Session Button */}
                                   <button
                                     onClick={(e) => handleDeleteSession(session.id, e)}
-                                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-red-100 text-text-muted hover:text-red-600 delete-glow"
+                                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-semantic-danger/15 text-text-muted hover:text-semantic-danger delete-glow"
                                     title="Delete session"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -576,7 +576,7 @@ export function SessionsSidebar() {
           <div className="p-4 border-t border-hairline-soft bg-surface-soft">
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="w-full px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-ink bg-canvas hover:bg-amber-50/30 border border-hairline-soft hover:border-amber-300 rounded-xl flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-ink bg-canvas hover:bg-semantic-warning/10 border border-hairline-soft hover:border-semantic-warning/40 rounded-xl flex items-center justify-center gap-2"
             >
               <Settings className="w-4 h-4" />
               <span>Settings</span>

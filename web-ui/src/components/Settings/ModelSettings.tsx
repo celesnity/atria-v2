@@ -12,7 +12,7 @@ export function ModelSettings() {
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Environment Configuration Banner (DESIGN.md: lime block) */}
-      <div className="rounded-md p-6 bg-block-lime border border-lime-200">
+      <div className="rounded-md p-6 bg-block-lime border border-hairline-soft">
         <div className="flex gap-4">
           <div className="flex-shrink-0">
             <CircleCheck className="w-6 h-6 text-ink" />

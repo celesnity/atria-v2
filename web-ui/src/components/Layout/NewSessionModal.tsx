@@ -149,7 +149,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
         <div className="px-5 py-2 flex items-center gap-1 flex-wrap">
           <button
             onClick={() => fetchDirectory('/')}
-            className="text-xs font-medium text-amber-600 hover:text-amber-800 hover:underline"
+            className="text-xs font-medium text-semantic-warning hover:text-semantic-warning hover:underline"
           >
             /
           </button>
@@ -161,7 +161,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
                 className={`text-xs font-medium ${
                   i === breadcrumbs.length - 1
                     ? 'text-ink'
-                    : 'text-amber-600 hover:text-amber-800 hover:underline'
+                    : 'text-semantic-warning hover:text-semantic-warning hover:underline'
                 }`}
               >
                 {crumb.label}
@@ -173,7 +173,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
               type="checkbox"
               checked={showHidden}
               onChange={(e) => setShowHidden(e.target.checked)}
-              className="rounded border-hairline-soft text-amber-500"
+              className="rounded border-hairline-soft text-semantic-warning"
             />
             Show hidden
           </label>
@@ -183,7 +183,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
         <div className="flex-1 overflow-y-auto border-t border-hairline-soft min-h-0">
           {isLoadingDirs ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-hairline-soft border-t-amber-500 rounded-md animate-spin" />
+              <div className="w-6 h-6 border-2 border-hairline-soft border-t-semantic-warning rounded-md animate-spin" />
             </div>
           ) : browseError ? (
             <div className="px-5 py-8 text-center">
@@ -211,7 +211,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
               {parentPath && (
                 <button
                   onClick={() => fetchDirectory(parentPath)}
-                  className="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-amber-50 text-left"
+                  className="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-semantic-warning/10 text-left"
                 >
                   <ArrowUp className="w-4 h-4 text-ink/40 flex-shrink-0" strokeWidth={1.5} />
                   <span className="text-sm text-text-secondary">..</span>
@@ -248,9 +248,9 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
                   <button
                     key={dir.path}
                     onClick={() => fetchDirectory(dir.path)}
-                    className="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-amber-50 text-left"
+                    className="w-full px-5 py-2.5 flex items-center gap-3 hover:bg-semantic-warning/10 text-left"
                   >
-                    <Folder className="w-4 h-4 text-amber-500 flex-shrink-0" strokeWidth={1.5} />
+                    <Folder className="w-4 h-4 text-semantic-warning flex-shrink-0" strokeWidth={1.5} />
                     <span className="text-sm text-ink truncate">{dir.name}</span>
                   </button>
                 ));
@@ -279,7 +279,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
           <button
             onClick={handleSelect}
             disabled={!currentPath || isCreating}
-            className="px-4 py-2 text-sm font-medium bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md"
+            className="px-4 py-2 text-sm font-medium bg-semantic-warning hover:bg-semantic-warning disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md"
           >
             {isCreating ? 'Creating...' : 'Select This Directory'}
           </button>

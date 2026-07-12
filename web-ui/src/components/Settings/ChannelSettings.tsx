@@ -114,9 +114,9 @@ export function ChannelSettings() {
 
   const statusColor = (s: string) =>
     s === 'running'
-      ? 'text-green-600'
+      ? 'text-semantic-success'
       : s === 'conflict' || s === 'error'
-      ? 'text-red-600'
+      ? 'text-semantic-danger'
       : 'text-gray-500';
 
   return (
@@ -132,7 +132,7 @@ export function ChannelSettings() {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md bg-semantic-danger/10 border border-semantic-danger/30 px-3 py-2 text-sm text-semantic-danger">
           {error}
         </div>
       )}
@@ -193,7 +193,7 @@ export function ChannelSettings() {
                   </button>
                   <button
                     onClick={() => handleDelete(c.id)}
-                    className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-md hover:bg-red-50"
+                    className="px-3 py-1.5 text-xs font-medium text-semantic-danger border border-semantic-danger/30 rounded-md hover:bg-semantic-danger/10"
                   >
                     Delete
                   </button>
@@ -217,7 +217,7 @@ export function ChannelSettings() {
                         </span>
                         <button
                           onClick={() => handleRemoveRecipient(c.id, r.chat_id)}
-                          className="text-red-500 hover:underline"
+                          className="text-semantic-danger hover:underline"
                         >
                           remove
                         </button>

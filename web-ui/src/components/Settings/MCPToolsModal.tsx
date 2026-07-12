@@ -254,7 +254,7 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
               title="Copy to clipboard"
             >
               {copiedText === fullName ? (
-                <CheckIcon className="w-4 h-4 text-green-600" />
+                <CheckIcon className="w-4 h-4 text-semantic-success" />
               ) : (
                 <ClipboardIcon className="w-4 h-4" />
               )}
@@ -312,7 +312,7 @@ function ParameterCard({ name, schema, isRequired }: ParameterCardProps) {
         <div className="flex items-center gap-2">
           <code className="text-sm font-semibold text-ink">{name}</code>
           {isRequired && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-semantic-danger">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-semantic-danger/15 text-semantic-danger">
               Required
             </span>
           )}

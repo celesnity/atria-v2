@@ -8,6 +8,7 @@ import { signOut } from "../../lib/auth";
 import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
 import { ViewSwitcher } from "./ViewSwitcher";
+import { BrandMark } from "../ui/Logo";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -17,8 +18,8 @@ function getContextColor(pct: number): string {
   const remaining = 100 - pct;
   if (remaining < 25) return "bg-semantic-danger/10 text-semantic-danger border-semantic-danger/20";
   if (remaining < 50)
-    return "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
-  return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+    return "bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20";
+  return "bg-semantic-success/10 text-semantic-success border-semantic-success/20";
 }
 
 interface MeInfo {
@@ -172,15 +173,11 @@ export function TopBar() {
       {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          {/* Signature orbit glyph — nebula-gradient ring with an off-center core. */}
-          <span aria-hidden className="relative grid h-6 w-6 place-items-center">
-            <span className="absolute inset-0 rounded-md bg-gradient-brand opacity-90" />
-            <span className="absolute inset-[3px] rounded-md bg-canvas" />
-            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-md bg-gradient-brand" />
-          </span>
+          {/* Brand mark — the orbit-and-spark, white on cosmos / ink on daybreak. */}
+          <BrandMark className="h-6 w-6 text-ink" />
           <div className="flex items-baseline gap-2">
             <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
-              Atria
+              Minder AI
             </span>
             <span className="eyebrow-mono text-ink/40 hidden lg:inline">
               AI Assistant

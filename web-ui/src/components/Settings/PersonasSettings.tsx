@@ -85,7 +85,7 @@ export function PersonasSettings() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-semantic-danger text-semantic-danger px-4 py-3 rounded-md text-sm">
+        <div className="bg-semantic-danger/10 border border-semantic-danger text-semantic-danger px-4 py-3 rounded-md text-sm">
           {error}
         </div>
       )}
@@ -148,7 +148,7 @@ export function PersonasSettings() {
               {!isEditing && selectedPersona && (
                 <button
                   onClick={() => handleDeletePersona(selectedPersona.name)}
-                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-md hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
+                  className="px-3 py-1.5 text-semantic-danger text-xs rounded-md hover:bg-semantic-danger/10 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
                 >
                   Delete
                 </button>

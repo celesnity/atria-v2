@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Atria — Your AI Co-Worker">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Minder AI — Your AI Co-Worker">
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#2D44E0"/>
@@ -12,12 +12,16 @@
     </radialGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#wash)"/>
-  <!-- Star mark -->
-  <g transform="translate(150 250)">
-    <path d="M60 0 C64.2 37.8 84.2 61.8 122 66 C84.2 70.2 64.2 94.2 60 132 C55.8 94.2 35.8 70.2 -2 66 C35.8 61.8 55.8 37.8 60 0 Z" fill="url(#brand)"/>
+  <!-- Orbit-and-spark mark -->
+  <g transform="translate(120 130) scale(0.85)">
+    <g stroke="#F8F9FE" stroke-width="7" fill="none">
+      <ellipse cx="116" cy="112" rx="86" ry="44" transform="rotate(-45 116 112)"/>
+      <ellipse cx="124" cy="122" rx="86" ry="44" transform="rotate(-30 124 122)"/>
+    </g>
+    <path d="M162 106 Q168.5 146 206 154 Q168.5 162 162 202 Q155.5 162 118 154 Q155.5 146 162 106 Z" fill="#F8F9FE"/>
   </g>
   <!-- Wordmark -->
-  <text x="150" y="470" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="112" font-weight="700" fill="#F4F6FF" letter-spacing="-3">Atria</text>
+  <text x="150" y="470" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="104" font-weight="700" fill="#F4F6FF" letter-spacing="-3">Minder AI</text>
   <text x="156" y="540" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B9C0E0">Your AI co-worker</text>
   <!-- Accent bar -->
   <rect x="156" y="566" width="300" height="6" rx="3" fill="url(#brand)"/>

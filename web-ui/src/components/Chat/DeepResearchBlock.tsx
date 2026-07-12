@@ -18,8 +18,8 @@ type Depth = 'shallow' | 'standard' | 'deep';
 const STATUS_COLORS = {
   reviewing: 'text-accent-magenta',
   queued:    'text-text-400',
-  running:   'text-amber-400',
-  done:      'text-emerald-400',
+  running:   'text-semantic-warning',
+  done:      'text-semantic-success',
   error:     'text-semantic-danger',
 } as const;
 
@@ -332,7 +332,7 @@ export function DeepResearchBlock({ message }: Props) {
       </div>
 
       {/* Progress / status stripe */}
-      {isReviewing && <div className="h-0.5 bg-purple-500/40" />}
+      {isReviewing && <div className="h-0.5 bg-accent-violet/40" />}
       {dr_status === 'queued' && <div className="h-0.5 bg-bg-200" />}
       {dr_status === 'running' && (
         <div className="h-0.5 bg-bg-200">
@@ -342,7 +342,7 @@ export function DeepResearchBlock({ message }: Props) {
           />
         </div>
       )}
-      {dr_status === 'done'  && <div className="h-0.5 bg-emerald-500/60" />}
+      {dr_status === 'done'  && <div className="h-0.5 bg-semantic-success/60" />}
       {dr_status === 'error' && <div className="h-0.5 bg-semantic-danger/60" />}
 
       {/* Review panel — completely blocks until user responds */}
@@ -370,9 +370,9 @@ export function DeepResearchBlock({ message }: Props) {
 
           {/* Report saved path */}
           {dr_status === 'done' && dr_report_path && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-              <FileText className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-              <span className="text-xs font-mono text-emerald-300 truncate" title={dr_report_path}>
+            <div className="flex items-center gap-2 px-3 py-2 bg-semantic-success/10 border border-semantic-success/20 rounded-md">
+              <FileText className="w-3.5 h-3.5 text-semantic-success flex-shrink-0" />
+              <span className="text-xs font-mono text-semantic-success truncate" title={dr_report_path}>
                 Saved: {dr_report_path}
               </span>
             </div>

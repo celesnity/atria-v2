@@ -195,7 +195,7 @@ export function MCPSettings() {
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center justify-between px-4 py-3 bg-red-50 border border-semantic-danger rounded-md">
+        <div className="flex items-center justify-between px-4 py-3 bg-semantic-danger/10 border border-semantic-danger rounded-md">
           <div className="flex items-center gap-3">
             <CircleAlert className="w-5 h-5 text-semantic-danger" />
             <p className="text-sm text-semantic-danger">{error}</p>
@@ -419,7 +419,7 @@ function ServerRow({
             <button
               onClick={handleTest}
               disabled={isProcessing}
-              className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="px-3 py-1.5 text-sm font-medium text-accent-cobalt bg-accent-cobalt/10 border border-accent-cobalt/30 hover:bg-accent-cobalt/15 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               Test
             </button>
@@ -442,7 +442,7 @@ function ServerRow({
           <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-md animate-spin mx-auto" />
         ) : isConnected ? (
           <div className="flex items-center justify-center gap-1.5">
-            <span className="text-sm font-medium text-green-700">On</span>
+            <span className="text-sm font-medium text-semantic-success">On</span>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-1.5">
@@ -454,7 +454,7 @@ function ServerRow({
       {/* Enabled */}
       <td className="px-4 py-3 text-center whitespace-nowrap">
         {server.config.enabled ? (
-          <Check className="w-5 h-5 text-green-600 mx-auto" />
+          <Check className="w-5 h-5 text-semantic-success mx-auto" />
         ) : (
           <span className="text-text-muted">-</span>
         )}
@@ -463,7 +463,7 @@ function ServerRow({
       {/* Auto-start */}
       <td className="px-4 py-3 text-center whitespace-nowrap">
         {server.config.auto_start ? (
-          <Check className="w-5 h-5 text-green-600 mx-auto" />
+          <Check className="w-5 h-5 text-semantic-success mx-auto" />
         ) : (
           <span className="text-text-muted">-</span>
         )}
@@ -543,7 +543,7 @@ function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuPr
               onDelete(server.name);
               setIsOpen(false);
             }}
-            className="w-full px-3 py-2 text-left text-sm text-semantic-danger hover:bg-red-50 transition-colors flex items-center gap-2"
+            className="w-full px-3 py-2 text-left text-sm text-semantic-danger hover:bg-semantic-danger/10 transition-colors flex items-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
             Remove

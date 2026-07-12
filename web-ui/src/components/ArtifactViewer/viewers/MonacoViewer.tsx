@@ -161,7 +161,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
       <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-hairline-soft/60 bg-surface-soft/30 flex-shrink-0">
         <span className="text-[11px] font-mono text-text-secondary truncate">{path}</span>
         {dirty ? (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-amber-400/15 text-amber-400 text-[10px] font-mono">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-semantic-warning/15 text-semantic-warning text-[10px] font-mono">
             unsaved · ⌘S
           </span>
         ) : (

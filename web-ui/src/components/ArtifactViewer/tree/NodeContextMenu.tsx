@@ -62,7 +62,7 @@ export function NodeContextMenu({ x, y, items, onClose }: Props) {
               it.disabled
                 ? 'text-ink/30 cursor-not-allowed'
                 : it.danger
-                  ? 'text-rose-400/90 hover:bg-rose-500/10'
+                  ? 'text-semantic-danger/90 hover:bg-semantic-danger/10'
                   : 'text-ink/85 hover:bg-ink/5'
             }`}
           >

@@ -12,9 +12,9 @@ interface Props {
 }
 
 const BAND_STYLES: Record<string, { dot: string; text: string; label: string }> = {
-  high:   { dot: 'bg-green-500',  text: 'text-green-600',  label: 'High confidence' },
-  medium: { dot: 'bg-yellow-500', text: 'text-yellow-600', label: 'Medium confidence' },
-  low:    { dot: 'bg-red-500',    text: 'text-red-500',    label: 'Low confidence' },
+  high:   { dot: 'bg-semantic-success',  text: 'text-semantic-success',  label: 'High confidence' },
+  medium: { dot: 'bg-semantic-warning', text: 'text-semantic-warning', label: 'Medium confidence' },
+  low:    { dot: 'bg-semantic-danger',    text: 'text-semantic-danger',    label: 'Low confidence' },
 };
 
 const ANSWER_TYPE_LABELS: Record<MaintenanceAnswerType, string> = {
@@ -95,7 +95,7 @@ export function MaintenanceAnswerBlock({ message }: Props) {
           {ANSWER_TYPE_LABELS[ma_answer_type] ?? ma_answer_type}
         </span>
         {ma_is_sensitive && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-600 flex-shrink-0"
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-semantic-warning/15 text-semantic-warning flex-shrink-0"
                 title="Contains PII, financial, medical, or legal content">
             <ShieldAlert className="w-3 h-3" /> Sensitive
           </span>
@@ -112,9 +112,9 @@ export function MaintenanceAnswerBlock({ message }: Props) {
 
       {/* Mandatory manual review gate */}
       {ma_review_required && (
-        <div className="flex items-start gap-2 px-4 py-2.5 bg-red-500/10 border-b border-red-500/20">
-          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-red-600 font-medium">
+        <div className="flex items-start gap-2 px-4 py-2.5 bg-semantic-danger/10 border-b border-semantic-danger/20">
+          <AlertTriangle className="w-4 h-4 text-semantic-danger flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-semantic-danger font-medium">
             Mandatory manual review — insufficient grounded evidence. Verify against the approved
             manuals before any dispatch decision.
           </p>
@@ -123,11 +123,11 @@ export function MaintenanceAnswerBlock({ message }: Props) {
 
       {/* Validation warnings */}
       {ma_validation_warnings.length > 0 && (
-        <div className="px-4 py-2.5 bg-yellow-500/10 border-b border-yellow-500/20 space-y-1">
+        <div className="px-4 py-2.5 bg-semantic-warning/10 border-b border-semantic-warning/20 space-y-1">
           {ma_validation_warnings.map((w, i) => (
             <div key={i} className="flex items-start gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-yellow-700">{w}</p>
+              <AlertTriangle className="w-3.5 h-3.5 text-semantic-warning flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-semantic-warning">{w}</p>
             </div>
           ))}
         </div>
@@ -156,7 +156,7 @@ export function MaintenanceAnswerBlock({ message }: Props) {
           {ma_advisory_note || 'Advisory only — a licensed engineer must verify and sign off.'}
         </p>
         {signedOff ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600 flex-shrink-0">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-semantic-success flex-shrink-0">
             <CheckCircle2 className="w-4 h-4" /> Signed off
           </span>
         ) : (

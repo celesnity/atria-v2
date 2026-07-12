@@ -32,7 +32,7 @@ export function RemoteDashboard({ summary }: { summary: RemoteSummary }) {
     return () => { alive = false; };
   }, [summary.remote_name, summary.remote_entry, summary.remote_dashboard]);
 
-  if (error) return <div className="p-4 text-sm text-red-400">Dashboard failed: {error}</div>;
+  if (error) return <div className="p-4 text-sm text-semantic-danger">Dashboard failed: {error}</div>;
   if (!Comp) return <div className="p-4 text-sm text-text-300">Loading dashboard…</div>;
   return <Comp apiBase={summary.api_base ?? ''} />;
 }

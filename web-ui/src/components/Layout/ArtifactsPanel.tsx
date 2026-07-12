@@ -22,11 +22,11 @@ import type { Artifact } from '../../types';
 // ── Type icon + color ─────────────────────────────────────────────────────────
 
 const TYPE_META: Record<string, { Icon: LucideIcon; color: string; label: string }> = {
-  report: { Icon: FileText,  color: 'text-blue-400',   label: 'Report' },
+  report: { Icon: FileText,  color: 'text-accent-cobalt',   label: 'Report' },
   code:   { Icon: Code2,     color: 'text-accent-magenta', label: 'Code'   },
-  image:  { Icon: ImageIcon, color: 'text-pink-400',   label: 'Image'  },
-  data:   { Icon: BarChart3, color: 'text-green-400',  label: 'Data'   },
-  web:    { Icon: Globe,     color: 'text-orange-400', label: 'Web'    },
+  image:  { Icon: ImageIcon, color: 'text-accent-magenta',   label: 'Image'  },
+  data:   { Icon: BarChart3, color: 'text-semantic-success',  label: 'Data'   },
+  web:    { Icon: Globe,     color: 'text-semantic-warning', label: 'Web'    },
   file:   { Icon: Paperclip, color: 'text-text-muted', label: 'File'   },
 };
 
@@ -159,7 +159,7 @@ function ArtifactRow({
 
       {artifact.pinned && !renaming && (
         <Pin
-          className="h-2.5 w-2.5 flex-shrink-0 fill-current text-amber-400 opacity-70 group-hover:opacity-0"
+          className="h-2.5 w-2.5 flex-shrink-0 fill-current text-semantic-warning opacity-70 group-hover:opacity-0"
           aria-label="Pinned"
         />
       )}

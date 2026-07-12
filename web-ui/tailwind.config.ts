@@ -42,6 +42,7 @@ export default {
         // Semantic
         'semantic-success': 'hsl(var(--semantic-success) / <alpha-value>)',
         'semantic-danger':  'hsl(var(--semantic-danger) / <alpha-value>)',
+        'semantic-warning': 'hsl(var(--semantic-warning) / <alpha-value>)',
         'focus-ring':       'hsl(var(--focus-ring) / <alpha-value>)',
 
         // Legacy aliases — remap to mono palette so un-migrated components stay on-brand.
@@ -86,7 +87,7 @@ export default {
           '100': 'hsl(var(--semantic-success) / <alpha-value>)',
         },
         warning: {
-          '100': 'hsl(var(--block-coral) / <alpha-value>)',
+          '100': 'hsl(var(--semantic-warning) / <alpha-value>)',
         },
         // Legacy gray scale — remapped so low values stay visible surfaces and
         // high values keep the muted→ink text hierarchy under both theme scopes.
@@ -104,13 +105,13 @@ export default {
         },
       },
       borderRadius: {
-        // Celesnity radii — tightened. Crisper corners; pills stay fully round.
-        xs: '3px',
-        sm: '5px',
-        md: '8px',
-        lg: '10px',
-        xl: '14px',
-        '2xl': '18px',
+        // Celesnity radii — roomy and soft per the kit: inputs 16, cards 20, hero panels 28.
+        xs: '6px',
+        sm: '10px',
+        md: '16px',
+        lg: '20px',
+        xl: '28px',
+        '2xl': '36px',
         pill: '999px',
       },
       backgroundImage: {
@@ -126,19 +127,20 @@ export default {
         mono: ['"JetBrains Mono"', 'SF Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
       },
       fontSize: {
-        // Figma typography tokens — [size, { lineHeight, letterSpacing, fontWeight }]
-        'display-xl': ['86px', { lineHeight: '1.00', letterSpacing: '-1.72px', fontWeight: '340' }],
-        'display-lg': ['64px', { lineHeight: '1.10', letterSpacing: '-0.96px', fontWeight: '340' }],
-        'headline':   ['26px', { lineHeight: '1.35', letterSpacing: '-0.26px', fontWeight: '540' }],
-        'subhead':    ['26px', { lineHeight: '1.35', letterSpacing: '-0.26px', fontWeight: '340' }],
-        'card-title': ['24px', { lineHeight: '1.45', letterSpacing: '0',       fontWeight: '700' }],
-        'body-lg':    ['20px', { lineHeight: '1.40', letterSpacing: '-0.14px', fontWeight: '330' }],
-        'body':       ['18px', { lineHeight: '1.45', letterSpacing: '-0.26px', fontWeight: '320' }],
-        'body-sm':    ['16px', { lineHeight: '1.45', letterSpacing: '-0.14px', fontWeight: '330' }],
-        'link':       ['20px', { lineHeight: '1.40', letterSpacing: '-0.10px', fontWeight: '480' }],
-        'btn':        ['20px', { lineHeight: '1.40', letterSpacing: '-0.10px', fontWeight: '480' }],
-        'eyebrow':    ['18px', { lineHeight: '1.30', letterSpacing: '0.54px',  fontWeight: '400' }],
-        'caption':    ['12px', { lineHeight: '1.00', letterSpacing: '0.60px',  fontWeight: '400' }],
+        // Celesnity typography tokens — [size, { lineHeight, letterSpacing, fontWeight }]
+        // Display 72/700, H1 48/600, H3 24/600, Body 18/400 at 1.7, per the kit type scale.
+        'display-xl': ['72px', { lineHeight: '1.02', letterSpacing: '-0.03em',  fontWeight: '700' }],
+        'display-lg': ['48px', { lineHeight: '1.12', letterSpacing: '-0.015em', fontWeight: '600' }],
+        'headline':   ['24px', { lineHeight: '1.35', letterSpacing: '-0.015em', fontWeight: '600' }],
+        'subhead':    ['24px', { lineHeight: '1.35', letterSpacing: '-0.015em', fontWeight: '400' }],
+        'card-title': ['24px', { lineHeight: '1.35', letterSpacing: '-0.015em', fontWeight: '600' }],
+        'body-lg':    ['20px', { lineHeight: '1.5',  letterSpacing: '0',        fontWeight: '400' }],
+        'body':       ['18px', { lineHeight: '1.7',  letterSpacing: '0',        fontWeight: '400' }],
+        'body-sm':    ['15px', { lineHeight: '1.5',  letterSpacing: '0',        fontWeight: '400' }],
+        'link':       ['16px', { lineHeight: '1.4',  letterSpacing: '-0.01em',  fontWeight: '600' }],
+        'btn':        ['16px', { lineHeight: '1.4',  letterSpacing: '-0.01em',  fontWeight: '600' }],
+        'eyebrow':    ['13px', { lineHeight: '1',    letterSpacing: '0.24em',   fontWeight: '600' }],
+        'caption':    ['12px', { lineHeight: '1.0',  letterSpacing: '0.06em',   fontWeight: '500' }],
       },
       spacing: {
         'xxs': '4px',
@@ -163,15 +165,15 @@ export default {
         'focus-ring': '0 0 0 3px hsl(var(--focus-ring) / 0.55)',
       },
       transitionDuration: {
-        // Per DESIGN.md Motion tokens.
+        // Celesnity motion tokens — calm and settled: 140/220/420ms.
         'instant': '80ms',
-        'fast':    '160ms',
-        'base':    '240ms',
-        'slow':    '480ms',
+        'fast':    '140ms',
+        'base':    '220ms',
+        'slow':    '420ms',
       },
       transitionTimingFunction: {
-        'motion-out':    'cubic-bezier(0.2, 0, 0, 1)',
-        'motion-in':     'cubic-bezier(0.4, 0, 1, 1)',
+        'motion-out':    'cubic-bezier(0.22, 1, 0.36, 1)',
+        'motion-in':     'cubic-bezier(0.65, 0, 0.35, 1)',
         'motion-spring': 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
       animation: {

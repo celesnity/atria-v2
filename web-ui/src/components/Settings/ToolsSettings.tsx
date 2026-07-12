@@ -152,7 +152,7 @@ export function ToolsSettings() {
                         {CORE_TOOLS.has(tool.name) && (
                           <span
                             title="Core tool — disabling may break the agent"
-                            className="inline-flex items-center gap-0.5 text-[10px] text-amber-500"
+                            className="inline-flex items-center gap-0.5 text-[10px] text-semantic-warning"
                           >
                             <AlertTriangle className="w-3 h-3" /> core
                           </span>

@@ -14,9 +14,9 @@ const MODULE = 'maintenance_copilot';
 
 /** Confidence % tint mirroring the card's band thresholds. */
 function scoreClass(score: number): string {
-  if (score >= 0.6) return 'text-green-600';
-  if (score >= 0.4) return 'text-yellow-600';
-  return 'text-red-500';
+  if (score >= 0.6) return 'text-semantic-success';
+  if (score >= 0.4) return 'text-semantic-warning';
+  return 'text-semantic-danger';
 }
 
 /** Resolve a stored source path (may be absolute on the server) to a module-relative one. */

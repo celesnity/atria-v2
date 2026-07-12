@@ -41,7 +41,7 @@ export function FileLink({ token, variant = 'text' }: FileLinkProps) {
         type="button"
         onClick={onClick}
         title={`Open ${rel}`}
-        className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-sky-500 border border-hairline-soft hover:border-sky-400/60 hover:text-sky-400 cursor-pointer transition-colors align-baseline"
+        className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-accent-cobalt border border-hairline-soft hover:border-accent-cobalt/60 hover:text-accent-cobalt cursor-pointer transition-colors align-baseline"
       >
         {token}
       </button>
@@ -53,7 +53,7 @@ export function FileLink({ token, variant = 'text' }: FileLinkProps) {
       type="button"
       onClick={onClick}
       title={`Open ${rel}`}
-      className="font-[540] text-sky-500 hover:text-sky-400 underline underline-offset-2 decoration-sky-400/40 hover:decoration-sky-400 cursor-pointer"
+      className="font-[540] text-accent-cobalt hover:text-accent-cobalt underline underline-offset-2 decoration-accent-cobalt/40 hover:decoration-accent-cobalt cursor-pointer"
     >
       {token}
     </button>

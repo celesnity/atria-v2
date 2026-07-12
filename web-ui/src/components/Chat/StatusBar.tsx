@@ -14,9 +14,9 @@ const AUTONOMY_STYLES = {
 
 const THINKING_STYLES: Record<string, string> = {
   'Off':           'bg-bg-200 text-text-500 border-hairline-soft hover:bg-bg-300',
-  'Low':           'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 hover:bg-cyan-500/15',
+  'Low':           'bg-accent-cobalt/10 text-accent-cobalt border-accent-cobalt/20 hover:bg-accent-cobalt/15',
   'Medium':        'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
-  'High':          'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/15',
+  'High':          'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20 hover:bg-semantic-warning/15',
 } as const;
 
 export function StatusBar() {

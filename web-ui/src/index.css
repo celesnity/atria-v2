@@ -69,6 +69,7 @@
   /* Semantic */
   --semantic-success: 152 55% 55%;
   --semantic-danger: 8 80% 62%;
+  --semantic-warning: 38 80% 62%;
 
   --focus-ring: 232 74% 62%;
 
@@ -113,6 +114,7 @@
 
   --semantic-success: 152 60% 32%;
   --semantic-danger: 0 70% 45%;
+  --semantic-warning: 34 85% 38%;
 
   --focus-ring: 232 74% 53%;
 
@@ -141,7 +143,7 @@
   body {
     background-color: hsl(var(--canvas));
     color: hsl(var(--ink));
-    font-weight: 320;
+    font-weight: 400; /* Celesnity body — Inter 400 */
     overscroll-behavior-y: none;
   }
 
@@ -156,14 +158,10 @@
   button, [role="button"] { cursor: pointer; }
   button:disabled, [role="button"][aria-disabled="true"] { cursor: not-allowed; }
 
-  /* Brand selection — lime on light, coral on dark. Browser default blue clashes with every block. */
+  /* Brand selection — cobalt, the accent spine. Browser default blue is close but off-family. */
   ::selection {
-    background-color: hsl(var(--block-lime));
-    color: hsl(var(--ink));
-  }
-  [data-surface="dark"] ::selection, .surface-dark ::selection {
-    background-color: hsl(var(--block-coral));
-    color: hsl(var(--ink));
+    background-color: hsl(var(--accent) / 0.85);
+    color: #FFFFFF;
   }
 
   /* Keyboard focus — never the browser-default blue. */
@@ -203,10 +201,10 @@
     }
   }
 
-  /* Editorial display type — tight tracking baked into the size tokens; this
-     just nudges the variable axis to the lighter weight Figma uses. */
+  /* Celesnity headings — semibold, tight tracking. */
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 540;
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -247,12 +245,10 @@ html.theme-transition *::after {
 }
 
 @keyframes braille-color {
-  0%    { color: #06b6d4; }
-  20%   { color: #0ea5e9; }
-  40%   { color: #3b82f6; }
-  60%   { color: #6366f1; }
-  80%   { color: #0891b2; }
-  100%  { color: #06b6d4; }
+  0%    { color: #2D44E0; } /* cobalt */
+  35%   { color: #6E1FC6; } /* violet */
+  65%   { color: #B14FD0; } /* nebula magenta */
+  100%  { color: #2D44E0; }
 }
 
 /* LoadingSpinner — cycles char + color */
@@ -397,23 +393,6 @@ html.theme-transition *::after {
   color: hsl(var(--ink));
 }
 
-/* Scrollbar — minimal hairline */
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--hairline-soft));
-  border-radius: 9999px;
-}
-*:hover > ::-webkit-scrollbar-thumb,
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--hairline) / 0.5);
-}
-
-:focus-visible {
-  outline: 2px solid hsl(var(--ink));
-  outline-offset: 2px;
-}
-
 /* Override Tailwind's default animation timing with editorial cubic-bezier so
    any pre-existing `animate-slide-up`, `animate-fade-in`, or `animate-scale-in`
    call site immediately feels smoother. */
@@ -423,7 +402,7 @@ html.theme-transition *::after {
 .animate-content-fade { animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important; }
 
 @keyframes note-pulse {
-  0% { background-color: rgba(255, 191, 0, 0.20); }
+  0% { background-color: rgba(177, 79, 208, 0.22); } /* nebula magenta flash */
   100% { background-color: transparent; }
 }
 .animate-note-pulse { animation: note-pulse 200ms ease-out; }
@@ -481,11 +460,11 @@ code {
 }
 
 /* Prose */
-.prose { color: hsl(var(--ink)); font-weight: 320; }
+.prose { color: hsl(var(--ink)); font-weight: 400; }
 .prose p { margin-bottom: 1rem; }
 .prose ul, .prose ol { margin-bottom: 1rem; padding-left: 1.5rem; }
 .prose li { margin-bottom: 0.4rem; }
-.prose strong { font-weight: 540; color: hsl(var(--ink)); }
+.prose strong { font-weight: 600; color: hsl(var(--ink)); }
 .prose a {
   color: hsl(var(--ink));
   text-decoration: underline;
@@ -500,18 +479,18 @@ code {
   color: hsl(var(--ink));
 }
 .prose h1, .prose h2, .prose h3, .prose h4 {
-  font-weight: 540;
-  letter-spacing: -0.26px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
 
 /* Compact prose for tool outputs, etc. */
-.prose-xs { color: hsl(var(--ink)); font-size: 14px; font-weight: 330; }
+.prose-xs { color: hsl(var(--ink)); font-size: 14px; font-weight: 400; }
 .prose-xs p { margin-bottom: 0.5rem; line-height: 1.5; }
 .prose-xs ul, .prose-xs ol { margin-bottom: 0.5rem; padding-left: 1.25rem; }
 .prose-xs li { margin-bottom: 0.2rem; line-height: 1.5; }
-.prose-xs strong { font-weight: 540; color: hsl(var(--ink)); }
+.prose-xs strong { font-weight: 600; color: hsl(var(--ink)); }
 .prose-xs a { color: hsl(var(--ink)); text-decoration: underline; text-underline-offset: 2px; }
 .prose-xs blockquote {
   border-left: 2px solid hsl(var(--ink));
@@ -520,7 +499,7 @@ code {
   color: hsl(var(--ink));
 }
 .prose-xs h1, .prose-xs h2, .prose-xs h3 {
-  font-weight: 540;
+  font-weight: 600;
   font-size: 15px;
   margin-bottom: 0.5rem;
   color: hsl(var(--ink));
@@ -637,6 +616,6 @@ code {
 
 /* Citation click-through highlight in Monaco (see MonacoViewer location prop). */
 .citation-highlight {
-  background: rgba(250, 204, 21, 0.28);
+  background: rgba(177, 79, 208, 0.30);
   border-radius: 2px;
 }

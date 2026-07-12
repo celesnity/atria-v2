@@ -43,7 +43,7 @@ export function ModelSlot({
     <div className="border border-hairline-soft rounded-md p-4 bg-gradient-to-br from-white to-gray-50">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-md bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-soft flex-shrink-0">
+        <div className="w-10 h-10 rounded-md bg-gradient-brand flex items-center justify-center shadow-soft flex-shrink-0">
           {icon}
         </div>
         <div className="flex-1">

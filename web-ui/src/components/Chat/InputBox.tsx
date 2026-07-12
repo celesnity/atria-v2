@@ -24,9 +24,9 @@ const AUTONOMY_STYLES = {
 
 const THINKING_STYLES: Record<string, string> = {
   'Off':    'bg-bg-200 text-text-500 border-hairline-soft hover:bg-bg-300',
-  'Low':    'bg-cyan-500/10 text-cyan-600 border-cyan-500/20 hover:bg-cyan-500/15',
+  'Low':    'bg-accent-cobalt/10 text-accent-cobalt border-accent-cobalt/20 hover:bg-accent-cobalt/15',
   'Medium': 'bg-success-100/10 text-success-100 border-success-100/20 hover:bg-success-100/15',
-  'High':   'bg-yellow-500/10 text-yellow-600 border-yellow-500/20 hover:bg-yellow-500/15',
+  'High':   'bg-semantic-warning/10 text-semantic-warning border-semantic-warning/20 hover:bg-semantic-warning/15',
 } as const;
 
 const PILL_BASE =
@@ -268,7 +268,7 @@ export function InputBox() {
                 disabled={!isConnected || !hasActiveSession || transcribing}
                 className={`min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
                   recording
-                    ? 'text-red-500 bg-red-500/10 hover:bg-red-500/15 animate-pulse'
+                    ? 'text-semantic-danger bg-semantic-danger/10 hover:bg-semantic-danger/15 animate-pulse'
                     : 'text-ink/30 hover:text-ink/60 hover:bg-surface-soft'
                 }`}
                 title={recording ? 'Stop & transcribe' : 'Voice input (push to talk)'}

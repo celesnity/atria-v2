@@ -150,8 +150,8 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
-            <p className="text-xs text-amber-800">
+          <div className="mt-3 px-3 py-2 bg-semantic-warning/10 border border-semantic-warning/30 rounded-md">
+            <p className="text-xs text-semantic-warning">
               Override models for this session only. Changes don't affect global settings.
             </p>
           </div>
@@ -193,7 +193,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-soft hover:shadow-hover"
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-semantic-warning to-semantic-warning hover:from-semantic-warning hover:to-semantic-warning text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-soft hover:shadow-hover"
               >
                 {saving ? (
                   <span className="flex items-center justify-center gap-2">

@@ -75,7 +75,7 @@ export function ModalFooter({
 
 export function ErrorMessage({ message }: { message: string }) {
   return (
-    <div className="px-4 py-3 bg-red-50 border border-semantic-danger rounded-md mb-4">
+    <div className="px-4 py-3 bg-semantic-danger/10 border border-semantic-danger rounded-md mb-4">
       <p className="text-sm text-semantic-danger">{message}</p>
     </div>
   );
@@ -165,7 +165,7 @@ export function ArgumentsList({
               type="button"
               onClick={() => onRemoveArg(index)}
               disabled={disabled}
-              className="p-2 text-semantic-danger hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+              className="p-2 text-semantic-danger hover:bg-semantic-danger/10 rounded-md transition-colors disabled:opacity-50"
             >
               <XMarkIcon className="w-4 h-4" />
             </button>
@@ -236,7 +236,7 @@ export function EnvironmentVariables({
               type="button"
               onClick={() => onRemoveEnv(key)}
               disabled={disabled}
-              className="p-2 text-semantic-danger hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+              className="p-2 text-semantic-danger hover:bg-semantic-danger/10 rounded-md transition-colors disabled:opacity-50"
             >
               <XMarkIcon className="w-4 h-4" />
             </button>

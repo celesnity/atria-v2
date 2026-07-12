@@ -21,6 +21,7 @@ import { MCPSettings } from './MCPSettings';
 import { PersonasSettings } from './PersonasSettings';
 import { ChannelSettings } from './ChannelSettings';
 import { ToolsSettings } from './ToolsSettings';
+import { BrandMark } from '../ui/Logo';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -181,8 +182,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
             {/* Sidebar Footer — hidden on the mobile horizontal bar */}
             <div className="hidden sm:flex items-center gap-2 px-4 py-3.5 border-t border-hairline-soft/70">
-              <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-gradient-brand text-[10px] font-[700] text-white shadow-glow-accent">A</span>
-              <p className="text-[11px] font-mono text-text-muted">Atria v0.1.7</p>
+              <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-gradient-brand shadow-glow-accent">
+                <BrandMark className="h-4 w-4 text-white" />
+              </span>
+              <p className="text-[11px] font-mono text-text-muted">Minder AI v0.1.7</p>
             </div>
           </div>
 

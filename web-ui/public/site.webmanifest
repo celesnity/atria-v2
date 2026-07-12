@@ -1,7 +1,7 @@
 {
-  "name": "Atria — Your AI Co-Worker",
-  "short_name": "Atria",
-  "description": "Atria is an AI co-worker that helps you think, plan, research, and get work done — with a live web workspace for chat, brainstorming, and analysis.",
+  "name": "Minder AI — Your AI Co-Worker",
+  "short_name": "Minder AI",
+  "description": "Minder AI is an AI co-worker that helps you think, plan, research, and get work done — with a live web workspace for chat, brainstorming, and analysis.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

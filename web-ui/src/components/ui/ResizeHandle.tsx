@@ -75,7 +75,7 @@ export function ResizeHandle({ side, width, min, max, onResize, className, style
       onPointerCancel={onPointerUp}
       className={
         className ??
-        `absolute top-0 bottom-0 ${side === 'left' ? '-left-1' : '-right-1'} w-2 cursor-col-resize hover:bg-sky-400/30 transition-colors z-30`
+        `absolute top-0 bottom-0 ${side === 'left' ? '-left-1' : '-right-1'} w-2 cursor-col-resize hover:bg-accent-cobalt/30 transition-colors z-30`
       }
       style={{ touchAction: 'none', ...style }}
     />

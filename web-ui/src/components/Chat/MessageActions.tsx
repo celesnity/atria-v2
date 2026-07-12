@@ -80,7 +80,7 @@ export function MessageActions({
         <span className="inline-flex items-center gap-0.5">
           <button
             type="button"
-            className={btn + ' text-red-600'}
+            className={btn + ' text-semantic-danger'}
             onClick={() => {
               setConfirming(false);
               onDeleteBlock?.();

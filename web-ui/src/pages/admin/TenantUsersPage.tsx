@@ -79,7 +79,7 @@ export function TenantUsersPage() {
           Invite
         </button>
       </form>
-      {err && <div className="text-red-600 mb-3">{err}</div>}
+      {err && <div className="text-semantic-danger mb-3">{err}</div>}
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left border-b">
@@ -104,7 +104,7 @@ export function TenantUsersPage() {
                 </select>
               </td>
               <td className="text-right">
-                <button onClick={() => remove(u.user_id)} className="text-red-600">
+                <button onClick={() => remove(u.user_id)} className="text-semantic-danger">
                   Remove
                 </button>
               </td>

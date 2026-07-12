@@ -223,13 +223,13 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                   showNameError
                     ? 'border-semantic-danger focus-visible:ring-semantic-danger/60'
                     : nameCheck.ok && name
-                      ? 'border-emerald-500/60 focus-visible:ring-emerald-500/60'
+                      ? 'border-semantic-success/60 focus-visible:ring-semantic-success/60'
                       : 'border-hairline-soft focus-visible:ring-accent-cobalt/60'
                 }`}
               />
               {name && (
                 nameCheck.ok ? (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" aria-hidden="true" />
+                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-semantic-success" aria-hidden="true" />
                 ) : showNameError ? (
                   <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-semantic-danger" aria-hidden="true" />
                 ) : null

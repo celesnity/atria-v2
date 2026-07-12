@@ -139,7 +139,7 @@ export function FileUploadWidget({
         <div
           className={`border-2 border-dashed rounded-md p-6 text-center transition-all cursor-pointer ${
             isDragging
-              ? 'border-blue-400 bg-blue-50 shadow-soft'
+              ? 'border-accent-cobalt bg-accent-cobalt/10 shadow-soft'
               : 'border-hairline-soft hover:border-hairline'
           }`}
           onClick={handleClick}
@@ -174,9 +174,9 @@ export function FileUploadWidget({
                     <p className="text-xs text-text-muted">{formatFileSize(file.size)}</p>
                   </div>
                   {progress[file.name] !== undefined && (
-                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-gray-200 rounded-md overflow-hidden">
+                    <div className="flex-shrink-0 ml-2 w-16 h-1 bg-surface-soft rounded-md overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 transition-all duration-base"
+                        className="h-full bg-accent-cobalt transition-all duration-base"
                         style={{ width: `${progress[file.name]}%` }}
                       />
                     </div>
@@ -202,7 +202,7 @@ export function FileUploadWidget({
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-semantic-danger rounded-md p-3 flex items-start justify-between">
+          <div className="bg-semantic-danger/10 border border-semantic-danger rounded-md p-3 flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-semantic-danger">{error}</p>
             </div>
@@ -222,7 +222,7 @@ export function FileUploadWidget({
             <button
               onClick={handleUpload}
               disabled={!isValid}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2 bg-accent-cobalt text-white rounded-md font-medium hover:bg-accent-cobalt/90 disabled:bg-surface-soft disabled:cursor-not-allowed transition-colors"
             >
               {uploading ? 'Uploading...' : 'Upload'}
             </button>

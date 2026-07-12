@@ -126,9 +126,9 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
   }
 
   const statusConfig = {
-    connected: { color: 'bg-green-500', label: 'Connected' },
+    connected: { color: 'bg-semantic-success', label: 'Connected' },
     disconnected: { color: 'bg-gray-400', label: 'Disconnected' },
-    connecting: { color: 'bg-yellow-500', label: 'Connecting' },
+    connecting: { color: 'bg-semantic-warning', label: 'Connecting' },
     error: { color: 'bg-semantic-danger', label: 'Error' },
   };
 
@@ -198,12 +198,12 @@ function ServerDetails({ server }: ServerDetailsProps) {
         <DetailRow
           label="Auto-start"
           value={config.auto_start ? 'Enabled' : 'Disabled'}
-          valueColor={config.auto_start ? 'text-green-600' : 'text-text-muted'}
+          valueColor={config.auto_start ? 'text-semantic-success' : 'text-text-muted'}
         />
         <DetailRow
           label="Enabled"
           value={config.enabled ? 'Yes' : 'No'}
-          valueColor={config.enabled ? 'text-green-600' : 'text-text-muted'}
+          valueColor={config.enabled ? 'text-semantic-success' : 'text-text-muted'}
         />
       </div>
     </div>
@@ -295,7 +295,7 @@ function ActionButton({ onClick, disabled, variant, children }: ActionButtonProp
   const variants = {
     primary: 'text-white bg-gradient-brand hover:brightness-110',
     secondary: 'text-text-secondary bg-surface-soft hover:bg-surface-soft',
-    danger: 'text-semantic-danger bg-red-50 hover:bg-red-100',
+    danger: 'text-semantic-danger bg-semantic-danger/10 hover:bg-semantic-danger/15',
   };
 
   return (

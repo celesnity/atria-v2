@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { Eyebrow } from '../components/ui/Eyebrow';
 import { AnimatedHeadline } from '../components/ui/AnimatedHeadline';
 import { CosmicField } from '../components/ui/CosmicField';
+import { BrandMark } from '../components/ui/Logo';
 import { MotionRise, transitions } from '../components/ui/motion';
 
 type AuthMode = 'keycloak' | 'none' | 'loading';
@@ -65,13 +66,14 @@ export function LoginPage() {
         className="pointer-events-none absolute -bottom-24 -left-6 select-none font-sans leading-none text-white/[0.04]"
         style={{ fontSize: 'clamp(180px, 26vw, 420px)', fontWeight: 340, letterSpacing: '-0.05em' }}
       >
-        Atria
+        Minder
       </span>
 
       {/* Top brand row. */}
       <div className="relative z-10 flex items-center justify-between px-8 md:px-14 lg:px-20 pt-8">
-        <div className="flex items-baseline gap-3">
-          <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">Atria</span>
+        <div className="flex items-center gap-3">
+          <BrandMark className="h-6 w-6 text-white" />
+          <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">Minder AI</span>
           <span className="eyebrow-mono text-white/40 hidden sm:inline">Co-worker mode</span>
         </div>
         <Eyebrow className="!text-white/40">v1 · 2026</Eyebrow>

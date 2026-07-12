@@ -94,7 +94,7 @@ export function ViewSwitcher({ className }: { className?: string }) {
             )}
             {showBadge && (
               <span
-                className="ml-0.5 inline-flex items-center gap-1 pl-1.5 pr-1.5 h-4 rounded-md bg-amber-400/15 text-amber-500 text-[10px] font-mono font-[600] leading-none"
+                className="ml-0.5 inline-flex items-center gap-1 pl-1.5 pr-1.5 h-4 rounded-md bg-semantic-warning/15 text-semantic-warning text-[10px] font-mono font-[600] leading-none"
                 aria-hidden="true"
               >
                 {runningJobs}

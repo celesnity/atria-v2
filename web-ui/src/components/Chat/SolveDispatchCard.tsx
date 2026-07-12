@@ -8,13 +8,13 @@ interface Props {
 }
 
 const STRATEGY_META: Record<string, { label: string; color: string; bg: string }> = {
-  divide:   { label: 'divide',   color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-  parallel: { label: 'parallel', color: 'text-amber-400',   bg: 'bg-amber-400/10' },
+  divide:   { label: 'divide',   color: 'text-semantic-success', bg: 'bg-semantic-success/10' },
+  parallel: { label: 'parallel', color: 'text-semantic-warning',   bg: 'bg-semantic-warning/10' },
 };
 
 const STATUS_META: Record<string, { label: string; color: string; dot: string; pulse: boolean }> = {
-  running: { label: 'Đang chạy',  color: 'text-amber-400',        dot: 'bg-amber-400',      pulse: true  },
-  done:    { label: 'Hoàn thành', color: 'text-emerald-400',      dot: 'bg-emerald-500',    pulse: false },
+  running: { label: 'Đang chạy',  color: 'text-semantic-warning',        dot: 'bg-semantic-warning',      pulse: true  },
+  done:    { label: 'Hoàn thành', color: 'text-semantic-success',      dot: 'bg-semantic-success',    pulse: false },
   failed:  { label: 'Thất bại',   color: 'text-semantic-danger',  dot: 'bg-semantic-danger', pulse: false },
   pending: { label: 'Chuẩn bị',   color: 'text-text-400',         dot: 'bg-text-500',       pulse: true  },
 };
@@ -113,7 +113,7 @@ export function SolveDispatchCard({ message }: Props) {
       {pct != null && (
         <div className="h-0.5 bg-bg-100">
           <div
-            className={`h-full transition-all duration-slow ${status === 'running' ? 'bg-amber-400' : statusMeta.dot}`}
+            className={`h-full transition-all duration-slow ${status === 'running' ? 'bg-semantic-warning' : statusMeta.dot}`}
             style={{ width: `${Math.max(pct, 3)}%` }}
             role="progressbar"
             aria-valuenow={pct}
