@@ -76,10 +76,18 @@ class ActivityLabel:
 
 
 @dataclass
+class ModuleTabManifest:
+    id: str
+    label: str
+    entry: Optional[str] = None
+
+
+@dataclass
 class ModuleDashboardManifest:
     title: Optional[str] = None
     default_height: Optional[int] = None
     badge_color: Optional[str] = None
+    tabs: list["ModuleTabManifest"] = field(default_factory=list)
 
 
 @dataclass
@@ -283,7 +291,23 @@ def _parse_dashboard(raw: Any) -> Optional[ModuleDashboardManifest]:
         title=_nonempty_str(raw.get("title")),
         default_height=int(height) if isinstance(height, (int, float)) and height > 0 else None,
         badge_color=badge if isinstance(badge, str) and badge in _BADGE_COLORS else None,
+        tabs=_parse_tabs(raw.get("tabs")),
     )
+
+
+def _parse_tabs(raw: Any) -> list[ModuleTabManifest]:
+    if not isinstance(raw, list):
+        return []
+    out: list[ModuleTabManifest] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        tab_id = _nonempty_str(item.get("id"))
+        label = _nonempty_str(item.get("label"))
+        if not tab_id or not label:
+            continue
+        out.append(ModuleTabManifest(id=tab_id, label=label, entry=_nonempty_str(item.get("entry"))))
+    return out
 
 
 def _parse_subagent(raw: Any) -> Optional[ModuleSubagentManifest]:

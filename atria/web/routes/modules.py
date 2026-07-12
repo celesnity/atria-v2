@@ -41,12 +41,21 @@ _STREAM_CHUNK = 16 * 1024
 _MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB per file, matching artifact uploads
 
 
+class ModuleTabOut(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: str
+    label: str
+    entry: Optional[str] = None
+
+
 class ModuleDashboardManifestOut(BaseModel):
     model_config = {"from_attributes": True}
 
     title: Optional[str] = None
     default_height: Optional[int] = None
     badge_color: Optional[str] = None
+    tabs: List[ModuleTabOut] = []
 
 
 class ModuleRemoteManifestOut(BaseModel):
