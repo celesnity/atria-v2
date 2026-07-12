@@ -12,6 +12,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useLocalStorage, useMediaQuery } from "usehooks-ts";
 import { ResizeHandle } from "../ui/ResizeHandle";
+import { ChatInterface } from "../Chat/ChatInterface";
 import { useChatStore } from "../../stores/chat";
 import { useModulesStore } from "../../stores/modules";
 import { useProjectsStore } from "../../stores/projects";
@@ -112,15 +113,22 @@ export function ProjectSidebar() {
   } | null>(null);
   const [creatingChat, setCreatingChat] = useState(false);
   // Persisted, drag-to-resize width for the desktop sidebar column.
+  // v2: wider default now that the chat thread lives inside the rail.
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
-    "sidebar.width",
-    256,
+    "sidebar.width.v2",
+    360,
   );
 
-  // Project switcher: which project's conversations are shown in the flat CHATS list.
+  // Project switcher: which project's conversations are shown in the CHATS dropdown.
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
+
+  // Chat selector — the conversation list is a compact dropdown now (the chat
+  // thread itself lives beneath it in the rail), so the list of sessions folds
+  // into a menu instead of consuming the rail's vertical space.
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const chatMenuRef = useRef<HTMLDivElement>(null);
 
   const reduce = useReducedMotion();
 
@@ -161,10 +169,24 @@ export function ProjectSidebar() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [switcherOpen]);
 
+  // Close the chat-selector dropdown on outside click.
+  useEffect(() => {
+    if (!chatMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(e.target as Node)) {
+        setChatMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [chatMenuOpen]);
+
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
   const activeConversations = activeProjectId
     ? conversations[activeProjectId] ?? []
     : [];
+  const activeConv =
+    activeConversations.find((c) => c.id === currentSessionId) ?? null;
   // The workspace project's name is a long filesystem path; show a friendly label instead.
   const activeProjectLabel =
     activeProjectId && activeProjectId === workspaceProjectId
@@ -376,7 +398,7 @@ export function ProjectSidebar() {
         </button>
       </div>
 
-      <div className="relative flex-1 space-y-1 overflow-y-auto pb-3">
+      <div className="relative space-y-1 pb-2">
         {isLoading && projects.length === 0 && (
           <p className="px-4 py-3 font-mono text-xs text-text-muted">Loading…</p>
         )}
@@ -413,9 +435,10 @@ export function ProjectSidebar() {
           </div>
         )}
 
-        {/* CHATS — flat list of the active project's conversations */}
+        {/* CHATS — compact dropdown selector. The active thread renders beneath
+            the rail (ChatRail stacks ChatInterface below this sidebar). */}
         {activeProjectId && (
-          <div className="pt-3">
+          <div className="px-3 pt-1" ref={chatMenuRef}>
             <SectionEyebrow
               label="Chats"
               meta={activeProjectLabel ? `· ${activeProjectLabel}` : undefined}
@@ -433,84 +456,93 @@ export function ProjectSidebar() {
               }
             />
 
-            <div className="space-y-0.5 px-2">
-              {activeConversations.length === 0 && (
-                <button
-                  onClick={() =>
-                    activeProject && setCreateConvFor(activeProject)
-                  }
-                  className="flex w-full items-center gap-2 rounded-md border border-dashed border-hairline-soft/40 px-2.5 py-2.5 font-mono text-xs text-text-muted transition-colors hover:border-accent-cobalt/40 hover:text-accent-cobalt focus:outline-none"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  New conversation
-                </button>
-              )}
+            <div className="relative">
+              <button
+                onClick={() => setChatMenuOpen((o) => !o)}
+                className="flex w-full items-center gap-2 rounded-md border border-hairline-soft/40 bg-surface-soft/40 px-2.5 py-2 text-left transition-colors hover:bg-surface-soft focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
+                aria-haspopup="menu"
+                aria-expanded={chatMenuOpen}
+                title="Switch conversation"
+              >
+                <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-accent-cobalt" />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
+                  {activeConv?.name ??
+                    (activeConversations.length ? "Select a chat" : "No chats yet")}
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 flex-shrink-0 text-text-muted transition-transform ${chatMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-              {activeConversations.map((conv) => {
-                const isActive = currentSessionId === conv.id;
-                return (
-                  <div
-                    key={conv.id}
-                    onClick={() => {
-                      closeModuleDashboard();
-                      loadSession(conv.id);
-                      closeMobileSidebar();
-                    }}
-                    className={`group relative flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 transition-colors duration-fast ${
-                      isActive
-                        ? "bg-accent-cobalt/[0.08] text-ink ring-1 ring-inset ring-accent-cobalt/20"
-                        : "text-text-secondary hover:bg-surface-soft/60 hover:text-ink"
-                    }`}
-                  >
-                    {isActive && (
-                      <span
-                        aria-hidden
-                        className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-[50%] bg-accent-cobalt"
-                      />
-                    )}
-                    <span className="grid h-4 w-4 flex-shrink-0 place-items-center">
-                      <MessageSquare
-                        className={`h-3.5 w-3.5 ${isActive ? "text-accent-cobalt" : "text-text-muted"}`}
-                      />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`truncate text-xs ${isActive ? "font-medium text-ink" : "text-text-secondary group-hover:text-ink"}`}
-                      >
-                        {conv.name}
-                      </div>
-                      <div className="truncate font-mono text-[10px] text-text-muted">
-                        {formatRelativeTime(conv.updated_at)}
-                      </div>
-                    </div>
-                    {conv.message_count > 0 && (
-                      <span
-                        className={`flex-shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10px] transition-opacity group-hover:opacity-0 ${
-                          isActive
-                            ? "bg-accent-cobalt/15 text-accent-cobalt"
-                            : "bg-surface-soft text-text-muted"
-                        }`}
-                      >
-                        {conv.message_count}
-                      </span>
-                    )}
+              {chatMenuOpen && (
+                <motion.div
+                  role="menu"
+                  initial={reduce ? false : { opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-md border border-hairline-soft/40 bg-bg-000/95 py-1 shadow-modal backdrop-blur-xl"
+                >
+                  {activeConversations.length === 0 && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete({
-                          type: "conv",
-                          id: conv.id,
-                          projectId: conv.project_id,
-                        });
+                      onClick={() => {
+                        activeProject && setCreateConvFor(activeProject);
+                        setChatMenuOpen(false);
                       }}
-                      className="absolute right-2 rounded p-1 text-text-muted opacity-100 transition-colors hover:bg-surface-soft hover:text-semantic-danger focus:outline-none focus-visible:ring-1 focus-visible:ring-semantic-danger md:opacity-0 md:group-hover:opacity-100"
-                      aria-label={`Delete conversation ${conv.name}`}
+                      className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-text-muted transition-colors hover:bg-surface-soft/70 hover:text-accent-cobalt"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Plus className="h-3.5 w-3.5" /> New conversation
                     </button>
-                  </div>
-                );
-              })}
+                  )}
+
+                  {activeConversations.map((conv) => {
+                    const isActive = currentSessionId === conv.id;
+                    return (
+                      <div
+                        key={conv.id}
+                        className="group mx-1 flex items-center gap-1.5 rounded-md px-2 py-1.5 hover:bg-surface-soft/70"
+                      >
+                        <button
+                          onClick={() => {
+                            closeModuleDashboard();
+                            loadSession(conv.id);
+                            closeMobileSidebar();
+                            setChatMenuOpen(false);
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left focus:outline-none"
+                        >
+                          <MessageSquare
+                            className={`h-3.5 w-3.5 flex-shrink-0 ${isActive ? "text-accent-cobalt" : "text-text-muted"}`}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span
+                              className={`block truncate text-xs ${isActive ? "font-medium text-ink" : "text-text-secondary"}`}
+                            >
+                              {conv.name}
+                            </span>
+                            <span className="block truncate font-mono text-[10px] text-text-muted">
+                              {formatRelativeTime(conv.updated_at)}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete({
+                              type: "conv",
+                              id: conv.id,
+                              projectId: conv.project_id,
+                            });
+                          }}
+                          className="rounded p-0.5 text-text-muted opacity-0 transition-colors hover:bg-surface-soft hover:text-semantic-danger focus:outline-none group-hover:opacity-100"
+                          aria-label={`Delete conversation ${conv.name}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
             </div>
           </div>
         )}
@@ -551,12 +583,18 @@ export function ProjectSidebar() {
           <ResizeHandle
             side="right"
             width={sidebarWidth}
-            min={200}
-            max={480}
+            min={240}
+            max={560}
             onResize={setSidebarWidth}
             className="absolute bottom-0 right-0 top-0 z-30 w-2 cursor-col-resize transition-colors hover:bg-accent-cobalt/30"
           />
           {sidebarBody}
+          {/* The active conversation lives inside the rail, beneath the session
+              controls — the rail is a single narrow column (session dropdown +
+              thread + input), leaving the center free for the module UI. */}
+          <div className="flex min-h-0 flex-1 flex-col border-t border-hairline-soft/20">
+            <ChatInterface />
+          </div>
         </motion.aside>
       )}
 
