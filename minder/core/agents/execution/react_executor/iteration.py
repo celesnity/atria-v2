@@ -36,6 +36,18 @@ def _call_llm_accepts_delta(bound_method: Callable) -> bool:
     return _func_accepts_delta(getattr(bound_method, "__func__", bound_method))
 
 
+def _call_llm_accepts_tool_start(bound_method: Callable) -> bool:
+    """Signature check for a (possibly bound) ``call_llm`` accepting on_tool_call_start."""
+    func = getattr(bound_method, "__func__", bound_method)
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    if "on_tool_call_start" in params:
+        return True
+    return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
 def _should_run_thinking(
     *, native_reasoning: bool, thinking_visible: bool, should_skip_thinking: bool
 ) -> bool:
@@ -181,7 +193,13 @@ class IterationMixin:
             return LoopAction.BREAK
 
     def _call_action_llm(
-        self, agent, messages, task_monitor, thinking_visible, on_content_delta=None
+        self,
+        agent,
+        messages,
+        task_monitor,
+        thinking_visible,
+        on_content_delta=None,
+        on_tool_call_start=None,
     ):
         """Call LLM for action phase. Uses llm_caller if available (TUI spinner), otherwise direct.
 
@@ -195,13 +213,11 @@ class IterationMixin:
             )
         import time
 
-        # Pass the delta callback only when streaming is wanted AND the agent's
-        # call_llm actually accepts it — some agents (e.g. the main agent's
-        # LlmCallsMixin) keep the older non-streaming signature, and forwarding
-        # the kwarg to them raises TypeError mid-turn.
         kwargs = {}
         if on_content_delta is not None and _call_llm_accepts_delta(agent.call_llm):
             kwargs["on_content_delta"] = on_content_delta
+        if on_tool_call_start is not None and _call_llm_accepts_tool_start(agent.call_llm):
+            kwargs["on_tool_call_start"] = on_tool_call_start
         start = time.monotonic()
         response = agent.call_llm(
             messages, task_monitor=task_monitor, thinking_visible=thinking_visible, **kwargs
@@ -368,12 +384,21 @@ class IterationMixin:
         ):
             on_content_delta = _cb.on_assistant_token
 
+        on_tool_call_start = None
+        if (
+            _cb is not None
+            and getattr(_cb, "wants_stream_tokens", False)
+            and hasattr(_cb, "on_tool_call_pending")
+        ):
+            on_tool_call_start = _cb.on_tool_call_pending
+
         response, latency_ms = self._call_action_llm(
             ctx.agent,
             ctx.messages,
             task_monitor,
             thinking_visible=thinking_visible,
             on_content_delta=on_content_delta,
+            on_tool_call_start=on_tool_call_start,
         )
         debug_log("ReactExecutor", f"_call_action_llm returned, success={response.get('success')}")
         self._last_latency_ms = latency_ms
