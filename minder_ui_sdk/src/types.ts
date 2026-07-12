@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { MinderTheme } from './theme';
 
 /** Tab metadata — plain, JSON-serializable (id/label go to the host manifest). */
 export interface TabMeta {
@@ -11,6 +12,8 @@ export interface TabMeta {
 export interface DashboardProps {
   apiBase: string;
   activeTab?: string | null;
+  /** Active Minder sky, forwarded by the host (defaults to 'dark'). */
+  theme?: MinderTheme | null;
 }
 
 export interface DashboardConfig {
