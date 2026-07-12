@@ -30,9 +30,11 @@ import { Eyebrow } from '../ui/Eyebrow';
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
 const MARKDOWN_COMPONENTS: Components = {
+  // Compact scale tuned for the narrow chat rail — small code blocks, dense
+  // tables, and a tight heading ramp so long docs stay readable at ~20vw.
   pre({ children }) {
     return (
-      <pre className="rounded-md p-4 overflow-x-auto my-4 bg-inverse-canvas text-inverse-ink">
+      <pre className="rounded-md p-2.5 overflow-x-auto my-2.5 bg-inverse-canvas text-inverse-ink text-[12px] leading-relaxed">
         {children}
       </pre>
     );
@@ -40,39 +42,46 @@ const MARKDOWN_COMPONENTS: Components = {
   code({ className, children, ...props }) {
     const language = /language-(\w+)/.exec(className || '')?.[1];
     if (language) {
-      return <code className="text-inverse-ink text-[14px] font-mono leading-relaxed" data-language={language} {...props}>{children}</code>;
+      return <code className="text-inverse-ink text-[12px] font-mono leading-relaxed" data-language={language} {...props}>{children}</code>;
     }
     return (
-      <code className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-ink border border-hairline-soft" {...props}>
+      <code className="text-[12px] px-1 py-0.5 rounded-sm font-mono bg-canvas/60 text-ink border border-hairline-soft break-words" {...props}>
         {children}
       </code>
     );
   },
   p({ children }) {
-    return <p className="mb-2.5 last:mb-0 text-ink text-[14px] leading-relaxed">{children}</p>;
+    return <p className="mb-2 last:mb-0 text-ink text-[13.5px] leading-relaxed">{children}</p>;
   },
   ul({ children }) {
-    return <ul className="list-disc pl-5 space-y-1 mb-2.5 text-ink text-[14px]">{children}</ul>;
+    return <ul className="list-disc pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ul>;
   },
   ol({ children }) {
-    return <ol className="list-decimal pl-5 space-y-1 mb-2.5 text-ink text-[14px]">{children}</ol>;
+    return <ol className="list-decimal pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-[14px]">{children}</li>;
+    return <li className="text-ink text-[13.5px] leading-snug marker:text-ink/40">{children}</li>;
   },
   strong({ children }) {
-    return <strong className="font-[540] text-ink">{children}</strong>;
+    return <strong className="font-[600] text-ink">{children}</strong>;
   },
   a({ children, href }) {
-    return <a href={href} className="link-underline text-ink underline underline-offset-4 hover:decoration-2" target="_blank" rel="noopener noreferrer">{children}</a>;
+    return <a href={href} className="link-underline text-ink underline underline-offset-2 break-words hover:decoration-2" target="_blank" rel="noopener noreferrer">{children}</a>;
   },
-  h1({ children }) { return <h1 className="text-headline tracking-[-0.26px] font-[540] mt-4 mb-3 text-ink">{children}</h1>; },
-  h2({ children }) { return <h2 className="text-headline tracking-[-0.26px] font-[540] mt-4 mb-3 text-ink">{children}</h2>; },
-  h3({ children }) { return <h3 className="text-[20px] leading-snug tracking-[-0.14px] font-[540] mt-3 mb-2 text-ink">{children}</h3>; },
+  h1({ children }) { return <h1 className="text-[17px] leading-tight tracking-[-0.02em] font-[600] mt-3 mb-1.5 first:mt-0 text-ink">{children}</h1>; },
+  h2({ children }) { return <h2 className="text-[15px] leading-tight tracking-[-0.01em] font-[600] mt-3 mb-1.5 first:mt-0 text-ink">{children}</h2>; },
+  h3({ children }) { return <h3 className="text-[13.5px] leading-snug font-[600] mt-2.5 mb-1 first:mt-0 text-ink">{children}</h3>; },
+  h4({ children }) { return <h4 className="text-[12.5px] leading-snug font-[600] mt-2 mb-1 first:mt-0 text-ink">{children}</h4>; },
+  h5({ children }) { return <h5 className="text-[11.5px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/70">{children}</h5>; },
+  h6({ children }) { return <h6 className="text-[11px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/50">{children}</h6>; },
+  blockquote({ children }) {
+    return <blockquote className="border-l-2 border-accent-cobalt/40 pl-2.5 my-2 text-[13px] italic text-text-secondary">{children}</blockquote>;
+  },
+  hr() { return <hr className="my-3 border-0 border-t border-hairline-soft" />; },
   table({ children }) {
     return (
-      <div className="my-4 overflow-x-auto rounded-md border border-hairline-soft">
-        <table className="w-full border-collapse text-[14px] text-ink">{children}</table>
+      <div className="my-2.5 overflow-x-auto rounded-md border border-hairline-soft">
+        <table className="w-full border-collapse text-[12px] text-ink">{children}</table>
       </div>
     );
   },
@@ -89,7 +98,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return (
       <th
         style={style}
-        className="px-3 py-2 text-left font-[540] text-ink border-r border-hairline-soft last:border-r-0"
+        className="px-2 py-1 text-left font-[600] text-ink border-r border-hairline-soft last:border-r-0 whitespace-nowrap"
       >
         {children}
       </th>
@@ -99,7 +108,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return (
       <td
         style={style}
-        className="px-3 py-2 align-top text-ink/90 border-r border-hairline-soft last:border-r-0"
+        className="px-2 py-1 align-top text-ink/90 border-r border-hairline-soft last:border-r-0"
       >
         {children}
       </td>
