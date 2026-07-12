@@ -289,6 +289,17 @@ def main() -> None:
     gate_backend = active if choice == "both" else choice
     env_before = os.environ.get("ATRIA_MAP_BACKEND")
 
+    # Observability: a db backend that can't reach the container silently falls
+    # back to JSON — which would make these numbers a lie. Surface the real engine
+    # health up front so `--backend db` can never quietly degrade unnoticed.
+    if "db" in backends:
+        import map_doctor
+        os.environ["ATRIA_MAP_BACKEND"] = "db"
+        _health = map_doctor.diagnose()
+        os.environ["ATRIA_MAP_BACKEND"] = env_before or active
+        print(f"ENGINE[db]: {'OK' if _health['ok'] else 'FALLBACK/UNHEALTHY'} "
+              f"-- {_health['verdict']}")
+
     try:
         if args.geocode:
             passes = {b: run_geocode_pass(b, args.geocode_sample) for b in backends}

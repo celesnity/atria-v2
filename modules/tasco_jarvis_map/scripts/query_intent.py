@@ -101,6 +101,62 @@ OPEN_NOW_RE = re.compile(r"\b(con|dang)\s+mo(?:\s+cua)?\b|open now|con mo cua")
 OPEN_LATE_RE = re.compile(r"mo cua muon|open late|\ban dem\b|ve khuya|khuya")
 FULL_DAY_RE = re.compile(r"\b24/7\b|24h|24 gio|ca ngay")
 
+# Ordinal / prior-result selection ("cai thu 2", "the second one", "so 3", "cai
+# cuoi cung"). MULTI-TURN ONLY: jarvis_chat resolves the returned index against
+# the previous turn's result list. Patterns are deliberately tight so a place
+# query carrying a number ("khach san 4 sao", "quan 3" = district 3, "so 3 nguyen
+# hue" = a street address, "quan mo thu 2" = open on Monday) is never misread as a
+# selection.
+_ORD_EN_WORDS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+                 "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10}
+_ORD_VI_WORDS = {"nhat": 1, "hai": 2, "nhi": 2, "ba": 3, "tu": 4, "bon": 4,
+                 "nam": 5, "sau": 6, "bay": 7, "tam": 8, "chin": 9, "muoi": 10}
+_ORD_LAST_RE = re.compile(r"\b(cai cuoi(?:\s+cung)?|cuoi cung|last(?:\s+one)?|"
+                          r"cuoi danh sach)\b")
+_ORD_FIRST_RE = re.compile(r"\b(dau tien|first(?:\s+one)?)\b")
+_ORD_UNIT_RE = re.compile(
+    r"\b\d+\s*(sao|star|stars|km|phut|gio|nghin|nguoi|cho|tang|do|độ)\b")
+_ORD_DISTRICT_RE = re.compile(r"\bquan\s+\d")
+_ORD_VI_THU_WORD_RE = re.compile(
+    r"\bthu\s+(nhat|nhi|ba|tu|bon|nam|sau|bay|tam|chin|muoi)\b")
+_ORD_NUM_RE = re.compile(
+    r"\bthu\s+(\d{1,2})\b|"                         # "cai thu 2"
+    r"\b(?:cai|quan an|dia diem|diem|so|option|number|muc|lua chon|phuong an)"
+    r"\s+(\d{1,2})\b|"                              # "so 3", "dia diem 2"
+    r"\b(\d{1,2})(?:st|nd|rd|th)\b")                # "2nd", "3rd"
+
+
+def detect_ordinal(text: str):
+    """Return a 1-based ordinal index (or -1 for 'last') when the message selects
+    from a prior result list, else None. Interactive-only. Excludes unit/star/
+    district/address/opening-hours phrasings so real place queries never match."""
+    f = fold(text)
+    # An hours refinement ("con mo cua", "sau 9h", "mo thu 2"=Monday) is NOT a
+    # selection — it is handled by search._merge_prior's carry-over branch.
+    if (OPEN_NOW_RE.search(f) or TIME_AFTER_RE.search(f) or "mo cua" in f
+            or _ORD_UNIT_RE.search(f) or _ORD_DISTRICT_RE.search(f)):
+        return None
+    if ADDR_RE.match(f):                 # "so 3 nguyen hue" is an address, not #3
+        return None
+    if _ORD_LAST_RE.search(f):
+        return -1
+    if _ORD_FIRST_RE.search(f):
+        return 1
+    m = _ORD_VI_THU_WORD_RE.search(f)
+    if m:
+        return _ORD_VI_WORDS.get(m.group(1))
+    m = _ORD_NUM_RE.search(f)
+    if m:
+        g = next((x for x in m.groups() if x), None)
+        if g and 1 <= int(g) <= 20:
+            return int(g)
+    toks = f.split()
+    if len(toks) <= 4:                   # bare "the second one" / "second"
+        for w, n in _ORD_EN_WORDS.items():
+            if w in toks:
+                return n
+    return None
+
 
 def _norm_val(v: str) -> str:
     return fold(str(v))

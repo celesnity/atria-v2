@@ -16,7 +16,6 @@ Backend follows ATRIA_MAP_BACKEND (json | db). Run with PYTHONUTF8=1.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -69,9 +68,24 @@ def _run(query: str, limit: int = 5) -> dict:
 
 
 def main() -> None:
+    # This eval is the only one that prints raw Vietnamese (weak-case input_query),
+    # so a cp1252 Windows console would raise UnicodeEncodeError. Force UTF-8 stdout
+    # (errors='replace') so it never crashes regardless of PYTHONUTF8/codepage.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--show", type=int, default=0, help="print detail for first N cases")
     args = ap.parse_args()
+
+    # This eval's gates are calibrated on the db (vector) engine; surface the real
+    # engine health so a silent JSON fallback (stopped container / missing driver)
+    # is obvious instead of quietly scoring the wrong engine.
+    import map_doctor
+    _health = map_doctor.diagnose()
+    print(f"ENGINE: {_health['backend']} "
+          f"({'OK' if _health['ok'] else 'FALLBACK/UNHEALTHY'}) -- {_health['verdict']}")
 
     cases = load_json("eval_track2.json")["queries"]
     n = len(cases)
@@ -118,7 +132,10 @@ def main() -> None:
             print(f"   want {sorted(exp)}  got {ids[:5]}  hit3={h3} r3={r3:.2f}")
             print(f"   reqs {reqs} -> cov {cov:.2f}; top-attrs {top_attrs[:6]}")
 
-    backend = os.environ.get("ATRIA_MAP_BACKEND", "json")
+    # Authoritative backend: _db.backend() consults the process env AND the repo
+    # .env (where ATRIA_MAP_BACKEND=db lives), so a plain `python eval_track2.py`
+    # is correctly reported as 'db' — os.environ alone would mislabel it 'json'.
+    backend = _health["backend"]
     print(f"\n=== Track-2 semantic eval (backend={backend}, n={n}) ===")
     metrics = {
         "poi_hit@3": hit3 / n,

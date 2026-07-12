@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -413,10 +414,20 @@ def _validation_block(results: list, intent_label: str, geo_contract: dict | Non
     }
 
 
+class MapDbFallback(RuntimeError):
+    """Raised (only under ATRIA_MAP_STRICT_DB) when the db engine fails and would
+    otherwise silently fall back to JSON — so eval surfaces the degradation."""
+
+
 def _dispatch(json_impl, db_name: str, args) -> dict:
-    """Route to the Postgres engine (search_db) when ATRIA_MAP_BACKEND=db,
-    silently falling back to the JSON engine on ANY db-side failure (stderr
-    warning only — stdout shape never changes)."""
+    """Route to the Postgres engine (search_db) when ATRIA_MAP_BACKEND=db, falling
+    back to the JSON engine on ANY db-side failure (stderr warning only — stdout
+    shape never changes).
+
+    The fallback is convenient in production but dangerous for evaluation: a
+    stopped container or missing driver makes `--backend db` quietly measure the
+    JSON engine. Set ATRIA_MAP_STRICT_DB=1 to turn the failure into a hard error
+    instead, so eval can never silently degrade."""
     import _db
 
     if _db.backend() == "db":
@@ -425,6 +436,9 @@ def _dispatch(json_impl, db_name: str, args) -> dict:
 
             return getattr(search_db, db_name)(args)
         except Exception as exc:
+            if os.environ.get("ATRIA_MAP_STRICT_DB", "").strip().lower() in ("1", "true", "yes"):
+                raise MapDbFallback(
+                    f"map-db unavailable and ATRIA_MAP_STRICT_DB is set: {exc}") from exc
             print(f"WARN map-db unavailable, json fallback: {exc}", file=sys.stderr)
     return json_impl(args)
 
@@ -509,7 +523,29 @@ def _merge_prior(args, parsed: dict) -> None:
             prior_brand = prior_brand[0] if prior_brand else None
         if prior_brand:
             parsed["_inherited_brand"] = prior_brand
+        # Keep an established opening-hours filter across a city switch ("cafe q1
+        # mở sau 9h" -> "tôi ở SG" still means open-after-9pm cafes in HCMC).
+        if not parsed.get("time") and prior.get("time"):
+            parsed["time"] = prior["time"]
         args.city = parsed["city_entry"]["canonical"]
+        return
+
+    # R3: an opening-hours-only refinement ("còn mở cửa không?", "sau 9h tối") with
+    # no subject of its own inherits the prior category (+ city) and re-runs it with
+    # the new hours filter — so the user can narrow the same list by time.
+    if (parsed.get("time") and prior_cat and not parsed.get("category")
+            and not parsed.get("brands") and parsed.get("city_entry") is None
+            and parsed.get("coords") is None and parsed.get("anchor_text") is None
+            and parsed.get("anchor_coords") is None):
+        parsed["category"] = prior_cat
+        args.category = prior_cat
+        parsed["intent"] = "category"
+        parsed["_inherited"] = True
+        if prior_city and not getattr(args, "city", None):
+            args.city = prior_city
+            entry = _city_entry_for(prior_city)
+            if entry is not None:
+                parsed["city_entry"] = entry
         return
 
     # R2: a content turn with no city of its own inherits the prior city.

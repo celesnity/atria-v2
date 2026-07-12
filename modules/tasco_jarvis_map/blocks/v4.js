@@ -41,6 +41,8 @@
     sosMember: null, callTimer: null, callSec: 0,
     muted: false, unmuteAt: null, viewAs: 'member', selfWarnUntil: 0,
     summaryShown: false, teamBusy: false, alertMembers: {},
+    // ── Phase C: real local voice session (LiveKit console worker) ──
+    voice: null,                // {sid, lastSeq, timer} while a mic session is live
   };
   var v4TeamLayer = null, v4TeamRouteLayer = null, v4TeamPoiLayer = null, v4TrafficLayer = null;
 
@@ -607,6 +609,8 @@
 
   /* ── design toggle (mirrors v3 setDesign/wire; owns v4 teardown) ───────── */
   function teardownV4Artifacts() {
+    voiceStopSession();                        // end any live mic session
+    if ($('v4Voice')) $('v4Voice').classList.remove('on');
     hideTransientNow();
     closeSpotlight();
     closeCallout();
@@ -658,7 +662,9 @@
     $('v4CallEnd').addEventListener('click', endCall);
     $('v4CallMute').addEventListener('click', function () { this.textContent = this.textContent === '🔇' ? '🔈' : '🔇'; });
     $('v4CallLoc').addEventListener('click', function () { if (S.sosMember) locateMember(S.sosMember); });
-    $('v4VoiceClose').addEventListener('click', function () { $('v4Voice').classList.remove('on'); });
+    $('v4VoiceClose').addEventListener('click', function () {
+      voiceStopSession(); $('v4Voice').classList.remove('on');
+    });
     $('v4TeamStrip').addEventListener('click', function () { renderTeamCard(); $('v4TeamStrip').classList.remove('on'); });
     $('v4PipClose').addEventListener('click', function () { els.v4Pip.classList.remove('on'); });
     $('v4TransClose').addEventListener('click', hideTransientNow);
@@ -1482,20 +1488,105 @@
     railUpsert(card);
   }
 
-  /* ── general voice (no team): Listening -> Thinking -> Speaking ─────────── */
-  function openGeneralVoice() {
-    $('v4VoiceState').textContent = 'DANG NGHE…';
+  /* ── general voice: REAL local mic session ─────────────────────────────────
+     The mic button starts a local LiveKit console worker (voice/agent.py) via the
+     voice_session.py bridge — it captures the OS mic, does OpenAI STT -> the map's
+     own Jarvis brain -> OpenAI TTS on the OS speakers, and publishes each turn to
+     Redis. We poll `status` and render the transcript + map artifacts here (the
+     WORKER speaks, so we never call speak()). If the voice env isn't installed or
+     the bridge errors, we fall back to the suggestion chips so the button always
+     does something. (The iframe sandbox blocks a browser mic — hence the worker.) */
+  var VOICE_STATE_LABEL = {
+    listening: 'DANG NGHE… / LISTENING',
+    thinking: 'DANG XU LY… / THINKING',
+    speaking: 'DANG TRA LOI… / SPEAKING',
+    error: 'LOI GIONG NOI / VOICE ERROR',
+    stopped: 'DA DUNG / STOPPED',
+  };
+
+  function ensureSid() {
+    if (!S.sessionId) {
+      S.sessionId = 'v4-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    }
+    return S.sessionId;
+  }
+
+  // Fallback (voice env missing / bridge error): the old simulated picker.
+  function openVoiceSuggestions(note) {
+    $('v4VoiceState').textContent = note || 'GOI Y / SUGGESTIONS';
     var box = $('v4VoiceChips'); box.innerHTML = '';
     IDLE_CHIPS.forEach(function (q) {
       var b = el('<button class="v4-chip">🎙 ' + esc(q) + '</button>');
       b.addEventListener('click', function () {
-        $('v4VoiceState').textContent = 'DANG NGHI…';
         S.speakNext = true;
-        setTimeout(function () { $('v4Voice').classList.remove('on'); submit(q); }, 500);
+        setTimeout(function () { $('v4Voice').classList.remove('on'); submit(q); }, 300);
       });
       box.appendChild(b);
     });
     $('v4Voice').classList.add('on');
+  }
+
+  function openGeneralVoice() {
+    if (S.voice) return;                       // a session is already live
+    var sid = ensureSid();
+    $('v4VoiceChips').innerHTML = '';
+    $('v4VoiceState').textContent = 'DANG KHOI DONG… / STARTING';
+    $('v4Voice').classList.add('on');
+    var c = map.getCenter();
+    var vp = JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() });
+    H.AtriaDash.json('voice_session.py', ['start', '--session', sid, '--viewport', vp],
+      { timeout_ms: 20000 })
+      .then(function (res) {
+        if (!res || !res.ok) { openVoiceSuggestions('VOICE OFFLINE — GOI Y'); return; }
+        S.voice = { sid: sid, lastSeq: (res.seq || 0), timer: null };
+        $('v4VoiceState').textContent = VOICE_STATE_LABEL.listening;
+        S.voice.timer = setInterval(voicePoll, 1200);
+      })
+      .catch(function () { openVoiceSuggestions('VOICE OFFLINE — GOI Y'); });
+  }
+
+  function voicePoll() {
+    var v = S.voice; if (!v) return;
+    H.AtriaDash.json('voice_session.py', ['status', '--session', v.sid], { timeout_ms: 8000 })
+      .then(function (st) {
+        if (!S.voice) return;                  // session closed while polling
+        if (st.state && VOICE_STATE_LABEL[st.state]) {
+          $('v4VoiceState').textContent = VOICE_STATE_LABEL[st.state];
+        }
+        if (st.running === false) {            // worker died / never came up
+          voiceStopSession(true);
+          openVoiceSuggestions('VOICE OFFLINE — GOI Y');
+          return;
+        }
+        var seq = st.seq || 0;
+        if (seq > v.lastSeq && st.state === 'speaking' && st.reply) {
+          v.lastSeq = seq;
+          voiceApplyTurn(st);
+        }
+      })
+      .catch(function () { /* transient bridge hiccup — keep polling */ });
+  }
+
+  // Render one completed voice turn exactly like a typed turn (pins/route/reply),
+  // but WITHOUT speaking — the worker already spoke via OpenAI TTS.
+  function voiceApplyTurn(st) {
+    var transcript = st.transcript || '';
+    if (transcript) pushHistory('user', transcript);
+    S.speakNext = false;
+    renderAgentReply(transcript, {
+      reply: st.reply, map_actions: st.map_actions || [], session_id: st.session_id,
+    });
+    if (S.voice) $('v4VoiceState').textContent = VOICE_STATE_LABEL.listening;
+  }
+
+  function voiceStopSession(skipStopCall) {
+    var v = S.voice; S.voice = null;
+    if (!v) return;
+    if (v.timer) clearInterval(v.timer);
+    if (!skipStopCall) {
+      H.AtriaDash.json('voice_session.py', ['stop', '--session', v.sid], { timeout_ms: 8000 })
+        .catch(function () {});
+    }
   }
 
   /* ── proactivity (§2.13): one gentle timer-driven nudge ────────────────── */
