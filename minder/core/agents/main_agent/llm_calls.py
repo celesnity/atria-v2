@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from minder.core.agents.components.api.configuration import (
     build_max_tokens_param,
+    build_reasoning_effort_param,
     build_temperature_param,
 )
 
@@ -228,6 +229,9 @@ class LlmCallsMixin:
                 "tool_choice": tool_choice,
                 **build_temperature_param(candidate, self.config.temperature),
                 **build_max_tokens_param(candidate, self.config.max_tokens),
+                **build_reasoning_effort_param(
+                    candidate, getattr(self.config, "reasoning_effort", "minimal")
+                ),
             }
 
             if use_stream:

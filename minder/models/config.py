@@ -257,6 +257,13 @@ class AppConfig(BaseModel):
     max_tokens: int = 8192
     temperature: float = 0.6
 
+    # Reasoning models (gpt-5 family, o1/o3/o4) spend internal reasoning tokens
+    # before emitting any output, which dominates time-to-first-token. "minimal"
+    # keeps TTFT lowest so streaming is visible; raise to "low"/"medium"/"high"
+    # for harder tasks. Empty string omits the param (provider default). Ignored
+    # by non-reasoning models.
+    reasoning_effort: str = "minimal"
+
     # Reasoning models (e.g. gpt-5-mini) reason internally during the single
     # streamed action call, so a separate prompted-thinking round-trip is
     # redundant and only adds latency before the first token. When True (default)
