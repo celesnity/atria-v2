@@ -15,7 +15,13 @@ interface RemoteSummary {
  * in-host (no iframe), sharing the host's React. The remote receives `apiBase`
  * so its own fetches hit the module's connector directly.
  */
-export function RemoteDashboard({ summary }: { summary: RemoteSummary }) {
+export function RemoteDashboard({
+  summary,
+  activeTab,
+}: {
+  summary: RemoteSummary;
+  activeTab?: string | null;
+}) {
   const [Comp, setComp] = useState<ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,5 +40,5 @@ export function RemoteDashboard({ summary }: { summary: RemoteSummary }) {
 
   if (error) return <div className="p-4 text-sm text-red-400">Dashboard failed: {error}</div>;
   if (!Comp) return <div className="p-4 text-sm text-text-300">Loading dashboard…</div>;
-  return <Comp apiBase={summary.api_base ?? ''} />;
+  return <Comp apiBase={summary.api_base ?? ''} activeTab={activeTab ?? null} />;
 }

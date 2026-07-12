@@ -90,7 +90,7 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
             content height, so overflow-auto never scrolls (the panel overflows
             the viewport instead). This also lets the remote's height:100% resolve. */}
         <div className="flex-1 min-h-0 overflow-auto">
-          <RemoteDashboard summary={summary as any} />
+          <RemoteDashboard summary={summary as any} activeTab={activeTabId} />
         </div>
       </div>
     );
