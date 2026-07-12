@@ -27,23 +27,39 @@ export function ChatPage() {
   const modulesWithDashboards = useModulesStore(s => s.modulesWithDashboards);
   const openDashboard = useModulesStore(s => s.openDashboard);
   const createWorkspaceConversation = useProjectsStore(s => s.createWorkspaceConversation);
+  const loadProjects = useProjectsStore(s => s.loadProjects);
+  const workspaceProjectId = useProjectsStore(s => s.workspaceProjectId);
 
   const openStatusDialog = useCallback(() => setStatusDialogOpen(true), []);
   const closeStatusDialog = useCallback(() => setStatusDialogOpen(false), []);
 
+  // Load projects/workspace at the page level so the empty (no-conversation)
+  // screen works even though ProjectSidebar — which used to own this — is not
+  // mounted then. Without it createWorkspaceConversation throws "Workspace
+  // project not loaded yet" for both the landing composer and the effect below.
+  useEffect(() => {
+    if (!workspaceProjectId) loadProjects();
+  }, [workspaceProjectId, loadProjects]);
+
   // Selecting a module from an empty (no-conversation) screen also starts a
   // chat, so the layout transitions from the full-width landing straight into
-  // the split view (chat in the rail + the selected module in the center). The
-  // ref guards against duplicate creates while the async create is in flight.
+  // the split view (chat in the rail + the selected module in the center).
+  // Guarded on the workspace being loaded, and ref-guarded against duplicate
+  // creates while the async create is in flight.
   const startingChatForModule = useRef(false);
   useEffect(() => {
-    if (activeModuleDashboard && !currentSessionId && !startingChatForModule.current) {
+    if (
+      activeModuleDashboard &&
+      !currentSessionId &&
+      workspaceProjectId &&
+      !startingChatForModule.current
+    ) {
       startingChatForModule.current = true;
       Promise.resolve(createWorkspaceConversation('New Chat')).finally(() => {
         startingChatForModule.current = false;
       });
     }
-  }, [activeModuleDashboard, currentSessionId, createWorkspaceConversation]);
+  }, [activeModuleDashboard, currentSessionId, workspaceProjectId, createWorkspaceConversation]);
 
   // Chat-first → module-workspace transition: when a conversation becomes active
   // (the user opened or started a chat) and no module is open yet, auto-open the
