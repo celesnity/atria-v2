@@ -121,9 +121,12 @@ const MARKDOWN_COMPONENTS: Components = {
 // consistent presence in the thread.
 function MinderAvatar() {
   return (
-    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
-      <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
-    </div>
+    <img
+      src="/logo.png"
+      alt="Minder AI"
+      className="h-[18px] w-[18px] flex-shrink-0 select-none"
+      draggable={false}
+    />
   );
 }
 
@@ -183,9 +186,12 @@ function WelcomeScreen() {
     <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-4">
       <CosmicField count={18} className="opacity-60" />
       <div className="relative z-10 w-full max-w-[240px] text-center">
-        <span className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-xl bg-gradient-brand shadow-glow-accent">
-          <span className="h-2.5 w-2.5 rounded-md bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
-        </span>
+        <img
+          src="/logo.png"
+          alt="Minder AI"
+          className="mx-auto mb-3 h-12 w-12 select-none"
+          draggable={false}
+        />
         <Eyebrow className="mb-1.5 block text-text-muted">Welcome</Eyebrow>
         <h2 className="text-balance text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
           Let&rsquo;s get to work.

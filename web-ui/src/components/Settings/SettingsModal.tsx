@@ -116,7 +116,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.06]"
-          style={{ background: 'radial-gradient(120% 100% at 20% 0%, hsl(232 74% 53%), transparent 70%)' }}
+          style={{ background: 'radial-gradient(120% 100% at 20% 0%, hsl(221 83% 53%), transparent 70%)' }}
         />
 
         {/* Header */}

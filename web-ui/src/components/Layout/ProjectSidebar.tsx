@@ -237,7 +237,7 @@ export function ProjectSidebar() {
           className="pointer-events-none absolute inset-x-0 top-0 h-40 opacity-70"
           style={{
             background:
-              "radial-gradient(120% 90% at 50% 0%, hsl(232 74% 53% / 0.18), transparent 72%)",
+              "radial-gradient(120% 90% at 50% 0%, hsl(221 83% 53% / 0.18), transparent 72%)",
           }}
         />
         <button
@@ -269,7 +269,7 @@ export function ProjectSidebar() {
         className="pointer-events-none absolute inset-x-0 top-0 h-56 opacity-70"
         style={{
           background:
-            "radial-gradient(130% 80% at 18% 0%, hsl(232 74% 53% / 0.16), transparent 62%), radial-gradient(120% 70% at 92% 4%, hsl(286 58% 56% / 0.12), transparent 60%)",
+            "radial-gradient(130% 80% at 18% 0%, hsl(221 83% 53% / 0.16), transparent 62%), radial-gradient(120% 70% at 92% 4%, hsl(205 92% 60% / 0.12), transparent 60%)",
         }}
       />
 

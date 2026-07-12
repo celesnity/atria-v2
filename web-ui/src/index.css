@@ -14,7 +14,7 @@
   --overlay-scrim: 234 50% 3%;
 
   /* Signature gradients + hero wash — flip with theme where noted below. */
-  --hero-wash: radial-gradient(120% 140% at 18% 12%, #241660 0%, #12093B 45%, #05060F 100%);
+  --hero-wash: radial-gradient(120% 140% at 18% 12%, #12245C 0%, #0A1030 45%, #05060F 100%);
 
   /* Motion tokens. */
   --motion-instant: 80ms;
@@ -36,7 +36,7 @@
   --inverse-ink: 230 39% 18%;  /* ink */
 
   /* Surface */
-  --surface-soft: 250 42% 12%; /* raised deep-indigo card */
+  --surface-soft: 224 45% 12%; /* raised deep-indigo card */
   --hairline: 230 35% 34%;
   --hairline-soft: 232 30% 18%;
 
@@ -44,23 +44,23 @@
   --text-secondary: 230 40% 85%;   /* starlight */
   --text-muted: 230 24% 66%;
 
-  /* Accent spine — cobalt → violet → nebula-magenta */
-  --accent: 232 74% 53%;       /* cobalt-blue */
-  --accent-2: 268 73% 45%;     /* violet */
-  --accent-3: 286 58% 56%;     /* nebula-magenta */
-  --accent-magenta: 286 58% 56%;
+  /* Accent spine — Minder blue: royal → azure → sky (matches brand mark) */
+  --accent: 221 83% 53%;       /* royal-blue #2563EB */
+  --accent-2: 214 90% 58%;     /* azure */
+  --accent-3: 205 92% 60%;     /* sky (robot-eye glow) */
+  --accent-magenta: 205 92% 60%;
 
-  /* Signature nebula gradient (dark). */
-  --gradient-brand: linear-gradient(120deg, #2D44E0 0%, #6E1FC6 52%, #B14FD0 100%);
+  /* Signature Minder-blue gradient (dark). */
+  --gradient-brand: linear-gradient(120deg, #1E50D8 0%, #2E6BF6 50%, #5AA6FF 100%);
 
-  /* Color-block palette retuned to the cosmic family. */
-  --block-lime:  268 73% 55%;  /* violet */
-  --block-lilac: 286 58% 62%;
+  /* Color-block palette retuned to the Minder-blue family. */
+  --block-lime:  214 90% 60%;  /* azure */
+  --block-lilac: 205 92% 66%;
   --block-cream: 230 40% 85%;  /* starlight */
-  --block-mint:  232 74% 60%;  /* cobalt */
-  --block-pink:  286 60% 70%;
+  --block-mint:  221 83% 60%;  /* royal-blue */
+  --block-pink:  205 90% 72%;
   --block-coral:   8 80% 68%;  /* reserved: danger */
-  --block-navy:  251 69% 18%;  /* deep-indigo */
+  --block-navy:  224 70% 20%;  /* deep navy-blue */
 
   /* Code surface — stays dark in both themes. */
   --code-bg: 240 46% 8%;
@@ -70,7 +70,7 @@
   --semantic-success: 152 55% 55%;
   --semantic-danger: 8 80% 62%;
 
-  --focus-ring: 232 74% 62%;
+  --focus-ring: 221 83% 62%;
 
   /* Elevation — Cosmos surfaces cast a moderate dark shadow. */
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.28);
@@ -85,28 +85,28 @@
   --inverse-canvas: 230 39% 18%;
   --inverse-ink: 228 60% 98%;
 
-  --surface-soft: 250 47% 95%; /* lavender-mist */
+  --surface-soft: 224 40% 95%; /* lavender-mist */
   --hairline: 250 20% 72%;
   --hairline-soft: 250 30% 90%;
 
   --text-secondary: 230 25% 40%;
   --text-muted: 230 18% 52%;
 
-  --accent: 232 74% 53%;       /* cobalt-blue */
-  --accent-2: 268 73% 55%;     /* violet-day */
-  --accent-3: 286 57% 62%;     /* magenta-day */
-  --accent-magenta: 286 57% 62%;
+  --accent: 221 83% 50%;       /* royal-blue #2563EB */
+  --accent-2: 214 90% 55%;     /* azure-day */
+  --accent-3: 205 90% 55%;     /* sky-day */
+  --accent-magenta: 205 90% 58%;
 
-  /* Signature daybreak gradient (light). */
-  --gradient-brand: linear-gradient(120deg, #2D44E0 0%, #8739E0 52%, #BC67D5 100%);
+  /* Signature Minder-blue gradient (light). */
+  --gradient-brand: linear-gradient(120deg, #1E50D8 0%, #2E6BF6 50%, #5AA6FF 100%);
 
-  --block-lime:  268 73% 62%;
-  --block-lilac: 286 57% 82%;
+  --block-lime:  214 90% 62%;
+  --block-lilac: 205 90% 82%;
   --block-cream: 250 47% 95%;
-  --block-mint:  232 74% 88%;
-  --block-pink:  286 60% 88%;
+  --block-mint:  221 83% 88%;
+  --block-pink:  205 88% 88%;
   --block-coral:   8 80% 78%;
-  --block-navy:  251 69% 22%;
+  --block-navy:  224 70% 24%;
 
   --code-bg: 230 39% 15%;
   --code-ink: 228 60% 98%;
@@ -114,7 +114,7 @@
   --semantic-success: 152 60% 32%;
   --semantic-danger: 0 70% 45%;
 
-  --focus-ring: 232 74% 53%;
+  --focus-ring: 221 83% 53%;
 
   /* Elevation — Daybreak surfaces cast a soft, cool shadow. */
   --shadow-card: 0 1px 2px rgba(28, 34, 64, 0.06), 0 2px 8px rgba(28, 34, 64, 0.05);
@@ -124,7 +124,7 @@
 
 /* Dark surfaces (navy block, hero wash) keep the bright focus ring. */
 [data-surface="dark"], .surface-dark {
-  --focus-ring: 232 74% 62%;
+  --focus-ring: 221 83% 62%;
 }
 
 @layer base {
@@ -628,9 +628,9 @@ code {
 }
 
 /* Signature glows — sparingly, on primary CTAs and hero cards. */
-.glow-accent  { box-shadow: 0 10px 40px rgba(45, 68, 224, 0.35); }
-.glow-nebula  { box-shadow: 0 14px 48px rgba(110, 31, 198, 0.38); }
-.glow-magenta { box-shadow: 0 12px 44px rgba(177, 79, 208, 0.30); }
+.glow-accent  { box-shadow: 0 10px 40px rgba(37, 99, 235, 0.35); }
+.glow-nebula  { box-shadow: 0 14px 48px rgba(46, 107, 246, 0.38); }
+.glow-magenta { box-shadow: 0 12px 44px rgba(90, 166, 255, 0.30); }
 .daybreak .glow-accent,
 .daybreak .glow-nebula,
 .daybreak .glow-magenta { box-shadow: 0 8px 24px hsl(var(--ink) / 0.10), 0 24px 48px hsl(var(--ink) / 0.10); }

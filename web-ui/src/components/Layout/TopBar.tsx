@@ -170,12 +170,13 @@ export function TopBar() {
       {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          {/* Signature orbit glyph — nebula-gradient ring with an off-center core. */}
-          <span aria-hidden className="relative grid h-6 w-6 place-items-center">
-            <span className="absolute inset-0 rounded-md bg-gradient-brand opacity-90" />
-            <span className="absolute inset-[3px] rounded-md bg-canvas" />
-            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-md bg-gradient-brand" />
-          </span>
+          {/* Minder AI logo mark */}
+          <img
+            src="/logo.png"
+            alt="Minder AI"
+            className="h-7 w-7 select-none"
+            draggable={false}
+          />
           <div className="flex items-baseline gap-2">
             <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
               Minder
