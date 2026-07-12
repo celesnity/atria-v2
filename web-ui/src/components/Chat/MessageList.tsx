@@ -603,9 +603,9 @@ export function MessageList() {
 
       {/* "Thinking…" indicator — visible between turn start and first token/tool */}
       {thinkingIndicator && (
-        <div className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400">
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
-          Thinking…
+        <div className="animate-fade-in flex items-center gap-2.5 px-3 py-1.5">
+          <span className="thinking-orb" aria-hidden="true" />
+          <span className="thinking-sweep text-xs font-medium tracking-tight">Thinking…</span>
         </div>
       )}
 

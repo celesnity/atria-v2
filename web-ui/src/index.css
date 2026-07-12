@@ -635,6 +635,51 @@ code {
 .daybreak .glow-nebula,
 .daybreak .glow-magenta { box-shadow: 0 8px 24px hsl(var(--ink) / 0.10), 0 24px 48px hsl(var(--ink) / 0.10); }
 
+/* ── "Thinking…" indicator — nebula light-sweep, on brand ──────────── */
+
+/* A light sweep of nebula colour travels through the word while the model
+   reasons. GPU-friendly: only background-position animates. */
+.thinking-sweep {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--ink) / 0.38) 0%,
+    hsl(var(--ink) / 0.38) 38%,
+    #2E6BF6 50%,
+    #5AA6FF 58%,
+    hsl(var(--ink) / 0.38) 70%,
+    hsl(var(--ink) / 0.38) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.4s ease-in-out infinite;
+}
+
+/* Small nebula orb that breathes in scale + glow instead of a flat blue dot. */
+.thinking-orb {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background-image: var(--gradient-brand);
+  box-shadow: 0 0 8px 1px rgba(46, 107, 246, 0.55);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* Ambient nebula focus glow on the composer while the agent is working. */
+.composer-thinking {
+  border-color: hsl(var(--ink) / 0.14) !important;
+  box-shadow: 0 0 0 1px rgba(46, 107, 246, 0.12), 0 8px 28px rgba(46, 107, 246, 0.14);
+  animation: border-breathe 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-sweep,
+  .thinking-orb,
+  .composer-thinking { animation: none; }
+}
+
 /* Citation click-through highlight in Monaco (see MonacoViewer location prop). */
 .citation-highlight {
   background: rgba(250, 204, 21, 0.28);

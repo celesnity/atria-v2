@@ -206,7 +206,9 @@ export function InputBox() {
   return (
     <div className="bg-canvas border-t border-hairline-soft/50 px-2.5 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="w-full relative">
-        <div className="rounded-lg border border-hairline-soft bg-canvas focus-within:border-ink/20 focus-within:shadow-soft transition-all duration-fast">
+        <div className={`rounded-lg border bg-canvas focus-within:border-ink/20 focus-within:shadow-soft transition-all duration-fast ${
+          isLoading ? 'composer-thinking' : 'border-hairline-soft'
+        }`}>
           <div className="flex gap-1.5 px-1.5 py-1 items-center">
             <input
               ref={fileInputRef}
