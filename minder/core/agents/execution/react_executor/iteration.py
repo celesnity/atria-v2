@@ -35,6 +35,21 @@ def _call_llm_accepts_delta(bound_method: Callable) -> bool:
     """Signature check for a (possibly bound) ``call_llm``, cached per function."""
     return _func_accepts_delta(getattr(bound_method, "__func__", bound_method))
 
+
+def _should_run_thinking(
+    *, native_reasoning: bool, thinking_visible: bool, should_skip_thinking: bool
+) -> bool:
+    """Whether the prompted (blocking) thinking phase should run this iteration.
+
+    Reasoning models reason inside the single streamed action call, so the
+    separate prompted-thinking round-trip is skipped entirely when
+    ``native_reasoning`` is set.
+    """
+    if native_reasoning:
+        return False
+    return thinking_visible and not should_skip_thinking
+
+
 _ctx_logger = logging.getLogger("swecli.context_debug")
 
 
@@ -238,7 +253,13 @@ class IterationMixin:
         if not should_skip_thinking:
             should_skip_thinking = self._last_tools_were_readonly(ctx.messages)
 
-        if thinking_visible and not should_skip_thinking:
+        self._current_thinking_trace = None
+        native_reasoning = getattr(self.config, "native_reasoning", True)
+        if _should_run_thinking(
+            native_reasoning=native_reasoning,
+            thinking_visible=thinking_visible,
+            should_skip_thinking=should_skip_thinking,
+        ):
             thinking_trace = self._get_thinking_trace(
                 ctx.messages,
                 ctx.agent,
