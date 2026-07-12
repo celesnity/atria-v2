@@ -49,16 +49,16 @@ const MARKDOWN_COMPONENTS: Components = {
     );
   },
   p({ children }) {
-    return <p className="mb-3 last:mb-0 text-ink text-body leading-relaxed">{children}</p>;
+    return <p className="mb-2.5 last:mb-0 text-ink text-[14px] leading-relaxed">{children}</p>;
   },
   ul({ children }) {
-    return <ul className="list-disc pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ul>;
+    return <ul className="list-disc pl-5 space-y-1 mb-2.5 text-ink text-[14px]">{children}</ul>;
   },
   ol({ children }) {
-    return <ol className="list-decimal pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ol>;
+    return <ol className="list-decimal pl-5 space-y-1 mb-2.5 text-ink text-[14px]">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-body">{children}</li>;
+    return <li className="text-ink text-[14px]">{children}</li>;
   },
   strong({ children }) {
     return <strong className="font-[540] text-ink">{children}</strong>;
@@ -121,11 +121,11 @@ function AtriaAvatar() {
 const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content: string }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2">
         <AtriaAvatar />
-        <span className="font-mono text-[11px] uppercase tracking-[0.54px] text-ink/40">Atria</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-ink/40">Atria</span>
       </div>
-      <div className="prose max-w-none code-hover pl-[26px]">
+      <div className="prose max-w-none code-hover pl-0">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
           {content}
         </ReactMarkdown>
@@ -137,9 +137,9 @@ const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content
 const UserTurn = memo(function UserTurn({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] md:max-w-[70%]">
-        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-4 py-3 shadow-soft">
-          <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+      <div className="max-w-[90%]">
+        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-3 py-2 shadow-soft">
+          <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
             {content}
           </div>
         </div>
@@ -375,7 +375,7 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
 function ListFooter({ context }: { context?: ListContext }) {
   if (!context?.isLoading) return null;
   return (
-    <div className="max-w-4.5xl mx-auto px-4 md:px-8 pb-8 pt-1">
+    <div className="max-w-4.5xl mx-auto px-3 pb-6 pt-1">
       {context.progressMessage
         ? <LoadingSpinner label={context.progressMessage} />
         : <ThinkingSpinner />
@@ -504,7 +504,7 @@ export function MessageList() {
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
         itemContent={(itemIndex, item, ctx) => (
           <div
-            className="max-w-4.5xl mx-auto px-4 md:px-8 pb-5 md:pb-6"
+            className="max-w-4.5xl mx-auto px-3 pb-4"
             style={item.kind === 'message' && item.message.depth
               ? { paddingLeft: `calc(${item.message.depth * 1.5}rem + 1rem)` }
               : undefined}
