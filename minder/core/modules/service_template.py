@@ -46,6 +46,7 @@ def manifest_json(name: str, port: int) -> str:
             "title": f"{title} · dashboard",
             "default_height": 720,
             "badge_color": "info",
+            "tabs": [{"id": "home", "label": "Home"}],
         },
         "service": {
             "connector_url": f"http://{name.replace('_', '-')}:{port}",
@@ -138,6 +139,8 @@ def backend_dockerfile(name: str, port: int) -> str:
         f"COPY modules/{name}/frontend/package.json modules/{name}/frontend/package-lock.json* ./\n"
         "RUN npm install\n"
         f"COPY modules/{name}/frontend/ ./\n"
+        "# minder-ui-sdk is consumed from source via vite alias (../../../minder_ui_sdk).\n"
+        "COPY minder_ui_sdk /minder_ui_sdk\n"
         "RUN npm run build\n\n"
         "# --- python service stage ---\n"
         "FROM python:3.12-slim\n"
@@ -177,15 +180,22 @@ def frontend_package_json(name: str) -> str:
 def frontend_vite_config(name: str, port: int) -> str:
     return (
         "import { defineConfig } from 'vite';\n"
+        "import { fileURLToPath } from 'node:url';\n"
+        "import { dirname, resolve } from 'node:path';\n"
         "import react from '@vitejs/plugin-react';\n"
-        "import { federation } from '@module-federation/vite';\n\n"
+        "import { federation } from '@module-federation/vite';\n"
+        "import { minderTabsSync } from '../../../minder_ui_sdk/src/vitePlugin';\n\n"
+        "const here = dirname(fileURLToPath(import.meta.url));\n"
+        "const sdk = resolve(here, '../../../minder_ui_sdk/src');\n\n"
         "export default defineConfig({\n"
+        "  resolve: { alias: { 'minder-ui-sdk': resolve(sdk, 'index.ts') } },\n"
         "  plugins: [\n"
         "    react(),\n"
+        "    minderTabsSync(),\n"
         "    federation({\n"
         f"      name: '{name}',\n"
         "      filename: 'remoteEntry.js',\n"
-        "      exposes: { './Dashboard': './src/DashboardApp.tsx' },\n"
+        "      exposes: { './Dashboard': './src/dashboard.tsx' },\n"
         "      shared: {\n"
         "        react: { singleton: true, requiredVersion: '^18.3.1' },\n"
         "        'react-dom': { singleton: true, requiredVersion: '^18.3.1' },\n"
@@ -208,6 +218,8 @@ def frontend_tsconfig() -> str:
             "strict": True,
             "skipLibCheck": True,
             "esModuleInterop": True,
+            "baseUrl": ".",
+            "paths": {"minder-ui-sdk": ["../../../minder_ui_sdk/src/index.ts"]},
         },
         "include": ["src"],
     }
@@ -220,24 +232,44 @@ def frontend_index_html(name: str) -> str:
         "  <meta charset=\"utf-8\" />\n"
         f"  <title>{name} dashboard</title>\n"
         "</head>\n<body>\n  <div id=\"root\"></div>\n"
-        "  <script type=\"module\" src=\"/src/DashboardApp.tsx\"></script>\n"
+        "  <script type=\"module\" src=\"/src/dashboard.tsx\"></script>\n"
         "</body>\n</html>\n"
+    )
+
+
+def frontend_dashboard_tabs(name: str) -> str:
+    return (
+        "import type { TabMeta } from 'minder-ui-sdk';\n\n"
+        "export const TABS: TabMeta[] = [\n"
+        "  { id: 'home', label: 'Home' },\n"
+        "];\n"
     )
 
 
 def frontend_dashboard_tsx(name: str) -> str:
     title = _title(name)
     return (
+        "import { defineDashboard } from 'minder-ui-sdk';\n"
+        "import HomePanel from './panels/HomePanel';\n"
+        "import { TABS } from './dashboard.tabs';\n\n"
+        "export default defineDashboard({\n"
+        f"  title: '{title} · dashboard',\n"
+        "  tabs: TABS,\n"
+        "  panels: { home: HomePanel },\n"
+        "});\n"
+    )
+
+
+def frontend_home_panel(name: str) -> str:
+    title = _title(name)
+    return (
         "import { useEffect, useState } from 'react';\n\n"
-        "interface DashboardProps {\n"
+        "interface Props {\n"
         "  /** Connector public base, injected by the Minder host. */\n"
         "  apiBase: string;\n"
         "}\n\n"
-        "/**\n"
-        f" * The {name} dashboard, rendered natively inside the Minder host via\n"
-        " * Module Federation (no iframe). It talks to its own connector directly.\n"
-        " */\n"
-        "export default function DashboardApp({ apiBase }: DashboardProps) {\n"
+        f"/** The {name} module's default tab — health + a query box. */\n"
+        "export default function HomePanel({ apiBase }: Props) {\n"
         "  const [online, setOnline] = useState<boolean | null>(null);\n"
         "  const [q, setQ] = useState('');\n"
         "  const [answer, setAnswer] = useState('');\n\n"
@@ -317,6 +349,8 @@ def files(name: str, summary: str, port: int = 9300) -> dict[str, str]:
         "frontend/vite.config.ts": frontend_vite_config(name, port),
         "frontend/tsconfig.json": frontend_tsconfig(),
         "frontend/index.html": frontend_index_html(name),
-        "frontend/src/DashboardApp.tsx": frontend_dashboard_tsx(name),
+        "frontend/src/dashboard.tsx": frontend_dashboard_tsx(name),
+        "frontend/src/dashboard.tabs.ts": frontend_dashboard_tabs(name),
+        "frontend/src/panels/HomePanel.tsx": frontend_home_panel(name),
         "docker-compose.snippet.yml": compose_snippet(name, port),
     }
