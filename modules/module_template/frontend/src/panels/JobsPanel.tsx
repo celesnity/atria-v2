@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { STATUS_COLORS, variants } from "../theme";
+import { useMinderTheme } from "minder-ui-sdk";
+import { statusColor, variants } from "../theme";
 
 interface Job {
   id: string;
@@ -19,6 +20,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function JobsPanel({ apiBase }: { apiBase: string }) {
+  const { tokens } = useMinderTheme();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [starting, setStarting] = useState(false);
 
@@ -51,14 +53,14 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h3 style={{ margin: 0, color: "#e2e8f0", fontSize: 16, fontWeight: 600 }}>Jobs</h3>
+        <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600 }}>Jobs</h3>
         <motion.button
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
           onClick={startJob}
           disabled={starting}
           style={{
-            display: "flex", alignItems: "center", gap: 6, background: "#2563EB",
+            display: "flex", alignItems: "center", gap: 6, background: tokens.primary,
             border: "none", borderRadius: 8, padding: "7px 14px", color: "#fff",
             fontSize: 13, cursor: starting ? "wait" : "pointer", fontWeight: 500,
             opacity: starting ? 0.7 : 1,
@@ -73,7 +75,9 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
       <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
 
       {jobs.length === 0 ? (
-        <div style={{ color: "#94a3b8", textAlign: "center", padding: "40px 0", fontSize: 14 }}>No jobs yet — click “Start job”, or ask the agent in chat</div>
+        <div style={{ color: tokens.textMuted, textAlign: "center", padding: "40px 0", fontSize: 14 }}>
+          No jobs yet — click "Start job", or ask the agent in chat
+        </div>
       ) : (
         <motion.div
           variants={variants.listContainer}
@@ -83,7 +87,7 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
         >
           <AnimatePresence>
             {jobs.map((job) => {
-              const color = STATUS_COLORS[job.status] || "#94a3b8";
+              const color = statusColor(tokens, job.status);
               return (
                 <motion.div
                   key={job.id}
@@ -91,14 +95,14 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
                   variants={variants.listItem}
                   exit="exit"
                   style={{
-                    background: "#111A2E",
-                    border: "1px solid #22304D",
+                    background: tokens.surface,
+                    border: `1px solid ${tokens.border}`,
                     borderRadius: 10,
                     padding: "12px 14px",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 500 }}>{job.kind || job.id}</span>
+                    <span style={{ color: tokens.text, fontSize: 13, fontWeight: 500 }}>{job.kind || job.id}</span>
                     <span style={{
                       display: "flex", alignItems: "center", gap: 5,
                       color, fontSize: 12, fontWeight: 600,
@@ -108,14 +112,14 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
                       {job.status}
                     </span>
                   </div>
-                  <div style={{ background: "#060711", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{ background: tokens.surfaceAlt, borderRadius: 4, height: 6, overflow: "hidden" }}>
                     <motion.div
                       animate={{ width: `${job.pct ?? 0}%` }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
                       style={{ height: "100%", background: color, borderRadius: 4 }}
                     />
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, color: "#64748b", fontSize: 11 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, color: tokens.textMuted, fontSize: 11 }}>
                     <span>{job.id}</span>
                     <span>{job.pct ?? 0}%</span>
                   </div>

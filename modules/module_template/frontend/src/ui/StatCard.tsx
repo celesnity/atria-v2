@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
+import { useMinderTheme } from "minder-ui-sdk";
 import AnimatedNumber from "./AnimatedNumber";
-import { COLORS } from "../theme";
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -11,13 +11,15 @@ interface StatCardProps {
 }
 
 export default function StatCard({ icon, label, value, suffix }: StatCardProps) {
+  const { tokens } = useMinderTheme();
+
   return (
     <motion.div
-      whileHover={{ y: -2, boxShadow: "0 8px 32px rgba(99,102,241,0.2)" }}
+      whileHover={{ y: -2, boxShadow: tokens.cardHoverShadow }}
       transition={{ duration: 0.2 }}
       style={{
-        background: "#111A2E",
-        border: "1px solid #22304D",
+        background: tokens.surface,
+        border: `1px solid ${tokens.border}`,
         borderRadius: 12,
         padding: "16px 20px",
         display: "flex",
@@ -25,13 +27,15 @@ export default function StatCard({ icon, label, value, suffix }: StatCardProps) 
         gap: 14,
         flex: 1,
         minWidth: 0,
+        boxShadow: tokens.cardShadow,
       }}
     >
-      <div style={{ color: COLORS.primary, opacity: 0.9 }}>{icon}</div>
+      <div style={{ color: tokens.primary, opacity: 0.9 }}>{icon}</div>
       <div>
-        <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 2 }}>{label}</div>
-        <div style={{ color: "#e2e8f0", fontSize: 22, fontWeight: 700, lineHeight: 1 }}>
-          <AnimatedNumber value={value} />{suffix && <span style={{ fontSize: 14, marginLeft: 2, color: "#94a3b8" }}>{suffix}</span>}
+        <div style={{ color: tokens.textMuted, fontSize: 12, marginBottom: 2 }}>{label}</div>
+        <div style={{ color: tokens.text, fontSize: 22, fontWeight: 700, lineHeight: 1 }}>
+          <AnimatedNumber value={value} />
+          {suffix && <span style={{ fontSize: 14, marginLeft: 2, color: tokens.textMuted }}>{suffix}</span>}
         </div>
       </div>
     </motion.div>

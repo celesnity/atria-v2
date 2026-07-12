@@ -4,8 +4,9 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { useMinderTheme } from "minder-ui-sdk";
 import AnimatedNumber from "../ui/AnimatedNumber";
-import { STATUS_COLORS, CHART_COLORS } from "../theme";
+import { statusColor } from "../theme";
 
 interface Metrics {
   jobs_by_status: Record<string, number>;
@@ -13,6 +14,7 @@ interface Metrics {
 }
 
 export default function MetricsPanel({ apiBase }: { apiBase: string }) {
+  const { tokens } = useMinderTheme();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
 
   useEffect(() => {
@@ -22,14 +24,14 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
       .catch(() => {});
   }, [apiBase]);
 
-  if (!metrics) return <div style={{ padding: 20, color: "#64748b", textAlign: "center" }}>Loading metrics…</div>;
+  if (!metrics) return <div style={{ padding: 20, color: tokens.textMuted, textAlign: "center" }}>Loading metrics…</div>;
 
   const barData = Object.entries(metrics.jobs_by_status || {}).map(([status, count]) => ({ status, count }));
   const pieData = barData;
 
   return (
     <div style={{ padding: 20 }}>
-      <h3 style={{ margin: "0 0 20px", color: "#e2e8f0", fontSize: 16, fontWeight: 600 }}>Metrics</h3>
+      <h3 style={{ margin: "0 0 20px", color: tokens.text, fontSize: 16, fontWeight: 600 }}>Metrics</h3>
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -37,19 +39,21 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         transition={{ duration: 0.4 }}
         style={{ marginBottom: 28 }}
       >
-        <h4 style={{ color: "#94a3b8", fontSize: 12, fontWeight: 500, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Jobs by Status</h4>
+        <h4 style={{ color: tokens.textMuted, fontSize: 12, fontWeight: 500, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Jobs by Status
+        </h4>
         {barData.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 13 }}>No job data</div>
+          <div style={{ color: tokens.textMuted, fontSize: 13 }}>No job data</div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={barData} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#22304D" />
-              <XAxis dataKey="status" tick={{ fill: "#94a3b8", fontSize: 12 }} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} />
-              <Tooltip contentStyle={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 8, color: "#e2e8f0" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={tokens.border} />
+              <XAxis dataKey="status" tick={{ fill: tokens.textMuted, fontSize: 12 }} />
+              <YAxis tick={{ fill: tokens.textMuted, fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: tokens.surface, border: `1px solid ${tokens.border}`, borderRadius: 8, color: tokens.text }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {barData.map((entry) => (
-                  <Cell key={entry.status} fill={STATUS_COLORS[entry.status] || CHART_COLORS[0]} />
+                  <Cell key={entry.status} fill={statusColor(tokens, entry.status)} />
                 ))}
               </Bar>
             </BarChart>
@@ -63,19 +67,26 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         transition={{ duration: 0.4, delay: 0.15 }}
         style={{ marginBottom: 28 }}
       >
-        <h4 style={{ color: "#94a3b8", fontSize: 12, fontWeight: 500, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Distribution</h4>
+        <h4 style={{ color: tokens.textMuted, fontSize: 12, fontWeight: 500, margin: "0 0 10px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Distribution
+        </h4>
         {pieData.length === 0 ? (
-          <div style={{ color: "#64748b", fontSize: 13 }}>No data</div>
+          <div style={{ color: tokens.textMuted, fontSize: 13 }}>No data</div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={pieData} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={80}>
                 {pieData.map((entry, i) => (
-                  <Cell key={entry.status} fill={STATUS_COLORS[entry.status] || CHART_COLORS[i % CHART_COLORS.length]} />
+                  <Cell
+                    key={entry.status}
+                    fill={statusColor(tokens, entry.status) !== tokens.textMuted
+                      ? statusColor(tokens, entry.status)
+                      : tokens.chart[i % tokens.chart.length]}
+                  />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 8, color: "#e2e8f0" }} />
-              <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: tokens.surface, border: `1px solid ${tokens.border}`, borderRadius: 8, color: tokens.text }} />
+              <Legend wrapperStyle={{ color: tokens.textMuted, fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
         )}
@@ -85,12 +96,12 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        style={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 10, padding: "14px 16px" }}
+        style={{ background: tokens.surface, border: `1px solid ${tokens.border}`, borderRadius: 10, padding: "14px 16px" }}
       >
-        <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 4 }}>Media Storage</div>
-        <div style={{ color: "#e2e8f0", fontSize: 22, fontWeight: 700 }}>
+        <div style={{ color: tokens.textMuted, fontSize: 12, marginBottom: 4 }}>Media Storage</div>
+        <div style={{ color: tokens.text, fontSize: 22, fontWeight: 700 }}>
           <AnimatedNumber value={Math.round((metrics.media_total_bytes || 0) / 1024)} />{" "}
-          <span style={{ fontSize: 14, color: "#94a3b8" }}>KB</span>
+          <span style={{ fontSize: 14, color: tokens.textMuted }}>KB</span>
         </div>
       </motion.div>
     </div>

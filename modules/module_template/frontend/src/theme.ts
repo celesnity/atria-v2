@@ -1,25 +1,15 @@
-export const COLORS = {
-  primary: '#2563EB',
-  secondary: '#2E6BF6',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#5AA6FF',
-  bg: '#060711',
-  surface: '#111A2E',
-  border: '#22304D',
-  text: '#e2e8f0',
-  muted: '#94a3b8',
-};
+import type { MinderTokens } from 'minder-ui-sdk';
 
-export const STATUS_COLORS: Record<string, string> = {
-  queued: '#f59e0b',
-  running: '#2563EB',
-  done: '#22c55e',
-  error: '#ef4444',
-};
-
-export const CHART_COLORS = ['#2563EB', '#2E6BF6', '#22c55e', '#f59e0b', '#ef4444', '#5AA6FF'];
+/** Map a job/task status string to the appropriate token color. */
+export function statusColor(tokens: MinderTokens, status: string): string {
+  switch (status) {
+    case 'queued':  return tokens.warning;
+    case 'running': return tokens.primary;
+    case 'done':    return tokens.success;
+    case 'error':   return tokens.error;
+    default:        return tokens.textMuted;
+  }
+}
 
 export const variants = {
   listContainer: {

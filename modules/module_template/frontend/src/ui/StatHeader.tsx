@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Briefcase, Image, Database, Activity } from "lucide-react";
+import { useMinderTheme } from "minder-ui-sdk";
 import StatCard from "./StatCard";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 /** Persistent module chrome (brand header + stat cards + health) shown above
  *  whichever tab panel the host has selected. */
 export default function StatHeader({ apiBase }: Props) {
+  const { tokens } = useMinderTheme();
   const [healthy, setHealthy] = useState<boolean | null>(null);
   const [overview, setOverview] = useState<{ mt_jobs: number; mt_media: number; minder_artifacts_count: number } | null>(null);
 
@@ -32,15 +34,30 @@ export default function StatHeader({ apiBase }: Props) {
       .catch(() => {});
   }, [apiBase]);
 
+  const healthDotColor =
+    healthy === null ? tokens.warning : healthy ? tokens.success : tokens.error;
+
   return (
     <div>
       {/* Header */}
-      <div style={{ borderBottom: "1px solid #22304D", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ borderBottom: `1px solid ${tokens.border}`, padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg, #1E50D8 0%, #2E6BF6 55%, #5AA6FF 100%)", boxShadow: "0 6px 20px rgba(46,107,246,0.40)" }}>
+          <span style={{
+            display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 9,
+            background: tokens.brandGradient,
+            boxShadow: "0 6px 20px rgba(46,107,246,0.40)",
+          }}>
             <Activity size={17} style={{ color: "#fff" }} />
           </span>
-          <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", background: "linear-gradient(90deg, #EAF1FF, #9EC2FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Module Template</span>
+          <span style={{
+            fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em",
+            background: tokens.titleGradient,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            Module Template
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
           <motion.span
@@ -48,10 +65,12 @@ export default function StatHeader({ apiBase }: Props) {
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             style={{
               width: 9, height: 9, borderRadius: "50%", display: "inline-block",
-              background: healthy === null ? "#f59e0b" : healthy ? "#22c55e" : "#ef4444",
+              background: healthDotColor,
             }}
           />
-          <span style={{ color: "#94a3b8" }}>{healthy === null ? "connecting…" : healthy ? "connector online" : "offline"}</span>
+          <span style={{ color: tokens.textMuted }}>
+            {healthy === null ? "connecting…" : healthy ? "connector online" : "offline"}
+          </span>
         </div>
       </div>
 

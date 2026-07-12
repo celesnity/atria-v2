@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Database, RefreshCw, MessageSquare } from "lucide-react";
+import { useMinderTheme } from "minder-ui-sdk";
 import StatCard from "../ui/StatCard";
 import { variants } from "../theme";
 
@@ -13,6 +14,7 @@ interface Overview {
 }
 
 export default function DataPanel({ apiBase }: { apiBase: string }) {
+  const { tokens } = useMinderTheme();
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,12 +32,12 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
   return (
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h3 style={{ margin: 0, color: "#e2e8f0", fontSize: 16, fontWeight: 600 }}>Data Overview</h3>
+        <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600 }}>Data Overview</h3>
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           onClick={fetchData}
-          style={{ background: "none", border: "1px solid #22304D", borderRadius: 8, padding: "6px 12px", color: "#94a3b8", cursor: "pointer" }}
+          style={{ background: "none", border: `1px solid ${tokens.border}`, borderRadius: 8, padding: "6px 12px", color: tokens.textMuted, cursor: "pointer" }}
         >
           <motion.div animate={{ rotate: loading ? 360 : 0 }} transition={{ duration: 0.6, repeat: loading ? Infinity : 0, ease: "linear" }}>
             <RefreshCw size={15} />
@@ -51,12 +53,12 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
             <StatCard icon={<Database size={20} />} label="Artifacts" value={data.minder_artifacts_count} />
           </div>
 
-          <h4 style={{ color: "#94a3b8", fontSize: 13, fontWeight: 500, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <h4 style={{ color: tokens.textMuted, fontSize: 13, fontWeight: 500, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Minder Conversations
           </h4>
 
           {(data.minder_conversations?.length ?? 0) === 0 ? (
-            <div style={{ color: "#64748b", fontSize: 13, padding: "16px 0" }}>No conversations found</div>
+            <div style={{ color: tokens.textMuted, fontSize: 13, padding: "16px 0" }}>No conversations found</div>
           ) : (
             <motion.div
               variants={variants.listContainer}
@@ -71,15 +73,17 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
                     layout
                     variants={variants.listItem}
                     style={{
-                      background: "#111A2E", border: "1px solid #22304D",
-                      borderRadius: 10, padding: "10px 14px",
+                      background: tokens.surface,
+                      border: `1px solid ${tokens.border}`,
+                      borderRadius: 10,
+                      padding: "10px 14px",
                       display: "flex", alignItems: "center", gap: 10,
                     }}
                   >
-                    <MessageSquare size={15} style={{ color: "#2563EB", flexShrink: 0 }} />
+                    <MessageSquare size={15} style={{ color: tokens.primary, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: "#e2e8f0", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title || c.id}</div>
-                      <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>{c.status}</div>
+                      <div style={{ color: tokens.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title || c.id}</div>
+                      <div style={{ color: tokens.textMuted, fontSize: 11, marginTop: 2 }}>{c.status}</div>
                     </div>
                   </motion.div>
                 ))}

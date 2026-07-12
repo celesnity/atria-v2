@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, XCircle, Info } from "lucide-react";
+import { useMinderTheme } from "minder-ui-sdk";
 
 type Kind = "success" | "error" | "info";
 
@@ -26,13 +27,41 @@ const ICONS: Record<Kind, React.ReactNode> = {
   info: <Info size={16} />,
 };
 
-const KIND_COLORS: Record<Kind, string> = {
-  success: "#22c55e",
-  error: "#ef4444",
-  info: "#5AA6FF",
-};
-
 let _id = 0;
+
+function ToastItem({ t }: { t: Toast }) {
+  const { tokens } = useMinderTheme();
+
+  const accentColor =
+    t.kind === "success" ? tokens.success
+    : t.kind === "error" ? tokens.error
+    : tokens.info;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 60, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+      style={{
+        background: tokens.surface,
+        border: `1px solid ${accentColor}44`,
+        borderLeft: `3px solid ${accentColor}`,
+        borderRadius: 8,
+        padding: "10px 14px",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        color: tokens.text,
+        fontSize: 14,
+        minWidth: 240,
+        boxShadow: tokens.cardShadow,
+      }}
+    >
+      <span style={{ color: accentColor }}>{ICONS[t.kind]}</span>
+      {t.msg}
+    </motion.div>
+  );
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -51,29 +80,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, display: "flex", flexDirection: "column", gap: 8 }}>
         <AnimatePresence>
           {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, x: 60, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-              style={{
-                background: "#111A2E",
-                border: `1px solid ${KIND_COLORS[t.kind]}44`,
-                borderLeft: `3px solid ${KIND_COLORS[t.kind]}`,
-                borderRadius: 8,
-                padding: "10px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: "#e2e8f0",
-                fontSize: 14,
-                minWidth: 240,
-                boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-              }}
-            >
-              <span style={{ color: KIND_COLORS[t.kind] }}>{ICONS[t.kind]}</span>
-              {t.msg}
-            </motion.div>
+            <ToastItem key={t.id} t={t} />
           ))}
         </AnimatePresence>
       </div>
