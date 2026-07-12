@@ -6,6 +6,8 @@ WORKDIR /fe
 COPY modules/module_template/frontend/package.json modules/module_template/frontend/package-lock.json* ./
 RUN npm install
 COPY modules/module_template/frontend/ ./
+# minder-ui-sdk is consumed from source via a vite alias (../../../minder_ui_sdk).
+COPY minder_ui_sdk /minder_ui_sdk
 RUN npm run build
 
 # --- python service stage ---
