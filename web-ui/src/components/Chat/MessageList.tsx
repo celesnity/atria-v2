@@ -178,11 +178,11 @@ function WelcomeScreen() {
           <span className="h-2.5 w-2.5 rounded-md bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
         </span>
         <Eyebrow className="mb-1.5 block text-text-muted">Welcome</Eyebrow>
-        <h2 className="text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
+        <h2 className="text-balance text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
           Let&rsquo;s get to work.
         </h2>
-        <p className="mt-2 text-[12.5px] leading-[1.5] text-text-secondary">
-          Start a conversation with your AI co-worker.
+        <p className="mt-2 text-balance text-[12.5px] leading-[1.5] text-text-secondary">
+          Start a conversation with Atria.
         </p>
       </div>
     </div>

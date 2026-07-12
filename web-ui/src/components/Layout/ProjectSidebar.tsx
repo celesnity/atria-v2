@@ -113,11 +113,12 @@ export function ProjectSidebar() {
   } | null>(null);
   const [creatingChat, setCreatingChat] = useState(false);
   // Persisted, drag-to-resize width for the desktop sidebar column.
-  // v3: the rail is hard-capped to <15% of the viewport (see the aside's
-  // width: min(px, 14vw) below), so keep the stored px modest.
+  // v4: the rail targets ~20% of the viewport (see the aside's
+  // width: clamp(240px, 20vw, 460px) below); the stored px is the resize
+  // override within those bounds.
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
-    "sidebar.width.v3",
-    280,
+    "sidebar.width.v4",
+    360,
   );
 
   // Project switcher: which project's conversations are shown in the CHATS dropdown.
@@ -577,17 +578,17 @@ export function ProjectSidebar() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           data-surface="dark"
-          // Hard-capped to <15% of the viewport (14vw) regardless of the stored
-          // px, so the chat rail never dominates the module workspace.
-          style={{ width: `min(${sidebarWidth}px, 14vw)` }}
+          // Responsive ~20% rail: tracks the viewport (20vw) but clamped to a
+          // sane 240–460px, and never wider than the stored resize width.
+          style={{ width: `clamp(240px, min(${sidebarWidth}px, 20vw), 460px)` }}
           className="relative flex flex-shrink-0 flex-col overflow-hidden border-r border-hairline-soft/25 bg-bg-100"
         >
           {/* Drag the right edge to resize the sidebar (kept within bounds — aside is overflow-hidden) */}
           <ResizeHandle
             side="right"
             width={sidebarWidth}
-            min={200}
-            max={320}
+            min={240}
+            max={460}
             onResize={setSidebarWidth}
             className="absolute bottom-0 right-0 top-0 z-30 w-2 cursor-col-resize transition-colors hover:bg-accent-cobalt/30"
           />
