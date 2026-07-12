@@ -11,8 +11,8 @@ const TABS: { id: MobilePanel; label: string; Icon: typeof MessageSquare }[] = [
 
 /**
  * MobileTabBar — the phone bottom navigation. On small screens the desktop's
- * three columns collapse to one panel at a time; these tabs switch between
- * Chat, Files and Editor. Hidden at md+ where the columns coexist.
+ * columns collapse to one panel at a time; these tabs switch between
+ * Chat, Module, Files and Editor. Hidden at md+ where the columns coexist.
  */
 export function MobileTabBar({
   active,

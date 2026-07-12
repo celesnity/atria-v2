@@ -70,8 +70,12 @@ export function ChatPage() {
 
   // ── Phone layout: drawer sidebar + single panel + bottom tab bar ──
   if (isPhone) {
-    // Files/Editor only make sense with a live conversation; otherwise show chat.
-    const panel: MobilePanel = currentSessionId ? mobilePanel : 'chat';
+    // Files/Editor only make sense with a live conversation; Chat and Module
+    // stand on their own, so fall back to chat only for the file-bound panels.
+    const panel: MobilePanel =
+      currentSessionId || mobilePanel === 'chat' || mobilePanel === 'module'
+        ? mobilePanel
+        : 'chat';
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
         {/* Drawer (fixed/off-canvas — does not take layout space) */}
