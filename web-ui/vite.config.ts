@@ -14,7 +14,7 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: 'atria_host',
+      name: 'minder_host',
       // No static remotes — service-modules are registered at RUNTIME (Task 3.2)
       // from their connector manifests. This keeps the host decoupled from any
       // specific module at build time.
@@ -53,7 +53,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../atria/web/static',
+    outDir: '../minder/web/static',
     emptyOutDir: true,
     // Module Federation manages chunk splitting; a manualChunks map here is
     // ignored by the plugin. Rely on dynamic import() splits (viewers are lazy).

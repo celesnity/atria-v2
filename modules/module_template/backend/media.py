@@ -1,4 +1,4 @@
-"""module_template S3/MinIO media store. boto3 only; never imports `atria`."""
+"""module_template S3/MinIO media store. boto3 only; never imports `minder`."""
 
 from __future__ import annotations
 

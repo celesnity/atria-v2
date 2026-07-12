@@ -10,7 +10,7 @@ tests assert that a broken skill is skipped in isolation while healthy skills
 
 from pathlib import Path
 
-from atria.core.skill_tools import SkillToolContext, SkillToolLoader, ToolSpec
+from minder.core.skill_tools import SkillToolContext, SkillToolLoader, ToolSpec
 
 
 def _write_good_skill(root: Path) -> None:
@@ -22,7 +22,7 @@ def _write_good_skill(root: Path) -> None:
         encoding="utf-8",
     )
     (skill_dir / "tools.py").write_text(
-        "from atria.core.skill_tools import ToolSpec\n"
+        "from minder.core.skill_tools import ToolSpec\n"
         "def register(ctx):\n"
         "    return [ToolSpec(name='good_tool', description='d',\n"
         "                    parameters={'type': 'object'},\n"

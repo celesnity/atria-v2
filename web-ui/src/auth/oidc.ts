@@ -3,8 +3,8 @@ import { UserManager, WebStorageStateStore, User } from "oidc-client-ts";
 
 const KEYCLOAK_URL =
   import.meta.env.VITE_KEYCLOAK_URL ?? "https://iam-keycloak-2bc632-14-225-206-18.sslip.io";
-const REALM = import.meta.env.VITE_KEYCLOAK_REALM ?? "atria";
-const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "atria-web";
+const REALM = import.meta.env.VITE_KEYCLOAK_REALM ?? "minder";
+const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "minder-web";
 
 export const userManager = new UserManager({
   authority: `${KEYCLOAK_URL}/realms/${REALM}`,

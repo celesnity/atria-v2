@@ -9,12 +9,12 @@ used for the orphan-tracking meta store and should match the broker's Redis. To 
 non-default Redis for the broker itself, run all processes against that Redis as the default.
 
 ## 2. Worker
-    taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
+    taskiq worker minder.core.tasks.broker:broker minder.core.tasks.tasks
 
 ## 3. Scheduler (orphan janitor)
-    taskiq scheduler atria.core.tasks.scheduler:scheduler
+    taskiq scheduler minder.core.tasks.scheduler:scheduler
 
-## Config (.atria/settings.json)
+## Config (.minder/settings.json)
     { "tasks": { "redis_url": "redis://localhost:6379/0",
                  "result_ttl": 3600, "orphan_after": 1800 } }
 

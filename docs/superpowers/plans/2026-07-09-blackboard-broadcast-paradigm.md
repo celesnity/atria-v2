@@ -14,9 +14,9 @@
 - No `subagent_type` may be chosen by the tool caller — the bid derives which helpers run.
 - Fail-open on blackboard/redis errors (return status strings / `""`), fail-**closed** on bid errors (no volunteer). Never crash the agent loop.
 - Reuse the existing cheap-model verifier chain via `build_verify_llm(config)` for bids — do not resolve the main-agent model.
-- Redis key namespace: `atria:bb:{run_id}:...` where `run_id = "sa_" + job_id`.
-- Tests run with `uv run --no-sync pytest`. Real e2e uses `OPENAI_API_KEY` + proxy from repo `.env`, redis + `atria-worker` live (per `CLAUDE.md`).
-- Frontend build: `cd web-ui && npm run build` → outputs to `atria/web/static/` (committed).
+- Redis key namespace: `minder:bb:{run_id}:...` where `run_id = "sa_" + job_id`.
+- Tests run with `uv run --no-sync pytest`. Real e2e uses `OPENAI_API_KEY` + proxy from repo `.env`, redis + `minder-worker` live (per `CLAUDE.md`).
+- Frontend build: `cd web-ui && npm run build` → outputs to `minder/web/static/` (committed).
 - Branch: `feat/blackboard-broadcast-paradigm` (already checked out; spec committed there).
 
 ---
@@ -24,23 +24,23 @@
 ## File Structure
 
 **New backend files:**
-- `atria/core/blackboard/response_store.py` — `ResponseStore` + `BidStore` (Redis hashes for `β_r` and the bid roster).
-- `atria/core/blackboard/board_events.py` — `publish_board_event(redis, run_id, kind, payload)` for request/bid/response viewer events.
-- `atria/core/subagents/bid.py` — `run_bids(...)`: concurrent, independent, fail-closed per-helper self-assessment.
+- `minder/core/blackboard/response_store.py` — `ResponseStore` + `BidStore` (Redis hashes for `β_r` and the bid roster).
+- `minder/core/blackboard/board_events.py` — `publish_board_event(redis, run_id, kind, payload)` for request/bid/response viewer events.
+- `minder/core/subagents/bid.py` — `run_bids(...)`: concurrent, independent, fail-closed per-helper self-assessment.
 
 **Modified backend files:**
-- `atria/core/blackboard/models.py` — add `Request`, `Response`, `Bid` dataclasses.
-- `atria/core/agents/subagents/specs.py` — add `capability_profile` to `SubAgentSpec`.
-- `atria/core/agents/subagents/manager/manager.py` — add `capability_profile` to `AgentConfig`.
-- `atria/core/agents/subagents/manager/registration.py` — populate `capability_profile` in `get_agent_configs()`.
-- `atria/core/agents/subagents/agents/{module_worker,planner,web_generator}.py` — add profiles.
-- `atria/core/tasks/payload.py` — add `bid_confidence: float = 0.0`.
-- `atria/core/tasks/tasks.py` — worker writes a `Response` to `ResponseStore`.
-- `atria/core/subagents/orchestrator.py` — request flow: write Request → bid → enqueue volunteers → collect responses+bids.
-- `atria/core/subagents/tools.py` — `build_subagent_orchestrator` gains `helper_profiles`; `execute_request_help` / `execute_get_help_responses`.
-- `atria/core/agents/subagents/task_tool.py` — `request_help` schema.
-- `atria/core/context_engineering/tools/registry.py` + `registry_mixins/orchestration_ops.py` — dispatch new tool names, pass profiles.
-- `atria/web/blackboard_subscriber.py` — forward `atria:bb:*:board` events.
+- `minder/core/blackboard/models.py` — add `Request`, `Response`, `Bid` dataclasses.
+- `minder/core/agents/subagents/specs.py` — add `capability_profile` to `SubAgentSpec`.
+- `minder/core/agents/subagents/manager/manager.py` — add `capability_profile` to `AgentConfig`.
+- `minder/core/agents/subagents/manager/registration.py` — populate `capability_profile` in `get_agent_configs()`.
+- `minder/core/agents/subagents/agents/{module_worker,planner,web_generator}.py` — add profiles.
+- `minder/core/tasks/payload.py` — add `bid_confidence: float = 0.0`.
+- `minder/core/tasks/tasks.py` — worker writes a `Response` to `ResponseStore`.
+- `minder/core/subagents/orchestrator.py` — request flow: write Request → bid → enqueue volunteers → collect responses+bids.
+- `minder/core/subagents/tools.py` — `build_subagent_orchestrator` gains `helper_profiles`; `execute_request_help` / `execute_get_help_responses`.
+- `minder/core/agents/subagents/task_tool.py` — `request_help` schema.
+- `minder/core/context_engineering/tools/registry.py` + `registry_mixins/orchestration_ops.py` — dispatch new tool names, pass profiles.
+- `minder/web/blackboard_subscriber.py` — forward `minder:bb:*:board` events.
 
 **New frontend files:**
 - `web-ui/src/stores/blackboardStore.ts` — Zustand store for requests/bids/responses.
@@ -56,7 +56,7 @@
 ### Task 1: Request / Response / Bid models
 
 **Files:**
-- Modify: `atria/core/blackboard/models.py`
+- Modify: `minder/core/blackboard/models.py`
 - Test: `tests/core/blackboard/test_broadcast_models.py`
 
 **Interfaces:**
@@ -66,7 +66,7 @@
 
 ```python
 # tests/core/blackboard/test_broadcast_models.py
-from atria.core.blackboard.models import Bid, Request, Response
+from minder.core.blackboard.models import Bid, Request, Response
 
 
 def test_request_roundtrip():
@@ -95,7 +95,7 @@ Expected: FAIL with `ImportError: cannot import name 'Request'`.
 
 - [ ] **Step 3: Add the models**
 
-Append to `atria/core/blackboard/models.py` (after the existing `Task` block):
+Append to `minder/core/blackboard/models.py` (after the existing `Task` block):
 
 ```python
 REQUEST_STATUSES: tuple[str, ...] = ("open", "answered", "closed")
@@ -172,7 +172,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/blackboard/models.py tests/core/blackboard/test_broadcast_models.py
+git add minder/core/blackboard/models.py tests/core/blackboard/test_broadcast_models.py
 git commit -m "feat(blackboard): Request/Response/Bid models for broadcast paradigm"
 ```
 
@@ -181,12 +181,12 @@ git commit -m "feat(blackboard): Request/Response/Bid models for broadcast parad
 ### Task 2: ResponseStore + BidStore
 
 **Files:**
-- Create: `atria/core/blackboard/response_store.py`
+- Create: `minder/core/blackboard/response_store.py`
 - Test: `tests/core/blackboard/test_response_store.py`
 
 **Interfaces:**
 - Consumes: `Response`, `Bid` (Task 1); a fakeredis-like async client.
-- Produces: `ResponseStore(redis, run_id, ttl)` with `async add(list[Response])`, `async all() -> list[Response]`; `BidStore(redis, run_id, ttl)` with `async add(list[Bid])`, `async all() -> list[Bid]`. Keys `atria:bb:{run_id}:responses` and `atria:bb:{run_id}:bids`.
+- Produces: `ResponseStore(redis, run_id, ttl)` with `async add(list[Response])`, `async all() -> list[Response]`; `BidStore(redis, run_id, ttl)` with `async add(list[Bid])`, `async all() -> list[Bid]`. Keys `minder:bb:{run_id}:responses` and `minder:bb:{run_id}:bids`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -194,8 +194,8 @@ git commit -m "feat(blackboard): Request/Response/Bid models for broadcast parad
 # tests/core/blackboard/test_response_store.py
 import pytest
 
-from atria.core.blackboard.models import Bid, Response
-from atria.core.blackboard.response_store import BidStore, ResponseStore
+from minder.core.blackboard.models import Bid, Response
+from minder.core.blackboard.response_store import BidStore, ResponseStore
 
 
 class FakeRedis:
@@ -238,7 +238,7 @@ Expected: FAIL with `ModuleNotFoundError: ... response_store`.
 - [ ] **Step 3: Create the store**
 
 ```python
-# atria/core/blackboard/response_store.py
+# minder/core/blackboard/response_store.py
 """Response board (β_r) and bid roster stores — Redis hashes, one per run.
 
 ``ResponseStore`` holds helper answers exclusive to the main agent (paper
@@ -250,9 +250,9 @@ from __future__ import annotations
 
 import json
 
-from atria.core.blackboard.models import Bid, Response
+from minder.core.blackboard.models import Bid, Response
 
-_PREFIX = "atria:bb:"
+_PREFIX = "minder:bb:"
 
 
 class ResponseStore:
@@ -311,7 +311,7 @@ Expected: PASS (2 tests). If `pytest-asyncio` markers error, confirm the repo's 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/blackboard/response_store.py tests/core/blackboard/test_response_store.py
+git add minder/core/blackboard/response_store.py tests/core/blackboard/test_response_store.py
 git commit -m "feat(blackboard): ResponseStore + BidStore for response board and bid roster"
 ```
 
@@ -322,10 +322,10 @@ git commit -m "feat(blackboard): ResponseStore + BidStore for response board and
 ### Task 3: capability_profile on specs, AgentConfig, and the three helpers
 
 **Files:**
-- Modify: `atria/core/agents/subagents/specs.py:9-16` (add field)
-- Modify: `atria/core/agents/subagents/manager/manager.py:29-37` (add field)
-- Modify: `atria/core/agents/subagents/manager/registration.py:82-101` (populate)
-- Modify: `atria/core/agents/subagents/agents/module_worker.py`, `planner.py`, `web_generator.py`
+- Modify: `minder/core/agents/subagents/specs.py:9-16` (add field)
+- Modify: `minder/core/agents/subagents/manager/manager.py:29-37` (add field)
+- Modify: `minder/core/agents/subagents/manager/registration.py:82-101` (populate)
+- Modify: `minder/core/agents/subagents/agents/module_worker.py`, `planner.py`, `web_generator.py`
 - Test: `tests/core/agents/subagents/test_capability_profiles.py`
 
 **Interfaces:**
@@ -335,7 +335,7 @@ git commit -m "feat(blackboard): ResponseStore + BidStore for response board and
 
 ```python
 # tests/core/agents/subagents/test_capability_profiles.py
-from atria.core.agents.subagents.agents.module_worker import MODULE_WORKER_SUBAGENT
+from minder.core.agents.subagents.agents.module_worker import MODULE_WORKER_SUBAGENT
 
 
 def test_module_worker_has_profile():
@@ -350,7 +350,7 @@ Expected: FAIL (`capability_profile` key missing).
 
 - [ ] **Step 3a: Add field to `SubAgentSpec`**
 
-In `atria/core/agents/subagents/specs.py`, inside the `SubAgentSpec(TypedDict)` block, add after `system_prompt: str`:
+In `minder/core/agents/subagents/specs.py`, inside the `SubAgentSpec(TypedDict)` block, add after `system_prompt: str`:
 
 ```python
     capability_profile: NotRequired[str]
@@ -358,7 +358,7 @@ In `atria/core/agents/subagents/specs.py`, inside the `SubAgentSpec(TypedDict)` 
 
 - [ ] **Step 3b: Add field to `AgentConfig`**
 
-In `atria/core/agents/subagents/manager/manager.py`, in the `AgentConfig` dataclass (after `model: str | None = None`):
+In `minder/core/agents/subagents/manager/manager.py`, in the `AgentConfig` dataclass (after `model: str | None = None`):
 
 ```python
     capability_profile: str | None = None
@@ -366,7 +366,7 @@ In `atria/core/agents/subagents/manager/manager.py`, in the `AgentConfig` datacl
 
 - [ ] **Step 3c: Populate in `get_agent_configs()`**
 
-In `atria/core/agents/subagents/manager/registration.py`, where each `AgentConfig` is built from a spec (around line 95-97, alongside `description=spec["description"]`), add:
+In `minder/core/agents/subagents/manager/registration.py`, where each `AgentConfig` is built from a spec (around line 95-97, alongside `description=spec["description"]`), add:
 
 ```python
             capability_profile=spec.get("capability_profile"),
@@ -411,7 +411,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/agents/subagents/specs.py atria/core/agents/subagents/manager/manager.py atria/core/agents/subagents/manager/registration.py atria/core/agents/subagents/agents/module_worker.py atria/core/agents/subagents/agents/planner.py atria/core/agents/subagents/agents/web_generator.py tests/core/agents/subagents/test_capability_profiles.py
+git add minder/core/agents/subagents/specs.py minder/core/agents/subagents/manager/manager.py minder/core/agents/subagents/manager/registration.py minder/core/agents/subagents/agents/module_worker.py minder/core/agents/subagents/agents/planner.py minder/core/agents/subagents/agents/web_generator.py tests/core/agents/subagents/test_capability_profiles.py
 git commit -m "feat(subagents): capability_profile on specs + AgentConfig + helpers"
 ```
 
@@ -422,7 +422,7 @@ git commit -m "feat(subagents): capability_profile on specs + AgentConfig + help
 ### Task 4: `run_bids` — concurrent, independent, fail-closed
 
 **Files:**
-- Create: `atria/core/subagents/bid.py`
+- Create: `minder/core/subagents/bid.py`
 - Test: `tests/core/subagents/test_bid.py`
 
 **Interfaces:**
@@ -436,7 +436,7 @@ git commit -m "feat(subagents): capability_profile on specs + AgentConfig + help
 # tests/core/subagents/test_bid.py
 import pytest
 
-from atria.core.subagents.bid import parse_bid, run_bids
+from minder.core.subagents.bid import parse_bid, run_bids
 
 
 def test_parse_bid_yes_no():
@@ -495,7 +495,7 @@ Expected: FAIL (`ModuleNotFoundError: ... bid`).
 - [ ] **Step 3: Implement the bid engine**
 
 ```python
-# atria/core/subagents/bid.py
+# minder/core/subagents/bid.py
 """Autonomous per-helper bidding for the broadcast blackboard (paper §3.2).
 
 Each helper independently self-assesses one request against ITS OWN capability
@@ -510,7 +510,7 @@ import logging
 import re
 from typing import Callable
 
-from atria.core.blackboard.models import Bid
+from minder.core.blackboard.models import Bid
 
 logger = logging.getLogger(__name__)
 
@@ -602,7 +602,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/subagents/bid.py tests/core/subagents/test_bid.py
+git add minder/core/subagents/bid.py tests/core/subagents/test_bid.py
 git commit -m "feat(subagents): autonomous per-helper bid engine (fail-closed, capped)"
 ```
 
@@ -613,7 +613,7 @@ git commit -m "feat(subagents): autonomous per-helper bid engine (fail-closed, c
 ### Task 5: rewrite `SubagentOrchestrator` to the request/bid/collect flow
 
 **Files:**
-- Modify: `atria/core/subagents/orchestrator.py` (whole file — replace task-list flow with request flow)
+- Modify: `minder/core/subagents/orchestrator.py` (whole file — replace task-list flow with request flow)
 - Test: `tests/core/subagents/test_orchestrator_broadcast.py`
 
 **Interfaces:**
@@ -630,7 +630,7 @@ git commit -m "feat(subagents): autonomous per-helper bid engine (fail-closed, c
 # tests/core/subagents/test_orchestrator_broadcast.py
 import pytest
 
-from atria.core.subagents.orchestrator import SubagentOrchestrator
+from minder.core.subagents.orchestrator import SubagentOrchestrator
 
 
 class FakeRedis:
@@ -714,7 +714,7 @@ Expected: FAIL (`start_async` signature mismatch / missing `helper_profiles` kwa
 
 - [ ] **Step 3: Replace the orchestrator implementation**
 
-Replace the body of `atria/core/subagents/orchestrator.py` with:
+Replace the body of `minder/core/subagents/orchestrator.py` with:
 
 ```python
 """Broadcast-request orchestrator (paper arXiv:2510.01285): write an un-addressed
@@ -729,14 +729,14 @@ import time
 import uuid
 from typing import Any, Awaitable, Callable
 
-from atria.core.blackboard.models import Bid, Request, Task
-from atria.core.blackboard.render import render_digest
-from atria.core.blackboard.response_store import BidStore, ResponseStore
-from atria.core.blackboard.store import BlackboardStore
-from atria.core.blackboard.task_store import TaskStore
-from atria.core.orchestration.job_store import JobStore
-from atria.core.subagents.bid import run_bids
-from atria.core.tasks.payload import SubagentTaskPayload
+from minder.core.blackboard.models import Bid, Request, Task
+from minder.core.blackboard.render import render_digest
+from minder.core.blackboard.response_store import BidStore, ResponseStore
+from minder.core.blackboard.store import BlackboardStore
+from minder.core.blackboard.task_store import TaskStore
+from minder.core.orchestration.job_store import JobStore
+from minder.core.subagents.bid import run_bids
+from minder.core.tasks.payload import SubagentTaskPayload
 
 logger = logging.getLogger(__name__)
 
@@ -782,7 +782,7 @@ class SubagentOrchestrator:
 
     async def _publish(self, run_id: str, kind: str, payload: dict) -> None:
         try:
-            from atria.core.blackboard.board_events import publish_board_event
+            from minder.core.blackboard.board_events import publish_board_event
 
             await publish_board_event(self._redis, run_id, kind, payload)
         except Exception as exc:  # noqa: BLE001 — viewer events never break the job
@@ -893,7 +893,7 @@ Expected: PASS (2 tests). (The old `tests/.../test_*orchestrator*` for the task-
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/subagents/orchestrator.py tests/core/subagents/test_orchestrator_broadcast.py
+git add minder/core/subagents/orchestrator.py tests/core/subagents/test_orchestrator_broadcast.py
 git commit -m "feat(subagents): orchestrator request→bid→collect broadcast flow"
 ```
 
@@ -902,7 +902,7 @@ git commit -m "feat(subagents): orchestrator request→bid→collect broadcast f
 ### Task 6: worker writes a Response to the response board
 
 **Files:**
-- Modify: `atria/core/tasks/tasks.py:73-97` (write Response alongside status)
+- Modify: `minder/core/tasks/tasks.py:73-97` (write Response alongside status)
 - Test: `tests/core/tasks/test_worker_response.py`
 
 **Interfaces:**
@@ -917,8 +917,8 @@ git commit -m "feat(subagents): orchestrator request→bid→collect broadcast f
 # tests/core/tasks/test_worker_response.py
 import pytest
 
-from atria.core.blackboard.response_store import ResponseStore
-from atria.core.tasks.tasks import _write_response
+from minder.core.blackboard.response_store import ResponseStore
+from minder.core.tasks.tasks import _write_response
 
 
 class FakeRedis:
@@ -948,7 +948,7 @@ Expected: FAIL (`cannot import name '_write_response'`).
 
 - [ ] **Step 3: Add the helper and call it in the worker**
 
-In `atria/core/tasks/tasks.py`, add near `_claim_and_load`:
+In `minder/core/tasks/tasks.py`, add near `_claim_and_load`:
 
 ```python
 async def _write_response(
@@ -957,14 +957,14 @@ async def _write_response(
     """Write one helper answer to the response board β_r (best-effort)."""
     import time
 
-    from atria.core.blackboard.models import Response
-    from atria.core.blackboard.response_store import ResponseStore
+    from minder.core.blackboard.models import Response
+    from minder.core.blackboard.response_store import ResponseStore
 
     store = ResponseStore(redis, run_id=run_id, ttl=3600)
     await store.add([Response(request_id=run_id, responder=responder,
                               content=content[:1000], confidence=confidence, ts=time.time())])
     try:
-        from atria.core.blackboard.board_events import publish_board_event
+        from minder.core.blackboard.board_events import publish_board_event
 
         await publish_board_event(redis, run_id, "response", {
             "request_id": run_id, "responder": responder,
@@ -999,7 +999,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/tasks/tasks.py tests/core/tasks/test_worker_response.py
+git add minder/core/tasks/tasks.py tests/core/tasks/test_worker_response.py
 git commit -m "feat(worker): write helper answers to the response board"
 ```
 
@@ -1010,11 +1010,11 @@ git commit -m "feat(worker): write helper answers to the response board"
 ### Task 7: `request_help` / `get_help_responses` tool
 
 **Files:**
-- Modify: `atria/core/tasks/payload.py` (add `bid_confidence`)
-- Modify: `atria/core/agents/subagents/task_tool.py` (new schema)
-- Modify: `atria/core/subagents/tools.py` (builder + handlers)
-- Modify: `atria/core/context_engineering/tools/registry.py:204-206` (dispatch keys)
-- Modify: `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py` (handler methods + pass profiles/verify_llm)
+- Modify: `minder/core/tasks/payload.py` (add `bid_confidence`)
+- Modify: `minder/core/agents/subagents/task_tool.py` (new schema)
+- Modify: `minder/core/subagents/tools.py` (builder + handlers)
+- Modify: `minder/core/context_engineering/tools/registry.py:204-206` (dispatch keys)
+- Modify: `minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py` (handler methods + pass profiles/verify_llm)
 - Test: `tests/core/subagents/test_request_help_tool.py`, `tests/core/agents/subagents/test_request_help_schema.py`
 
 **Interfaces:**
@@ -1024,7 +1024,7 @@ git commit -m "feat(worker): write helper answers to the response board"
 
 ```python
 # tests/core/agents/subagents/test_request_help_schema.py
-from atria.core.agents.subagents.task_tool import (
+from minder.core.agents.subagents.task_tool import (
     REQUEST_HELP_TOOL_NAME, create_request_help_schema,
 )
 
@@ -1053,7 +1053,7 @@ def test_schema_has_no_subagent_type():
 
 ```python
 # tests/core/subagents/test_request_help_tool.py
-from atria.core.subagents.tools import execute_get_help_responses, execute_request_help
+from minder.core.subagents.tools import execute_get_help_responses, execute_request_help
 
 
 class FakeOrch:
@@ -1084,7 +1084,7 @@ Expected: FAIL (missing names).
 
 - [ ] **Step 3a: Add `bid_confidence` to the payload**
 
-In `atria/core/tasks/payload.py`, add to `SubagentTaskPayload` (after `subagent_task_id`):
+In `minder/core/tasks/payload.py`, add to `SubagentTaskPayload` (after `subagent_task_id`):
 
 ```python
     bid_confidence: float = 0.0
@@ -1092,7 +1092,7 @@ In `atria/core/tasks/payload.py`, add to `SubagentTaskPayload` (after `subagent_
 
 - [ ] **Step 3b: New tool schema**
 
-In `atria/core/agents/subagents/task_tool.py`, add (keep `format_task_result`):
+In `minder/core/agents/subagents/task_tool.py`, add (keep `format_task_result`):
 
 ```python
 REQUEST_HELP_TOOL_NAME = "request_help"
@@ -1115,7 +1115,7 @@ write their answers to a response board; you collect them with
 1. Put everything a helper needs in `prompt` — helpers cannot see the conversation.
 2. `max_helpers` caps how many volunteers run (default 3).
 3. Returns a `request_id`; poll with `get_help_responses(request_id)`.
-4. Requires Redis and a running `atria-worker`. If no helper volunteers, you get an
+4. Requires Redis and a running `minder-worker`. If no helper volunteers, you get an
    empty response set — plan, run code yourself, or re-request differently."""
 
 
@@ -1159,7 +1159,7 @@ def create_request_help_schema(manager: "SubAgentManager") -> dict[str, Any]:
 
 - [ ] **Step 3c: Builder + handlers in `tools.py`**
 
-In `atria/core/subagents/tools.py`, add `helper_profiles` + `verify_llm` params to `build_subagent_orchestrator` and pass them into `SubagentOrchestrator(...)`:
+In `minder/core/subagents/tools.py`, add `helper_profiles` + `verify_llm` params to `build_subagent_orchestrator` and pass them into `SubagentOrchestrator(...)`:
 
 ```python
 def build_subagent_orchestrator(
@@ -1173,7 +1173,7 @@ def build_subagent_orchestrator(
     helper_profiles: list[tuple[str, str]] | None = None,
 ) -> SubagentOrchestrator:
     ...  # unchanged body up to the return
-    from atria.core.blackboard.verify_llm import build_verify_llm
+    from minder.core.blackboard.verify_llm import build_verify_llm
     return SubagentOrchestrator(
         job_store=JobStore(redis_client, SUBAGENT_PREFIX),
         redis_client=redis_client,
@@ -1230,7 +1230,7 @@ def execute_get_help_responses(arguments: dict, orchestrator: SubagentOrchestrat
 
 - [ ] **Step 3d: Registry dispatch keys**
 
-In `atria/core/context_engineering/tools/registry.py`, replace lines 204-206:
+In `minder/core/context_engineering/tools/registry.py`, replace lines 204-206:
 
 ```python
             "request_help": self._execute_request_help,
@@ -1239,7 +1239,7 @@ In `atria/core/context_engineering/tools/registry.py`, replace lines 204-206:
 
 - [ ] **Step 3e: Handler methods + profiles wiring**
 
-In `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py`:
+In `minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py`:
 - Rename `_execute_subagent_fanout` → `_execute_request_help`, calling `execute_request_help`; rename `_execute_get_subagent_output` → `_execute_get_help_responses`, calling `execute_get_help_responses`.
 - In `_get_subagent_orchestrator`, build `helper_profiles` from the manager and pass it:
 
@@ -1265,7 +1265,7 @@ In `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py`:
 
 - [ ] **Step 3f: Schema registration**
 
-In `atria/core/agents/components/schemas/normal_builder.py:115-126`, change `_build_task_schema` to call `create_request_help_schema` and add a sibling that registers `get_help_responses`. Update the import and any place that referenced `create_task_tool_schema` / the old tool name. Also update the `get_subagent_output`/`get_help_responses` schema (search `normal_builder.py` and `agent_tools.py` for `get_subagent_output` and rename to `get_help_responses` with param `request_id`).
+In `minder/core/agents/components/schemas/normal_builder.py:115-126`, change `_build_task_schema` to call `create_request_help_schema` and add a sibling that registers `get_help_responses`. Update the import and any place that referenced `create_task_tool_schema` / the old tool name. Also update the `get_subagent_output`/`get_help_responses` schema (search `normal_builder.py` and `agent_tools.py` for `get_subagent_output` and rename to `get_help_responses` with param `request_id`).
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1275,7 +1275,7 @@ Expected: PASS. Also run `uv run --no-sync pytest tests/core/context_engineering
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/tasks/payload.py atria/core/agents/subagents/task_tool.py atria/core/subagents/tools.py atria/core/context_engineering/tools/registry.py atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py atria/core/agents/components/schemas/normal_builder.py tests/core/subagents/test_request_help_tool.py tests/core/agents/subagents/test_request_help_schema.py
+git add minder/core/tasks/payload.py minder/core/agents/subagents/task_tool.py minder/core/subagents/tools.py minder/core/context_engineering/tools/registry.py minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py minder/core/agents/components/schemas/normal_builder.py tests/core/subagents/test_request_help_tool.py tests/core/agents/subagents/test_request_help_schema.py
 git commit -m "feat(tools): request_help/get_help_responses replace subagent routing"
 ```
 
@@ -1286,12 +1286,12 @@ git commit -m "feat(tools): request_help/get_help_responses replace subagent rou
 ### Task 8: board-event publisher + subscriber bridge
 
 **Files:**
-- Create: `atria/core/blackboard/board_events.py`
-- Modify: `atria/web/blackboard_subscriber.py:11,44-97`
+- Create: `minder/core/blackboard/board_events.py`
+- Modify: `minder/web/blackboard_subscriber.py:11,44-97`
 - Test: `tests/core/blackboard/test_board_events.py`, `tests/web/test_blackboard_subscriber_board.py`
 
 **Interfaces:**
-- Produces: `async def publish_board_event(redis, run_id: str, kind: str, payload: dict) -> None` — publishes JSON `{kind, ...payload}` to channel `atria:bb:{run_id}:board`. Subscriber forwards these as WS `{type: "blackboard.{kind}", data: payload}` for `kind in {request, bid, response}`.
+- Produces: `async def publish_board_event(redis, run_id: str, kind: str, payload: dict) -> None` — publishes JSON `{kind, ...payload}` to channel `minder:bb:{run_id}:board`. Subscriber forwards these as WS `{type: "blackboard.{kind}", data: payload}` for `kind in {request, bid, response}`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1301,7 +1301,7 @@ import json
 
 import pytest
 
-from atria.core.blackboard.board_events import publish_board_event
+from minder.core.blackboard.board_events import publish_board_event
 
 
 class FakeRedis:
@@ -1316,7 +1316,7 @@ async def test_publish_board_event():
     r = FakeRedis()
     await publish_board_event(r, "sa_1", "bid", {"responder": "Planner", "volunteered": True})
     channel, payload = r.published[0]
-    assert channel == "atria:bb:sa_1:board"
+    assert channel == "minder:bb:sa_1:board"
     d = json.loads(payload)
     assert d["kind"] == "bid" and d["responder"] == "Planner"
 ```
@@ -1329,10 +1329,10 @@ Expected: FAIL (missing module).
 - [ ] **Step 3a: Create the publisher**
 
 ```python
-# atria/core/blackboard/board_events.py
+# minder/core/blackboard/board_events.py
 """Publish request/bid/response events for the web-ui blackboard viewer.
 
-Distinct from the note channel (``atria:bb:{id}:notes``): board events describe
+Distinct from the note channel (``minder:bb:{id}:notes``): board events describe
 the request lifecycle (who bid, who volunteered, who answered) rather than
 durable findings. Best-effort — publishing never raises to the caller.
 """
@@ -1343,11 +1343,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-_PREFIX = "atria:bb:"
+_PREFIX = "minder:bb:"
 
 
 async def publish_board_event(redis: object, run_id: str, kind: str, payload: dict) -> None:
-    """Publish ``{kind, **payload}`` JSON to ``atria:bb:{run_id}:board``."""
+    """Publish ``{kind, **payload}`` JSON to ``minder:bb:{run_id}:board``."""
     channel = f"{_PREFIX}{run_id}:board"
     event = {"kind": kind, **payload}
     try:
@@ -1358,8 +1358,8 @@ async def publish_board_event(redis: object, run_id: str, kind: str, payload: di
 
 - [ ] **Step 3b: Broaden the subscriber**
 
-In `atria/web/blackboard_subscriber.py`:
-- Add a second pattern constant: `_BOARD_PATTERN = "atria:bb:*:board"`.
+In `minder/web/blackboard_subscriber.py`:
+- Add a second pattern constant: `_BOARD_PATTERN = "minder:bb:*:board"`.
 - In `run()`, `await pubsub.psubscribe(_PATTERN, _BOARD_PATTERN)`.
 - In `_forward`, branch on the source channel. The pub/sub message dict has key `"channel"`; decode it. If it ends with `:board`, read `kind = payload.pop("kind", "event")` and broadcast `{"type": f"blackboard.{kind}", "data": payload}` (apply the same `_admit` throttle keyed on `payload.get("request_id") or payload.get("task_id") or ""`). Otherwise keep the existing `blackboard.note` path.
 
@@ -1389,7 +1389,7 @@ import json
 
 import pytest
 
-from atria.web.blackboard_subscriber import BlackboardSubscriber
+from minder.web.blackboard_subscriber import BlackboardSubscriber
 
 
 class FakeBroadcaster:
@@ -1404,7 +1404,7 @@ async def test_board_bid_event_forwarded():
     b = FakeBroadcaster()
     sub = BlackboardSubscriber(redis=None, broadcaster=b)
     await sub._forward({
-        "channel": b"atria:bb:sa_1:board",
+        "channel": b"minder:bb:sa_1:board",
         "data": json.dumps({"kind": "bid", "request_id": "sa_1", "responder": "Planner"}),
     })
     assert b.sent[0]["type"] == "blackboard.bid"
@@ -1421,7 +1421,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/blackboard/board_events.py atria/web/blackboard_subscriber.py tests/core/blackboard/test_board_events.py tests/web/test_blackboard_subscriber_board.py
+git add minder/core/blackboard/board_events.py minder/web/blackboard_subscriber.py tests/core/blackboard/test_board_events.py tests/web/test_blackboard_subscriber_board.py
 git commit -m "feat(web): publish + bridge blackboard request/bid/response events"
 ```
 
@@ -1685,12 +1685,12 @@ Import it at the top: `import { BlackboardPage } from './pages/BlackboardPage';`
 - [ ] **Step 3: Build to verify it compiles**
 
 Run: `cd web-ui && npm run build`
-Expected: `tsc` passes, `vite build` writes to `../atria/web/static`.
+Expected: `tsc` passes, `vite build` writes to `../minder/web/static`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add web-ui/src/pages/BlackboardPage.tsx web-ui/src/App.tsx web-ui/src/components/Layout/AppShell.tsx atria/web/static
+git add web-ui/src/pages/BlackboardPage.tsx web-ui/src/App.tsx web-ui/src/components/Layout/AppShell.tsx minder/web/static
 git commit -m "feat(web-ui): BlackboardPage viewer + route"
 ```
 
@@ -1714,22 +1714,22 @@ Expected: all PASS. Then `cd web-ui && npx vitest run` — frontend stores pass.
 
 Run:
 ```bash
-grep -rn "subagent_type" atria/core/agents/subagents/task_tool.py atria/core/subagents/tools.py
-grep -rn "\"subagent\"\|get_subagent_output" atria/core/context_engineering/tools/registry.py
+grep -rn "subagent_type" minder/core/agents/subagents/task_tool.py minder/core/subagents/tools.py
+grep -rn "\"subagent\"\|get_subagent_output" minder/core/context_engineering/tools/registry.py
 ```
 Expected: the tool schema exposes no `subagent_type`; registry dispatches `request_help`/`get_help_responses`. (Internal `Task.subagent_type` set by the bid is fine.)
 
 - [ ] **Step 3: Real end-to-end (per CLAUDE.md)**
 
-Load the proxy creds from repo `.env` (`OPENAI_API_KEY`, `ATRIA_API_BASE_URL`, model `hosted_vllm/Qwen/Qwen3.5-35B-A3B-FP8`), start redis + `atria-worker`, launch the web UI, and drive a real request:
+Load the proxy creds from repo `.env` (`OPENAI_API_KEY`, `MINDER_API_BASE_URL`, model `hosted_vllm/Qwen/Qwen3.5-35B-A3B-FP8`), start redis + `minder-worker`, launch the web UI, and drive a real request:
 
 ```bash
 # terminal 1
 redis-server
 # terminal 2
-atria-worker            # or the documented worker launch command
+minder-worker            # or the documented worker launch command
 # terminal 3
-atria run ui
+minder run ui
 ```
 
 In the running agent, trigger a `request_help("Find where the blackboard note store publishes to redis and summarize the channel name")`. Verify against live behavior:
@@ -1769,4 +1769,4 @@ Use superpowers:finishing-a-development-branch to decide merge/PR. Do not push o
 
 **Placeholder scan:** No TBD/TODO; every code step shows full code. The one soft spot is Task 7 step 3f and Task 8 step 3b/3c, which describe edits against files whose exact current lines the implementer must open (`normal_builder.py`, the `BlackboardSubscriber.__init__` signature) — instructions name the exact function and change, and give the replacement code, so no guesswork remains beyond matching the local signature.
 
-**Type consistency:** `Request.id` == the orchestrator `bb_id` == `request_id` used by `ResponseStore`/`BidStore`/board events == the frontend `data.id` (request event) / `data.request_id` (bid/response events) — consistent. `bid_confidence` flows payload → `_write_response` → `Response.confidence`. Tool returns `request_id` (== `job_id`) consumed by `get_help_responses(request_id)`. Store keys `atria:bb:{run_id}:{responses,bids,board,notes,tasks}` share the `sa_{job_id}` run id.
+**Type consistency:** `Request.id` == the orchestrator `bb_id` == `request_id` used by `ResponseStore`/`BidStore`/board events == the frontend `data.id` (request event) / `data.request_id` (bid/response events) — consistent. `bid_confidence` flows payload → `_write_response` → `Response.confidence`. Tool returns `request_id` (== `job_id`) consumed by `get_help_responses(request_id)`. Store keys `minder:bb:{run_id}:{responses,bids,board,notes,tasks}` share the `sa_{job_id}` run id.

@@ -21,6 +21,7 @@ import { MCPSettings } from './MCPSettings';
 import { PersonasSettings } from './PersonasSettings';
 import { ChannelSettings } from './ChannelSettings';
 import { ToolsSettings } from './ToolsSettings';
+import { GeneralSettings } from './GeneralSettings';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -182,7 +183,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {/* Sidebar Footer — hidden on the mobile horizontal bar */}
             <div className="hidden sm:flex items-center gap-2 px-4 py-3.5 border-t border-hairline-soft/70">
               <span className="grid h-5 w-5 place-items-center rounded-[5px] bg-gradient-brand text-[10px] font-[700] text-white shadow-glow-accent">A</span>
-              <p className="text-[11px] font-mono text-text-muted">Atria v0.1.7</p>
+              <p className="text-[11px] font-mono text-text-muted">Minder v0.1.7</p>
             </div>
           </div>
 
@@ -202,15 +203,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 {activeTab === 'tools' && <ToolsSettings />}
                 {activeTab === 'connect' && <ChannelSettings />}
                 {activeTab === 'personas' && <PersonasSettings />}
-                {activeTab === 'general' && (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="grid h-14 w-14 place-items-center rounded-xl bg-surface-soft ring-1 ring-inset ring-hairline-soft">
-                      <Cog6ToothIcon className="w-7 h-7 text-text-muted" />
-                    </div>
-                    <p className="mt-4 text-[15px] font-[540] text-ink">General settings</p>
-                    <p className="mt-1 text-xs text-text-muted">More controls are on the way.</p>
-                  </div>
-                )}
+                {activeTab === 'general' && <GeneralSettings />}
               </motion.div>
             </AnimatePresence>
           </div>

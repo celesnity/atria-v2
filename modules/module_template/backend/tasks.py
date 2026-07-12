@@ -1,6 +1,6 @@
 """The module_template background task. Runs in the Celery worker; updates the
 DB, reverse-pushes a live progress block, and attaches a result artifact. Uses
-the SDK's AtriaClient — never imports `atria`."""
+the SDK's MinderClient — never imports `minder`."""
 
 from __future__ import annotations
 
@@ -15,12 +15,12 @@ logger = logging.getLogger("module_template.tasks")
 
 
 def _client():
-    """Build an AtriaClient from env (announce config); None if unconfigured."""
-    from atria_module_sdk.announce import resolve_announce_config
-    from atria_module_sdk.client import AtriaClient
+    """Build an MinderClient from env (announce config); None if unconfigured."""
+    from minder_module_sdk.announce import resolve_announce_config
+    from minder_module_sdk.client import MinderClient
 
     cfg = resolve_announce_config()
-    return AtriaClient("module_template", cfg) if cfg is not None else None
+    return MinderClient("module_template", cfg) if cfg is not None else None
 
 
 @celery_app.task(name="module_template.run_job")

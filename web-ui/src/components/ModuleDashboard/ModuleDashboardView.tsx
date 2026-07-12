@@ -51,9 +51,9 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
         setTitle(detail.text);
       }
     };
-    window.addEventListener('atria:module:title', handler as EventListener);
+    window.addEventListener('minder:module:title', handler as EventListener);
     return () =>
-      window.removeEventListener('atria:module:title', handler as EventListener);
+      window.removeEventListener('minder:module:title', handler as EventListener);
   }, [moduleName]);
 
   useModuleBridge({

@@ -7,9 +7,9 @@ import { variants } from "../theme";
 interface Overview {
   mt_jobs: number;
   mt_media: number;
-  atria_conversations: { id: string; title: string; status: string }[];
-  atria_artifacts_count: number;
-  atria_recent_artifacts: string[];
+  minder_conversations: { id: string; title: string; status: string }[];
+  minder_artifacts_count: number;
+  minder_recent_artifacts: string[];
 }
 
 export default function DataPanel({ apiBase }: { apiBase: string }) {
@@ -48,14 +48,14 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
           <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
             <StatCard icon={<Database size={20} />} label="Module Jobs" value={data.mt_jobs} />
             <StatCard icon={<Database size={20} />} label="Media Files" value={data.mt_media} />
-            <StatCard icon={<Database size={20} />} label="Artifacts" value={data.atria_artifacts_count} />
+            <StatCard icon={<Database size={20} />} label="Artifacts" value={data.minder_artifacts_count} />
           </div>
 
           <h4 style={{ color: "#94a3b8", fontSize: 13, fontWeight: 500, margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Atria Conversations
+            Minder Conversations
           </h4>
 
-          {(data.atria_conversations?.length ?? 0) === 0 ? (
+          {(data.minder_conversations?.length ?? 0) === 0 ? (
             <div style={{ color: "#64748b", fontSize: 13, padding: "16px 0" }}>No conversations found</div>
           ) : (
             <motion.div
@@ -65,7 +65,7 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
               style={{ display: "flex", flexDirection: "column", gap: 8 }}
             >
               <AnimatePresence>
-                {data.atria_conversations.map((c) => (
+                {data.minder_conversations.map((c) => (
                   <motion.div
                     key={c.id}
                     layout

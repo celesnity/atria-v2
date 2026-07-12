@@ -1,5 +1,5 @@
 """Pure showcase logic for module_template — fake, in-memory, no heavy deps and
-never imports ``atria``. Exists only to give the SDK connector something to return."""
+never imports ``minder``. Exists only to give the SDK connector something to return."""
 
 from __future__ import annotations
 

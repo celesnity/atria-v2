@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setUser(u);
 
-      // Bootstrap tenant selection. /api/me needs X-Atria-Tenant — pick any group claim.
+      // Bootstrap tenant selection. /api/me needs X-Minder-Tenant — pick any group claim.
       let tenant = active;
       if (!tenant) {
         const groups: string[] = (u.profile as { groups?: string[] }).groups ?? [];

@@ -7,10 +7,10 @@
 
 ## Summary
 
-Extract an Atria module from the in-process module system into a self-contained,
+Extract an Minder module from the in-process module system into a self-contained,
 independently-deployed **service-module**: a full-stack unit with its own backend
 (FastAPI + isolated dependencies + container), its own React frontend (Module
-Federation remote), and a committed docker-compose service. Atria core stops
+Federation remote), and a committed docker-compose service. Minder core stops
 importing the module's Python code and instead talks to it over two well-defined
 seams — an HTTP **connector contract** (agent tools, dashboard actions) and
 **Module Federation** (native in-host UI). The design is a *generic, reusable
@@ -20,11 +20,11 @@ service-module framework*; `maintenance_copilot` is the first migration and
 ### Motivation
 
 `maintenance_copilot` ships `openai`, `qdrant-client`, `neo4j`, and `chonkie`,
-plus a RAG pipeline that is loaded **in-process** by Atria's tool registry (via
+plus a RAG pipeline that is loaded **in-process** by Minder's tool registry (via
 the module's `tools.py`). Those dependencies and that code currently live inside
-the main Atria image even though they are only needed by one module. The primary
+the main Minder image even though they are only needed by one module. The primary
 driver for this work is **heavy-dependency isolation**: get the module's deps and
-pipeline code out of the Atria image, while preserving every integration surface
+pipeline code out of the Minder image, while preserving every integration surface
 the module has today.
 
 ### What must be preserved
@@ -46,13 +46,13 @@ the module has today.
 3. **Where the service lives:** *inside* `modules/<name>/` — the whole full-stack
    service is part of the module folder, not a separate top-level `services/` dir.
 4. **Isolation mechanism:** **per-module container** — each service-module has its
-   own `Dockerfile`; heavy deps never touch the Atria image.
-5. **Orchestration:** **static compose, Atria supervises** — the service-module
+   own `Dockerfile`; heavy deps never touch the Minder image.
+5. **Orchestration:** **static compose, Minder supervises** — the service-module
    contributes a committed compose service (like `asr`); docker-compose brings it
-   up; Atria discovers it via its manifest/connector URL, health-waits, and
-   registers its tools. Atria does not spawn containers itself.
+   up; Minder discovers it via its manifest/connector URL, health-waits, and
+   registers its tools. Minder does not spawn containers itself.
 6. **UI integration:** the module runs its **own full React frontend**, federated
-   into the Atria web UI via **Module Federation** for a native feel — **not** an
+   into the Minder web UI via **Module Federation** for a native feel — **not** an
    iframe. The `maintenance_answer` card and dashboard are federated components.
 7. **Scope/rollout:** full federation as the *design* target (approach A), built
    in a *backend-first phased* order so the dep-isolation win lands and is
@@ -62,11 +62,11 @@ the module has today.
 ## Context (as-is)
 
 - Modules are file-based, discovered from `modules/` by `ModuleRegistry`
-  (`atria/core/modules/registry.py`), loaded **in-process**. A module may ship a
+  (`minder/core/modules/registry.py`), loaded **in-process**. A module may ship a
   `tools.py` exporting `register(ctx) -> list[ToolSpec]`; the tool registry
-  (`atria/core/context_engineering/tools/registry.py`) discovers these and wires
+  (`minder/core/context_engineering/tools/registry.py`) discovers these and wires
   their handlers into the agent.
-- `ToolSpec` (`atria/core/skill_tools.py`) = `{name, description, parameters,
+- `ToolSpec` (`minder/core/skill_tools.py`) = `{name, description, parameters,
   handler, card_path}`. `SkillToolContext` carries a mutable `broadcaster` used to
   push structured cards to the web UI.
 - Module dashboards render today as **sandboxed iframes** with a postMessage
@@ -79,12 +79,12 @@ the module has today.
 - A work-in-progress `services/warehouse/app.py` already sketches a "connector
   contract" (`/connector/health|manifest|tools/{name}|run|summarize`) and a
   federated React remote (`remoteEntry`, `exposedModule`, `remote: true`). This
-  design generalizes that contract and adds the missing Atria consumer side.
+  design generalizes that contract and adds the missing Minder consumer side.
 
 ## Architecture
 
 A **service-module** = a self-contained full-stack folder under `modules/<name>/`.
-Atria core and the service communicate **only** over HTTP (connector) and Module
+Minder core and the service communicate **only** over HTTP (connector) and Module
 Federation (UI). No Python import crosses the boundary.
 
 ### 1. Folder layout
@@ -97,7 +97,7 @@ modules/maintenance_copilot/
     pipeline/            # moved-in scripts/ (retrieval, synthesis, guardrails,
                          #   answer_schema, index_store, graph_store, etc.)
     sample_manuals/      # RAG corpus (moved here; still path-protected)
-    requirements.txt     # openai, qdrant-client, neo4j, chonkie — LEAVE Atria image
+    requirements.txt     # openai, qdrant-client, neo4j, chonkie — LEAVE Minder image
     Dockerfile
   frontend/              # React Module Federation remote (own package.json)
     src/DashboardApp.tsx
@@ -106,8 +106,8 @@ modules/maintenance_copilot/
   compose.fragment.yml   # committed compose service definition
 ```
 
-Removed from the Atria-loaded surface: the module's `tools.py`, top-level
-`scripts/`, `dashboard.html`, and module-level `requirements.txt`. Atria no longer
+Removed from the Minder-loaded surface: the module's `tools.py`, top-level
+`scripts/`, `dashboard.html`, and module-level `requirements.txt`. Minder no longer
 imports the pipeline.
 
 ### 2. Connector contract (backend HTTP API)
@@ -134,7 +134,7 @@ the full grounded RAG pipeline **inside the service** and returns:
 The service's pipeline continues to talk to the existing sidecars (qdrant/TEI/
 copilot-llm/neo4j) exactly as today — those relationships are unchanged.
 
-### 3. Atria consumer — remote-module registry + proxy tools
+### 3. Minder consumer — remote-module registry + proxy tools
 
 A new **remote registry path** complements the file `ModuleRegistry`:
 
@@ -148,7 +148,7 @@ A new **remote registry path** complements the file `ModuleRegistry`:
   proxy tool remains the only answer path.
 - **Graceful degradation:** if a connector is unreachable at startup or a call
   fails, the proxy returns the existing "service unavailable" structured card
-  instead of failing Atria boot or freelancing — mirrors today's
+  instead of failing Minder boot or freelancing — mirrors today's
   `ServiceUnavailableError` behavior.
 
 ### 4. Compose supervision / lifecycle
@@ -156,16 +156,16 @@ A new **remote registry path** complements the file `ModuleRegistry`:
 - Each service-module ships `compose.fragment.yml` (build context
   `./modules/<name>/backend`, healthcheck, `restart: unless-stopped`), included in
   the repo's top-level `docker-compose.yml` (same as `asr`).
-- "Auto-start" = compose brings the container up alongside Atria. **Atria
+- "Auto-start" = compose brings the container up alongside Minder. **Minder
   supervises, does not spawn**: it health-waits and registers. A doctor-style
   check reports connector reachability.
 - Dev fallback (no Docker): documented `uvicorn app:app` run from `backend/` on the
-  service port; Atria discovers via the same manifest URL. Not auto-managed (YAGNI).
+  service port; Minder discovers via the same manifest URL. Not auto-managed (YAGNI).
 
 ### 5. Frontend — Module Federation (host + remote)
 
 - **Host** (`web-ui`): add `@module-federation/vite` configured for **runtime
-  dynamic remotes**. On load, Atria fetches discovered manifests and
+  dynamic remotes**. On load, Minder fetches discovered manifests and
   `registerRemotes([{name, entry: remoteEntry}])` — no build-time coupling to any
   module.
 - **Remote** (module `frontend/`): own Vite + federation build exposing
@@ -185,7 +185,7 @@ Each phase is independently verifiable.
 
 1. **Backend extraction** — move the pipeline into `backend/`, implement the
    connector contract, containerize, add the compose entry, drop the module's deps
-   from the Atria image.
+   from the Minder image.
 2. **Consumer registry + proxy tool** — remote registry path, proxy `ToolSpec`,
    card broadcast, unavailable stub. *After 1+2 the dep-isolation win is live: the
    agent tool and structured card work over HTTP; dashboard still iframe.*
@@ -213,7 +213,7 @@ Per project rules: **both** unit tests and real end-to-end simulation with a liv
   validate with a hello-world remote in phase 3 before migrating the real UI.
 - **React singleton mismatch** (host vs remote) → blank remote. Mitigation: pin and
   share `react`/`react-dom` versions as singletons.
-- **Startup ordering** — connector not ready when Atria registers. Mitigation:
+- **Startup ordering** — connector not ready when Minder registers. Mitigation:
   health-wait with backoff + unavailable stub; never block boot.
 - **CORS / auth** — federated FE → service (browser origin) vs proxy tool → service
   (server origin) have different origins; configure connector CORS accordingly.
@@ -222,7 +222,7 @@ Per project rules: **both** unit tests and real end-to-end simulation with a liv
 
 ## Out of scope (YAGNI, for now)
 
-- Atria spawning containers itself (Docker socket / generated compose).
+- Minder spawning containers itself (Docker socket / generated compose).
 - Auto-managed dev subprocess supervision.
 - The reverse `/connector/summarize` call (maintenance_copilot's pipeline uses the
   copilot-llm sidecar directly; no reverse LLM call needed).

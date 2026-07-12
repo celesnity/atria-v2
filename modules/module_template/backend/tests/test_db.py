@@ -23,7 +23,7 @@ def test_mtjob_roundtrip(monkeypatch, tmp_path):
         assert row.status == "queued" and row.as_dict()["pct"] == 0
 
 
-def test_atria_reads_degrade_when_tables_absent(monkeypatch, tmp_path):
+def test_minder_reads_degrade_when_tables_absent(monkeypatch, tmp_path):
     # SQLite has no `conversations`/`artifacts` tables → helpers must degrade, not raise.
     db = _fresh_db(monkeypatch, tmp_path)
     assert db.list_conversations() == []

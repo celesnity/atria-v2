@@ -10,7 +10,7 @@ import { create } from 'zustand';
  */
 export type Theme = 'cosmos' | 'daybreak';
 
-const STORAGE_KEY = 'atria-theme';
+const STORAGE_KEY = 'minder-theme';
 
 function readInitial(): Theme {
   if (typeof window === 'undefined') return 'cosmos';

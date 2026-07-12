@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-12
 **Status:** Approved (design) — pending spec review
-**Scope:** `web-ui/` (Atria web frontend)
+**Scope:** `web-ui/` (Minder web frontend)
 
 ## Problem
 
@@ -16,13 +16,13 @@ We are relayouting the app to be **module-centric**: the module's UI owns the
 center, chat becomes a persistent collaborator rail on the left, and module
 navigation is promoted into the top bar.
 
-This is a **structural relayout only** — Atria's existing branding, design
+This is a **structural relayout only** — Minder's existing branding, design
 tokens, and components are kept. The reference mockup ("Minder") is a layout
 reference, not a pixel or visual-reskin target.
 
 ## Decisions (locked)
 
-1. **Fidelity:** Structural relayout only. Keep Atria branding, colors, and
+1. **Fidelity:** Structural relayout only. Keep Minder branding, colors, and
    existing components. Do not apply an elite visual reskin.
 2. **Module navigation:** A top-bar **breadcrumb dropdown** picks the active
    module; a **tab row** shows that module's sub-views. Module sub-views are a
@@ -42,7 +42,7 @@ reference, not a pixel or visual-reskin target.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ TopBar:  [≡] ◆ Atria  /  Plan ▾   │  tab tab tab tab   🔍 Blackboard        │
+│ TopBar:  [≡] ◆ Minder  /  Plan ▾   │  tab tab tab tab   🔍 Blackboard        │
 │                                    │                    tenant ☾ ⚙ MS        │
 ├────────────┬───────────────────────────────────────────┬───────────────────┤
 │ Chat rail  │   Active module UI (selected tab)          │  Artifact panel   │
@@ -69,9 +69,9 @@ reference, not a pixel or visual-reskin target.
 
 ### Top bar (`TopBar`)
 
-**Left cluster:** `[≡] ◆ Atria / <Module ▾>`
+**Left cluster:** `[≡] ◆ Minder / <Module ▾>`
 - `[≡]` collapses the chat rail (replaces today's sidebar hamburger role).
-- `◆ Atria` brand — unchanged.
+- `◆ Minder` brand — unchanged.
 - **`ModuleBreadcrumb`** (new): button showing the active module name +
   chevron. Opens the **module-picker dropdown** listing every module from
   `modulesWithDashboards` (icon, display name, tooltip/description). Selecting
@@ -164,7 +164,7 @@ entries the same way `remote_dashboard` does today; hash-mode tabs append
   picking a module resets to `tabs[0]?.id`; `closeDashboard()` clears it.
 - `ModuleDashboardView` computes `iframeSrc` from the active tab (entry file or
   base + `#id`) and reloads/updates the iframe on tab change. The existing
-  `useModuleBridge` protocol is unchanged. `atria:module:title` events keep
+  `useModuleBridge` protocol is unchanged. `minder:module:title` events keep
   working per tab.
 
 ## State & Wiring
@@ -193,7 +193,7 @@ top-bar entry. No new routes.
 
 **Motion polish (non-destructive, respects existing tokens):** spring-physics
 active underline on `ModuleTabs`, staggered reveal on the module-picker
-dropdown, subtle press/hover on the rail collapse control — all using Atria's
+dropdown, subtle press/hover on the rail collapse control — all using Minder's
 existing motion primitives, not a new design language.
 
 ## Testing (both required per CLAUDE.md)

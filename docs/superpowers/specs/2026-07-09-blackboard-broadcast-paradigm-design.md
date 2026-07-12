@@ -12,11 +12,11 @@ The paper's thesis is a **broadcast-request / voluntary-response** communication
 - Helper agents each hold a **capability profile** (built offline) and **autonomously self-select** whether they can answer.
 - Volunteered answers land on a **separate response board** `β_r` (kept separate from `β` to prevent cross-influence between helpers — paper footnote 2), then are collected back to the main agent, which decides whether to use them.
 
-Atria's current blackboard is the master–slave design the paper argues against:
+Minder's current blackboard is the master–slave design the paper argues against:
 
-- `Task.subagent_type` (`atria/core/blackboard/models.py`) means the main agent *picks the specific worker*.
-- `subagent(tasks=[{subagent_type, prompt}])` (`atria/core/agents/subagents/task_tool.py`) requires the caller to route each task.
-- The worker is routed to by `payload.subagent_type` (`atria/core/tasks/tasks.py`) — it does not volunteer.
+- `Task.subagent_type` (`minder/core/blackboard/models.py`) means the main agent *picks the specific worker*.
+- `subagent(tasks=[{subagent_type, prompt}])` (`minder/core/agents/subagents/task_tool.py`) requires the caller to route each task.
+- The worker is routed to by `payload.subagent_type` (`minder/core/tasks/tasks.py`) — it does not volunteer.
 - There is no capability profile.
 - The result overwrites `Task.result` in the same hash — there is no separate response board.
 
@@ -33,7 +33,7 @@ Rejected alternatives (documented as future work, not built):
 
 ## Design
 
-### 1. Data model — `atria/core/blackboard/models.py`
+### 1. Data model — `minder/core/blackboard/models.py`
 
 Replace the master–slave `Task` with two records:
 
@@ -42,7 +42,7 @@ Replace the master–slave `Task` with two records:
 
 `Note` and the admission verifier (`admission.py`, `verify_llm.py`) stay exactly as-is. They guard the shared *note* channel `β`, which remains how helpers publish durable findings. Responses are **not** admission-gated — the main agent judges responses itself, per the paper.
 
-### 2. Capability profiles — `atria/core/agents/subagents/agents/*.py`
+### 2. Capability profiles — `minder/core/agents/subagents/agents/*.py`
 
 Add `capability_profile: str` to each subagent spec: a 1–2 sentence offline description of what that helper can do / owns (the paper's offline phase). Examples:
 - Planner → "explores and maps code, finds patterns and definitions."
@@ -51,14 +51,14 @@ Add `capability_profile: str` to each subagent spec: a 1–2 sentence offline de
 
 `ask-user` is a builtin UI action, **not** a volunteer — excluded from the bid pool, still directly invokable via its existing path.
 
-### 3. Broadcast + autonomous bid — `atria/core/subagents/orchestrator.py`
+### 3. Broadcast + autonomous bid — `minder/core/subagents/orchestrator.py`
 
 When the main agent posts a request:
 
-1. **Broadcast** — write the `Request` to `atria:bb:{run}:requests`.
+1. **Broadcast** — write the `Request` to `minder:bb:{run}:requests`.
 2. **Bid** — for each helper with a profile, run an **independent** cheap-LLM yes/no self-assessment using *that helper's own profile + the request only* — never a joint view of all profiles, so no coordinator "knows" capabilities. Bids run concurrently, capped by `max_helpers`, **fail-closed** (error/timeout = no volunteer), reusing the existing `verify_llm` cheap-model chain. Each bid (volunteer/decline + one-line reason) is emitted as an event for the viewer.
 3. **Fan out to volunteers only** — enqueue the existing TaskIQ worker path (`SubagentTaskPayload`, `manager.execute_subagent`) for each *yes* voter. The bid replaces `subagent_type` routing; worker mechanics are unchanged.
-4. **Collect** — volunteers write their answer to the **response board** (`atria:bb:{run}:responses`) plus durable findings to the note channel as today. The main agent reads responses for its `request_id`.
+4. **Collect** — volunteers write their answer to the **response board** (`minder:bb:{run}:responses`) plus durable findings to the note channel as today. The main agent reads responses for its `request_id`.
 
 The bid is evaluated per-profile as separate decisions — faithful to "each agent autonomously decides," without booting a full worker to say "no."
 
@@ -69,7 +69,7 @@ The bid is evaluated per-profile as separate decisions — faithful to "each age
 
 ### 5. Web-ui blackboard viewer — `web-ui/src/`
 
-A real blackboard view (extend `DispatchPage.tsx` or a new `BlackboardPage.tsx` + `solverJobs.ts`) showing, per request: the **request text**, the **bid roster** (who volunteered / declined + reason — the paper's autonomy made visible), the **response board**, and the note digest. New WS events bridged through `atria/web/blackboard_subscriber.py`: `blackboard.request`, `blackboard.bid`, `blackboard.response` (alongside existing `blackboard.note`).
+A real blackboard view (extend `DispatchPage.tsx` or a new `BlackboardPage.tsx` + `solverJobs.ts`) showing, per request: the **request text**, the **bid roster** (who volunteered / declined + reason — the paper's autonomy made visible), the **response board**, and the note digest. New WS events bridged through `minder/web/blackboard_subscriber.py`: `blackboard.request`, `blackboard.bid`, `blackboard.response` (alongside existing `blackboard.note`).
 
 ### 6. Removed / out of scope
 
@@ -81,14 +81,14 @@ A real blackboard view (extend `DispatchPage.tsx` or a new `BlackboardPage.tsx` 
 
 ```
 main agent
-  └─ request_help(prompt)                  → Request written to atria:bb:{run}:requests   [β]
+  └─ request_help(prompt)                  → Request written to minder:bb:{run}:requests   [β]
        └─ orchestrator broadcasts
             ├─ bid(Planner.profile, req)    → yes/no + reason   (independent cheap LLM)
             ├─ bid(WebGen.profile, req)     → yes/no + reason
             └─ bid(moduleWorker.profile,req)→ yes/no + reason
        └─ volunteers only → TaskIQ worker (manager.execute_subagent)
-            ├─ Response → atria:bb:{run}:responses                                        [β_r]
-            └─ Notes    → atria:bb:{task_id}:notes (admission-gated)                       [β]
+            ├─ Response → minder:bb:{run}:responses                                        [β_r]
+            └─ Notes    → minder:bb:{task_id}:notes (admission-gated)                       [β]
   └─ get_help_responses(request_id)         ← responses + note digest
 ```
 
@@ -102,7 +102,7 @@ main agent
 
 Per `CLAUDE.md`:
 - **Unit tests:** new `Request`/`Response` models, the per-helper bid (fail-closed, concurrency cap, independence from other profiles), response-board store, `request_help`/`get_help_responses` tool schemas + registry routing, WS event emission.
-- **Real end-to-end:** with `OPENAI_API_KEY` against the configured proxy, redis + `atria-worker` live — post a request, observe bids, volunteers respond on the response board, main agent collects. Verify the viewer renders requests/bids/responses.
+- **Real end-to-end:** with `OPENAI_API_KEY` against the configured proxy, redis + `minder-worker` live — post a request, observe bids, volunteers respond on the response board, main agent collects. Verify the viewer renders requests/bids/responses.
 
 ## Success criteria
 

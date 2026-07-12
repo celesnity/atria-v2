@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **Execution mode is code-all-then-verify (user preference): implement every task in order WITHOUT running tests per-task; write each task's tests alongside its code, then run the whole suite + verification once in the final Phase V.**
 
-**Goal:** Let a service-module register its tools with Atria at runtime (announce on startup, health-gated liveness) so a module appears/disappears live with its container — and never requires editing `atria/**` or `web-ui/**` to add one.
+**Goal:** Let a service-module register its tools with Minder at runtime (announce on startup, health-gated liveness) so a module appears/disappears live with its container — and never requires editing `minder/**` or `web-ui/**` to add one.
 
 **Architecture:** Keep the file-based `ModuleRegistry` owning the guidance layer (`SKILL.md`, `dir`, presentation manifest, `protected_paths`). Add a parallel connector-liveness table (`PENDING → READY → DOWN`) fed by a Keycloak-authed `POST /api/modules/register` ingress and a `ConnectorReconciler` poll of `GET /connector/manifest` + `/connector/health`. Tool specs come from the live connector manifest, not `manifest.service.tools`. The SDK auto-announces from an ASGI startup hook. web-ui drops the bespoke card path — everything is a generic card or a federated block.
 
@@ -11,13 +11,13 @@
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-10-sdk-self-registering-modules-design.md`.
-- **No atria-source edit to add a module** = zero edits to `atria/**` and `web-ui/**`. A module still owns a guidance folder (SKILL.md + presentation manifest + protected_paths); that folder may live outside the repo via `ATRIA_MODULES_DIR`.
+- **No minder-source edit to add a module** = zero edits to `minder/**` and `web-ui/**`. A module still owns a guidance folder (SKILL.md + presentation manifest + protected_paths); that folder may live outside the repo via `MINDER_MODULES_DIR`.
 - **Two ownership layers:** guidance folder (file-based, may be external) vs connector (runtime self-registered, live tool schemas + liveness). `manifest.service.tools` is documentation-only now; live tool schemas come from `GET /connector/manifest`.
 - **Reuse, don't fork:** extend `require_service_principal`, `module_connector.py`, `watcher.py`, `remote.py`; extend the existing `custom_block` `render:"remote"` federated-block contract. Do NOT invent parallel WS types or a second route file.
 - **Auth:** `POST /api/modules/register` requires a Keycloak service token with realm role `MODULE_REGISTER_ROLE = "module-register"` (separate from `MODULE_PUSH_ROLE = "module-push"`).
-- **Liveness:** connector push-announces once at startup; Atria pull-polls `GET /connector/manifest` + `/connector/health`. `RECONCILE_FAIL_LIMIT = 3` consecutive health failures → `DOWN` → tools leave the catalog live. No persistence of connector state across Atria restarts.
-- **URL boundary:** `connector_url` is server→server (Atria reaches it); `remote_entry`/`api_base` are browser-facing (`localhost:<port>`). `api_base = remote_entry.split('/dashboard/')[0]`.
-- **SDK never imports `atria`.**
+- **Liveness:** connector push-announces once at startup; Minder pull-polls `GET /connector/manifest` + `/connector/health`. `RECONCILE_FAIL_LIMIT = 3` consecutive health failures → `DOWN` → tools leave the catalog live. No persistence of connector state across Minder restarts.
+- **URL boundary:** `connector_url` is server→server (Minder reaches it); `remote_entry`/`api_base` are browser-facing (`localhost:<port>`). `api_base = remote_entry.split('/dashboard/')[0]`.
+- **SDK never imports `minder`.**
 - **Frontend build:** npm (`make build-ui` → `npm ci`/`npm run build`), not pnpm. React/react-dom shared singletons `^18.3.1`.
 - **Test command:** `uv run --no-sync pytest <path>` (never bare `pytest`); `npx vitest run <path>` / `npm run build` for web-ui.
 - **Commits:** no `Co-Authored-By: Claude` trailer.
@@ -34,21 +34,21 @@
 - `tests/test_connector_reconciler.py` — poll → ready/down + version bump.
 
 **Backend — modified:**
-- `atria/core/modules/registry.py` — add the connector-liveness table + API (`register_connector`, `mark_connector_ready`, `mark_connector_down`, `connector_tools`, `live_service_modules`).
-- `atria/web/dependencies/service_auth.py` — add `MODULE_REGISTER_ROLE` + `require_module_register` gate (reuse the validation body).
-- `atria/web/routes/module_connector.py` — add `POST /api/modules/register` + `POST /api/modules/deregister`.
-- `atria/core/modules/watcher.py` — add `ConnectorReconciler` (poll loop) + start/stop hooks.
-- `atria/web/server.py` — start/stop the `ConnectorReconciler` in lifespan.
-- `atria/core/modules/remote.py` — `build_remote_tool_specs` uses `live_service_modules()` + `connector_tools(name)`.
-- `atria/core/context_engineering/tools/registry.py:131` — feed `live_service_modules()` instead of `.all()`.
-- `keycloak/realm-export.json` — add realm role `module-register` + a `atria-module` confidential client with service accounts.
+- `minder/core/modules/registry.py` — add the connector-liveness table + API (`register_connector`, `mark_connector_ready`, `mark_connector_down`, `connector_tools`, `live_service_modules`).
+- `minder/web/dependencies/service_auth.py` — add `MODULE_REGISTER_ROLE` + `require_module_register` gate (reuse the validation body).
+- `minder/web/routes/module_connector.py` — add `POST /api/modules/register` + `POST /api/modules/deregister`.
+- `minder/core/modules/watcher.py` — add `ConnectorReconciler` (poll loop) + start/stop hooks.
+- `minder/web/server.py` — start/stop the `ConnectorReconciler` in lifespan.
+- `minder/core/modules/remote.py` — `build_remote_tool_specs` uses `live_service_modules()` + `connector_tools(name)`.
+- `minder/core/context_engineering/tools/registry.py:131` — feed `live_service_modules()` instead of `.all()`.
+- `keycloak/realm-export.json` — add realm role `module-register` + a `minder-module` confidential client with service accounts.
 
 **SDK — created:**
-- `atria_module_sdk/atria_module_sdk/announce.py` — startup/shutdown announce + Keycloak client-credentials token.
+- `minder_module_sdk/minder_module_sdk/announce.py` — startup/shutdown announce + Keycloak client-credentials token.
 
 **SDK — modified:**
-- `atria_module_sdk/atria_module_sdk/connector.py` (or the module where `Connector`/`asgi()` lives) — wire announce into ASGI lifespan; add `block(...)` helper.
-- `atria_module_sdk/__init__.py` — export `block`.
+- `minder_module_sdk/minder_module_sdk/connector.py` (or the module where `Connector`/`asgi()` lives) — wire announce into ASGI lifespan; add `block(...)` helper.
+- `minder_module_sdk/__init__.py` — export `block`.
 
 **Frontend — modified:**
 - `web-ui/src/lib/cardRegistry.ts` — drop bespoke `CARD_MAPPERS` entries (generic + federated only).
@@ -66,7 +66,7 @@
 ### Task 1: connector-liveness table in `ModuleRegistry`
 
 **Files:**
-- Modify: `atria/core/modules/registry.py`
+- Modify: `minder/core/modules/registry.py`
 - Test: `tests/test_connector_registry.py`
 
 **Interfaces:**
@@ -77,7 +77,7 @@
   - On `ModuleRegistry`: `register_connector(*, name, connector_url, remote_entry=None, api_base=None) -> None` (upsert `PENDING`, bump version), `mark_connector_ready(name, tools: List[dict]) -> None` (set `READY`, replace tools, reset `fail_count`, bump version only if state or tools changed), `mark_connector_down(name) -> None` (set `DOWN`, bump version if state changed), `record_health_failure(name) -> None` (increment `fail_count`; if `>= RECONCILE_FAIL_LIMIT` call `mark_connector_down`), `connector_records() -> List[ConnectorRecord]`, `connector_tools(name) -> List[dict]` (`READY` tools else `[]`), `live_service_modules() -> List[Module]` (guidance `Module`s whose connector is `READY`; connectors with no matching folder are excluded here — they surface via a separate tools-only path in Task 5).
   - Module constant: `RECONCILE_FAIL_LIMIT = 3`.
 
-- [ ] **Step 1: Add enum, record, and constant** near the top of `atria/core/modules/registry.py` (after the existing imports add `from dataclasses import dataclass, field`, `from enum import Enum`, `from typing import Optional`):
+- [ ] **Step 1: Add enum, record, and constant** near the top of `minder/core/modules/registry.py` (after the existing imports add `from dataclasses import dataclass, field`, `from enum import Enum`, `from typing import Optional`):
 
 ```python
 RECONCILE_FAIL_LIMIT = 3
@@ -180,7 +180,7 @@ class ConnectorRecord:
 - [ ] **Step 4: Write the test** `tests/test_connector_registry.py`:
 
 ```python
-from atria.core.modules.registry import (
+from minder.core.modules.registry import (
     ConnectorState,
     ModuleRegistry,
     RECONCILE_FAIL_LIMIT,
@@ -247,7 +247,7 @@ def test_live_service_modules_tracks_ready_state(tmp_path):
 ### Task 2: `require_module_register` service-auth gate
 
 **Files:**
-- Modify: `atria/web/dependencies/service_auth.py`
+- Modify: `minder/web/dependencies/service_auth.py`
 - Test: `tests/test_register_route.py` (written in Task 3; the gate is exercised there)
 
 **Interfaces:**
@@ -300,8 +300,8 @@ async def require_module_register(request: Request) -> dict:
 
 ```jsonc
 {
-  "clientId": "atria-module",
-  "name": "Atria Service Module",
+  "clientId": "minder-module",
+  "name": "Minder Service Module",
   "enabled": true,
   "publicClient": false,
   "serviceAccountsEnabled": true,
@@ -318,14 +318,14 @@ async def require_module_register(request: Request) -> dict:
 ### Task 3: `POST /api/modules/register` + `/deregister`
 
 **Files:**
-- Modify: `atria/web/routes/module_connector.py`
+- Modify: `minder/web/routes/module_connector.py`
 - Test: `tests/test_register_route.py`
 
 **Interfaces:**
 - Consumes: `require_module_register` (Task 2); `get_registry()` with `register_connector` (Task 1); `ConnectorReconciler.reconcile_once` (Task 4) via a module-level hook — for now expose a thin `_kick_reconcile(name)` that calls the reconciler if started, else no-ops.
 - Produces: routes `POST /api/modules/register` (body `RegisterBody`) → `{"ok": true}`; `POST /api/modules/deregister` (body `{module}`) → 204.
 
-- [ ] **Step 1: Add request models + routes** to `atria/web/routes/module_connector.py` (add imports: `from pydantic import BaseModel, Field`; `from typing import Optional`; `from atria.web.dependencies.service_auth import require_module_register`; `from atria.core.modules.watcher import kick_reconcile`):
+- [ ] **Step 1: Add request models + routes** to `minder/web/routes/module_connector.py` (add imports: `from pydantic import BaseModel, Field`; `from typing import Optional`; `from minder.web.dependencies.service_auth import require_module_register`; `from minder.core.modules.watcher import kick_reconcile`):
 
 ```python
 class RegisterBody(BaseModel):
@@ -364,18 +364,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atria.core.modules.registry import ConnectorState, reset_registry_for_tests, get_registry
-from atria.web.dependencies.service_auth import require_module_register
-from atria.web.routes.module_connector import router
+from minder.core.modules.registry import ConnectorState, reset_registry_for_tests, get_registry
+from minder.web.dependencies.service_auth import require_module_register
+from minder.web.routes.module_connector import router
 
 
 @pytest.fixture
 def client(monkeypatch, tmp_path):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[require_module_register] = lambda: {"client_id": "atria-module", "roles": ["module-register"]}
+    app.dependency_overrides[require_module_register] = lambda: {"client_id": "minder-module", "roles": ["module-register"]}
     return TestClient(app)
 
 
@@ -406,17 +406,17 @@ def test_deregister_marks_down(client):
 ### Task 4: `ConnectorReconciler` poll loop
 
 **Files:**
-- Modify: `atria/core/modules/watcher.py`
+- Modify: `minder/core/modules/watcher.py`
 - Test: `tests/test_connector_reconciler.py`
 
 **Interfaces:**
-- Consumes: `get_registry()` (`connector_records`, `mark_connector_ready`, `record_health_failure`); `RemoteConnector.fetch_manifest`, `RemoteConnector.is_healthy` from `atria/core/modules/remote.py`.
+- Consumes: `get_registry()` (`connector_records`, `mark_connector_ready`, `record_health_failure`); `RemoteConnector.fetch_manifest`, `RemoteConnector.is_healthy` from `minder/core/modules/remote.py`.
 - Produces:
   - `class ConnectorReconciler` with `reconcile_once(name: Optional[str] = None) -> None`, `start()`, `stop()`, poll interval `RECONCILE_INTERVAL_SEC = 5.0`.
   - Module-level: `start_connector_reconciler()`, `stop_connector_reconciler()`, `kick_reconcile(name: str)` (thread-safe no-op if reconciler not started).
   - Tool-spec parsing: a connector manifest from `fetch_manifest()` is expected to be `{"tools": [ {name, description, parameters}, ... ]}` — extract `tools`.
 
-- [ ] **Step 1: Add the reconciler** to `atria/core/modules/watcher.py` (add imports `import threading`, `import time`, `from typing import Optional`, `from atria.core.modules.registry import get_registry`, `from atria.core.modules.remote import RemoteConnector`):
+- [ ] **Step 1: Add the reconciler** to `minder/core/modules/watcher.py` (add imports `import threading`, `import time`, `from typing import Optional`, `from minder.core.modules.registry import get_registry`, `from minder.core.modules.remote import RemoteConnector`):
 
 ```python
 RECONCILE_INTERVAL_SEC = 5.0
@@ -490,13 +490,13 @@ def kick_reconcile(name: str) -> None:
         _RECONCILER.reconcile_once(name)
 ```
 
-- [ ] **Step 2: Confirm `RemoteConnector` accepts a 2-arg construction.** In `atria/core/modules/remote.py`, `RemoteConnector.__init__(self, name, connector_url, health_path="/connector/health", ...)` — `health_path` already defaults, so `RemoteConnector(rec.name, rec.connector_url)` is valid. No change needed; note it here so the implementer does not add a param.
+- [ ] **Step 2: Confirm `RemoteConnector` accepts a 2-arg construction.** In `minder/core/modules/remote.py`, `RemoteConnector.__init__(self, name, connector_url, health_path="/connector/health", ...)` — `health_path` already defaults, so `RemoteConnector(rec.name, rec.connector_url)` is valid. No change needed; note it here so the implementer does not add a param.
 
 - [ ] **Step 3: Write the test** `tests/test_connector_reconciler.py` (stub `RemoteConnector` via monkeypatch):
 
 ```python
-from atria.core.modules import watcher
-from atria.core.modules.registry import (
+from minder.core.modules import watcher
+from minder.core.modules.registry import (
     ConnectorState, ModuleRegistry, RECONCILE_FAIL_LIMIT, reset_registry_for_tests,
 )
 
@@ -512,8 +512,8 @@ class _FakeConn:
 
 def _install(monkeypatch, tmp_path, manifest, healthy):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
-    from atria.core.modules import registry as reg_mod
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
+    from minder.core.modules import registry as reg_mod
     reg = reg_mod.get_registry()
     reg.register_connector(name="m", connector_url="http://m:9200")
     monkeypatch.setattr(watcher, "RemoteConnector",
@@ -540,23 +540,23 @@ def test_repeated_unhealthy_polls_go_down(monkeypatch, tmp_path):
 ### Task 5: tool-spec build uses live connector tools
 
 **Files:**
-- Modify: `atria/core/modules/remote.py` (`build_remote_tool_specs`)
-- Modify: `atria/core/context_engineering/tools/registry.py:131`
+- Modify: `minder/core/modules/remote.py` (`build_remote_tool_specs`)
+- Modify: `minder/core/context_engineering/tools/registry.py:131`
 - Test: `tests/test_remote_registry_wiring.py` (extend existing)
 
 **Interfaces:**
 - Consumes: `get_registry().live_service_modules()`, `get_registry().connector_tools(name)`, `get_registry().connector_records()`.
 - Produces: `build_remote_tool_specs(ctx, modules)` builds one `ToolSpec` per tool in the module's *live* `connector_tools`, using the connector record's `connector_url` for the `RemoteConnector`. Modules with a `READY` connector but no guidance folder still contribute tools (tools-only path).
 
-- [ ] **Step 1: Rewrite `build_remote_tool_specs`** in `atria/core/modules/remote.py` to source tools + URL from the connector table:
+- [ ] **Step 1: Rewrite `build_remote_tool_specs`** in `minder/core/modules/remote.py` to source tools + URL from the connector table:
 
 ```python
 def build_remote_tool_specs(ctx: "SkillToolContext",
                             modules: "list[Module]") -> "list[ToolSpec]":
     """Build proxy ToolSpecs for every READY service-module connector, from its
     live ``/connector/manifest`` tool schemas (not the committed manifest)."""
-    from atria.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
-    from atria.core.modules.registry import get_registry, ConnectorState
+    from minder.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
+    from minder.core.modules.registry import get_registry, ConnectorState
 
     reg = get_registry()
     specs: list[ToolSpec] = []
@@ -579,10 +579,10 @@ def build_remote_tool_specs(ctx: "SkillToolContext",
 
 *(The `modules` argument is retained for signature compatibility but is no longer the tool source; callers may pass `live_service_modules()`.)*
 
-- [ ] **Step 2: Update the tool-registry call site** `atria/core/context_engineering/tools/registry.py:131`:
+- [ ] **Step 2: Update the tool-registry call site** `minder/core/context_engineering/tools/registry.py:131`:
 
 ```python
-            from atria.core.modules.remote import build_remote_tool_specs
+            from minder.core.modules.remote import build_remote_tool_specs
             _mod_reg = _get_mod_registry()
             _remote_specs = build_remote_tool_specs(self.skill_ctx, _mod_reg.live_service_modules())
 ```
@@ -591,10 +591,10 @@ def build_remote_tool_specs(ctx: "SkillToolContext",
 
 ```python
 def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
-    from atria.core.modules.registry import reset_registry_for_tests, get_registry
-    from atria.core.modules.remote import build_remote_tool_specs
+    from minder.core.modules.registry import reset_registry_for_tests, get_registry
+    from minder.core.modules.remote import build_remote_tool_specs
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     reg = get_registry()
     reg.register_connector(name="m", connector_url="http://m:9200")
     # PENDING → no specs
@@ -609,7 +609,7 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
 ### Task 6: start/stop reconciler in server lifespan
 
 **Files:**
-- Modify: `atria/web/server.py`
+- Modify: `minder/web/server.py`
 
 **Interfaces:**
 - Consumes: `start_connector_reconciler`, `stop_connector_reconciler` (Task 4).
@@ -617,7 +617,7 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
 - [ ] **Step 1: Import and start** near the existing `start_global_watcher(...)` call (~line 119):
 
 ```python
-    from atria.core.modules.watcher import (
+    from minder.core.modules.watcher import (
         start_global_watcher, stop_global_watcher,
         start_connector_reconciler, stop_connector_reconciler,
     )
@@ -641,22 +641,22 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
 ### Task 7: `announce.py` — startup/shutdown announce
 
 **Files:**
-- Create: `atria_module_sdk/atria_module_sdk/announce.py`
+- Create: `minder_module_sdk/minder_module_sdk/announce.py`
 
 **Interfaces:**
 - Produces:
-  - `def resolve_announce_config() -> Optional[AnnounceConfig]` — reads env `ATRIA_URL`, `ATRIA_MODULE_CONNECTOR_URL` (server-reachable self URL), `ATRIA_MODULE_REMOTE_ENTRY`, `KEYCLOAK_TOKEN_URL`, `ATRIA_MODULE_CLIENT_ID` (default `"atria-module"`), `ATRIA_MODULE_CLIENT_SECRET`. Returns `None` (announce disabled) if `ATRIA_URL` or `ATRIA_MODULE_CONNECTOR_URL` is missing.
-  - `@dataclass AnnounceConfig`: `atria_url, connector_url, remote_entry, api_base, token_url, client_id, client_secret`.
+  - `def resolve_announce_config() -> Optional[AnnounceConfig]` — reads env `MINDER_URL`, `MINDER_MODULE_CONNECTOR_URL` (server-reachable self URL), `MINDER_MODULE_REMOTE_ENTRY`, `KEYCLOAK_TOKEN_URL`, `MINDER_MODULE_CLIENT_ID` (default `"minder-module"`), `MINDER_MODULE_CLIENT_SECRET`. Returns `None` (announce disabled) if `MINDER_URL` or `MINDER_MODULE_CONNECTOR_URL` is missing.
+  - `@dataclass AnnounceConfig`: `minder_url, connector_url, remote_entry, api_base, token_url, client_id, client_secret`.
   - `def fetch_service_token(cfg) -> Optional[str]` — client-credentials grant; `None` if no `token_url`/secret (dev/no-auth).
-  - `def announce(module: str, cfg: AnnounceConfig) -> None` — `POST {atria_url}/api/modules/register` with bearer token.
-  - `def deregister(module: str, cfg: AnnounceConfig) -> None` — `POST {atria_url}/api/modules/deregister`, best-effort (swallow errors).
+  - `def announce(module: str, cfg: AnnounceConfig) -> None` — `POST {minder_url}/api/modules/register` with bearer token.
+  - `def deregister(module: str, cfg: AnnounceConfig) -> None` — `POST {minder_url}/api/modules/deregister`, best-effort (swallow errors).
 
-- [ ] **Step 1: Implement** `atria_module_sdk/atria_module_sdk/announce.py`:
+- [ ] **Step 1: Implement** `minder_module_sdk/minder_module_sdk/announce.py`:
 
 ```python
-"""Runtime self-registration: announce this connector to Atria on startup.
+"""Runtime self-registration: announce this connector to Minder on startup.
 
-Never imports ``atria``. Uses only ``httpx`` + env config.
+Never imports ``minder``. Uses only ``httpx`` + env config.
 """
 from __future__ import annotations
 
@@ -667,12 +667,12 @@ from typing import Optional
 
 import httpx
 
-logger = logging.getLogger("atria_module_sdk.announce")
+logger = logging.getLogger("minder_module_sdk.announce")
 
 
 @dataclass
 class AnnounceConfig:
-    atria_url: str
+    minder_url: str
     connector_url: str
     remote_entry: Optional[str]
     api_base: Optional[str]
@@ -682,21 +682,21 @@ class AnnounceConfig:
 
 
 def resolve_announce_config() -> Optional[AnnounceConfig]:
-    atria_url = os.environ.get("ATRIA_URL")
-    connector_url = os.environ.get("ATRIA_MODULE_CONNECTOR_URL")
-    if not atria_url or not connector_url:
-        logger.info("announce disabled (ATRIA_URL / ATRIA_MODULE_CONNECTOR_URL unset)")
+    minder_url = os.environ.get("MINDER_URL")
+    connector_url = os.environ.get("MINDER_MODULE_CONNECTOR_URL")
+    if not minder_url or not connector_url:
+        logger.info("announce disabled (MINDER_URL / MINDER_MODULE_CONNECTOR_URL unset)")
         return None
-    remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY")
+    remote_entry = os.environ.get("MINDER_MODULE_REMOTE_ENTRY")
     api_base = remote_entry.split("/dashboard/")[0] if remote_entry else None
     return AnnounceConfig(
-        atria_url=atria_url.rstrip("/"),
+        minder_url=minder_url.rstrip("/"),
         connector_url=connector_url.rstrip("/"),
         remote_entry=remote_entry,
         api_base=api_base,
         token_url=os.environ.get("KEYCLOAK_TOKEN_URL"),
-        client_id=os.environ.get("ATRIA_MODULE_CLIENT_ID", "atria-module"),
-        client_secret=os.environ.get("ATRIA_MODULE_CLIENT_SECRET"),
+        client_id=os.environ.get("MINDER_MODULE_CLIENT_ID", "minder-module"),
+        client_secret=os.environ.get("MINDER_MODULE_CLIENT_SECRET"),
     )
 
 
@@ -717,14 +717,14 @@ def announce(module: str, cfg: AnnounceConfig) -> None:
     token = fetch_service_token(cfg)
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    resp = httpx.post(f"{cfg.atria_url}/api/modules/register", json={
+    resp = httpx.post(f"{cfg.minder_url}/api/modules/register", json={
         "module": module,
         "connector_url": cfg.connector_url,
         "remote_entry": cfg.remote_entry,
         "api_base": cfg.api_base,
     }, headers=headers, timeout=10.0)
     resp.raise_for_status()
-    logger.info("announced module %s to %s", module, cfg.atria_url)
+    logger.info("announced module %s to %s", module, cfg.minder_url)
 
 
 def deregister(module: str, cfg: AnnounceConfig) -> None:
@@ -733,7 +733,7 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
         token = fetch_service_token(cfg)
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        httpx.post(f"{cfg.atria_url}/api/modules/deregister",
+        httpx.post(f"{cfg.minder_url}/api/modules/deregister",
                    json={"module": module}, headers=headers, timeout=5.0)
     except Exception as exc:  # noqa: BLE001 — best-effort on shutdown
         logger.warning("deregister failed for %s: %s", module, exc)
@@ -742,8 +742,8 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
 ### Task 8: wire announce into `Connector.asgi()` + add `block()` helper
 
 **Files:**
-- Modify: the SDK module defining `Connector` / `asgi()` / `card` (locate with `grep -rn "def asgi\|def card\|class Connector" atria_module_sdk`).
-- Modify: `atria_module_sdk/atria_module_sdk/__init__.py` (export `block`).
+- Modify: the SDK module defining `Connector` / `asgi()` / `card` (locate with `grep -rn "def asgi\|def card\|class Connector" minder_module_sdk`).
+- Modify: `minder_module_sdk/minder_module_sdk/__init__.py` (export `block`).
 
 **Interfaces:**
 - Consumes: `resolve_announce_config`, `announce`, `deregister` (Task 7).
@@ -754,20 +754,20 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
 - [ ] **Step 1: Add the announce hooks** inside `asgi()`, after the app is built and before `return app`:
 
 ```python
-        from atria_module_sdk.announce import resolve_announce_config, announce, deregister
+        from minder_module_sdk.announce import resolve_announce_config, announce, deregister
 
         @app.on_event("startup")
-        def _atria_announce() -> None:
+        def _minder_announce() -> None:
             cfg = resolve_announce_config()
             if cfg is not None:
                 try:
                     announce(self.name, cfg)
-                except Exception as exc:  # noqa: BLE001 — don't crash the module on a flaky Atria
+                except Exception as exc:  # noqa: BLE001 — don't crash the module on a flaky Minder
                     import logging
-                    logging.getLogger("atria_module_sdk").warning("announce failed: %s", exc)
+                    logging.getLogger("minder_module_sdk").warning("announce failed: %s", exc)
 
         @app.on_event("shutdown")
-        def _atria_deregister() -> None:
+        def _minder_deregister() -> None:
             cfg = resolve_announce_config()
             if cfg is not None:
                 deregister(self.name, cfg)
@@ -777,7 +777,7 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
 
 ```python
 def block(component, props=None, *, remote_name, remote_entry, height="auto", title=None):
-    """Federated chat-block descriptor matching Atria's ``custom_block`` render:'remote'."""
+    """Federated chat-block descriptor matching Minder's ``custom_block`` render:'remote'."""
     return {
         "render": "remote",
         "remote_name": remote_name,
@@ -790,7 +790,7 @@ def block(component, props=None, *, remote_name, remote_entry, height="auto", ti
     }
 ```
 
-- [ ] **Step 3: Export it** in `atria_module_sdk/__init__.py` — add `block` to the existing `from .connector import ... , card` line and to `__all__`.
+- [ ] **Step 3: Export it** in `minder_module_sdk/__init__.py` — add `block` to the existing `from .connector import ... , card` line and to `__all__`.
 
 *(No SDK unit test is mandated here — the SDK is exercised end-to-end in Phase V via `maintenance_copilot`. If the SDK has an existing test file, add a `test_block_descriptor` asserting `block("X", {"a":1}, remote_name="m", remote_entry="http://h/dashboard/remoteEntry.js")["api_base"] == "http://h"`.)*
 
@@ -822,7 +822,7 @@ export const CARD_MAPPERS: Record<string, CardMapper> = {};
 **Files:**
 - Modify: `modules/maintenance_copilot/frontend/src/` (add `MaintenanceAnswer` exposed component; port `web-ui/src/components/Chat/MaintenanceAnswer/MaintenanceAnswerBlock.tsx` into the module, adapting props to the block descriptor's `props`).
 - Modify: `modules/maintenance_copilot/frontend/vite.config.ts` — add `MaintenanceAnswer: './src/MaintenanceAnswer'` to the MF `exposes` map (keep `react`/`react-dom` singletons).
-- Modify: `modules/maintenance_copilot/backend/app.py` — tool handler returns `{"output": text, "blocks": [conn.block("MaintenanceAnswer", answer_props, remote_name="maintenance_copilot", remote_entry=os.environ["ATRIA_MODULE_REMOTE_ENTRY"])]}` instead of `card_type`.
+- Modify: `modules/maintenance_copilot/backend/app.py` — tool handler returns `{"output": text, "blocks": [conn.block("MaintenanceAnswer", answer_props, remote_name="maintenance_copilot", remote_entry=os.environ["MINDER_MODULE_REMOTE_ENTRY"])]}` instead of `card_type`.
 - Delete: `web-ui/src/components/Chat/MaintenanceAnswer/MaintenanceAnswerBlock.tsx` and its folder once the module owns the component.
 
 **Interfaces:**
@@ -842,7 +842,7 @@ export const CARD_MAPPERS: Record<string, CardMapper> = {};
 - [ ] **Step 3: Emit the block** in `modules/maintenance_copilot/backend/app.py`. Replace the `card_type="maintenance_answer"` return with:
 
 ```python
-    remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")
+    remote_entry = os.environ.get("MINDER_MODULE_REMOTE_ENTRY", "")
     return {
         "output": answer["text"],
         "blocks": [conn.block(
@@ -880,13 +880,13 @@ Expected: PASS + clean build (no dangling `MaintenanceAnswerBlock` import).
 
 - [ ] **Step 4: SDK block descriptor sanity**
 
-Run: `uv run --no-sync python -c "from atria_module_sdk import block; d=block('X',{'a':1},remote_name='m',remote_entry='http://h/dashboard/remoteEntry.js'); assert d['render']=='remote' and d['api_base']=='http://h', d; print('ok')"`
+Run: `uv run --no-sync python -c "from minder_module_sdk import block; d=block('X',{'a':1},remote_name='m',remote_entry='http://h/dashboard/remoteEntry.js'); assert d['render']=='remote' and d['api_base']=='http://h', d; print('ok')"`
 Expected: prints `ok`.
 
 - [ ] **Step 5: End-to-end (per CLAUDE.md — real API, `OPENAI_API_KEY` set)**
 
-1. Start Atria web (`make run` / the web server) with Keycloak configured (or auth-disabled dev mode).
-2. Run the `maintenance_copilot` connector with `ATRIA_URL`, `ATRIA_MODULE_CONNECTOR_URL`, `ATRIA_MODULE_REMOTE_ENTRY` set (`atria-module dev maintenance_copilot`).
+1. Start Minder web (`make run` / the web server) with Keycloak configured (or auth-disabled dev mode).
+2. Run the `maintenance_copilot` connector with `MINDER_URL`, `MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY` set (`minder-module dev maintenance_copilot`).
 3. Confirm `POST /api/modules/register` is received; within one reconcile cycle the `maintenance_copilot_query` tool appears in the agent tool list.
 4. Ask a maintenance question in chat → agent calls the tool → the `MaintenanceAnswer` federated block renders natively (no bespoke card).
 5. Kill the connector container → after `RECONCILE_FAIL_LIMIT` polls the tool disappears from the catalog; a mid-flight call fails closed with the low-confidence card.
@@ -894,7 +894,7 @@ Expected: prints `ok`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add atria/ atria_module_sdk/ web-ui/ modules/maintenance_copilot/ keycloak/ tests/
+git add minder/ minder_module_sdk/ web-ui/ modules/maintenance_copilot/ keycloak/ tests/
 git add -f docs/superpowers/plans/2026-07-10-sdk-self-registering-modules.md
 git commit -m "feat(modules): SDK runtime self-registration + live connector discovery; kill bespoke cards"
 ```
@@ -907,5 +907,5 @@ git commit -m "feat(modules): SDK runtime self-registration + live connector dis
 
 - **Spec coverage:** registry connector table (Task 1) · register ingress + role (Tasks 2–3) · reconciler + tool wiring + lifespan (Tasks 4–6) · SDK announce + `block()` (Tasks 7–8) · kill bespoke cards + maintenance federated block (Tasks 9–10) · verify incl. live disappear (Phase V). All five spec "Core decisions" map to tasks.
 - **Type consistency:** `register_connector` / `mark_connector_ready` / `mark_connector_down` / `record_health_failure` / `connector_records` / `connector_tools` / `live_service_modules` used identically across Tasks 1, 3, 4, 5. `RECONCILE_FAIL_LIMIT` (registry) and `RECONCILE_INTERVAL_SEC` (watcher) are distinct constants in distinct modules. `block(...)` descriptor keys match the SDK export (Task 8) and the emit site (Task 10).
-- **Guidance-folder boundary:** `maintenance_copilot`'s folder stays; only `manifest.service.tools` stops being the schema source and `card_type` becomes a `block`. No `atria/**` or `web-ui/**` edit is needed to add a *future* module.
+- **Guidance-folder boundary:** `maintenance_copilot`'s folder stays; only `manifest.service.tools` stops being the schema source and `card_type` becomes a `block`. No `minder/**` or `web-ui/**` edit is needed to add a *future* module.
 - **Known illustrative spots:** the Keycloak client JSON (Task 2) and the maintenance handler field names (Task 10) must match the real surrounding schema/handler — flagged inline.

@@ -1,5 +1,5 @@
 # CPU-only ASR sidecar for nvidia/nemotron-3.5-asr-streaming-0.6b.
-# Kept OUT of the main atria image (python:3.12-slim) on purpose: torch +
+# Kept OUT of the main minder image (python:3.12-slim) on purpose: torch +
 # transformers + model weights would bloat it and are only needed here.
 FROM python:3.11-slim
 

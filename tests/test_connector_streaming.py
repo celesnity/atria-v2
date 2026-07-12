@@ -8,12 +8,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_SDK = Path(__file__).resolve().parent.parent / "atria_module_sdk"
+_SDK = Path(__file__).resolve().parent.parent / "minder_module_sdk"
 if str(_SDK) not in sys.path:
     sys.path.insert(0, str(_SDK))
 
-from atria.core.modules import remote  # noqa: E402
-from atria.core.skill_tools import SkillToolContext  # noqa: E402
+from minder.core.modules import remote  # noqa: E402
+from minder.core.skill_tools import SkillToolContext  # noqa: E402
 
 
 def test_run_stream_pumps_progress_and_returns_final():
@@ -73,7 +73,7 @@ def test_make_handler_streaming_uses_stream_not_call():
 
 
 def _sdk_streaming_app():
-    from atria_module_sdk import Connector, card
+    from minder_module_sdk import Connector, card
 
     conn = Connector("demo")
 

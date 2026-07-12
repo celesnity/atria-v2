@@ -2,21 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax. **Execution mode is code-all-then-verify (user preference): implement every task in order WITHOUT running tests per-task; write each task's tests alongside its code, then run the whole suite + verification once in the final Phase V.**
 
-**Goal:** Ship `modules/module_template/` — a runnable service-module that demonstrates every `atria_module_sdk` capability — plus wire `ctx.principal` at the host so `requires_auth` works for real, and refresh `modules/module_integration.md`.
+**Goal:** Ship `modules/module_template/` — a runnable service-module that demonstrates every `minder_module_sdk` capability — plus wire `ctx.principal` at the host so `requires_auth` works for real, and refresh `modules/module_integration.md`.
 
-**Architecture:** One host change (principal wiring in the tool broadcaster, fed from the session owner). One new module: a pure-Python SDK connector (fake data, no `atria` import) whose 7 tools each demo one SDK feature, plus a Module-Federation frontend (a showcase block + dashboard), Docker/compose, SKILL.md, manifest, README, and `conn.invoke`-based tests.
+**Architecture:** One host change (principal wiring in the tool broadcaster, fed from the session owner). One new module: a pure-Python SDK connector (fake data, no `minder` import) whose 7 tools each demo one SDK feature, plus a Module-Federation frontend (a showcase block + dashboard), Docker/compose, SKILL.md, manifest, README, and `conn.invoke`-based tests.
 
-**Tech Stack:** Python 3.12 + `atria_module_sdk` (FastAPI/pydantic/httpx) for the module; React 18 + Vite 5 + `@module-federation/vite` for the frontend; pytest.
+**Tech Stack:** Python 3.12 + `minder_module_sdk` (FastAPI/pydantic/httpx) for the module; React 18 + Vite 5 + `@module-federation/vite` for the frontend; pytest.
 
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-10-module-template-sdk-showcase-design.md`.
-- **The module never imports `atria`.** `AtriaClient` (via `conn.atria_client()`) uses httpx + env only.
-- Reverse-push + `push_artifact` need the Keycloak `module-push` role (the `atria-module` client already holds it); the compose snippet documents the env.
+- **The module never imports `minder`.** `MinderClient` (via `conn.minder_client()`) uses httpx + env only.
+- Reverse-push + `push_artifact` need the Keycloak `module-push` role (the `minder-module` client already holds it); the compose snippet documents the env.
 - `requires_auth` reject / `params_model` invalid → structured `{success: False, ...}`, never a 500.
 - React `singleton` in the module frontend; the module's frontend `package.json` matches `maintenance_copilot`'s versions (`@module-federation/vite ^1.16.14`, `vite ^5.1.4`, `react ^18.3.1`).
 - Module port is **9300**; env prefix is `MT_` (e.g. `MT_PUBLIC_BASE`).
-- **SDK API (exact, already implemented):** `Connector(name, *, version="1", display_name=None, public_base_env="MODULE_PUBLIC_BASE", dashboard_dist_env="MODULE_DASHBOARD_DIST", min_core_version=None)`; `@conn.tool(name, *, description="", parameters=None, card_type=None, streaming=False, requires_auth=False, params_model=None)`; `@conn.readiness_probe`; `@conn.health_probe`; `@conn.on_startup`; `@conn.route(path, *, methods=("POST",))`; `conn.block(component, props=None, *, height="auto", title=None)`; `conn.expose_block(component_key)`; `conn.invoke(tool_name, arguments, *, principal=None, session_id=None)`; `conn.atria_client()` → `AtriaClient` with `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str`, `update_block(session_id, block_id, props)`, `remove_block(session_id, block_id)`, `push_artifact(session_id, filename, content: bytes) -> int`; `card(answer, *, card_type=None, confidence=None, review_required=False, validation_warnings=None, **extra)`. A handler may declare `principal`, `session_id`, or `**kwargs` and the SDK injects them. A streaming tool is a generator yielding `{"event": "progress"|"block"|"final", ...}` dicts.
+- **SDK API (exact, already implemented):** `Connector(name, *, version="1", display_name=None, public_base_env="MODULE_PUBLIC_BASE", dashboard_dist_env="MODULE_DASHBOARD_DIST", min_core_version=None)`; `@conn.tool(name, *, description="", parameters=None, card_type=None, streaming=False, requires_auth=False, params_model=None)`; `@conn.readiness_probe`; `@conn.health_probe`; `@conn.on_startup`; `@conn.route(path, *, methods=("POST",))`; `conn.block(component, props=None, *, height="auto", title=None)`; `conn.expose_block(component_key)`; `conn.invoke(tool_name, arguments, *, principal=None, session_id=None)`; `conn.minder_client()` → `MinderClient` with `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str`, `update_block(session_id, block_id, props)`, `remove_block(session_id, block_id)`, `push_artifact(session_id, filename, content: bytes) -> int`; `card(answer, *, card_type=None, confidence=None, review_required=False, validation_warnings=None, **extra)`. A handler may declare `principal`, `session_id`, or `**kwargs` and the SDK injects them. A streaming tool is a generator yielding `{"event": "progress"|"block"|"final", ...}` dicts.
 - **Test command:** `uv run --no-sync pytest <path>`.
 - **Commits:** no `Co-Authored-By: Claude` trailer.
 - **`docs/` + root `tests/` are gitignored — `git add -f` for the plan and any new files under root `tests/`. The module's own `modules/module_template/backend/tests/` is under `modules/` and tracked normally.**
@@ -27,9 +27,9 @@
 ## File Structure
 
 **Host — modified:**
-- `atria/web/ws_tool_broadcaster.py` — `WebSocketToolBroadcaster` accepts + wires `principal`.
-- `atria/web/agent_executor.py` — passes `principal` from `session.owner_id`.
-- `atria/core/modules/remote.py` — update the stale `_make_handler` comment.
+- `minder/web/ws_tool_broadcaster.py` — `WebSocketToolBroadcaster` accepts + wires `principal`.
+- `minder/web/agent_executor.py` — passes `principal` from `session.owner_id`.
+- `minder/core/modules/remote.py` — update the stale `_make_handler` comment.
 - Test: `tests/test_ctx_identity_forwarding.py` (extend).
 
 **Module — created (all under `modules/module_template/`):**
@@ -47,7 +47,7 @@
 ### Task H1: forward the acting user to `ctx.principal`
 
 **Files:**
-- Modify: `atria/web/ws_tool_broadcaster.py`, `atria/web/agent_executor.py`, `atria/core/modules/remote.py`
+- Modify: `minder/web/ws_tool_broadcaster.py`, `minder/web/agent_executor.py`, `minder/core/modules/remote.py`
 - Test: `tests/test_ctx_identity_forwarding.py`
 
 **Interfaces:**
@@ -74,7 +74,7 @@ and add `principal=_principal,` to the `WebSocketToolBroadcaster(...)` keyword a
 ```python
         # Identity is forwarded first-party from the session: ctx.principal
         # (derived from the session owner) + ctx.session_id go to the connector
-        # as X-Atria-Principal / X-Atria-Session, so a tool can gate on auth and
+        # as X-Minder-Principal / X-Minder-Session, so a tool can gate on auth and
         # reverse-push into the right session.
 ```
 
@@ -82,8 +82,8 @@ and add `principal=_principal,` to the `WebSocketToolBroadcaster(...)` keyword a
 
 ```python
 def test_broadcaster_wires_principal_onto_ctx():
-    from atria.web.ws_tool_broadcaster import WebSocketToolBroadcaster
-    from atria.core.skill_tools import SkillToolContext
+    from minder.web.ws_tool_broadcaster import WebSocketToolBroadcaster
+    from minder.core.skill_tools import SkillToolContext
 
     class _Reg:
         skill_ctx = SkillToolContext()
@@ -97,7 +97,7 @@ def test_broadcaster_wires_principal_onto_ctx():
 
 *(If `WebSocketToolBroadcaster.__init__` requires a real `ws_manager`/`loop` type, pass `None` — the constructor only stores them; the wiring block runs regardless. If construction touches them, adapt the test to the minimal viable args by reading the `__init__`.)*
 
-- [ ] **Step 5: Commit** — `git add atria/web/ws_tool_broadcaster.py atria/web/agent_executor.py atria/core/modules/remote.py && git add -f tests/test_ctx_identity_forwarding.py && git commit -m "feat(web): wire ctx.principal from session owner (requires_auth now works)"` — no Co-Authored-By trailer.
+- [ ] **Step 5: Commit** — `git add minder/web/ws_tool_broadcaster.py minder/web/agent_executor.py minder/core/modules/remote.py && git add -f tests/test_ctx_identity_forwarding.py && git commit -m "feat(web): wire ctx.principal from session owner (requires_auth now works)"` — no Co-Authored-By trailer.
 
 ---
 
@@ -109,13 +109,13 @@ def test_broadcaster_wires_principal_onto_ctx():
 - Create: `modules/module_template/backend/service.py`
 
 **Interfaces:**
-- Produces: `search(topic: str, limit: int = 3) -> dict`, `report_markdown(topic: str = "demo") -> str`, `warm_up()`, `is_warm() -> bool`. Never imports `atria`.
+- Produces: `search(topic: str, limit: int = 3) -> dict`, `report_markdown(topic: str = "demo") -> str`, `warm_up()`, `is_warm() -> bool`. Never imports `minder`.
 
 - [ ] **Step 1: Implement** `modules/module_template/backend/service.py`:
 
 ```python
 """Pure showcase logic for module_template — fake, in-memory, no heavy deps and
-never imports ``atria``. Exists only to give the SDK connector something to return."""
+never imports ``minder``. Exists only to give the SDK connector something to return."""
 from __future__ import annotations
 
 import threading
@@ -162,16 +162,16 @@ def report_markdown(topic: str = "demo") -> str:
 - Create: `modules/module_template/backend/app.py`
 
 **Interfaces:**
-- Consumes: `atria_module_sdk` (`Connector`, `card`); `service` (Task B1); `AtriaClientError` for the async-job guard.
+- Consumes: `minder_module_sdk` (`Connector`, `card`); `service` (Task B1); `MinderClientError` for the async-job guard.
 - Produces: `conn` (a `Connector`), the 7 tools, lifecycle hooks, `app = conn.asgi()`.
 
 - [ ] **Step 1: Implement** `modules/module_template/backend/app.py`:
 
 ```python
-"""module_template — a runnable showcase of the atria-module-sdk surface.
+"""module_template — a runnable showcase of the minder-module-sdk surface.
 
 Each tool demonstrates exactly one SDK capability. Pure/fake logic; never imports
-``atria``. Ask the agent to "show what the module SDK can do" and it will call these.
+``minder``. Ask the agent to "show what the module SDK can do" and it will call these.
 """
 from __future__ import annotations
 
@@ -180,8 +180,8 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from atria_module_sdk import Connector, card
-from atria_module_sdk.client import AtriaClientError
+from minder_module_sdk import Connector, card
+from minder_module_sdk.client import MinderClientError
 
 import service
 
@@ -269,9 +269,9 @@ def template_async_job(steps: int = 3, session_id=None):
 
     def _run(sid: str, n: int) -> None:
         try:
-            client = conn.atria_client()
-        except AtriaClientError as exc:
-            logger.warning("async job: atria client unavailable: %s", exc)
+            client = conn.minder_client()
+        except MinderClientError as exc:
+            logger.warning("async job: minder client unavailable: %s", exc)
             return
         bid = client.push_block(sid, "./ShowcaseBlock", {"kind": "job", "pct": 0})
         for i in range(1, n + 1):
@@ -293,10 +293,10 @@ def template_export(topic: str = "demo", session_id=None):
     if not session_id:
         return {"success": False, "output": "no session to attach an artifact to"}
     try:
-        client = conn.atria_client()
+        client = conn.minder_client()
         aid = client.push_artifact(session_id, f"template_report_{topic}.md",
                                    service.report_markdown(topic).encode())
-    except AtriaClientError as exc:
+    except MinderClientError as exc:
         return {"success": False, "output": f"export failed: {exc}"}
     return {"output": f"attached report artifact #{aid} to the conversation."}
 
@@ -342,7 +342,7 @@ app = conn.asgi()
 - Create: `modules/module_template/backend/tests/test_template.py`, `modules/module_template/backend/tests/__init__.py`
 
 **Interfaces:**
-- Consumes: `conn`, `Principal` from `atria_module_sdk`.
+- Consumes: `conn`, `Principal` from `minder_module_sdk`.
 
 - [ ] **Step 1: Implement** `modules/module_template/backend/tests/test_template.py`:
 
@@ -356,7 +356,7 @@ import sys
 # Make the backend package importable (app.py imports `service` as a top-level module).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from atria_module_sdk.connector import Principal  # noqa: E402
+from minder_module_sdk.connector import Principal  # noqa: E402
 import app as mt  # noqa: E402
 
 
@@ -547,17 +547,17 @@ export default defineConfig({
 ```markdown
 ---
 name: module_template
-description: A runnable SDK showcase. Use it to demonstrate what an Atria service module can do — typed tools, generic cards, federated React blocks, streaming with live progress, auth-gated tools, background reverse-push, and artifact export. Ask it to "show the module SDK capabilities".
+description: A runnable SDK showcase. Use it to demonstrate what an Minder service module can do — typed tools, generic cards, federated React blocks, streaming with live progress, auth-gated tools, background reverse-push, and artifact export. Ask it to "show the module SDK capabilities".
 ---
 
 # module_template
 
-A reference module that demonstrates every `atria_module_sdk` capability. Each tool
+A reference module that demonstrates every `minder_module_sdk` capability. Each tool
 maps to one feature — use it to learn the SDK or as a copy-me skeleton for a new module.
 
 ## When to use
 
-Reach for this when someone wants to see or verify what a deeply-connected Atria
+Reach for this when someone wants to see or verify what a deeply-connected Minder
 module can do, or as the starting point for a new module.
 
 - `template_typed_query` — typed, validated params (pydantic `params_model`).
@@ -576,7 +576,7 @@ The dashboard lists the tools and pings the connector.
 ```json
 {
   "display_name": "Module Template",
-  "tooltip": "SDK showcase — every atria-module-sdk capability",
+  "tooltip": "SDK showcase — every minder-module-sdk capability",
   "icon": "icon.svg",
   "dashboard": { "title": "Module Template · SDK showcase", "default_height": 640, "badge_color": "info" },
   "remote": {
@@ -596,7 +596,7 @@ The dashboard lists the tools and pings the connector.
 - [ ] **Step 4: `backend/Dockerfile`** (multi-stage; build context is the repo root, mirroring `maintenance_copilot`):
 
 ```dockerfile
-# Build context is the REPO ROOT so the image can install the shared atria-module-sdk.
+# Build context is the REPO ROOT so the image can install the shared minder-module-sdk.
 
 # --- frontend build stage ---
 FROM node:20-slim AS fe
@@ -609,7 +609,7 @@ RUN npm run build
 # --- python service stage ---
 FROM python:3.12-slim
 WORKDIR /app
-COPY atria_module_sdk /sdk
+COPY minder_module_sdk /sdk
 RUN pip install --no-cache-dir /sdk
 COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt || true
@@ -624,7 +624,7 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]
 - [ ] **Step 5: `docker-compose.snippet.yml`:**
 
 ```yaml
-# Paste into docker-compose.yml (same network as `atria`). Build context = repo root.
+# Paste into docker-compose.yml (same network as `minder`). Build context = repo root.
   module-template:
     build:
       context: .
@@ -633,14 +633,14 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]
       - "9300:9300"
     environment:
       # Runtime self-registration (announce) — see modules/module_integration.md §4.2
-      ATRIA_URL: "http://atria:8000"
-      ATRIA_MODULE_CONNECTOR_URL: "http://module-template:9300"
-      ATRIA_MODULE_REMOTE_ENTRY: "http://localhost:9300/dashboard/remoteEntry.js"
+      MINDER_URL: "http://minder:8000"
+      MINDER_MODULE_CONNECTOR_URL: "http://module-template:9300"
+      MINDER_MODULE_REMOTE_ENTRY: "http://localhost:9300/dashboard/remoteEntry.js"
       MT_PUBLIC_BASE: "http://localhost:9300"
       # Reverse-push + artifact push (module-push role):
-      KEYCLOAK_TOKEN_URL: "http://keycloak:8080/realms/atria/protocol/openid-connect/token"
-      ATRIA_MODULE_CLIENT_ID: "atria-module"
-      ATRIA_MODULE_CLIENT_SECRET: "CHANGE-ME-IN-ENV"
+      KEYCLOAK_TOKEN_URL: "http://keycloak:8080/realms/minder/protocol/openid-connect/token"
+      MINDER_MODULE_CLIENT_ID: "minder-module"
+      MINDER_MODULE_CLIENT_SECRET: "CHANGE-ME-IN-ENV"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9300/connector/health')"]
       interval: 20s
@@ -651,7 +651,7 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]
 - [ ] **Step 6: `README.md`** — map each SDK feature to the code:
 
 ```markdown
-# module_template — atria-module-sdk showcase
+# module_template — minder-module-sdk showcase
 
 A runnable module that exercises every SDK capability. Copy it to bootstrap a new module.
 
@@ -662,7 +662,7 @@ A runnable module that exercises every SDK capability. Copy it to bootstrap a ne
 - **conn.block() federated block** — `template_block` + `frontend/src/ShowcaseBlock.tsx`.
 - **streaming + mid-stream block event** — `template_stream`.
 - **requires_auth** — `template_secure` (needs an authenticated principal).
-- **AtriaClient reverse-push (push/update block)** — `template_async_job` (background thread).
+- **MinderClient reverse-push (push/update block)** — `template_async_job` (background thread).
 - **push_artifact** — `template_export`.
 - **readiness_probe / health_probe / on_startup** — the lifecycle hooks in `app.py`.
 - **@conn.route (generic passthrough)** — `/ping`.
@@ -671,7 +671,7 @@ A runnable module that exercises every SDK capability. Copy it to bootstrap a ne
 
 ## Run
 
-`atria-module dev module_template` for local iteration, or paste
+`minder-module dev module_template` for local iteration, or paste
 `docker-compose.snippet.yml` into `docker-compose.yml` and `docker compose up -d --build module-template`.
 See `modules/module_integration.md` for the full contract + required env.
 ```
@@ -696,8 +696,8 @@ See `modules/module_integration.md` for the full contract + required env.
   - `conn.invoke(...)` for in-process testing.
   - `conn.expose_block(...)` + the enriched `/connector/manifest` (`card_types`, `contract_version`, `min_core_version`).
   - streaming `block` events (`yield {"event":"block", ...}`).
-  - the **`AtriaClient` reverse-push channel** — `conn.atria_client()` → `push_block`/`update_block`/`remove_block`/`push_artifact`, the `module-push` role requirement, and that it needs a `session_id` captured from a tool handler.
-- Keep the existing §1–§10 structure; extend §3 (backend) and §5 (chat render) and add a new subsection for the outbound `AtriaClient` channel and readiness. Do not remove correct existing content.
+  - the **`MinderClient` reverse-push channel** — `conn.minder_client()` → `push_block`/`update_block`/`remove_block`/`push_artifact`, the `module-push` role requirement, and that it needs a `session_id` captured from a tool handler.
+- Keep the existing §1–§10 structure; extend §3 (backend) and §5 (chat render) and add a new subsection for the outbound `MinderClient` channel and readiness. Do not remove correct existing content.
 
 - [ ] **Step 3: Commit** — `git add modules/module_integration.md && git commit -m "docs(modules): refresh integration guide for full SDK surface + module_template showcase"`.
 
@@ -717,7 +717,7 @@ Expected: no new failures vs baseline (pre-existing enterprise-knowledge/qdrant 
 
 - [ ] **Step 3: Lint**
 
-Run: `uv run --no-sync ruff check atria/web/ws_tool_broadcaster.py atria/web/agent_executor.py atria/core/modules/remote.py modules/module_template/backend/`
+Run: `uv run --no-sync ruff check minder/web/ws_tool_broadcaster.py minder/web/agent_executor.py minder/core/modules/remote.py modules/module_template/backend/`
 Expected: clean.
 
 - [ ] **Step 4: Frontend build**
@@ -727,13 +727,13 @@ Expected: a clean MF build producing `dist/remoteEntry.js`.
 
 - [ ] **Step 5: E2E (with `OPENAI_API_KEY`, per CLAUDE.md — deferred to user)**
 
-Run the module (`atria-module dev module_template` or the compose snippet), then ask the agent to demo each capability and confirm: the typed query validates, the generic card renders, the federated ShowcaseBlock renders, the streaming tool shows live progress + a block, `template_secure` runs for an authenticated user (and rejects anonymous), `template_async_job` pushes a live-updating progress block, and `template_export` attaches a report artifact.
+Run the module (`minder-module dev module_template` or the compose snippet), then ask the agent to demo each capability and confirm: the typed query validates, the generic card renders, the federated ShowcaseBlock renders, the streaming tool shows live progress + a block, `template_secure` runs for an authenticated user (and rejects anonymous), `template_async_job` pushes a live-updating progress block, and `template_export` attaches a report artifact.
 
 - [ ] **Step 6: Commit** (if any verification fixups were needed)
 
 ```bash
 git add -f docs/superpowers/plans/2026-07-10-module-template-sdk-showcase.md
-git add atria/ modules/module_template/
+git add minder/ modules/module_template/
 git commit -m "chore(module_template): Phase V verification fixups"
 ```
 
@@ -742,6 +742,6 @@ git commit -m "chore(module_template): Phase V verification fixups"
 ## Self-Review Notes
 
 - **Spec coverage:** Part 1 host principal wiring → Task H1. Part 2 module: service (B1), all 7 tools + lifecycle (B2), tests (B3), frontend (F1), metadata/deploy (M1). Part 3 docs → D1. Every SDK feature in the spec maps to a tool/hook in B2 and a doc section in D1.
-- **Type/name consistency:** tool names (`template_typed_query/card/block/stream/secure/async_job/export`) are identical across B2, B3, D1, F1(DashboardApp list), M1(SKILL/README). `conn.block("./ShowcaseBlock", …)` component key matches the vite `exposes` key and the manifest `remote.exposed`. `AtriaClientError` imported from `atria_module_sdk.client` (real module). `conn.invoke(...)` signature matches the SDK. `params_model=TemplateQuery` with `limit ≤ 5` matches the test's invalid case (`limit=99`).
+- **Type/name consistency:** tool names (`template_typed_query/card/block/stream/secure/async_job/export`) are identical across B2, B3, D1, F1(DashboardApp list), M1(SKILL/README). `conn.block("./ShowcaseBlock", …)` component key matches the vite `exposes` key and the manifest `remote.exposed`. `MinderClientError` imported from `minder_module_sdk.client` (real module). `conn.invoke(...)` signature matches the SDK. `params_model=TemplateQuery` with `limit ≤ 5` matches the test's invalid case (`limit=99`).
 - **Reconcile-against-reality (flagged inline):** H1 Step-4 test may need the real minimal `WebSocketToolBroadcaster.__init__` args — the implementer reads the constructor and adapts. The Dockerfile uses `|| true` on requirements install because `requirements.txt` is intentionally empty.
-- **No-atria-import:** B2 imports only `atria_module_sdk` + `service` + stdlib/pydantic — no `atria`.
+- **No-minder-import:** B2 imports only `minder_module_sdk` + `service` + stdlib/pydantic — no `minder`.

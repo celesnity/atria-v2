@@ -4,24 +4,24 @@
 **Status:** Approved (design), pending implementation plan
 **Builds on:** `feat/federated-chat-blocks` — the SDK self-registering-modules work
 (runtime announce, connector-liveness reconciler, federated chat blocks, host
-`ctx.push_block`). This spec extends `atria_module_sdk` and adds minimal host
+`ctx.push_block`). This spec extends `minder_module_sdk` and adds minimal host
 support to complete the inbound + **bidirectional** integration surface.
 
 ## Goal
 
-Extend `atria_module_sdk` (and the minimal Atria host support it needs) so a module
+Extend `minder_module_sdk` (and the minimal Minder host support it needs) so a module
 author gets: (1) less boilerplate and in-process testability, (2) a readiness gate,
 (3) a proactive **reverse-push** channel (blocks + artifacts) so a module can update
 the chat outside a tool call, (4) identity/session on the agent-tool path, (5)
 streaming blocks, (6) typed parameters, richer manifest, and declarative auth. The
-SDK still **never imports `atria`**.
+SDK still **never imports `minder`**.
 
 ## Non-goals
 
 - **MCP surface / MCP auto-registration.** Explicitly deferred to a separate interop
   track. This package keeps the bespoke connector contract as the primary (and only)
-  path into Atria. Reasons: MCP carries no card/federated-block/dashboard/liveness
-  concepts natively; and registering one module into the same Atria via both the
+  path into Minder. Reasons: MCP carries no card/federated-block/dashboard/liveness
+  concepts natively; and registering one module into the same Minder via both the
   connector proxy and MCP would double every tool. (Technically feasible later via
   MCP `structuredContent`/`_meta` UI extensions — out of scope here.)
 - Replacing the connector contract, the announce/heartbeat mechanism, or the
@@ -35,7 +35,7 @@ SDK still **never imports `atria`**.
 
 - **A1 — `conn.block(component, props=None, *, height="auto", title=None) -> dict`.**
   A `Connector` method that fills `remote_name=self.name` and
-  `remote_entry=os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")`, delegating to the
+  `remote_entry=os.environ.get("MINDER_MODULE_REMOTE_ENTRY", "")`, delegating to the
   existing free `block(...)` (which stays). Removes the per-module `_answer_block`
   boilerplate.
 - **A2 — `conn.invoke(tool_name, arguments, principal=None, session_id=None) -> dict`.**
@@ -66,21 +66,21 @@ section reverses that (first-party trust) to enable A5 and C1.
   pattern as `broadcaster` / `push_block`.
 - **B2 — `_make_handler` forwards identity.** It passes `ctx.principal` into
   `conn.call_tool(..., principal=…)` (the client already supports it) and adds a new
-  header `X-Atria-Session: <session_id>`.
+  header `X-Minder-Session: <session_id>`.
 - **B3 — SDK reads session.** `_principal_from_headers` already parses
-  `X-Atria-Principal`; add reading of `X-Atria-Session`. Handlers that declare
+  `X-Minder-Principal`; add reading of `X-Minder-Session`. Handlers that declare
   `session_id` (or `**kwargs`) receive it, mirroring how `principal` is injected.
   Only `{username, email}` + `session_id` are forwarded — no sensitive token.
 
 ### C. Bidirectional outbound (SDK + one new host ingress)
 
-- **C1 — `AtriaClient` (`atria_module_sdk/client.py`).** `conn.atria_client()` builds
-  a client from `ATRIA_URL` + client-credentials (role `module-push`). Methods wrap
+- **C1 — `MinderClient` (`minder_module_sdk/client.py`).** `conn.minder_client()` builds
+  a client from `MINDER_URL` + client-credentials (role `module-push`). Methods wrap
   the existing reverse-push ingress `/api/blocks/remote/{push,update,remove}`:
   - `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str` (returns `block_id`)
   - `update_block(session_id, block_id, props) -> None`
   - `remove_block(session_id, block_id) -> None`
-  `remote_entry` defaults to `$ATRIA_MODULE_REMOTE_ENTRY`; `remote_name` = the
+  `remote_entry` defaults to `$MINDER_MODULE_REMOTE_ENTRY`; `remote_name` = the
   connector name. Enables async jobs: capture `session_id` in a tool handler (§B),
   return immediately, then push/update a progress block from a daemon thread. **No
   host change** — the ingress and `ui_bridge.push_remote_block/update_block/remove_block`
@@ -91,13 +91,13 @@ section reverses that (first-party trust) to enable A5 and C1.
   `event` dicts, so a streaming handler can `yield {"event": "block", "block":
   conn.block("./X", props)}` mid-stream. **Host change:** the one `_run_stream` branch.
 - **C3 — Artifact push (new host ingress).**
-  - **Host:** `atria/web/routes/artifacts_remote.py` — `POST /api/artifacts/remote/push`
+  - **Host:** `minder/web/routes/artifacts_remote.py` — `POST /api/artifacts/remote/push`
     gated by `require_service_principal` (role `module-push`); body
     `{session_id, filename, content_b64, type}`. It calls a new
     `ui_bridge.push_artifact(session_id, filename, content_b64, type)` that stores the
     artifact against the session (reusing the existing artifact store) and broadcasts
     an artifact-available WS event.
-  - **SDK:** `AtriaClient.push_artifact(session_id, filename, content: bytes, type="report") -> int`
+  - **SDK:** `MinderClient.push_artifact(session_id, filename, content: bytes, type="report") -> int`
     (returns artifact id). For data/report modules to attach files/images to the chat.
 
 ### D. Manifest, roles, errors, testing
@@ -108,51 +108,51 @@ section reverses that (first-party trust) to enable A5 and C1.
   `card_types` (union of the tools' `card_type`), `contract_version`
   (the SDK's connector-contract version), and `min_core_version`. Host reconciler may
   read these but is not required to act on them beyond `tools` (forward-compatible).
-- **D2 — Keycloak roles.** Grant the `atria-module` service client BOTH realm roles
+- **D2 — Keycloak roles.** Grant the `minder-module` service client BOTH realm roles
   in `keycloak/realm-export.json`: `module-register` (already present) and
-  `module-push` (add), via `service-account-atria-module`.
+  `module-push` (add), via `service-account-minder-module`.
 - **D3 — Error handling (fail-closed preserved).** `requires_auth` reject →
   structured, no 500. `params_model` validation fail → structured, no 500.
-  `readiness_probe` raising → `ready=False`. `AtriaClient` operations are proactive:
-  on network/HTTP error they log and raise `AtriaClientError` (distinct from
+  `readiness_probe` raising → `ready=False`. `MinderClient` operations are proactive:
+  on network/HTTP error they log and raise `MinderClientError` (distinct from
   announce's swallow-all — the module author decides how to handle a failed push).
 - **D4 — Testing.**
-  - SDK unit (`atria_module_sdk/tests/`): `conn.invoke` + `requires_auth`;
+  - SDK unit (`minder_module_sdk/tests/`): `conn.invoke` + `requires_auth`;
     `params_model` schema + validation; `conn.block` env fill; `readiness` in health;
-    `AtriaClient` push/update/remove/push_artifact (httpx `MockTransport`); manifest
+    `MinderClient` push/update/remove/push_artifact (httpx `MockTransport`); manifest
     enrichment shape.
   - Host unit (`tests/`): `SkillToolContext.session_id/principal` wiring;
-    `_make_handler` forwards `X-Atria-Session` + principal; `_run_stream` `block`
+    `_make_handler` forwards `X-Minder-Session` + principal; `_run_stream` `block`
     event → `ctx.push_block`; `readiness=False` keeps a connector `PENDING`;
     `artifacts_remote` route auth (403 vs 200) + `ui_bridge.push_artifact`.
   - E2E (`OPENAI_API_KEY`, per CLAUDE.md): a module async job updates a live block via
-    `AtriaClient.update_block`; a module pushes an artifact that appears in the
+    `MinderClient.update_block`; a module pushes an artifact that appears in the
     conversation.
 
 ## Architecture / file structure
 
-**SDK — created:** `atria_module_sdk/atria_module_sdk/client.py` (`AtriaClient`,
-`AtriaClientError`); `atria_module_sdk/tests/` (new test suite).
+**SDK — created:** `minder_module_sdk/minder_module_sdk/client.py` (`MinderClient`,
+`MinderClientError`); `minder_module_sdk/tests/` (new test suite).
 
 **SDK — modified:** `connector.py` (`conn.block`, `conn.invoke`, `readiness_probe`,
 `params_model` + `requires_auth` on `tool`, `expose_block`, manifest enrichment,
-`X-Atria-Session` read, health `ready`); `cards.py` (unchanged — `block()` reused);
-`__init__.py` (export `AtriaClient`, `AtriaClientError`).
+`X-Minder-Session` read, health `ready`); `cards.py` (unchanged — `block()` reused);
+`__init__.py` (export `MinderClient`, `MinderClientError`).
 
-**Host — created:** `atria/web/routes/artifacts_remote.py`.
+**Host — created:** `minder/web/routes/artifacts_remote.py`.
 
-**Host — modified:** `atria/core/skill_tools.py` (`SkillToolContext.session_id`,
-`.principal`); `atria/web/ws_tool_broadcaster.py` (wire them); `atria/core/modules/remote.py`
-(`_make_handler` forwards identity; `_run_stream` `block` event); `atria/core/modules/watcher.py`
-(reconciler respects `health.ready`); `atria/web/ui_bridge.py` (`push_artifact`);
-`atria/web/server.py` (register `artifacts_remote` router); `keycloak/realm-export.json`
-(`module-push` for `atria-module`).
+**Host — modified:** `minder/core/skill_tools.py` (`SkillToolContext.session_id`,
+`.principal`); `minder/web/ws_tool_broadcaster.py` (wire them); `minder/core/modules/remote.py`
+(`_make_handler` forwards identity; `_run_stream` `block` event); `minder/core/modules/watcher.py`
+(reconciler respects `health.ready`); `minder/web/ui_bridge.py` (`push_artifact`);
+`minder/web/server.py` (register `artifacts_remote` router); `keycloak/realm-export.json`
+(`module-push` for `minder-module`).
 
 ## Constraints
 
-- SDK never imports `atria`. `AtriaClient` uses only `httpx` + env config.
+- SDK never imports `minder`. `MinderClient` uses only `httpx` + env config.
 - Reverse-push and artifact push require the `module-push` realm role; register/deregister
-  keep `module-register`. `atria-module` holds both.
+  keep `module-register`. `minder-module` holds both.
 - `params_model` opt-in; hand-written `parameters=` unaffected.
 - Identity forwarding is first-party trust (`{username, email}` + `session_id`), no token.
 - No `Co-Authored-By: Claude` trailer. Test command `uv run --no-sync pytest`.
@@ -161,4 +161,4 @@ section reverses that (first-party trust) to enable A5 and C1.
 ## Open follow-ups (not in this plan)
 
 - MCP interop surface + MCP auto-registration (separate track).
-- `AtriaClient` retry/backoff on transient push failures (start simple: single attempt + raise).
+- `MinderClient` retry/backoff on transient push failures (start simple: single attempt + raise).

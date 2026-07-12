@@ -25,7 +25,7 @@ interface Props {
 export default function DashboardApp({ apiBase }: Props) {
   const [tab, setTab] = useState<TabId>("jobs");
   const [healthy, setHealthy] = useState<boolean | null>(null);
-  const [overview, setOverview] = useState<{ mt_jobs: number; mt_media: number; atria_artifacts_count: number } | null>(null);
+  const [overview, setOverview] = useState<{ mt_jobs: number; mt_media: number; minder_artifacts_count: number } | null>(null);
 
   useEffect(() => {
     const check = () => {
@@ -73,7 +73,7 @@ export default function DashboardApp({ apiBase }: Props) {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <StatCard icon={<Briefcase size={20} />} label="Total Jobs" value={overview?.mt_jobs ?? 0} />
             <StatCard icon={<Image size={20} />} label="Media Files" value={overview?.mt_media ?? 0} />
-            <StatCard icon={<Database size={20} />} label="Artifacts" value={overview?.atria_artifacts_count ?? 0} />
+            <StatCard icon={<Database size={20} />} label="Artifacts" value={overview?.minder_artifacts_count ?? 0} />
           </div>
         </div>
 

@@ -116,10 +116,10 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-// Signature Atria avatar — nebula-gradient disc with a soft glow and the mark.
+// Signature Minder avatar — nebula-gradient disc with a soft glow and the mark.
 // Shared by assistant turns and the loading spinner so the agent reads as one
 // consistent presence in the thread.
-function AtriaAvatar() {
+function MinderAvatar() {
   return (
     <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
       <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
@@ -131,8 +131,8 @@ const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
-        <AtriaAvatar />
-        <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-ink/40">Atria</span>
+        <MinderAvatar />
+        <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-ink/40">Minder</span>
       </div>
       <div className="prose max-w-none code-hover pl-0">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
@@ -160,7 +160,7 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
 function LoadingSpinner({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2.5 py-1">
-      <AtriaAvatar />
+      <MinderAvatar />
       <span className="braille-spinner text-sm text-ink/40" aria-hidden="true" />
       <span className="text-sm text-ink/45">{label}</span>
     </div>
@@ -191,7 +191,7 @@ function WelcomeScreen() {
           Let&rsquo;s get to work.
         </h2>
         <p className="mt-2 text-balance text-[12.5px] leading-[1.5] text-text-secondary">
-          Start a conversation with Atria.
+          Start a conversation with Minder.
         </p>
       </div>
     </div>

@@ -1,6 +1,6 @@
 {
   "display_name": "Module Template",
-  "tooltip": "SDK showcase — every atria-module-sdk capability",
+  "tooltip": "SDK showcase — every minder-module-sdk capability",
   "icon": "icon.svg",
   "dashboard": { "title": "Module Template · SDK showcase", "default_height": 760, "badge_color": "info" },
   "remote": {

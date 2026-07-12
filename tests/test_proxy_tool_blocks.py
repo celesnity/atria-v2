@@ -1,5 +1,5 @@
-from atria.core.modules import remote
-from atria.core.skill_tools import SkillToolContext
+from minder.core.modules import remote
+from minder.core.skill_tools import SkillToolContext
 
 
 class _Conn:

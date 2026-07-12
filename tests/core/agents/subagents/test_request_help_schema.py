@@ -1,4 +1,4 @@
-from atria.core.agents.subagents.task_tool import (
+from minder.core.agents.subagents.task_tool import (
     REQUEST_HELP_TOOL_NAME,
     create_request_help_schema,
 )

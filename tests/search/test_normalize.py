@@ -1,6 +1,6 @@
 """Unit tests for Vietnamese-aware search normalization."""
 
-from atria.core.context_engineering.search.normalize import (
+from minder.core.context_engineering.search.normalize import (
     normalize_for_search,
     strip_diacritics,
 )

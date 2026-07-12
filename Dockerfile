@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 # ── Layer 2: pre-cache tiktoken encodings so the container works offline ──────
-# --no-dev: the image never installs dev-only deps (e.g. the atria_module_sdk
+# --no-dev: the image never installs dev-only deps (e.g. the minder_module_sdk
 # path dep, which isn't in this layer's build context — module containers ship
 # their own copy). Without it, `uv run` re-syncs dev and fails to resolve the path.
 RUN uv run --no-dev python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"
@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # ── Layer 4: pre-install every module's requirements.txt into the shared venv ─
-# Mirrors atria.core.modules.deps.install_module_deps so the container is
+# Mirrors minder.core.modules.deps.install_module_deps so the container is
 # offline-safe and the first module call doesn't trigger an install. Stamp
 # files match the runtime hash check, so registry load is a no-op.
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -67,35 +67,35 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user (best practice: don't run the server as root).
-RUN groupadd --system atria && useradd --system --gid atria --home-dir /home/atria --create-home atria \
-    # Pre-create the settings dir owned by atria so a fresh named volume mounted
-    # here (atria_data) inherits atria:atria ownership instead of defaulting to root.
-    && mkdir -p /home/atria/.atria && chown atria:atria /home/atria/.atria
+RUN groupadd --system minder && useradd --system --gid minder --home-dir /home/minder --create-home minder \
+    # Pre-create the settings dir owned by minder so a fresh named volume mounted
+    # here (minder_data) inherits minder:minder ownership instead of defaulting to root.
+    && mkdir -p /home/minder/.minder && chown minder:minder /home/minder/.minder
 
 # Bring over the fully-built venv + application source from the builder.
-COPY --from=builder --chown=atria:atria /app /app
+COPY --from=builder --chown=minder:minder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     # UTF-8 mode so logs/file writes never crash on non-ASCII (e.g. "✓").
     PYTHONUTF8=1 \
-    HOME=/home/atria
+    HOME=/home/minder
 
-USER atria
+USER minder
 
 EXPOSE 8080
 
-# Model + endpoint come from the environment (ATRIA_MODEL / ATRIA_API_BASE_URL,
+# Model + endpoint come from the environment (MINDER_MODEL / MINDER_API_BASE_URL,
 # supplied via .env in compose). No hard-coded model default: the container
 # fails fast if either is missing so misconfiguration is obvious.
 ENTRYPOINT ["/bin/sh", "-c", "\
-  mkdir -p \"$HOME/.atria\" && \
-  : \"${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}\" && \
-  : \"${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}\" && \
-  SETTINGS=\"$HOME/.atria/settings.json\" && \
+  mkdir -p \"$HOME/.minder\" && \
+  : \"${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}\" && \
+  : \"${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}\" && \
+  SETTINGS=\"$HOME/.minder/settings.json\" && \
   TMP=\"$SETTINGS.tmp\" && \
-  printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$ATRIA_MODEL\" \"$ATRIA_API_BASE_URL\" > \"$TMP\" && \
+  printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$MINDER_MODEL\" \"$MINDER_API_BASE_URL\" > \"$TMP\" && \
   mv \"$TMP\" \"$SETTINGS\" && \
-  exec atria --host 0.0.0.0 --port 8080\
+  exec minder --host 0.0.0.0 --port 8080\
 "]

@@ -22,7 +22,7 @@ The corpus and all questions/answers are in **Vietnamese**.
 
 ### Goals (this pass — "core module first")
 
-- A working Atria module `modules/enterprise_knowledge/` mirroring `maintenance_copilot`'s
+- A working Minder module `modules/enterprise_knowledge/` mirroring `maintenance_copilot`'s
   shape (skill + CLI + scripts + unit tests).
 - One-time converter that materializes the `.xlsx` into a file corpus + access data.
 - **Permission-aware retrieval**: the querying user's `(role, department)` constrains the

@@ -7,7 +7,7 @@
 ## Goal
 
 Ship `modules/module_template/` — a full, runnable service-module whose sole purpose
-is to **introduce itself to the agent and demonstrate every `atria_module_sdk`
+is to **introduce itself to the agent and demonstrate every `minder_module_sdk`
 capability** when asked. It doubles as the copy-me skeleton for building new modules.
 Also wire `ctx.principal` at the host so `requires_auth` works for real, and update
 `modules/module_integration.md` to match the current SDK.
@@ -25,19 +25,19 @@ Also wire `ctx.principal` at the host so `requires_auth` works for real, and upd
 Today `SkillToolContext.principal` is left `None` on the agent-tool path (no acting
 user in the broadcaster's scope), so `requires_auth` always sees anonymous.
 
-- **`atria/web/ws_tool_broadcaster.py`:** `WebSocketToolBroadcaster.__init__` gains a
+- **`minder/web/ws_tool_broadcaster.py`:** `WebSocketToolBroadcaster.__init__` gains a
   `principal: Optional[dict] = None` param (stored as `self.principal`); in the
   `if skill_ctx is not None:` block, set `skill_ctx.principal = self.principal`.
-- **`atria/web/agent_executor.py`** (~line 330, where the broadcaster is constructed):
+- **`minder/web/agent_executor.py`** (~line 330, where the broadcaster is constructed):
   compute `owner = getattr(session, "owner_id", "") or ""` and pass
   `principal=({"username": owner, "email": ""} if owner else None)`. When there is no
   owner (single-user / anonymous mode), principal stays `None` → `requires_auth` tools
   fail closed (correct).
-- **`atria/core/modules/remote.py`:** update the now-stale `_make_handler` comment
+- **`minder/core/modules/remote.py`:** update the now-stale `_make_handler` comment
   ("agent tool calls carry no user identity") to state that identity is forwarded from
   the session's owner.
 - **Test:** with a broadcaster constructed with `principal={"username": "alice", "email": ""}`,
-  the wired `skill_ctx.principal` is forwarded as `X-Atria-Principal` on a tool call
+  the wired `skill_ctx.principal` is forwarded as `X-Minder-Principal` on a tool call
   (extend `tests/test_ctx_identity_forwarding.py`).
 - **Identity note:** `owner_id` is used as the principal identity. If a user-service
   mapping `owner_id → {username, email}` exists later, upgrade to it; `owner_id` is the
@@ -46,7 +46,7 @@ user in the broadcaster's scope), so `requires_auth` always sees anonymous.
 ## Part 2 — `modules/module_template/` (runnable SDK showcase)
 
 Each tool demonstrates exactly one capability. Backend logic is pure and fake — no
-`atria` import anywhere in the module.
+`minder` import anywhere in the module.
 
 ### backend/app.py — tools
 
@@ -65,12 +65,12 @@ Each tool demonstrates exactly one capability. Backend logic is pure and fake �
   `principal` and returns who called it. Blocked (structured "authentication required")
   for anonymous; runs for an authenticated principal (works now that Part 1 wires it).
 - **`template_async_job`** — signature `(steps: int = 3, session_id=None)`. Returns
-  immediately with an ack, then a daemon thread uses `conn.atria_client()` to
+  immediately with an ack, then a daemon thread uses `conn.minder_client()` to
   `push_block("./ShowcaseBlock", {"pct":0})`, `update_block(...)` per step, and finally
   `update_block(..., {"pct":100,"done":True})`. Demonstrates reverse-push + `session_id`.
-  No-ops gracefully (logs) if `atria_client()` raises `AtriaClientError` (unconfigured).
+  No-ops gracefully (logs) if `minder_client()` raises `MinderClientError` (unconfigured).
 - **`template_export`** — signature `(session_id=None)`. Renders a small markdown report
-  and `conn.atria_client().push_artifact(session_id, "template_report.md", bytes)`;
+  and `conn.minder_client().push_artifact(session_id, "template_report.md", bytes)`;
   returns the artifact id. Demonstrates `push_artifact` + `session_id`.
 
 ### backend/app.py — lifecycle & registration
@@ -88,7 +88,7 @@ Each tool demonstrates exactly one capability. Backend logic is pure and fake �
 ### backend/service.py
 
 Pure fake logic: `search(topic, limit) -> dict`, `report_markdown() -> str`, small
-in-memory data. Never imports `atria`.
+in-memory data. Never imports `minder`.
 
 ### frontend/
 
@@ -109,8 +109,8 @@ in-memory data. Never imports `atria`.
 - `manifest.json` — presentation (`display_name`, `dashboard`, `remote` with browser
   `remoteEntry`), no domain corpus.
 - `icon.svg`, `Dockerfile` (multi-stage: build frontend → slim python, installs
-  `atria-module-sdk`), `docker-compose.snippet.yml` (env: `ATRIA_URL`,
-  `ATRIA_MODULE_CONNECTOR_URL`, `ATRIA_MODULE_REMOTE_ENTRY`, `MODULE_PUBLIC_BASE`, Keycloak
+  `minder-module-sdk`), `docker-compose.snippet.yml` (env: `MINDER_URL`,
+  `MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`, `MODULE_PUBLIC_BASE`, Keycloak
   client creds), `README.md` mapping each SDK feature to the code that uses it.
 - `backend/tests/test_template.py` — uses `conn.invoke(...)` to exercise
   `template_typed_query` (valid + invalid), `template_secure` (anon blocked vs authed),
@@ -123,13 +123,13 @@ Update `modules/module_integration.md`:
   `maintenance_copilot` as the real-world example).
 - Add/refresh sections for the capabilities not yet covered: `params_model`,
   `@readiness_probe`, `requires_auth`, `conn.invoke`, `conn.block` (already present),
-  `expose_block` + manifest enrichment, streaming `block` events, and the `AtriaClient`
+  `expose_block` + manifest enrichment, streaming `block` events, and the `MinderClient`
   reverse-push + `push_artifact` outbound channel (with the `module-push` role note).
 
 ## Constraints
 
-- The module never imports `atria`; `AtriaClient` uses httpx + env only.
-- Reverse-push + artifact push require the `module-push` role (the `atria-module` client
+- The module never imports `minder`; `MinderClient` uses httpx + env only.
+- Reverse-push + artifact push require the `module-push` role (the `minder-module` client
   already holds it); the template's compose snippet documents the env.
 - `requires_auth` fail-closed / `params_model` invalid → structured `{success: False}`,
   never a 500.

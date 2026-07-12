@@ -1,5 +1,5 @@
-"""module_template data layer. Reuses the shared `atria` Postgres INSTANCE but
-owns only the mt_* tables; reads Atria tables read-only. Never imports `atria`."""
+"""module_template data layer. Reuses the shared `minder` Postgres INSTANCE but
+owns only the mt_* tables; reads Minder tables read-only. Never imports `minder`."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 logger = logging.getLogger("module_template.db")
 
-MT_DATABASE_URL = os.environ.get("MT_DATABASE_URL", "postgresql://atria:atria@db:5432/atria")
+MT_DATABASE_URL = os.environ.get("MT_DATABASE_URL", "postgresql://minder:minder@db:5432/minder")
 
 engine = create_engine(MT_DATABASE_URL, pool_pre_ping=True, future=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
@@ -68,7 +68,7 @@ class MtMedia(Base):
 
 
 def init_db() -> None:
-    """Create ONLY the module's own mt_* tables (checkfirst). Never touches Atria tables."""
+    """Create ONLY the module's own mt_* tables (checkfirst). Never touches Minder tables."""
     Base.metadata.create_all(engine, checkfirst=True)
 
 
@@ -85,7 +85,7 @@ def db_session() -> Iterator[Session]:
         s.close()
 
 
-# --- read-only Atria reads (best-effort; degrade on schema drift) ---------------
+# --- read-only Minder reads (best-effort; degrade on schema drift) ---------------
 def list_conversations(limit: int = 10) -> list[dict]:
     sql = text(
         "SELECT id, title, mode, status, created_at FROM conversations "

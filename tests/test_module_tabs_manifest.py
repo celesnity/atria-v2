@@ -1,5 +1,5 @@
 """Tests for the module dashboard `tabs` manifest field."""
-from atria.core.modules.store import _parse_dashboard
+from minder.core.modules.store import _parse_dashboard
 
 
 def test_parse_dashboard_reads_tabs_with_entry_and_hash_mode():

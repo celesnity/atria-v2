@@ -178,7 +178,7 @@ export function TopBar() {
           </span>
           <div className="flex items-baseline gap-2">
             <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
-              Atria
+              Minder
             </span>
             <span className="eyebrow-mono text-ink/40 hidden lg:inline">
               AI Assistant

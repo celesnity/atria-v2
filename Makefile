@@ -1,6 +1,6 @@
 .PHONY: help install install-ui format lint typecheck test test-file test-cov check build-ui
 
-PYTHON_DIRS = atria/ tests/
+PYTHON_DIRS = minder/ tests/
 LINE_LENGTH = 100
 
 help:
@@ -17,8 +17,8 @@ help:
 
 install:
 	uv venv && uv pip install -e ".[dev]"
-	# Shared connector SDK (separate package) for the connector tests + `atria-module`.
-	uv pip install -e ./atria_module_sdk
+	# Shared connector SDK (separate package) for the connector tests + `minder-module`.
+	uv pip install -e ./minder_module_sdk
 
 format:
 	black $(PYTHON_DIRS) --line-length $(LINE_LENGTH)
@@ -27,7 +27,7 @@ lint:
 	ruff check $(PYTHON_DIRS) --fix
 
 typecheck:
-	mypy atria/
+	mypy minder/
 
 check: format lint typecheck
 
@@ -35,7 +35,7 @@ test:
 	uv run pytest
 
 test-cov:
-	uv run pytest --cov=atria
+	uv run pytest --cov=minder
 
 # Usage: make test-file FILE=tests/test_session_manager.py
 test-file:

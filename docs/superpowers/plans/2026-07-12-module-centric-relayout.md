@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Reorganize the Atria web-ui into a module-centric three-column layout — a collapsible chat rail, a module-UI center driven by a top-bar breadcrumb + tab row, and a toggleable artifact panel — without changing branding or rewriting existing components.
+**Goal:** Reorganize the Minder web-ui into a module-centric three-column layout — a collapsible chat rail, a module-UI center driven by a top-bar breadcrumb + tab row, and a toggleable artifact panel — without changing branding or rewriting existing components.
 
 **Architecture:** Approach A (rearrange & reuse). Existing components (`ChatInterface`, `ModuleDashboardView`, `ArtifactViewer`, `ResizeHandle`) are composed into new columns. New work is isolated to: a module-tabs manifest field (backend dataclass + Pydantic + frontend types + store), and three new top-bar/rail widgets (`ModuleBreadcrumb`, `ModuleTabs`, `BlackboardEntry`) plus a `ChatRail` wrapper. No new routes; the module bridge protocol is untouched.
 
-**Tech Stack:** React 18 + TypeScript + Zustand + Tailwind + motion/react (frontend, `web-ui/`); FastAPI + Pydantic + dataclasses (backend, `atria/`). Frontend tests: Vitest (`vitest run`). Backend tests: pytest (`uv run pytest`).
+**Tech Stack:** React 18 + TypeScript + Zustand + Tailwind + motion/react (frontend, `web-ui/`); FastAPI + Pydantic + dataclasses (backend, `minder/`). Frontend tests: Vitest (`vitest run`). Backend tests: pytest (`uv run pytest`).
 
 ## Global Constraints
 
-- Structural relayout only — keep Atria branding, design tokens, and existing components. No visual reskin (no new fonts, no bento/hero/marquee patterns).
+- Structural relayout only — keep Minder branding, design tokens, and existing components. No visual reskin (no new fonts, no bento/hero/marquee patterns).
 - Frontend line length and style follow existing files; backend line length 100 (Black + Ruff), type hints on public APIs, Google-style docstrings.
 - Modules with **no** `tabs` field must behave exactly as today (single `dashboard.html`, empty tab row) — backward compatibility is mandatory.
 - The module `useModuleBridge` protocol and `/api/modules/...` routes are NOT changed.
@@ -23,8 +23,8 @@
 ## File Structure
 
 **Backend (module-tabs field):**
-- Modify `atria/core/modules/store.py` — add `ModuleTabManifest` dataclass + `tabs` on `ModuleDashboardManifest` + parse in `_parse_dashboard()`.
-- Modify `atria/web/routes/modules.py` — add `ModuleTabOut` + `tabs` on `ModuleDashboardManifestOut`.
+- Modify `minder/core/modules/store.py` — add `ModuleTabManifest` dataclass + `tabs` on `ModuleDashboardManifest` + parse in `_parse_dashboard()`.
+- Modify `minder/web/routes/modules.py` — add `ModuleTabOut` + `tabs` on `ModuleDashboardManifestOut`.
 - Test `tests/test_module_tabs_manifest.py` (new).
 
 **Frontend types + store:**
@@ -48,8 +48,8 @@
 ## Task 1: Backend — module `tabs` manifest field
 
 **Files:**
-- Modify: `atria/core/modules/store.py:79-82` (dataclass), `atria/core/modules/store.py:277-286` (parse)
-- Modify: `atria/web/routes/modules.py:44-49` (Pydantic out model)
+- Modify: `minder/core/modules/store.py:79-82` (dataclass), `minder/core/modules/store.py:277-286` (parse)
+- Modify: `minder/web/routes/modules.py:44-49` (Pydantic out model)
 - Test: `tests/test_module_tabs_manifest.py`
 
 **Interfaces:**
@@ -61,7 +61,7 @@ Create `tests/test_module_tabs_manifest.py`:
 
 ```python
 """Tests for the module dashboard `tabs` manifest field."""
-from atria.core.modules.store import _parse_dashboard
+from minder.core.modules.store import _parse_dashboard
 
 
 def test_parse_dashboard_reads_tabs_with_entry_and_hash_mode():
@@ -98,7 +98,7 @@ Expected: FAIL — `ModuleDashboardManifest` has no attribute `tabs` (AttributeE
 
 - [ ] **Step 3: Add the dataclass + field**
 
-In `atria/core/modules/store.py`, add a `ModuleTabManifest` dataclass immediately before `ModuleDashboardManifest` (before line 78), and add the `tabs` field. Result:
+In `minder/core/modules/store.py`, add a `ModuleTabManifest` dataclass immediately before `ModuleDashboardManifest` (before line 78), and add the `tabs` field. Result:
 
 ```python
 @dataclass
@@ -153,7 +153,7 @@ Expected: PASS (3 tests).
 
 - [ ] **Step 6: Expose tabs through the API model**
 
-In `atria/web/routes/modules.py`, add above `ModuleDashboardManifestOut` (before line 44):
+In `minder/web/routes/modules.py`, add above `ModuleDashboardManifestOut` (before line 44):
 
 ```python
 class ModuleTabOut(BaseModel):
@@ -186,7 +186,7 @@ Expected: tests PASS; lint/typecheck clean for the two files.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add atria/core/modules/store.py atria/web/routes/modules.py tests/test_module_tabs_manifest.py
+git add minder/core/modules/store.py minder/web/routes/modules.py tests/test_module_tabs_manifest.py
 git commit -m "feat(modules): add dashboard tabs manifest field"
 ```
 
@@ -968,7 +968,7 @@ make run
 
 - [ ] **Step 2: Create a two-tab test module**
 
-Using the Modules UI (or `atria` module tooling), create a module `taberdemo` with a `manifest.json` whose `dashboard.tabs` is:
+Using the Modules UI (or `minder` module tooling), create a module `taberdemo` with a `manifest.json` whose `dashboard.tabs` is:
 
 ```json
 "tabs": [

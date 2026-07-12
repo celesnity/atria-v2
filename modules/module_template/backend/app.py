@@ -1,7 +1,7 @@
-"""module_template — a runnable showcase of the atria-module-sdk surface.
+"""module_template — a runnable showcase of the minder-module-sdk surface.
 
 Each tool demonstrates exactly one SDK capability. Pure/fake logic; never imports
-``atria``. Ask the agent to "show what the module SDK can do" and it will call these.
+``minder``. Ask the agent to "show what the module SDK can do" and it will call these.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from atria_module_sdk import Connector, card
-from atria_module_sdk.client import AtriaClientError
+from minder_module_sdk import Connector, card
+from minder_module_sdk.client import MinderClientError
 
 import service
 import db
@@ -138,9 +138,9 @@ def template_async_job(steps: int = 3, session_id=None):
 
     def _run(sid: str, n: int) -> None:
         try:
-            client = conn.atria_client()
-        except AtriaClientError as exc:
-            logger.warning("async job: atria client unavailable: %s", exc)
+            client = conn.minder_client()
+        except MinderClientError as exc:
+            logger.warning("async job: minder client unavailable: %s", exc)
             return
         import time
 
@@ -170,11 +170,11 @@ def template_export(topic: str = "demo", session_id=None):
     if not session_id:
         return {"success": False, "output": "no session to attach an artifact to"}
     try:
-        client = conn.atria_client()
+        client = conn.minder_client()
         aid = client.push_artifact(
             session_id, f"template_report_{topic}.md", service.report_markdown(topic).encode()
         )
-    except AtriaClientError as exc:
+    except MinderClientError as exc:
         return {"success": False, "output": f"export failed: {exc}"}
     return {"output": f"attached report artifact #{aid} to the conversation."}
 
@@ -207,7 +207,7 @@ def template_list_jobs():
 
 @conn.tool(
     "template_db_overview",
-    description="Module DB counts + read-only Atria aggregates (shared database).",
+    description="Module DB counts + read-only Minder aggregates (shared database).",
 )
 def template_db_overview():
     with db.db_session() as s:
@@ -217,8 +217,8 @@ def template_db_overview():
         "output": {
             "mt_jobs": jobs,
             "mt_media": mediac,
-            "atria_conversations": db.list_conversations(5),
-            "atria_artifacts_count": db.count_artifacts(),
+            "minder_conversations": db.list_conversations(5),
+            "minder_artifacts_count": db.count_artifacts(),
         }
     }
 
@@ -325,9 +325,9 @@ def route_overview():
         return {
             "mt_jobs": s.query(db.MtJob).count(),
             "mt_media": s.query(db.MtMedia).count(),
-            "atria_conversations": db.list_conversations(10),
-            "atria_artifacts_count": db.count_artifacts(),
-            "atria_recent_artifacts": db.recent_artifacts(10),
+            "minder_conversations": db.list_conversations(10),
+            "minder_artifacts_count": db.count_artifacts(),
+            "minder_recent_artifacts": db.recent_artifacts(10),
         }
 
 

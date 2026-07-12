@@ -1,10 +1,10 @@
 include README.md
 include LICENSE
 include pyproject.toml
-recursive-include atria/config *.json
-recursive-include atria/prompts *.txt *.md
-recursive-include atria/commands *.txt
-recursive-include atria/web/static *
+recursive-include minder/config *.json
+recursive-include minder/prompts *.txt *.md
+recursive-include minder/commands *.txt
+recursive-include minder/web/static *
 global-exclude *.pyc
 global-exclude __pycache__
 global-exclude .git*

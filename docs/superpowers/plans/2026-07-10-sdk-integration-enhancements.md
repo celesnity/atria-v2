@@ -2,21 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax. **Execution mode is code-all-then-verify (user preference): implement every task in order WITHOUT running tests per-task; write each task's tests alongside its code, then run the whole suite + verification once in the final Phase V.**
 
-**Goal:** Extend `atria_module_sdk` (+ minimal Atria host support) with 10 integration enhancements: block/invoke ergonomics, readiness gating, typed params, declarative auth, identity/session forwarding, an `AtriaClient` reverse-push channel (blocks + artifacts), streaming block events, and manifest enrichment.
+**Goal:** Extend `minder_module_sdk` (+ minimal Minder host support) with 10 integration enhancements: block/invoke ergonomics, readiness gating, typed params, declarative auth, identity/session forwarding, an `MinderClient` reverse-push channel (blocks + artifacts), streaming block events, and manifest enrichment.
 
-**Architecture:** Additive. The SDK gains `Connector` methods + an `AtriaClient` (httpx-only, never imports `atria`). The host gains two `SkillToolContext` fields (wired like `push_block`), an identity-forwarding tweak in the tool proxy, a `_run_stream` `block` branch, a reconciler readiness check, and one new service-principal route for artifact push. Reuse the existing reverse-push ingress and federated-block machinery.
+**Architecture:** Additive. The SDK gains `Connector` methods + an `MinderClient` (httpx-only, never imports `minder`). The host gains two `SkillToolContext` fields (wired like `push_block`), an identity-forwarding tweak in the tool proxy, a `_run_stream` `block` branch, a reconciler readiness check, and one new service-principal route for artifact push. Reuse the existing reverse-push ingress and federated-block machinery.
 
 **Tech Stack:** Python 3.12 + FastAPI + pydantic v2 + httpx (SDK); pytest.
 
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-10-sdk-integration-enhancements-design.md`.
-- **SDK never imports `atria`.** `AtriaClient` uses only `httpx` + env config.
+- **SDK never imports `minder`.** `MinderClient` uses only `httpx` + env config.
 - **MCP is out of scope** (separate interop track).
-- **Roles:** reverse-push + artifact push require Keycloak realm role `module-push`; register/deregister use `module-register`. The `atria-module` service client holds BOTH.
+- **Roles:** reverse-push + artifact push require Keycloak realm role `module-push`; register/deregister use `module-register`. The `minder-module` service client holds BOTH.
 - **`params_model` is opt-in** and mutually exclusive with hand-written `parameters=`.
 - **Identity forwarding is first-party trust:** only `{username, email}` + `session_id`, no token.
-- **`AtriaClient` raises `AtriaClientError`** on push failures (proactive action — caller decides), unlike announce which swallows.
+- **`MinderClient` raises `MinderClientError`** on push failures (proactive action — caller decides), unlike announce which swallows.
 - **Fail-closed preserved:** `requires_auth` reject / `params_model` invalid / handler exception → structured `{success: False, ...}`, never a 500.
 - **Test command:** `uv run --no-sync pytest <path>` (never bare `pytest`).
 - **Commits:** no `Co-Authored-By: Claude` trailer.
@@ -28,27 +28,27 @@
 ## File Structure
 
 **SDK — created:**
-- `atria_module_sdk/atria_module_sdk/client.py` — `AtriaClient`, `AtriaClientError`.
-- `atria_module_sdk/tests/test_connector_ext.py` — `conn.block`/`invoke`/`readiness`/`params_model`/`requires_auth`/manifest.
-- `atria_module_sdk/tests/test_client.py` — `AtriaClient` (httpx MockTransport).
+- `minder_module_sdk/minder_module_sdk/client.py` — `MinderClient`, `MinderClientError`.
+- `minder_module_sdk/tests/test_connector_ext.py` — `conn.block`/`invoke`/`readiness`/`params_model`/`requires_auth`/manifest.
+- `minder_module_sdk/tests/test_client.py` — `MinderClient` (httpx MockTransport).
 
 **SDK — modified:**
-- `atria_module_sdk/atria_module_sdk/connector.py` — the `Connector` additions.
-- `atria_module_sdk/atria_module_sdk/__init__.py` — export `AtriaClient`, `AtriaClientError`.
+- `minder_module_sdk/minder_module_sdk/connector.py` — the `Connector` additions.
+- `minder_module_sdk/minder_module_sdk/__init__.py` — export `MinderClient`, `MinderClientError`.
 
 **Host — created:**
-- `atria/web/routes/artifacts_remote.py` — service-principal artifact push ingress.
+- `minder/web/routes/artifacts_remote.py` — service-principal artifact push ingress.
 - `tests/test_ctx_identity_forwarding.py`, `tests/test_stream_block_event.py`, `tests/test_readiness_gating.py`, `tests/test_artifacts_remote_route.py`.
 
 **Host — modified:**
-- `atria/core/skill_tools.py` — `SkillToolContext.session_id`, `.principal`.
-- `atria/web/ws_tool_broadcaster.py` — wire the two fields.
-- `atria/core/modules/remote.py` — `_make_handler` forwards identity; `_run_stream` `block` event.
-- `atria/core/modules/watcher.py` — reconciler respects `health.ready`.
-- `atria/core/modules/registry.py` — connector record carries a `ready` flag; `mark_connector_ready` gates on it.
-- `atria/web/server.py` — register `artifacts_remote_router`.
-- `atria/web/routes/__init__.py` — export `artifacts_remote_router`.
-- `keycloak/realm-export.json` — grant `module-push` to `service-account-atria-module`.
+- `minder/core/skill_tools.py` — `SkillToolContext.session_id`, `.principal`.
+- `minder/web/ws_tool_broadcaster.py` — wire the two fields.
+- `minder/core/modules/remote.py` — `_make_handler` forwards identity; `_run_stream` `block` event.
+- `minder/core/modules/watcher.py` — reconciler respects `health.ready`.
+- `minder/core/modules/registry.py` — connector record carries a `ready` flag; `mark_connector_ready` gates on it.
+- `minder/web/server.py` — register `artifacts_remote_router`.
+- `minder/web/routes/__init__.py` — export `artifacts_remote_router`.
+- `keycloak/realm-export.json` — grant `module-push` to `service-account-minder-module`.
 
 ---
 
@@ -57,8 +57,8 @@
 ### Task A1: `conn.block()` method
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: the existing free `block(component, props, *, remote_name, remote_entry, height, title)` from `.cards`.
@@ -70,22 +70,22 @@
     def block(self, component: str, props: Optional[dict] = None, *,
               height: Any = "auto", title: Optional[str] = None) -> dict:
         """Build a federated chat-block descriptor for THIS module — fills
-        remote_name (self.name) and remote_entry ($ATRIA_MODULE_REMOTE_ENTRY)."""
+        remote_name (self.name) and remote_entry ($MINDER_MODULE_REMOTE_ENTRY)."""
         from .cards import block as _b
-        remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")
+        remote_entry = os.environ.get("MINDER_MODULE_REMOTE_ENTRY", "")
         return _b(component, props, remote_name=self.name,
                   remote_entry=remote_entry, height=height, title=title)
 ```
 
-- [ ] **Step 2: Test** (in `atria_module_sdk/tests/test_connector_ext.py`):
+- [ ] **Step 2: Test** (in `minder_module_sdk/tests/test_connector_ext.py`):
 
 ```python
 import os
-from atria_module_sdk import Connector
+from minder_module_sdk import Connector
 
 
 def test_conn_block_fills_name_and_remote_entry(monkeypatch):
-    monkeypatch.setenv("ATRIA_MODULE_REMOTE_ENTRY", "http://h:9300/dashboard/remoteEntry.js")
+    monkeypatch.setenv("MINDER_MODULE_REMOTE_ENTRY", "http://h:9300/dashboard/remoteEntry.js")
     conn = Connector("my_module")
     d = conn.block("./MyAnswer", {"answer": "hi"})
     assert d["render"] == "remote"
@@ -99,8 +99,8 @@ def test_conn_block_fills_name_and_remote_entry(monkeypatch):
 ### Task A2: `conn.invoke()` public test helper
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: `Connector._call`, `Principal`.
@@ -139,8 +139,8 @@ def test_conn_invoke_runs_tool_in_process():
 ### Task A3: `@conn.readiness_probe` + health `ready`
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Produces: `Connector.readiness_probe(fn)` decorator registering a `() -> bool | dict`. `/connector/health` response gains `"ready": bool` (True when no probe; a probe returning `{"ready": ...}` or a bool; a raising probe → False).
@@ -150,7 +150,7 @@ def test_conn_invoke_runs_tool_in_process():
 ```python
     def readiness_probe(self, fn: Callable[[], Any]) -> Callable[[], Any]:
         """Register a readiness check: () -> bool | {"ready": bool, ...}. While any
-        probe reports not-ready, Atria keeps this module's tools OUT of the agent
+        probe reports not-ready, Minder keeps this module's tools OUT of the agent
         catalog (the connector is alive but not serving yet)."""
         self._readiness_probes.append(fn)
         return fn
@@ -196,8 +196,8 @@ def test_readiness_probe_can_report_not_ready():
 ### Task A4: `params_model` — typed parameters
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: pydantic v2 (already an SDK dep).
@@ -278,8 +278,8 @@ def test_params_model_and_parameters_are_mutually_exclusive():
 ### Task A5: `requires_auth`
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: `Principal.is_authenticated`, the `_Tool.requires_auth` field (added in A4).
@@ -296,8 +296,8 @@ def test_params_model_and_parameters_are_mutually_exclusive():
 - [ ] **Step 2: Test:**
 
 ```python
-from atria_module_sdk import Connector
-from atria_module_sdk.connector import Principal
+from minder_module_sdk import Connector
+from minder_module_sdk.connector import Principal
 
 
 def test_requires_auth_blocks_anonymous():
@@ -320,7 +320,7 @@ def test_requires_auth_blocks_anonymous():
 ### Task B1: `SkillToolContext` fields
 
 **Files:**
-- Modify: `atria/core/skill_tools.py`
+- Modify: `minder/core/skill_tools.py`
 
 **Interfaces:**
 - Produces: `SkillToolContext.session_id: str | None = None` and `SkillToolContext.principal: dict | None = None` (mutable, like `broadcaster`).
@@ -338,7 +338,7 @@ def test_requires_auth_blocks_anonymous():
 ### Task B2: wire them in the broadcaster
 
 **Files:**
-- Modify: `atria/web/ws_tool_broadcaster.py`
+- Modify: `minder/web/ws_tool_broadcaster.py`
 
 **Interfaces:**
 - Consumes: `WebSocketToolBroadcaster.session_id` (already an attribute); `SkillToolContext.session_id`/`.principal`.
@@ -357,7 +357,7 @@ def test_requires_auth_blocks_anonymous():
 ### Task B3: `_make_handler` forwards identity
 
 **Files:**
-- Modify: `atria/core/modules/remote.py`
+- Modify: `minder/core/modules/remote.py`
 
 **Interfaces:**
 - Consumes: `ctx.session_id`, `ctx.principal`; `RemoteConnector.call_tool(tool, arguments, principal=…)` (already supports `principal`); `_auth_headers`.
@@ -369,11 +369,11 @@ def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str
     headers: dict = {}
     token = _module_token(name)
     if token:
-        headers["X-Atria-Module-Token"] = token
+        headers["X-Minder-Module-Token"] = token
     if principal:
-        headers["X-Atria-Principal"] = json.dumps(principal, separators=(",", ":"))
+        headers["X-Minder-Principal"] = json.dumps(principal, separators=(",", ":"))
     if session_id:
-        headers["X-Atria-Session"] = session_id
+        headers["X-Minder-Session"] = session_id
     return headers
 ```
 
@@ -388,20 +388,20 @@ def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str
 
 And in `_run_stream`/`stream_tool` (Task C2 area) pass `session_id`/`principal` into the stream client the same way (the stream client's `_auth_headers` call gains `ctx.session_id`).
 
-### Task B4: SDK reads `X-Atria-Session`, injects `session_id`
+### Task B4: SDK reads `X-Minder-Session`, injects `session_id`
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
-- Produces: `_call(self, tool, arguments, principal, *, session_id: Optional[str] = None)`. A handler declaring `session_id` (or `**kwargs`) receives it, like `principal`. `_principal_from_headers` unchanged; add `_session_from_headers(request) -> Optional[str]` reading `X-Atria-Session`. The `call_tool` and `stream_tool` endpoints pass the parsed session into `_call`/`_sse`.
+- Produces: `_call(self, tool, arguments, principal, *, session_id: Optional[str] = None)`. A handler declaring `session_id` (or `**kwargs`) receives it, like `principal`. `_principal_from_headers` unchanged; add `_session_from_headers(request) -> Optional[str]` reading `X-Minder-Session`. The `call_tool` and `stream_tool` endpoints pass the parsed session into `_call`/`_sse`.
 
 - [ ] **Step 1: Parse the header.** Add:
 
 ```python
 def _session_from_headers(request: Request) -> Optional[str]:
-    return request.headers.get("X-Atria-Session") or None
+    return request.headers.get("X-Minder-Session") or None
 ```
 
 - [ ] **Step 2: Inject into the handler.** Update `_call` to accept `session_id` and inject it when the handler accepts it:
@@ -441,26 +441,26 @@ def test_session_id_injected_into_handler():
 
 # Phase C — Bidirectional outbound
 
-### Task C1: `AtriaClient` reverse-push
+### Task C1: `MinderClient` reverse-push
 
 **Files:**
-- Create: `atria_module_sdk/atria_module_sdk/client.py`
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py` (add `conn.atria_client()`), `atria_module_sdk/atria_module_sdk/__init__.py`
-- Test: `atria_module_sdk/tests/test_client.py`
+- Create: `minder_module_sdk/minder_module_sdk/client.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (add `conn.minder_client()`), `minder_module_sdk/minder_module_sdk/__init__.py`
+- Test: `minder_module_sdk/tests/test_client.py`
 
 **Interfaces:**
 - Consumes: `resolve_announce_config`, `_auth_headers` (from `announce.py`); the host ingress `/api/blocks/remote/{push,update,remove}` whose bodies are: push `{session_id, module, remote_name, remote_entry, component, props?, block_id?, api_base?, height, title, persist}`; update `{session_id, block_id, props}`; remove `{session_id, block_id}`.
 - Produces:
-  - `class AtriaClientError(RuntimeError)`.
-  - `class AtriaClient` with `__init__(self, module, cfg)`, methods `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str`, `update_block(session_id, block_id, props) -> None`, `remove_block(session_id, block_id) -> None`. `remote_entry` defaults to `cfg.remote_entry`; `remote_name` = `module`; `api_base` derived from `remote_entry`.
-  - `Connector.atria_client() -> AtriaClient` — builds one from `resolve_announce_config()`; raises `AtriaClientError` if announce config is absent.
+  - `class MinderClientError(RuntimeError)`.
+  - `class MinderClient` with `__init__(self, module, cfg)`, methods `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str`, `update_block(session_id, block_id, props) -> None`, `remove_block(session_id, block_id) -> None`. `remote_entry` defaults to `cfg.remote_entry`; `remote_name` = `module`; `api_base` derived from `remote_entry`.
+  - `Connector.minder_client() -> MinderClient` — builds one from `resolve_announce_config()`; raises `MinderClientError` if announce config is absent.
 
 - [ ] **Step 1: Implement `client.py`:**
 
 ```python
-"""AtriaClient — a module's proactive channel back into Atria (reverse-push).
+"""MinderClient — a module's proactive channel back into Minder (reverse-push).
 
-Never imports ``atria``; httpx + env only. Use it to push/update/remove a
+Never imports ``minder``; httpx + env only. Use it to push/update/remove a
 federated chat block into a live session outside a tool call (e.g. an async job
 reporting progress). Requires the Keycloak realm role ``module-push``.
 """
@@ -473,27 +473,27 @@ import httpx
 
 from .announce import AnnounceConfig, _auth_headers
 
-logger = logging.getLogger("atria_module_sdk.client")
+logger = logging.getLogger("minder_module_sdk.client")
 
 
-class AtriaClientError(RuntimeError):
-    """A reverse-push call to Atria failed."""
+class MinderClientError(RuntimeError):
+    """A reverse-push call to Minder failed."""
 
 
-class AtriaClient:
+class MinderClient:
     def __init__(self, module: str, cfg: AnnounceConfig) -> None:
         self.module = module
         self.cfg = cfg
 
     def _post(self, path: str, payload: dict) -> httpx.Response:
-        url = f"{self.cfg.atria_url}{path}"
+        url = f"{self.cfg.minder_url}{path}"
         try:
             resp = httpx.post(url, json=payload, headers=_auth_headers(self.cfg), timeout=15)
             resp.raise_for_status()
             return resp
         except httpx.HTTPError as exc:
-            logger.warning("atria client %s failed: %s", path, exc)
-            raise AtriaClientError(str(exc)) from exc
+            logger.warning("minder client %s failed: %s", path, exc)
+            raise MinderClientError(str(exc)) from exc
 
     def push_block(self, session_id: str, component: str, props: Optional[dict] = None, *,
                    remote_entry: Optional[str] = None, height: Any = "auto",
@@ -515,34 +515,34 @@ class AtriaClient:
                    {"session_id": session_id, "block_id": block_id})
 ```
 
-- [ ] **Step 2: `conn.atria_client()`** in `connector.py`:
+- [ ] **Step 2: `conn.minder_client()`** in `connector.py`:
 
 ```python
-    def atria_client(self) -> "AtriaClient":
-        """Build a reverse-push client for this module (needs ATRIA_URL + a
-        module-push service token). Raises AtriaClientError if unconfigured."""
+    def minder_client(self) -> "MinderClient":
+        """Build a reverse-push client for this module (needs MINDER_URL + a
+        module-push service token). Raises MinderClientError if unconfigured."""
         from .announce import resolve_announce_config
-        from .client import AtriaClient, AtriaClientError
+        from .client import MinderClient, MinderClientError
         cfg = resolve_announce_config()
         if cfg is None:
-            raise AtriaClientError("announce config absent (ATRIA_URL/CONNECTOR_URL unset)")
-        return AtriaClient(self.name, cfg)
+            raise MinderClientError("announce config absent (MINDER_URL/CONNECTOR_URL unset)")
+        return MinderClient(self.name, cfg)
 ```
 
-- [ ] **Step 3: Export** in `__init__.py`: `from .client import AtriaClient, AtriaClientError` and add both to `__all__`.
+- [ ] **Step 3: Export** in `__init__.py`: `from .client import MinderClient, MinderClientError` and add both to `__all__`.
 
-- [ ] **Step 4: Test** (`atria_module_sdk/tests/test_client.py`, httpx MockTransport):
+- [ ] **Step 4: Test** (`minder_module_sdk/tests/test_client.py`, httpx MockTransport):
 
 ```python
 import httpx
-from atria_module_sdk.announce import AnnounceConfig
-from atria_module_sdk.client import AtriaClient, AtriaClientError
+from minder_module_sdk.announce import AnnounceConfig
+from minder_module_sdk.client import MinderClient, MinderClientError
 
 
 def _client(handler):
-    cfg = AnnounceConfig(atria_url="http://atria:8000", connector_url="http://m:9300",
+    cfg = AnnounceConfig(minder_url="http://minder:8000", connector_url="http://m:9300",
                          remote_entry="http://m:9300/dashboard/remoteEntry.js")
-    c = AtriaClient("m", cfg)
+    c = MinderClient("m", cfg)
     # inject a mock transport by monkeypatching httpx.post used inside _post
     return c, cfg
 
@@ -553,11 +553,11 @@ def test_push_block_posts_expected_payload(monkeypatch):
         captured["url"] = url; captured["json"] = json
         return httpx.Response(200, json={"block_id": "b1"},
                               request=httpx.Request("POST", url))
-    monkeypatch.setattr("atria_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     bid = c.push_block("sess", "./Job", {"pct": 0})
     assert bid == "b1"
-    assert captured["url"] == "http://atria:8000/api/blocks/remote/push"
+    assert captured["url"] == "http://minder:8000/api/blocks/remote/push"
     assert captured["json"]["remote_name"] == "m"
     assert captured["json"]["api_base"] == "http://m:9300"
 
@@ -565,17 +565,17 @@ def test_push_block_posts_expected_payload(monkeypatch):
 def test_push_error_raises(monkeypatch):
     def fake_post(url, json, headers, timeout):
         return httpx.Response(500, request=httpx.Request("POST", url))
-    monkeypatch.setattr("atria_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     import pytest
-    with pytest.raises(AtriaClientError):
+    with pytest.raises(MinderClientError):
         c.update_block("sess", "b1", {"pct": 9})
 ```
 
 ### Task C2: `block` event in streaming
 
 **Files:**
-- Modify: `atria/core/modules/remote.py` (`_run_stream`)
+- Modify: `minder/core/modules/remote.py` (`_run_stream`)
 - Test: `tests/test_stream_block_event.py`
 
 **Interfaces:**
@@ -597,8 +597,8 @@ def test_push_error_raises(monkeypatch):
 - [ ] **Step 2: Test** (`tests/test_stream_block_event.py`) — stub a connector whose `stream_tool` yields a `block` event, assert `ctx.push_block` is called:
 
 ```python
-from atria.core.modules import remote
-from atria.core.skill_tools import SkillToolContext
+from minder.core.modules import remote
+from minder.core.skill_tools import SkillToolContext
 
 
 class _StreamConn:
@@ -622,18 +622,18 @@ def test_stream_block_event_pushes_block():
 ### Task C3: artifact push ingress
 
 **Files:**
-- Create: `atria/web/routes/artifacts_remote.py`
-- Modify: `atria/web/routes/__init__.py`, `atria/web/server.py`
-- Modify: `atria_module_sdk/atria_module_sdk/client.py` (`push_artifact`)
-- Test: `tests/test_artifacts_remote_route.py`, extend `atria_module_sdk/tests/test_client.py`
+- Create: `minder/web/routes/artifacts_remote.py`
+- Modify: `minder/web/routes/__init__.py`, `minder/web/server.py`
+- Modify: `minder_module_sdk/minder_module_sdk/client.py` (`push_artifact`)
+- Test: `tests/test_artifacts_remote_route.py`, extend `minder_module_sdk/tests/test_client.py`
 
 **Interfaces:**
 - Consumes: `require_service_principal` (role `module-push`); `ArtifactService.upload_artifact(file_content: bytes, filename, content_length, scope, conversation_id, project_id)` + `get_artifact_service` DI; the session store to resolve `session_id -> conversation_id` (`session.metadata.get("conversation_id")`, pattern from `artifacts_handler.py:70`).
 - Produces:
   - Host route `POST /api/artifacts/remote/push` body `{session_id, filename, content_b64, type}` → `{artifact_id}`; resolves the session's `conversation_id`, decodes base64, calls `service.upload_artifact(scope="conversation", conversation_id=…)`.
-  - SDK `AtriaClient.push_artifact(session_id, filename, content: bytes, type="report") -> int` (base64-encodes, POSTs, returns `artifact_id`).
+  - SDK `MinderClient.push_artifact(session_id, filename, content: bytes, type="report") -> int` (base64-encodes, POSTs, returns `artifact_id`).
 
-- [ ] **Step 1: Host route** `atria/web/routes/artifacts_remote.py`:
+- [ ] **Step 1: Host route** `minder/web/routes/artifacts_remote.py`:
 
 ```python
 """Reverse-push ingress for service-modules to attach an artifact to a session's
@@ -645,10 +645,10 @@ import base64
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from atria.web.dependencies.service_auth import require_service_principal
-from atria.web.routes.artifacts import get_artifact_service
-from atria.web.artifact_service import ArtifactService  # adjust import to the real module
-from atria.core.context_engineering.history.session_manager import get_session_manager  # real accessor
+from minder.web.dependencies.service_auth import require_service_principal
+from minder.web.routes.artifacts import get_artifact_service
+from minder.web.artifact_service import ArtifactService  # adjust import to the real module
+from minder.core.context_engineering.history.session_manager import get_session_manager  # real accessor
 
 router = APIRouter(prefix="/api/artifacts/remote", tags=["artifacts"],
                    dependencies=[Depends(require_service_principal)])
@@ -683,9 +683,9 @@ async def push_artifact(body: PushArtifactBody,
     return {"artifact_id": result.get("id") or result.get("artifact_id")}
 ```
 
-*(The imports for `ArtifactService`, `get_session_manager`, and the `result` id key are marked to be reconciled against the real modules — the implementer greps `atria/web/routes/artifacts.py` for the true `ArtifactService` import + `get_artifact_service`, and `artifacts_handler.py` for how `conversation_id` is read from a session. Use the real names.)*
+*(The imports for `ArtifactService`, `get_session_manager`, and the `result` id key are marked to be reconciled against the real modules — the implementer greps `minder/web/routes/artifacts.py` for the true `ArtifactService` import + `get_artifact_service`, and `artifacts_handler.py` for how `conversation_id` is read from a session. Use the real names.)*
 
-- [ ] **Step 2: Register the router.** In `atria/web/routes/__init__.py` add `from atria.web.routes.artifacts_remote import router as artifacts_remote_router` + to `__all__`; in `atria/web/server.py` `app.include_router(artifacts_remote_router)`.
+- [ ] **Step 2: Register the router.** In `minder/web/routes/__init__.py` add `from minder.web.routes.artifacts_remote import router as artifacts_remote_router` + to `__all__`; in `minder/web/server.py` `app.include_router(artifacts_remote_router)`.
 
 - [ ] **Step 3: SDK `push_artifact`** in `client.py`:
 
@@ -700,7 +700,7 @@ async def push_artifact(body: PushArtifactBody,
 
 - [ ] **Step 4: Tests.**
   - `tests/test_artifacts_remote_route.py`: override `require_service_principal` + `get_artifact_service` (a fake service returning `{"id": 7}`), monkeypatch the session→conversation resolver, POST a small base64 blob, assert 200 + `{"artifact_id": 7}`; and a 404 when the session has no conversation.
-  - `atria_module_sdk/tests/test_client.py`: `push_artifact` base64-encodes and returns the id (httpx.post monkeypatched like C1).
+  - `minder_module_sdk/tests/test_client.py`: `push_artifact` base64-encodes and returns the id (httpx.post monkeypatched like C1).
 
 ---
 
@@ -709,8 +709,8 @@ async def push_artifact(body: PushArtifactBody,
 ### Task D1: manifest enrichment + `expose_block`
 
 **Files:**
-- Modify: `atria_module_sdk/atria_module_sdk/connector.py`
-- Test: `atria_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
+- Test: `minder_module_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Produces: `Connector.expose_block(component_key: str) -> None` (records an extra MF exposed component). `/connector/manifest` `remote.exposed` becomes `{"dashboard": "./Dashboard", <key>: <key> for each exposed block}`; the manifest dict also gains `"card_types": [<unique card_type of tools>]`, `"contract_version": CONTRACT_VERSION`, `"min_core_version": self.min_core_version`.
@@ -768,7 +768,7 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
 ### Task D2: readiness gating in the reconciler + Keycloak `module-push`
 
 **Files:**
-- Modify: `atria/core/modules/registry.py`, `atria/core/modules/watcher.py`, `keycloak/realm-export.json`
+- Modify: `minder/core/modules/registry.py`, `minder/core/modules/watcher.py`, `keycloak/realm-export.json`
 - Test: `tests/test_readiness_gating.py`
 
 **Interfaces:**
@@ -792,13 +792,13 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
 
 *(Adjust to the real structure of `reconcile_once` from Task 4 of the prior plan — it currently does `fetch_manifest()` + `is_healthy()`. Replace the `is_healthy()` liveness check with a `health()` call and read both `ok`/reachability and `ready`. If `health()` is unreachable → `record_health_failure`; if reachable but `ready is False` → `continue` without marking ready; else `mark_connector_ready`.)*
 
-- [ ] **Step 2: Keycloak.** In `keycloak/realm-export.json`, the `service-account-atria-module` user's `realmRoles` becomes `["module-register", "module-push"]`.
+- [ ] **Step 2: Keycloak.** In `keycloak/realm-export.json`, the `service-account-minder-module` user's `realmRoles` becomes `["module-register", "module-push"]`.
 
 - [ ] **Step 3: Test** (`tests/test_readiness_gating.py`) — a fake connector whose `health()` returns `{"ok": True, "ready": False}` stays PENDING; `{"ok": True, "ready": True}` (with a manifest) goes READY. Mirror the `test_connector_reconciler.py` fake-connector pattern (monkeypatch `watcher.RemoteConnector`).
 
 ```python
-from atria.core.modules import watcher
-from atria.core.modules.registry import ConnectorState, get_registry, reset_registry_for_tests
+from minder.core.modules import watcher
+from minder.core.modules.registry import ConnectorState, get_registry, reset_registry_for_tests
 
 
 class _FakeConn:
@@ -814,7 +814,7 @@ class _FakeConn:
 
 def _reg(monkeypatch, tmp_path, ready):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     reg = get_registry()
     reg.register_connector(name="m", connector_url="http://m:9200")
     monkeypatch.setattr(watcher, "RemoteConnector", lambda *a, **k: _FakeConn(ready))
@@ -839,8 +839,8 @@ def test_ready_goes_ready(monkeypatch, tmp_path):
 
 - [ ] **Step 1: SDK unit tests**
 
-Run: `uv run --no-sync pytest atria_module_sdk/tests/ -v`
-Expected: all PASS (conn.block/invoke/readiness/params_model/requires_auth/session, AtriaClient push/update/remove/push_artifact, manifest).
+Run: `uv run --no-sync pytest minder_module_sdk/tests/ -v`
+Expected: all PASS (conn.block/invoke/readiness/params_model/requires_auth/session, MinderClient push/update/remove/push_artifact, manifest).
 
 - [ ] **Step 2: Host unit tests**
 
@@ -854,20 +854,20 @@ Expected: no new failures vs baseline (the pre-existing enterprise-knowledge/qdr
 
 - [ ] **Step 4: Lint**
 
-Run: `uv run --no-sync ruff check atria/ atria_module_sdk/ && uv run --no-sync black --check atria_module_sdk/`
+Run: `uv run --no-sync ruff check minder/ minder_module_sdk/ && uv run --no-sync black --check minder_module_sdk/`
 Expected: clean.
 
 - [ ] **Step 5: E2E (with `OPENAI_API_KEY`, per CLAUDE.md)**
 
-1. Run a module (or `maintenance_copilot`) whose tool captures `session_id`, returns immediately, and a daemon thread calls `conn.atria_client().push_block(session_id, "./JobProgress", {"pct": 0})` then `update_block(...)` → confirm a live progress block appears and updates in the chat.
-2. Call `atria_client().push_artifact(session_id, "report.txt", b"hello")` → confirm the artifact appears in the conversation.
+1. Run a module (or `maintenance_copilot`) whose tool captures `session_id`, returns immediately, and a daemon thread calls `conn.minder_client().push_block(session_id, "./JobProgress", {"pct": 0})` then `update_block(...)` → confirm a live progress block appears and updates in the chat.
+2. Call `minder_client().push_artifact(session_id, "report.txt", b"hello")` → confirm the artifact appears in the conversation.
 3. Mark the module `readiness_probe` not-ready at boot → confirm its tools are absent until ready flips true.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add atria/ atria_module_sdk/ keycloak/
-git add -f atria_module_sdk/tests/ tests/test_ctx_identity_forwarding.py tests/test_stream_block_event.py tests/test_readiness_gating.py tests/test_artifacts_remote_route.py
+git add minder/ minder_module_sdk/ keycloak/
+git add -f minder_module_sdk/tests/ tests/test_ctx_identity_forwarding.py tests/test_stream_block_event.py tests/test_readiness_gating.py tests/test_artifacts_remote_route.py
 git add -f docs/superpowers/plans/2026-07-10-sdk-integration-enhancements.md
 git commit -m "feat(sdk): integration enhancements — ergonomics, identity/session, reverse-push, artifacts, manifest"
 ```
@@ -876,7 +876,7 @@ git commit -m "feat(sdk): integration enhancements — ergonomics, identity/sess
 
 ## Self-Review Notes
 
-- **Spec coverage:** A1 conn.block · A2 conn.invoke · A3 readiness_probe · A4 params_model · A5 requires_auth · B1–B4 session/principal forwarding · C1 AtriaClient blocks · C2 stream block event · C3 artifact push · D1 manifest enrichment · D2 readiness gating + Keycloak module-push. All 10 spec items mapped.
-- **Type consistency:** `_Tool` gains `requires_auth` + `params_model` (A4) used in A5; `_call` signature gains `session_id` (B4) used by `invoke` (A2) — A2 notes the dependency; `AtriaClient` method names match between `client.py` (C1/C3) and the tests; `ctx.session_id`/`ctx.principal` (B1) consumed in B2/B3.
+- **Spec coverage:** A1 conn.block · A2 conn.invoke · A3 readiness_probe · A4 params_model · A5 requires_auth · B1–B4 session/principal forwarding · C1 MinderClient blocks · C2 stream block event · C3 artifact push · D1 manifest enrichment · D2 readiness gating + Keycloak module-push. All 10 spec items mapped.
+- **Type consistency:** `_Tool` gains `requires_auth` + `params_model` (A4) used in A5; `_call` signature gains `session_id` (B4) used by `invoke` (A2) — A2 notes the dependency; `MinderClient` method names match between `client.py` (C1/C3) and the tests; `ctx.session_id`/`ctx.principal` (B1) consumed in B2/B3.
 - **Ordering:** A2's `invoke` uses `_call(..., session_id=…)` which B4 adds — implement B4's `_call` signature change so A2 compiles; both land before Phase V. `_Tool` field additions (A4) precede A5/B4 usage.
 - **Known reconcile-against-reality spots (flagged inline):** C3's `ArtifactService` import path, `get_session_manager` accessor, and the upload-result id key must be matched to the real modules (grep `artifacts.py` + `artifacts_handler.py`). D2 adjusts to the real `reconcile_once` shape from the prior plan (health() vs is_healthy()).

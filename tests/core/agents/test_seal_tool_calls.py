@@ -2,7 +2,7 @@
 otherwise 400 the next OpenAI request and brick the session."""
 from __future__ import annotations
 
-from atria.core.agents.main_agent.run_loop import seal_unanswered_tool_calls
+from minder.core.agents.main_agent.run_loop import seal_unanswered_tool_calls
 
 
 def _tc(cid: str, name: str) -> dict:
