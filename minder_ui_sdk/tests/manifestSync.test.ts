@@ -1,3 +1,6 @@
+// @vitest-environment node
+// esbuild's transformSync (used by extractTabsFromSource) requires the real
+// Node TextEncoder; jsdom's global override trips esbuild's invariant check.
 import {
   extractTabsFromSource,
   applyTabsToManifest,

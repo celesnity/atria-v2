@@ -21,7 +21,8 @@ export function extractTabsFromSource(tsSource: string): TabMeta[] {
   if (!Array.isArray(tabs)) {
     throw new Error('tabs source must `export const TABS: TabMeta[]`');
   }
-  return tabs as TabMeta[];
+  // Strip to the wire shape ({id,label}) — icon/other fields never reach the host.
+  return toWire(tabs as TabMeta[]);
 }
 
 /** Merge tabs into `dashboard.tabs`, preserving all other manifest fields. */
