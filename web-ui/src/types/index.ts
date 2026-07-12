@@ -344,6 +344,9 @@ export interface PerSessionState {
   // Unsent input text, kept per-conversation so it survives navigating away
   // (e.g. opening a module dashboard) and back.
   draft?: string;
+  // True between turn start and the first visible output (streamed token or
+  // tool activity). Used to show a lightweight "Thinking…" indicator.
+  thinkingIndicator: boolean;
 }
 
 // ── Artifact Viewer ──────────────────────────────────────────────────────────

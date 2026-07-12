@@ -477,6 +477,10 @@ export function MessageList() {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.progressMessage ?? null : null;
   });
+  const thinkingIndicator = useChatStore(state => {
+    const sid = state.currentSessionId;
+    return sid ? state.sessionStates[sid]?.thinkingIndicator ?? false : false;
+  });
   const thinkingLevel = useChatStore(state => state.thinkingLevel);
 
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -596,6 +600,14 @@ export function MessageList() {
           Footer: ListFooter,
         }}
       />
+
+      {/* "Thinking…" indicator — visible between turn start and first token/tool */}
+      {thinkingIndicator && (
+        <div className="flex items-center gap-2 px-3 py-1 text-xs text-slate-400">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
+          Thinking…
+        </div>
+      )}
 
       {/* Scroll-to-bottom pill — appears when user has scrolled up into history */}
       {!atBottom && (

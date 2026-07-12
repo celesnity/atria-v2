@@ -8,6 +8,7 @@ import { useToastStore } from './toast';
 import { useArtifactsStore } from './artifacts';
 import { trimCodePoints } from '../utils/stream';
 import { upsertToolCall } from '../utils/toolCalls';
+import { nextIndicatorState } from '../utils/thinkingIndicator';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ const DEFAULT_SESSION: PerSessionState = {
   queuedMessages: [],
   selectedPersona: null,
   draft: '',
+  thinkingIndicator: false,
 };
 
 function getSessionState(states: Record<string, PerSessionState>, id: string): PerSessionState {
@@ -574,7 +576,10 @@ wsClient.on('message_start', (message) => {
     turnTimingBySession.set(sid, { sentAt: performance.now() });
   }
   useChatStore.setState(state => ({
-    ...patchSession(state, sid, { isLoading: true }),
+    ...patchSession(state, sid, {
+      isLoading: true,
+      thinkingIndicator: nextIndicatorState(false, 'start'),
+    }),
   }));
 });
 
@@ -673,6 +678,13 @@ wsClient.on('message_chunk', (message) => {
     _chunkBuffers.set(sid, { turnId, text: message.data.content });
   }
   _scheduleChunkFlush();
+
+  // Clear the "Thinking…" indicator on the first streamed token.
+  useChatStore.setState(state => {
+    const s = getSessionState(state.sessionStates, sid);
+    if (!s.thinkingIndicator) return {};
+    return patchSession(state, sid, { thinkingIndicator: nextIndicatorState(s.thinkingIndicator, 'chunk') });
+  });
 });
 
 // The backend withdrew streamed assistant text (e.g. an answer it decided to
@@ -742,7 +754,7 @@ wsClient.on('message_complete', (message) => {
           }
         }
       }
-      return { messages, isLoading: false, queuedMessages: [] };
+      return { messages, isLoading: false, queuedMessages: [], thinkingIndicator: nextIndicatorState(prev.thinkingIndicator, 'complete') };
     }),
   }));
   // Re-scan artifacts — agent may have written new files during its turn
@@ -788,6 +800,7 @@ wsClient.on('tool_call', (message) => {
     const sessionState = getSessionState(state.sessionStates, sid);
     return patchSession(state, sid, {
       messages: upsertToolCall(sessionState.messages, message.data),
+      thinkingIndicator: nextIndicatorState(sessionState.thinkingIndicator, 'tool'),
     });
   });
 });
