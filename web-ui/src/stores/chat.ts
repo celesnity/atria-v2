@@ -7,6 +7,7 @@ import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
 import { useArtifactsStore } from './artifacts';
 import { trimCodePoints } from '../utils/stream';
+import { upsertToolCall } from '../utils/toolCalls';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -783,20 +784,11 @@ wsClient.on('tool_call', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
-  const toolCallMessage: Message = {
-    role: 'tool_call',
-    content: message.data.description || `Calling ${message.data.tool_name}`,
-    tool_call_id: message.data.tool_call_id,
-    tool_name: message.data.tool_name,
-    tool_args: message.data.arguments,
-    tool_args_display: message.data.arguments_display || null,
-    activity: message.data.activity || null,
-    timestamp: new Date().toISOString(),
-  };
-
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, toolCallMessage] });
+    return patchSession(state, sid, {
+      messages: upsertToolCall(sessionState.messages, message.data),
+    });
   });
 });
 
