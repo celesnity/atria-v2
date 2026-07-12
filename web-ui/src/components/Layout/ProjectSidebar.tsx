@@ -441,21 +441,11 @@ export function ProjectSidebar() {
             the rail (ChatRail stacks ChatInterface below this sidebar). */}
         {activeProjectId && (
           <div className="px-3 pt-1" ref={chatMenuRef}>
+            {/* No "+" action here — the gradient "New chat" button above is the
+                single new-chat affordance (removed the redundant one). */}
             <SectionEyebrow
               label="Chats"
               meta={activeProjectLabel ? `· ${activeProjectLabel}` : undefined}
-              action={
-                <button
-                  onClick={() =>
-                    activeProject && setCreateConvFor(activeProject)
-                  }
-                  className="rounded p-0.5 text-text-muted transition-colors hover:bg-surface-soft hover:text-accent-cobalt focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
-                  title="New conversation"
-                  aria-label="New conversation"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              }
             />
 
             <div className="relative">
