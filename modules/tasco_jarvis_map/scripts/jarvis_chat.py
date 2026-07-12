@@ -41,6 +41,7 @@ from search import (  # noqa: E402
     _category_index, _category_radius, _detect_category, _time_ok, cmd_near, cmd_search,
 )
 from session_context import clear_context, load_context, save_context  # noqa: E402
+from query_intent import detect_ordinal  # noqa: E402
 
 MODULE_NAME = "tasco_jarvis_map"
 
@@ -123,8 +124,38 @@ def _pin_items(results: list[dict], with_distance: bool = False) -> list[dict]:
             "lat": r["lat"], "lng": r["lng"], "category": r["category"],
             "rating": r.get("rating"), "detail": detail,
             "opening_hours": r.get("opening_hours"),
+            # per-POI "why this matches" (matched amenities/attributes); empty for
+            # non-semantic turns, so pins carry a reasons key only when meaningful.
+            "reasons": r.get("reasons") or [],
+            # per-need confirmation status (confirmed / not_confirmed) when the
+            # query carried needs — powers honest "wifi confirmed / not confirmed".
+            "matched_needs": r.get("matched_needs") or [],
         })
     return items
+
+
+def _needs_caveat(res: dict, vi: bool) -> str:
+    """An honest one-line note when the hard needs could not be confirmed in the
+    data (graceful fallback): the places are the closest matches but the data does
+    not confirm the requested amenity. Anti-fabrication: never claim it's a match."""
+    needs = res.get("needs") or {}
+    if not needs.get("hard_relaxed"):
+        return ""
+    keys = list(needs.get("must_have") or [])
+    keys += [n.get("key") for n in (needs.get("numeric") or [])]
+    keys = [k for k in keys if k]
+    if not keys:
+        return ""
+    label = ", ".join(keys)
+    return (f"\n(Lưu ý: dữ liệu chưa xác nhận {label} cho các địa điểm này.)"
+            if vi else f"\n(Note: the data cannot confirm {label} for these places.)")
+
+
+def _reason_suffix(it: dict) -> str:
+    """' · wifi, yên tĩnh, phù hợp làm việc' — the top matched amenities that
+    explain why this POI was returned. Empty when the turn surfaced no reasons."""
+    rs = it.get("reasons") or []
+    return f" · {', '.join(rs[:3])}" if rs else ""
 
 
 def _fast_reply_lines(items: list[dict], vi: bool, want_hours: bool = False) -> str:
@@ -132,8 +163,35 @@ def _fast_reply_lines(items: list[dict], vi: bool, want_hours: bool = False) -> 
     for it in items:
         star = f" ★{it['rating']}" if it.get("rating") else ""
         hrs = f" · {it['opening_hours']}" if want_hours and it.get("opening_hours") else ""
-        lines.append(f"{it['n']}. {it['name']}{star}{hrs}")
+        lines.append(f"{it['n']}. {it['name']}{star}{hrs}{_reason_suffix(it)}")
     return "\n".join(lines)
+
+
+def _fast_reply_lines_split(items: list[dict], n_exact: int, vi: bool,
+                            want_hours: bool = False, divider: str | None = None) -> str:
+    """Same numbered list as _fast_reply_lines, but with a labeled divider after
+    the n_exact-th item so the top block reads apart from the fills below it. No
+    divider when every item is above the split (n_exact == len) or none is
+    (n_exact == 0). `divider` defaults to the brand-fills label."""
+    if divider is None:
+        divider = ("— Địa điểm chất lượng cao khác gần đó —" if vi
+                   else "— Other highly-rated nearby —")
+    lines = []
+    for it in items:
+        star = f" ★{it['rating']}" if it.get("rating") else ""
+        hrs = f" · {it['opening_hours']}" if want_hours and it.get("opening_hours") else ""
+        lines.append(f"{it['n']}. {it['name']}{star}{hrs}{_reason_suffix(it)}")
+        if it["n"] == n_exact and 0 < n_exact < len(items):
+            lines.append(divider)
+    return "\n".join(lines)
+
+
+def _grouped_reply_lines(items: list[dict], vi: bool, want_hours: bool = False) -> str:
+    """Top-3 best first, then a '— More suggestions —' divider, then the rest.
+    Results already arrive best-first (score, or distance for nearby), so this is
+    presentation only. With ≤3 items the split guard emits no divider."""
+    divider = "— Gợi ý thêm —" if vi else "— More suggestions —"
+    return _fast_reply_lines_split(items, min(3, len(items)), vi, want_hours, divider=divider)
 
 
 def _want_hours(res: dict) -> bool:
@@ -198,7 +256,8 @@ def _chitchat_payload(kind: str, vi: bool) -> dict:
 
 
 def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
-                   interactive: bool = False) -> dict | None:
+                   interactive: bool = False,
+                   user_location: dict | None = None) -> dict | None:
     """Deterministic answers driven by the intent router (``res`` is a prebuilt
     cmd_search result so the caller can reuse it for context saving). Navigation,
     coordinate and anchored-nearby intents are resolved locally (the LLM is never
@@ -211,15 +270,30 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
     chit = _chitchat_kind(folded)
     if chit:
         return _chitchat_payload(chit, vi)
-    # Interactive-only: ask which city when a category turn is city-ambiguous.
-    if interactive and _should_ask_city(res):
-        return _ask_city_payload(res, vi)
     intent = res.get("intent")
     results = res.get("results") or []
     anchor = res.get("anchor")
     want_hours = _want_hours(res)
     origin = (res.get("entities") or {}).get("origin")
     action = (res.get("entities") or {}).get("action")
+    # GPS beats the map view: an explicit user_location is a truer origin for
+    # distance / "near me" than wherever the map happens to be panned. Falls back
+    # to the viewport, so behaviour is unchanged when no location is shared.
+    user_here = bool(user_location and user_location.get("lat") is not None)
+    origin_pt = user_location if user_here else viewport
+    # A nearby answered from the user/viewport origin ("gần đây" / "gần tôi", or any
+    # nearby that names no place). Honest ONLY when NO city was named: a named-city
+    # nearby whose landmark anchor merely failed to geocode ("khách sạn gần biển đà
+    # nẵng") must use the city-filtered results below — answering it from the
+    # (possibly stale) viewport leaks the previous turn's city. `named_scope` is the
+    # sole discriminator; a self-referential cue adds nothing it doesn't already decide.
+    named_scope = bool(res.get("city"))
+    origin_nearby = intent == "Nearby Search" and not anchor and not named_scope
+    # Interactive-only: ask which city when a category turn is city-ambiguous. But
+    # a shared GPS + "near me" already pins the city (the user's own location), so
+    # don't ask — fall through to the origin-based nearby answer.
+    if interactive and _should_ask_city(res) and not (user_here and origin_nearby):
+        return _ask_city_payload(res, vi)
 
     # "Toa do cua X" — state the coordinates of the resolved POI. No LLM.
     if action == "coordinate_lookup" and results:
@@ -255,14 +329,16 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
         actions = [{"type": "pins", "items": _pin_items([dest]), "fit": False},
                    {"type": "focus", "lat": dest["lat"], "lng": dest["lng"], "zoom": 15}]
         dist_txt = ""
-        if viewport and viewport.get("lat") is not None:
-            km = haversine_km(float(viewport["lat"]), float(viewport["lng"]),
+        if origin_pt and origin_pt.get("lat") is not None:
+            km = haversine_km(float(origin_pt["lat"]), float(origin_pt["lng"]),
                               dest["lat"], dest["lng"])
             actions.append({"type": "route",
-                            "from": {"lat": float(viewport["lat"]), "lng": float(viewport["lng"])},
+                            "from": {"lat": float(origin_pt["lat"]), "lng": float(origin_pt["lng"])},
                             "to": {"lat": dest["lat"], "lng": dest["lng"]}})
             dist_txt = (f" (~{km:.1f} km đường chim bay)" if vi else f" (~{km:.1f} km as the crow flies)")
-        frm = (f" từ {origin}" if origin and vi else f" from {origin}" if origin else "")
+        # A shared GPS location is the honest "from" even when the query names no origin.
+        frm_txt = origin or (("vị trí của bạn" if vi else "your location") if user_here else "")
+        frm = (f" từ {frm_txt}" if frm_txt and vi else f" from {frm_txt}" if frm_txt else "")
         reply = (f"Chỉ đường{frm} tới {dest['name']}{dist_txt} — đã ghim và vẽ tuyến trên bản đồ."
                  if vi else
                  f"Directions{frm} to {dest['name']}{dist_txt} — pinned and drawn on the map.")
@@ -282,17 +358,20 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
                 f"None right next to {near_what}; nearest within ~{anchor.get('radius_km')} km:\n" if far else
                 f"Có {len(items)} địa điểm gần {near_what}:\n" if vi else
                 f"Found {len(items)} places near {near_what}:\n")
-        reply = head + _fast_reply_lines(items, vi, want_hours)
+        reply = head + _grouped_reply_lines(items, vi, want_hours)
         return {"reply": reply, "map_actions": actions, "source": "fast"}
 
-    # Nearby with no resolvable anchor ("cafe gần đây"): use the live viewport.
-    if intent == "Nearby Search" and not anchor and viewport and viewport.get("lat") is not None:
+    # Nearby with no resolvable anchor and NO named city ("cafe gần đây" / "gần tôi",
+    # or "khách sạn gần biển" with no city): measure from the user's GPS location
+    # when shared, else the live viewport. A named-city nearby never reaches here —
+    # it is handled by the city-scoped branch below, never from the viewport.
+    if origin_nearby and origin_pt and origin_pt.get("lat") is not None:
         terms, max_ngram = load_abbreviations()
         norm = normalize_query(message, terms, max_ngram)
         categories = load_json("pois.json")["categories"]
         cat_key, _ = _detect_category(norm, _category_index(categories))
         near = cmd_near(SimpleNamespace(
-            lat=float(viewport["lat"]), lng=float(viewport["lng"]),
+            lat=float(origin_pt["lat"]), lng=float(origin_pt["lng"]),
             radius_km=_category_radius(cat_key, 3.0), category=cat_key, limit=12))
         near_rows = near["results"]
         # Apply the router's opening-hours constraint (cmd_near ignores it).
@@ -309,14 +388,35 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
                 time_note = (
                     "Không có nơi mở đúng khung giờ bạn hỏi ở gần đây; gần nhất cùng loại:\n"
                     if vi else "No place open at that time nearby; nearest of the same type:\n")
-        items = _pin_items(near_rows[:5], with_distance=True)
+        items = _pin_items(near_rows[:7], with_distance=True)
+        whereat = ("vị trí của bạn" if user_here else "khu vực bản đồ") if vi else \
+                  ("your location" if user_here else "the map view")
         if not items:
-            reply = ("Không tìm thấy địa điểm phù hợp trong ~3 km quanh khu vực bản đồ."
-                     if vi else "No matching places within ~3 km of the map view.")
+            reply = (f"Không tìm thấy địa điểm phù hợp trong ~3 km quanh {whereat}."
+                     if vi else f"No matching places within ~3 km of {whereat}.")
             return {"reply": reply, "map_actions": [], "source": "fast"}
-        reply = time_note or (f"Có {len(items)} địa điểm gần khu vực bạn đang xem:\n"
-                              if vi else f"Found {len(items)} places near the current map view:\n")
-        reply += _fast_reply_lines(items, vi, want_hours)
+        near_head = ("Có %d địa điểm gần %s:\n" % (len(items), whereat) if vi
+                     else "Found %d places near %s:\n" % (len(items), whereat))
+        reply = time_note or near_head
+        reply += _grouped_reply_lines(items, vi, want_hours)
+        return {"reply": reply,
+                "map_actions": [{"type": "pins", "items": items, "fit": True}],
+                "source": "fast"}
+
+    # Nearby whose landmark anchor didn't geocode but a CITY was named
+    # ("khách sạn gần biển đà nẵng"): answer from the city-filtered results the
+    # router already produced — NEVER the (possibly stale) map viewport. This is
+    # what prevents the cross-city leak: a follow-up naming a new city stays in
+    # that city instead of falling back to wherever the map happens to be panned.
+    # Guarded by `named_scope`, so results are genuinely city-scoped and the city
+    # label below is truthful (a no-city nearby is answered from the viewport above).
+    if intent == "Nearby Search" and not anchor and named_scope and results:
+        items = _pin_items(results, with_distance=False)
+        city = (results[0].get("city") or "")
+        where = (f" ở {city}" if vi else f" in {city}") if city else ""
+        head = (f"Có {len(items)} địa điểm{where}:\n" if vi
+                else f"Found {len(items)} places{where}:\n")
+        reply = head + _grouped_reply_lines(items, vi, want_hours) + _needs_caveat(res, vi)
         return {"reply": reply,
                 "map_actions": [{"type": "pins", "items": items, "fit": True}],
                 "source": "fast"}
@@ -329,21 +429,47 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
             # viewport in another city is not a meaningful origin for a city-scoped
             # search (e.g. an HCMC map view vs a "... Hà Nội" query), so we never
             # show a cross-city distance, and never fabricate one with no origin.
-            has_origin = bool(viewport and viewport.get("lat") is not None)
+            has_origin = bool(origin_pt and origin_pt.get("lat") is not None)
             shown = False
             if has_origin:
                 for r in results:
-                    d = round(haversine_km(float(viewport["lat"]), float(viewport["lng"]),
+                    d = round(haversine_km(float(origin_pt["lat"]), float(origin_pt["lng"]),
                                            r["lat"], r["lng"]), 2)
                     if d <= 50.0:
                         r["distance_km"] = d
                         shown = True
-            items = _pin_items(results, with_distance=shown)
-            head = _scope_prefix(res, vi) or (
-                f"Tìm thấy {len(items)} địa điểm cho \"{message}\" — đã ghim lên bản đồ:\n"
-                if vi else
-                f"Found {len(items)} places for \"{message}\" — pinned on the map:\n")
-            reply = head + _fast_reply_lines(items, vi, want_hours)
+            brand_label = res.get("inherited_brand")
+            if brand_label:
+                # Inherited-brand follow-up (e.g. "sg" after "bv bach mai"): keep the
+                # same-category fills but list the real brand matches first and label
+                # the extras, and build an honest header from the brand + city instead
+                # of echoing the raw follow-up text.
+                exact = [r for r in results if r.get("is_brand_match")]
+                extra = [r for r in results if not r.get("is_brand_match")]
+                ordered = exact + extra
+                items = _pin_items(ordered, with_distance=shown)
+                # Pretty display city lives on the result rows (e.g. "TP Hồ Chí Minh");
+                # res["city"] is the lowercase canonical ("ho chi minh").
+                city = (ordered[0].get("city") if ordered else "") or ""
+                where = ((f" ở {city}" if vi else f" in {city}") if city else "")
+                if exact:
+                    head = (
+                        f"Tìm thấy {len(items)} địa điểm cho \"{brand_label}\"{where} — đã ghim lên bản đồ:\n"
+                        if vi else
+                        f"Found {len(items)} places for \"{brand_label}\"{where} — pinned on the map:\n")
+                else:
+                    head = (
+                        f"Không có \"{brand_label}\"{where} trong dữ liệu — đây là các lựa chọn chất lượng gần nhất:\n"
+                        if vi else
+                        f"No \"{brand_label}\"{where} in the data — here are the nearest top-rated options:\n")
+                reply = head + _fast_reply_lines_split(items, len(exact), vi, want_hours)
+            else:
+                items = _pin_items(results, with_distance=shown)
+                head = _scope_prefix(res, vi) or (
+                    f"Tìm thấy {len(items)} địa điểm cho \"{message}\" — đã ghim lên bản đồ:\n"
+                    if vi else
+                    f"Found {len(items)} places for \"{message}\" — pinned on the map:\n")
+                reply = head + _grouped_reply_lines(items, vi, want_hours)
             return {"reply": reply,
                     "map_actions": [{"type": "pins", "items": items, "fit": True}],
                     "source": "fast"}
@@ -409,12 +535,80 @@ def _next_ctx(prior: dict, res: dict) -> dict:
         ctx["intent"] = res["intent"]
     if ent.get("brand"):
         ctx["brands"] = ent["brand"]
+    # Carry the opening-hours constraint so a bare "còn mở cửa không?" can refine
+    # the prior category/city with it (see search._merge_prior R3). The ordered
+    # result list is set by _save_turn from the DISPLAYED pins, not here — so an
+    # ordinal always refers to the last list the user actually saw.
+    tconf = ent.get("time")
+    if tconf:
+        ctx["time"] = tconf
     ctx["ts"] = int(time.time())
     return ctx
 
 
+def _displayed_ids(map_actions: list) -> list:
+    """The poi_ids actually pinned on the map this turn, in display order — so a
+    follow-up ordinal ('cái thứ 2') selects what the user SEES, not an internal
+    search list that may differ (e.g. a nearby turn pins near-rows but the router
+    result is citywide)."""
+    ids = []
+    for a in map_actions or []:
+        if a.get("type") == "pins":
+            ids += [it["poi_id"] for it in (a.get("items") or []) if it.get("poi_id")]
+    return ids
+
+
+def _save_turn(sid: str, ctx: dict, res: dict, map_actions: list) -> None:
+    """Persist next context, storing the DISPLAYED pin list as the ordered result
+    set when this turn pinned >=2 places (falls back to the router results)."""
+    nxt = _next_ctx(ctx, res)
+    shown = _displayed_ids(map_actions)
+    if len(shown) >= 2:
+        nxt["results"] = shown[:10]
+    save_context(sid, nxt)
+
+
+def _ordinal_nav(message: str, ctx: dict, viewport: dict | None,
+                 user_location: dict | None):
+    """Multi-turn select-then-navigate: when the message is an ordinal reference
+    ("cái thứ 2", "the last one") and the prior turn stored a result list, resolve
+    the Nth prior poi_id and emit a navigation (pin + focus + straight route).
+    Returns a response payload, or None to fall through to a normal turn."""
+    n = detect_ordinal(message)
+    if n is None:
+        return None
+    results = (ctx or {}).get("results") or []
+    if not results:
+        return None
+    idx = len(results) + n if n < 0 else n - 1     # n == -1 -> last
+    if not (0 <= idx < len(results)):
+        return None
+    dest = {p["poi_id"]: p for p in load_json("pois.json")["pois"]}.get(results[idx])
+    if not dest:
+        return None
+    vi = _is_vietnamese(message)
+    actions = [{"type": "pins", "items": _pin_items([dest]), "fit": False},
+               {"type": "focus", "lat": dest["lat"], "lng": dest["lng"], "zoom": 15}]
+    user_here = bool(user_location and user_location.get("lat") is not None)
+    origin_pt = user_location if user_here else viewport
+    dist_txt = ""
+    if origin_pt and origin_pt.get("lat") is not None:
+        km = haversine_km(float(origin_pt["lat"]), float(origin_pt["lng"]),
+                          dest["lat"], dest["lng"])
+        actions.append({"type": "route",
+                        "from": {"lat": float(origin_pt["lat"]), "lng": float(origin_pt["lng"])},
+                        "to": {"lat": dest["lat"], "lng": dest["lng"]}})
+        dist_txt = (f" (~{km:.1f} km đường chim bay)" if vi
+                    else f" (~{km:.1f} km as the crow flies)")
+    reply = (f"Đã chọn {dest['name']}{dist_txt} — đã ghim và chỉ đường trên bản đồ."
+             if vi else
+             f"Selected {dest['name']}{dist_txt} — pinned and routed on the map.")
+    return {"reply": reply, "map_actions": actions, "source": "fast"}
+
+
 def _candidates_block(message: str, viewport: dict | None, pins: list[dict],
-                      prior: dict | None = None) -> str:
+                      prior: dict | None = None,
+                      user_location: dict | None = None) -> str:
     res = cmd_search(SimpleNamespace(query=message, limit=10, city=None,
                                      category=None, prior=prior))
     intent = res.get("intent")
@@ -425,14 +619,22 @@ def _candidates_block(message: str, viewport: dict | None, pins: list[dict],
         anchor = res.get("anchor") or {}
         anchor_note = f" near {anchor.get('label')}" if anchor.get("label") else ""
         lines.append(f"INTENT: {intent}{anchor_note}")
-    lines.append("CANDIDATES (poi_id | name | category | district | city | rating | hours):")
+    lines.append(
+        "CANDIDATES (poi_id | name | category | district | city | rating | hours | why):")
     for r in res.get("results") or []:
+        # 'why' carries the matched amenities so the model can cite a concrete,
+        # non-fabricated reason ("quiet, work-friendly"); blank when none matched.
+        why = ", ".join((r.get("reasons") or [])[:4])
         lines.append(f"  {r['poi_id']} | {r['name']} | {r['category']} | "
-                     f"{r['district']} | {r['city']} | {r['rating']} | {r.get('opening_hours') or '?'}")
+                     f"{r['district']} | {r['city']} | {r['rating']} | "
+                     f"{r.get('opening_hours') or '?'} | {why}")
     if not (res.get("results") or []):
         lines.append("  (no matches — say you could not find it in the dataset)")
     if viewport and viewport.get("lat") is not None:
         lines.append(f"VIEWPORT: {viewport['lat']:.4f},{viewport['lng']:.4f} z{viewport.get('zoom', '')}")
+    if user_location and user_location.get("lat") is not None:
+        # The user's real position — the honest origin for "near me" / distances.
+        lines.append(f"USER_LOCATION: {user_location['lat']:.4f},{user_location['lng']:.4f}")
     if pins:
         shown = ", ".join(f"{p.get('n')} {p.get('name')} ({p.get('poi_id')})" for p in pins[:8])
         lines.append(f"ACTIVE PINS: {shown}")
@@ -465,6 +667,7 @@ def main() -> int:
         print("ERROR: message is required", file=sys.stderr)
         return 1
     viewport = req_payload.get("viewport") or None
+    user_location = req_payload.get("user_location") or None
     pins = req_payload.get("pins") or []
     folded = fold(message)
 
@@ -474,10 +677,25 @@ def main() -> int:
         chat_session_id = uuid.uuid4().hex
     ctx = load_context(chat_session_id) if interactive else {}
 
+    # Multi-turn select-then-navigate: an ordinal ("cái thứ 2", "the last one")
+    # resolves against the prior turn's stored result list and routes to that POI.
+    # Interactive-only and short-circuits before search, so the eval path (no ctx)
+    # never reaches it. The stored list is preserved so "the 3rd one" still works.
+    if interactive and ctx.get("results"):
+        pick = _ordinal_nav(message, ctx, viewport, user_location)
+        if pick is not None:
+            save_context(chat_session_id, {**ctx, "ts": int(time.time())})
+            return _emit({"reply": pick["reply"], "session_id": chat_session_id,
+                          "error": None, "map_actions": pick["map_actions"],
+                          "source": "fast"})
+
     # One router call, reused for the fast path and for saving the next context.
+    # limit=7 so the fast path can show a top-3 block plus real "more suggestions"
+    # extras below the divider. (The eval/bench call cmd_search directly with their
+    # own limit, so this does not affect any gate.)
     # A dataset/engine failure must degrade to the agent path, never kill the turn.
     try:
-        res = cmd_search(SimpleNamespace(query=message, limit=5, city=None,
+        res = cmd_search(SimpleNamespace(query=message, limit=7, city=None,
                                          category=None, prior=ctx or None))
     except Exception as exc:
         print(f"WARN: search failed: {exc}", file=sys.stderr)
@@ -486,13 +704,16 @@ def main() -> int:
     # Deterministic fast path — the LLM is never called for simple intents.
     fast = None
     try:
-        fast = _try_fast_path(res, message, folded, viewport, interactive)
+        fast = _try_fast_path(res, message, folded, viewport, interactive,
+                              user_location=user_location)
     except Exception as exc:  # dataset problems must not kill chat entirely
         print(f"WARN: fast path failed: {exc}", file=sys.stderr)
     if fast is not None:
         if interactive:
-            save_context(chat_session_id, _next_ctx(ctx, res))
-        return _emit({"reply": fast["reply"], "session_id": chat_session_id,
+            _save_turn(chat_session_id, ctx, res, fast["map_actions"])
+        # Honest disclosure when hard needs couldn't be confirmed (graceful fallback).
+        reply = fast["reply"] + _needs_caveat(res, _is_vietnamese(message))
+        return _emit({"reply": reply, "session_id": chat_session_id,
                       "error": None, "map_actions": fast["map_actions"],
                       "source": "fast"})
 
@@ -515,7 +736,8 @@ def main() -> int:
         grounded = GREETING_PREAMBLE + "\nUser: " + message
     else:
         try:
-            data_block = _candidates_block(message, viewport, pins, prior=ctx or None)
+            data_block = _candidates_block(message, viewport, pins, prior=ctx or None,
+                                           user_location=user_location)
         except Exception:
             data_block = ""
         grounded = PREAMBLE_HEAD + "\n" + data_block + "\nUser: " + message
@@ -548,8 +770,8 @@ def main() -> int:
     reply, actions = _extract_map_actions(data.get("reply") or "")
     if interactive:
         # Keep the map soft-cache id stable across turns (don't adopt a different
-        # backend id); persist the slots this turn resolved.
-        save_context(chat_session_id, _next_ctx(ctx, res))
+        # backend id); persist the slots this turn resolved + the shown pin list.
+        _save_turn(chat_session_id, ctx, res, actions)
         session_id = chat_session_id
     else:
         session_id = data.get("session_id") or chat_session_id

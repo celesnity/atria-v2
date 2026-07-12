@@ -31,17 +31,18 @@ RAW_TO_KEY = {
     "Supermarket": "supermarket",
     "Convenience Store": "convenience",
     "Shopping Mall": "mall", "Trung tâm thương mại": "mall",
-    "Bank/ATM": "bank",
-    "Cinema": "cinema", "Rạp chiếu phim": "cinema",
+    "Bank/ATM": "bank", "ATM": "bank",
+    "Cinema": "cinema", "Rạp chiếu phim": "cinema", "Rạp phim": "cinema",
     "Hospital": "hospital", "Bệnh viện": "hospital",
     "Pharmacy": "pharmacy", "Nhà thuốc": "pharmacy",
-    "Gas Station": "gas", "Cây xăng": "gas",
+    "Gas Station": "gas", "Cây xăng": "gas", "Trạm xăng": "gas",
     "Trạm sạc điện": "ev_charging",
     "Electronics": "electronics",
     "Sân bay": "airport",
     "Bến xe": "bus_station",
     "Chợ": "market",
-    "Điểm du lịch": "attraction",
+    "Điểm du lịch": "attraction", "Điểm tham quan": "attraction",
+    "Công viên": "park",
 }
 
 CATEGORIES = {
@@ -62,6 +63,7 @@ CATEGORIES = {
     "bus_station": {"label": "Bus station",   "label_vi": "Bến xe",            "color": "#7a6a54", "emoji": "\U0001f68c"},
     "market":      {"label": "Market",        "label_vi": "Chợ",               "color": "#c2703e", "emoji": "\U0001f9fa"},
     "attraction":  {"label": "Attraction",    "label_vi": "Điểm du lịch",      "color": "#d6336c", "emoji": "\U0001f4f8"},
+    "park":        {"label": "Park",          "label_vi": "Công viên",         "color": "#2b8a3e", "emoji": "\U0001f333"},
     "other":       {"label": "Other",         "label_vi": "Khác",              "color": "#868e96", "emoji": "\U0001f4cd"},
 }
 
