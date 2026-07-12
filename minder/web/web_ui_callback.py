@@ -147,6 +147,29 @@ class WebUICallback(BaseUICallback):
         # No-op: WebSocketToolBroadcaster already handles tool_call broadcasts
         pass
 
+    def on_tool_call_pending(self, tool_name: str, tool_call_id: str = "") -> None:
+        """Announce a tool call the instant its name is known during streaming.
+
+        Fires from the SSE reader before the action call completes, so the UI
+        renders the activity line immediately. The full ``tool_call`` event
+        (with arguments) arrives later via WebSocketToolBroadcaster and upgrades
+        the same line, matched by ``tool_call_id``.
+        """
+        self._broadcast(
+            {
+                "type": WSMessageType.TOOL_CALL,
+                "data": {
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "arguments": {},
+                    "arguments_display": None,
+                    "description": f"Calling {tool_name}",
+                    "pending": True,
+                    "session_id": self.session_id,
+                },
+            }
+        )
+
     def on_tool_result(
         self, tool_name: str, tool_args: Dict[str, Any], result: Any, tool_call_id: str = ""
     ) -> None:

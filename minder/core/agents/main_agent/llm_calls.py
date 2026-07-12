@@ -178,6 +178,7 @@ class LlmCallsMixin:
         task_monitor: Optional[Any] = None,
         thinking_visible: bool = True,
         on_content_delta: Optional[Any] = None,
+        on_tool_call_start: Optional[Any] = None,
     ) -> dict:
         """Call LLM with tools for action phase.
 
@@ -188,6 +189,9 @@ class LlmCallsMixin:
             on_content_delta: When set (and the client supports it), the
                 request streams via SSE and each content delta is forwarded
                 here as it arrives; the returned dict is unchanged in shape.
+            on_tool_call_start: When set (and the client supports it), called
+                with ``(function_name, tool_call_id)`` the instant a tool name
+                is seen in the SSE stream — before arguments arrive.
 
         Returns:
             Dict with success status, content, tool_calls, etc.
@@ -210,7 +214,9 @@ class LlmCallsMixin:
         if fallback and fallback != model_id:
             candidates.append(fallback)
 
-        use_stream = on_content_delta is not None and hasattr(http_client, "stream_json")
+        use_stream = (
+            on_content_delta is not None or on_tool_call_start is not None
+        ) and hasattr(http_client, "stream_json")
 
         last_error = "Unknown error"
         for idx, candidate in enumerate(candidates):
@@ -226,7 +232,10 @@ class LlmCallsMixin:
 
             if use_stream:
                 stream = http_client.stream_json(
-                    payload, task_monitor=task_monitor, on_content_delta=on_content_delta
+                    payload,
+                    task_monitor=task_monitor,
+                    on_content_delta=on_content_delta,
+                    on_tool_call_start=on_tool_call_start,
                 )
                 if stream.interrupted:
                     return {
