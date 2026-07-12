@@ -1,7 +1,7 @@
 import pytest
 
-from atria.core.blackboard.models import Bid, Response
-from atria.core.blackboard.response_store import BidStore, ResponseStore
+from minder.core.blackboard.models import Bid, Response
+from minder.core.blackboard.response_store import BidStore, ResponseStore
 
 
 class FakeRedis:

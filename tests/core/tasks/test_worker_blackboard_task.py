@@ -1,8 +1,8 @@
 import pytest
 
-from atria.core.blackboard.models import Task
-from atria.core.blackboard.task_store import TaskStore
-from atria.core.tasks.tasks import _claim_and_load
+from minder.core.blackboard.models import Task
+from minder.core.blackboard.task_store import TaskStore
+from minder.core.tasks.tasks import _claim_and_load
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,19 @@
+{
+  "name": "Minder — Your AI Co-Worker",
+  "short_name": "Minder",
+  "description": "Minder is an AI co-worker that helps you think, plan, research, and get work done — with a live web workspace for chat, brainstorming, and analysis.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05060F",
+  "theme_color": "#2D44E0",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

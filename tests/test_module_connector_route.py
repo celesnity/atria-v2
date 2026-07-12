@@ -5,7 +5,7 @@ core has no per-module routes.
 """
 from __future__ import annotations
 
-import atria.web.routes.module_connector as mc
+import minder.web.routes.module_connector as mc
 
 
 def test_principal_of_maps_user_object():

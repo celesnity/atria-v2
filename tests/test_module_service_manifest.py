@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from atria.core.modules import store
+from minder.core.modules import store
 
 
 def _write_module(tmp_path: Path) -> Path:

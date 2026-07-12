@@ -16,7 +16,7 @@
 - Line length ≤ 100 (Black + Ruff). Type hints on public functions; Google-style docstrings.
 - Tests run with `uv run pytest`. Module tests live at `tests/test_maintenance_copilot_*.py`, load module files via `importlib`, and register each loaded module in `sys.modules` under a unique sentinel name immediately after `module_from_spec` (Python 3.14 dataclass requirement, established in Phase 1).
 - Module scripts add `sys.path.insert(0, str(Path(__file__).resolve().parent))` before sibling imports (`import config`, `import client`).
-- Module-local only — no imports from `atria/`.
+- Module-local only — no imports from `minder/`.
 - Unit tests must NOT hit the network: use `QdrantClient(":memory:")` for real store behavior, and inject a deterministic fake embedding function (do not call TEI).
 - Sample-manual fixtures live at `modules/maintenance_copilot/sample_manuals/` (TRACKED — they are source fixtures, not runtime state). Runtime index state stays under `modules/maintenance_copilot/data/` (gitignored).
 - Retrieval defaults to the current revision (version-awareness); superseded revisions are queryable only when explicitly requested.
@@ -1007,9 +1007,9 @@ Record for a Docker host (not run in CI/sandbox):
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d tei qdrant
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py ingest
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py query "gear fails to retract" --ata 32
 ```
 

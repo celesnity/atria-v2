@@ -3,14 +3,14 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=atria
-      - POSTGRES_USER=atria
-      - POSTGRES_PASSWORD=atria
+      - POSTGRES_DB=minder
+      - POSTGRES_USER=minder
+      - POSTGRES_PASSWORD=minder
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atria -d atria"]
+      test: ["CMD-SHELL", "pg_isready -U minder -d minder"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,16 +22,16 @@ services:
       - "8081:8080"
     environment:
       - ADMINER_DEFAULT_SERVER=db
-      - ADMINER_DEFAULT_DB=atria
-      - ADMINER_DEFAULT_USERNAME=atria
-      - ADMINER_DEFAULT_PASSWORD=atria
+      - ADMINER_DEFAULT_DB=minder
+      - ADMINER_DEFAULT_USERNAME=minder
+      - ADMINER_DEFAULT_PASSWORD=minder
       - ADMINER_DESIGN=pepa-linha
     depends_on:
       db:
         condition: service_healthy
 
   # Single public entry point. nginx is the only service that publishes a host
-  # port; it reverse-proxies the whole app (UI + /api + /ws) to `atria`. Change
+  # port; it reverse-proxies the whole app (UI + /api + /ws) to `minder`. Change
   # the left side of "8080:80" to move the one exposed port.
   nginx:
     image: nginx:1.27-alpine
@@ -40,28 +40,28 @@ services:
     environment:
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
-      - KC_DB_USERNAME=atria
-      - KC_DB_PASSWORD=atria
-      # Full URL fixes the token issuer to http://localhost:8082/realms/atria for
-      # ALL clients (browser AND in-compose backchannel), so it matches what Atria
+      - KC_DB_USERNAME=minder
+      - KC_DB_PASSWORD=minder
+      # Full URL fixes the token issuer to http://localhost:8082/realms/minder for
+      # ALL clients (browser AND in-compose backchannel), so it matches what Minder
       # validates (KEYCLOAK_PUBLIC_URL). Without a fixed hostname, a token fetched
       # via keycloak:8080 gets issuer localhost:8080 → issuer-mismatch 401.
       - KC_HOSTNAME=http://localhost:8082
       - KC_HTTP_ENABLED=true
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      # Substituted into realm-export.json's atria-module client secret at
+      # Substituted into realm-export.json's minder-module client secret at
       # --import-realm (Keycloak replaces ${VAR} via System.getenv by default).
-      # Must match ATRIA_MODULE_CLIENT_SECRET on module-template-web/worker.
-      - ATRIA_MODULE_CLIENT_SECRET=${ATRIA_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      # Must match MINDER_MODULE_CLIENT_SECRET on module-template-web/worker.
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
     ports:
       - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - atria
+      - minder
 
-  atria:
+  minder:
     build: .
     restart: unless-stopped
     ports:
@@ -69,27 +69,27 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
+      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
+      - MINDER_MODEL=${MINDER_MODEL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
+      - MINDER_REDIS_URL=redis://redis:6379/0
+      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
       # Speech-to-text backend (voice input). Hard-coded to the internal `asr`
       # sidecar so it is correct regardless of the host-oriented value in .env.
-      - ATRIA_ASR_BASE_URL=http://asr:9000/v1
+      - MINDER_ASR_BASE_URL=http://asr:9000/v1
       # Externally-hosted Keycloak — both URLs point at the public instance
       # (browser and backend reach it over the same HTTPS endpoint). Values come
       # from .env; issuer is validated against KEYCLOAK_PUBLIC_URL.
       - AUTH_MODE=${AUTH_MODE:-keycloak}
       - KEYCLOAK_URL=${KEYCLOAK_URL}
       - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
-      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-atria}
-      - KEYCLOAK_BACKEND_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID:-atria-backend}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-minder}
+      - KEYCLOAK_BACKEND_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID:-minder-backend}
       - KEYCLOAK_BACKEND_CLIENT_SECRET=${KEYCLOAK_BACKEND_CLIENT_SECRET}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/home/atria/.atria
+      - minder_data:/home/minder/.minder
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
     depends_on:
@@ -114,7 +114,7 @@ services:
 
   # CPU speech-to-text sidecar — nvidia/nemotron-3.5-asr-streaming-0.6b via HF
   # transformers, exposing an OpenAI-compatible /v1/audio/transcriptions. No GPU
-  # needed (push-to-talk latency ~2-6s per short clip). Swap ATRIA_ASR_BASE_URL
+  # needed (push-to-talk latency ~2-6s per short clip). Swap MINDER_ASR_BASE_URL
   # to a managed/GPU endpoint to replace it with zero code change. Not gated by a
   # profile, so it starts with the normal `docker compose up`.
   # asr:
@@ -132,35 +132,35 @@ services:
   #   restart: unless-stopped
 
   # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
-  # divide + parallel). Shares modules + ~/.atria with the web service so
+  # divide + parallel). Shares modules + ~/.minder with the web service so
   # dispatched work and the dashboard read/write the same data.
-  atria-worker:
+  minder-worker:
     build: .
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
+      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
+      - MINDER_MODEL=${MINDER_MODEL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
+      - MINDER_REDIS_URL=redis://redis:6379/0
+      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/home/atria/.atria
+      - minder_data:/home/minder/.minder
       - ./modules:/app/modules
     entrypoint:
       - /bin/sh
       - -c
       - >
-        mkdir -p /home/atria/.atria &&
-        : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
-        : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
+        mkdir -p /home/minder/.minder &&
+        : "$${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}" &&
+        : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}" &&
         printf '{"model":"%s","api_base_url":"%s"}\n'
-          "$${ATRIA_MODEL}"
-          "$${ATRIA_API_BASE_URL}"
-          > /home/atria/.atria/settings.json &&
-        exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
+          "$${MINDER_MODEL}"
+          "$${MINDER_API_BASE_URL}"
+          > /home/minder/.minder/settings.json &&
+        exec taskiq worker minder.core.tasks.broker:broker minder.core.tasks.tasks
     depends_on:
       db:
         condition: service_healthy
@@ -185,8 +185,8 @@ services:
     restart: unless-stopped
 
   # module_template connector (web). Reuses the shared `db` (own mt_* tables +
-  # read-only Atria reads), `redis` (DB index /2), and `minio`. Announces to
-  # Atria on :8080 and reverse-pushes via the atria-module Keycloak client.
+  # read-only Minder reads), `redis` (DB index /2), and `minio`. Announces to
+  # Minder on :8080 and reverse-pushes via the minder-module Keycloak client.
   module-template-web:
     build:
       context: .
@@ -194,29 +194,27 @@ services:
     ports:
       - "9300:9300"
     environment:
-      - ATRIA_URL=http://atria:8080
-      - ATRIA_MODULE_CONNECTOR_URL=http://module-template-web:9300
-      - ATRIA_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
       - MT_PUBLIC_BASE=http://localhost:9300
-      - MT_DATABASE_URL=postgresql://atria:atria@db:5432/atria
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
       - MT_REDIS_URL=redis://redis:6379/2
       - MT_S3_ENDPOINT=http://minio:9000
       - MT_S3_BUCKET=module-template
       - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
       - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
-      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/atria/protocol/openid-connect/token
-      - ATRIA_MODULE_CLIENT_ID=atria-module
-      - ATRIA_MODULE_CLIENT_SECRET=${ATRIA_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
-      # Atria's connector registry is in-memory and cleared on every Atria restart.
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      # Minder's connector registry is in-memory and cleared on every Minder restart.
       # A short heartbeat re-registers this live module quickly (<=10s) rather than
       # leaving the dashboard's health poll 400ing for up to the 30s default.
-      - ATRIA_MODULE_HEARTBEAT_SEC=10
+      - MINDER_MODULE_HEARTBEAT_SEC=10
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      keycloak:
         condition: service_healthy
       minio:
         condition: service_started
@@ -235,18 +233,18 @@ services:
       context: .
       dockerfile: modules/module_template/worker/Dockerfile
     environment:
-      - MT_DATABASE_URL=postgresql://atria:atria@db:5432/atria
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
       - MT_REDIS_URL=redis://redis:6379/2
       - MT_S3_ENDPOINT=http://minio:9000
       - MT_S3_BUCKET=module-template
       - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
       - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
-      - ATRIA_URL=http://atria:8080
-      - ATRIA_MODULE_CONNECTOR_URL=http://module-template-web:9300
-      - ATRIA_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
-      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/atria/protocol/openid-connect/token
-      - ATRIA_MODULE_CLIENT_ID=atria-module
-      - ATRIA_MODULE_CLIENT_SECRET=${ATRIA_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
     depends_on:
       db:
         condition: service_healthy
@@ -257,7 +255,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  atria_data:
+  minder_data:
   postgres_data:
   asr_models:
   module_template_media:

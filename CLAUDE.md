@@ -31,15 +31,15 @@ uv run pytest tests/test_foo.py::test_bar       # Single test
 make test-file FILE=tests/test_session_manager.py
 
 # MCP server management
-atria mcp list
-atria mcp add myserver uvx mcp-server-sqlite
-atria mcp enable/disable myserver
+minder mcp list
+minder mcp add myserver uvx mcp-server-sqlite
+minder mcp enable/disable myserver
 
 # CLI shortcuts
-atria                    # Interactive TUI
-atria -p "prompt"        # Non-interactive single prompt
-atria --continue         # Resume most recent session
-atria run ui             # Web UI
+minder                    # Interactive TUI
+minder -p "prompt"        # Non-interactive single prompt
+minder --continue         # Resume most recent session
+minder run ui             # Web UI
 ```
 
 ## Testing Requirements
@@ -66,7 +66,7 @@ make run
 
 ## Architecture Overview
 
-The CLI entry point is `atria` (mapped to `atria.cli:main`). The Python package is `atria/`.
+The CLI entry point is `minder` (mapped to `minder.cli:main`). The Python package is `minder/`.
 
 ```text
 Entry Point (cli.py)
@@ -103,7 +103,7 @@ Context Engineering (core/context_engineering/)
   - symbol_tools/: AST-based code search
        |
 Persistence (core/context_engineering/history/)
-  - session_manager.py: Conversation persistence (~/.atria/sessions/)
+  - session_manager.py: Conversation persistence (~/.minder/sessions/)
 ```
 
 ## Key Patterns
@@ -116,17 +116,17 @@ Persistence (core/context_engineering/history/)
 
 **Tool Registry** (`registry.py`): Tools register with schemas; registry dispatches to specialized handlers. MCP tools integrate dynamically.
 
-**Hierarchical Config**: Priority: `.atria/settings.json` (project) > `~/.atria/settings.json` (user) > env vars > defaults.
+**Hierarchical Config**: Priority: `.minder/settings.json` (project) > `~/.minder/settings.json` (user) > env vars > defaults.
 
-**Session Storage**: JSON files in `~/.atria/sessions/` with 8-character session IDs. Sessions auto-save on message add. Project-scoped sessions stored under `~/.atria/projects/{encoded-path}/`.
+**Session Storage**: JSON files in `~/.minder/sessions/` with 8-character session IDs. Sessions auto-save on message add. Project-scoped sessions stored under `~/.minder/projects/{encoded-path}/`.
 
 **Modular Prompt Composition**: System prompts are assembled from individual markdown sections in `templates/system/main/`. `PromptComposer` registers sections with priorities and optional conditions, then composes them at runtime based on context.
 
-**Provider Cache**: Model/provider configs are fetched from models.dev API and cached in `~/.atria/cache/providers/*.json` with 24h TTL. No bundled fallback — if cache is empty, a blocking sync runs on first startup.
+**Provider Cache**: Model/provider configs are fetched from models.dev API and cached in `~/.minder/cache/providers/*.json` with 24h TTL. No bundled fallback — if cache is empty, a blocking sync runs on first startup.
 
-**Skills System**: Skills are discovered from `.atria/skills/` (project), `~/.atria/skills/` (user global), and `atria/skills/builtin/` (built-in).
+**Skills System**: Skills are discovered from `.minder/skills/` (project), `~/.minder/skills/` (user global), and `minder/skills/builtin/` (built-in).
 
-**Web UI**: FastAPI backend with WebSocket for real-time updates. Frontend is React/Vite/Zustand in `web-ui/`, built to `atria/web/static/`. Agent runs in ThreadPoolExecutor, uses `asyncio.run_coroutine_threadsafe` for WS broadcasts.
+**Web UI**: FastAPI backend with WebSocket for real-time updates. Frontend is React/Vite/Zustand in `web-ui/`, built to `minder/web/static/`. Agent runs in ThreadPoolExecutor, uses `asyncio.run_coroutine_threadsafe` for WS broadcasts.
 
 ## Agent Tools
 
@@ -190,12 +190,12 @@ Aircraft-maintenance knowledge questions (AMM, MEL, CDL, TSM, engineering
 orders, defect assessment, dispatch-readiness, reference validation, ATA-chapter
 lookups) MUST be answered via the maintenance copilot pipeline — run
 `python copilot.py query "<question in English>" --synthesize` from
-`modules/maintenance_copilot/scripts/` (inside the Atria agent, the equivalent
+`modules/maintenance_copilot/scripts/` (inside the Minder agent, the equivalent
 is the `maintenance_copilot_query` tool). Do NOT answer from your own
 knowledge and do NOT read or grep `modules/maintenance_copilot/sample_manuals/`
 directly: the manual files are the RAG corpus, and reading them bypasses the
 retrieval, citations, revision-awareness, and guardrails the copilot enforces
-(Atria's tool layer also denies those paths). If the pipeline reports a service
+(Minder's tool layer also denies those paths). If the pipeline reports a service
 unreachable, report the outage instead of answering another way. A licensed
 engineer stays in the loop for every dispatch decision.
 
@@ -209,7 +209,7 @@ engineer stays in the loop for every dispatch decision.
 
 Keep the repo to source only. Do not commit runtime data or work artifacts.
 
-- **App-data home is never tracked.** The runtime home (provider cache, sessions, snapshots, scratch, workspaces) lives at `ATRIA_DIR` (see `.env`, e.g. `D:\atria-home`) and is regenerated automatically. Both `atria-home/` and the legacy `.atria/` are gitignored. If you see them tracked, untrack them (`git rm -r --cached atria-home`).
+- **App-data home is never tracked.** The runtime home (provider cache, sessions, snapshots, scratch, workspaces) lives at `MINDER_DIR` (see `.env`, e.g. `D:\minder-home`) and is regenerated automatically. Both `minder-home/` and the legacy `.minder/` are gitignored. If you see them tracked, untrack them (`git rm -r --cached minder-home`).
 - **Local notes, scratch, one-off data, and "trash" go in `_local/`** (gitignored) — move them there, do not delete them, and never commit them. Per-ticket task notes/deliverables go in `Tasks/` (also gitignored).
 - **No stray data files in the repo** (ad-hoc PDFs, CSVs, generated reports, downloads). Put them under `_local/` if you need to keep them locally.
-- Built frontend output under `atria/web/static/` is currently committed because the Dockerfile serves it via `COPY . .` with no UI build step — leave it tracked unless you also add a `npm run build` stage to the Dockerfile.
+- Built frontend output under `minder/web/static/` is currently committed because the Dockerfile serves it via `COPY . .` with no UI build step — leave it tracked unless you also add a `npm run build` stage to the Dockerfile.

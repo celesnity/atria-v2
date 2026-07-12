@@ -1,4 +1,4 @@
-from atria.core.modules.registry import (
+from minder.core.modules.registry import (
     ConnectorState,
     ModuleRegistry,
     RECONCILE_FAIL_LIMIT,

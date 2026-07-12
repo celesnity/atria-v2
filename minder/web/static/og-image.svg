@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Minder — Your AI Co-Worker">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2D44E0"/>
+      <stop offset="0.52" stop-color="#6E1FC6"/>
+      <stop offset="1" stop-color="#B14FD0"/>
+    </linearGradient>
+    <radialGradient id="wash" cx="230" cy="150" r="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#241660"/>
+      <stop offset="0.45" stop-color="#12093B"/>
+      <stop offset="1" stop-color="#05060F"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#wash)"/>
+  <!-- Star mark -->
+  <g transform="translate(150 250)">
+    <path d="M60 0 C64.2 37.8 84.2 61.8 122 66 C84.2 70.2 64.2 94.2 60 132 C55.8 94.2 35.8 70.2 -2 66 C35.8 61.8 55.8 37.8 60 0 Z" fill="url(#brand)"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="150" y="470" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="112" font-weight="700" fill="#F4F6FF" letter-spacing="-3">Minder</text>
+  <text x="156" y="540" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#B9C0E0">Your AI co-worker</text>
+  <!-- Accent bar -->
+  <rect x="156" y="566" width="300" height="6" rx="3" fill="url(#brand)"/>
+</svg>

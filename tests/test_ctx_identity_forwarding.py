@@ -1,4 +1,4 @@
-"""Tests that _make_handler forwards X-Atria-Session and X-Atria-Principal
+"""Tests that _make_handler forwards X-Minder-Session and X-Minder-Principal
 to the connector via call_tool, using httpx MockTransport to capture headers."""
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ import json
 import httpx
 import pytest
 
-from atria.core.modules import remote
-from atria.core.modules.remote import RemoteConnector, _make_handler
-from atria.core.skill_tools import SkillToolContext
+from minder.core.modules import remote
+from minder.core.modules.remote import RemoteConnector, _make_handler
+from minder.core.skill_tools import SkillToolContext
 
 
 def _connector_with_capture(captured: list) -> RemoteConnector:
@@ -35,17 +35,17 @@ def _connector_with_capture(captured: list) -> RemoteConnector:
 
 @pytest.fixture(autouse=True)
 def _reset_registry():
-    from atria.core.modules.registry import reset_registry_for_tests
+    from minder.core.modules.registry import reset_registry_for_tests
     reset_registry_for_tests()
     yield
     reset_registry_for_tests()
 
 
 def _ready_registry(monkeypatch, tmp_path, *, streaming: bool = False):
-    from atria.core.modules.registry import reset_registry_for_tests, get_registry
+    from minder.core.modules.registry import reset_registry_for_tests, get_registry
 
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     reg = get_registry()
     reg.register_connector(name="test_module", connector_url="http://test-module:9300")
     tool_spec: dict = {
@@ -64,7 +64,7 @@ def _ready_registry(monkeypatch, tmp_path, *, streaming: bool = False):
 
 
 class TestMakeHandlerForwardsIdentity:
-    """_make_handler non-stream path must set X-Atria-Session and X-Atria-Principal."""
+    """_make_handler non-stream path must set X-Minder-Session and X-Minder-Principal."""
 
     def test_session_and_principal_forwarded(self, monkeypatch, tmp_path):
         captured: list[httpx.Request] = []
@@ -80,8 +80,8 @@ class TestMakeHandlerForwardsIdentity:
         assert result["success"] is True
         assert len(captured) == 1
         req = captured[0]
-        assert req.headers.get("x-atria-session") == "sess-1"
-        principal_header = req.headers.get("x-atria-principal")
+        assert req.headers.get("x-minder-session") == "sess-1"
+        principal_header = req.headers.get("x-minder-principal")
         assert principal_header is not None
         decoded = json.loads(principal_header)
         assert decoded["username"] == "alice"
@@ -99,8 +99,8 @@ class TestMakeHandlerForwardsIdentity:
         handler(query="hello")
 
         req = captured[0]
-        assert "x-atria-session" not in req.headers
-        assert "x-atria-principal" not in req.headers
+        assert "x-minder-session" not in req.headers
+        assert "x-minder-principal" not in req.headers
 
     def test_session_forwarded_via_build_remote_tool_specs(self, monkeypatch, tmp_path):
         """End-to-end: build_remote_tool_specs → handler → connector request carries headers."""
@@ -136,8 +136,8 @@ class TestMakeHandlerForwardsIdentity:
 
         assert len(captured) == 1
         req = captured[0]
-        assert req.headers.get("x-atria-session") == "sess-1"
-        principal_header = req.headers.get("x-atria-principal")
+        assert req.headers.get("x-minder-session") == "sess-1"
+        principal_header = req.headers.get("x-minder-principal")
         assert principal_header is not None
         decoded = json.loads(principal_header)
         assert decoded["username"] == "alice"
@@ -148,11 +148,11 @@ class TestAuthHeaders:
 
     def test_session_id_set_when_provided(self):
         headers = remote._auth_headers("mod", None, session_id="s-42")
-        assert headers["X-Atria-Session"] == "s-42"
+        assert headers["X-Minder-Session"] == "s-42"
 
     def test_session_id_absent_when_none(self):
         headers = remote._auth_headers("mod", None, session_id=None)
-        assert "X-Atria-Session" not in headers
+        assert "X-Minder-Session" not in headers
 
     def test_principal_and_session_both_present(self):
         headers = remote._auth_headers(
@@ -160,8 +160,8 @@ class TestAuthHeaders:
             {"username": "bob"},
             session_id="s-99",
         )
-        assert headers["X-Atria-Session"] == "s-99"
-        decoded = json.loads(headers["X-Atria-Principal"])
+        assert headers["X-Minder-Session"] == "s-99"
+        decoded = json.loads(headers["X-Minder-Principal"])
         assert decoded["username"] == "bob"
 
 
@@ -180,14 +180,14 @@ class TestCallToolSessionId:
         )
 
         req = captured[0]
-        assert req.headers.get("x-atria-session") == "sess-xyz"
-        decoded = json.loads(req.headers.get("x-atria-principal", "{}"))
+        assert req.headers.get("x-minder-session") == "sess-xyz"
+        decoded = json.loads(req.headers.get("x-minder-principal", "{}"))
         assert decoded["username"] == "carol"
 
 
 def test_broadcaster_wires_principal_onto_ctx():
-    from atria.web.ws_tool_broadcaster import WebSocketToolBroadcaster
-    from atria.core.skill_tools import SkillToolContext
+    from minder.web.ws_tool_broadcaster import WebSocketToolBroadcaster
+    from minder.core.skill_tools import SkillToolContext
 
     class _Reg:
         skill_ctx = SkillToolContext()

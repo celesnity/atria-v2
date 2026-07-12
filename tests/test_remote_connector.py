@@ -1,4 +1,4 @@
-"""Unit tests for the Atria-side remote connector client (httpx mocked)."""
+"""Unit tests for the Minder-side remote connector client (httpx mocked)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import httpx
 import pytest
 
-from atria.core.modules import remote
+from minder.core.modules import remote
 
 
 def _connector(handler):
@@ -58,7 +58,7 @@ def test_unavailable_card_is_fail_closed_plain_dict():
 @pytest.fixture(autouse=True)
 def _reset_module_registry():
     """Isolate every test from registry state left by a previous test."""
-    from atria.core.modules.registry import reset_registry_for_tests
+    from minder.core.modules.registry import reset_registry_for_tests
     reset_registry_for_tests()
     yield
     reset_registry_for_tests()
@@ -66,9 +66,9 @@ def _reset_module_registry():
 
 def _ready_registry(monkeypatch, tmp_path):
     """Register and ready a maintenance_copilot connector in a fresh registry."""
-    from atria.core.modules.registry import reset_registry_for_tests, get_registry
+    from minder.core.modules.registry import reset_registry_for_tests, get_registry
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     reg = get_registry()
     reg.register_connector(name="maintenance_copilot", connector_url="http://mc:9200")
     reg.mark_connector_ready("maintenance_copilot", [
@@ -80,7 +80,7 @@ def _ready_registry(monkeypatch, tmp_path):
 
 
 def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
@@ -105,7 +105,7 @@ def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
 
 
 def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
@@ -123,7 +123,7 @@ def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
 
 
 def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
@@ -142,7 +142,7 @@ def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
 
 
 def test_module_without_service_yields_no_specs():
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     @dataclass
     class _NoSvc:

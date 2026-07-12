@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import types
 
-from atria.core.blackboard.verify_llm import build_verify_llm
+from minder.core.blackboard.verify_llm import build_verify_llm
 
 
 class _Cfg:

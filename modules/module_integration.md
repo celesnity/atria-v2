@@ -1,18 +1,18 @@
-# Building an Atria Module with the Module SDK
+# Building an Minder Module with the Module SDK
 
-This is the end-to-end guide to building an Atria **service module**: a standalone
+This is the end-to-end guide to building an Minder **service module**: a standalone
 microservice whose tools appear to the agent, whose UI renders natively in the web
 chat and dashboard, and whose heavy dependencies stay isolated in its own
-container — **without editing a single line of Atria source (`atria/**` or
+container — **without editing a single line of Minder source (`minder/**` or
 `web-ui/**`)**.
 
-A module registers itself at **runtime**: start its container, point it at Atria,
-and its tools appear live. Stop the container and its tools disappear live. Atria
+A module registers itself at **runtime**: start its container, point it at Minder,
+and its tools appear live. Stop the container and its tools disappear live. Minder
 never ships the module's code and never needs a redeploy to gain a new module.
 
 The reference implementation is [`modules/maintenance_copilot/`](./maintenance_copilot).
-The SDK lives in [`atria_module_sdk/`](../atria_module_sdk); it **never imports
-`atria`** and runs in the module's own slim container.
+The SDK lives in [`minder_module_sdk/`](../minder_module_sdk); it **never imports
+`minder`** and runs in the module's own slim container.
 
 For a runnable example that exercises **every** SDK capability (one tool per feature), see
 [`modules/module_template/`](./module_template). Its `backend/app.py` is the
@@ -27,27 +27,27 @@ A module is split into two clearly separated layers. Keep them separate:
 
 **A. The connector (runtime-owned, lives in the module's container).**
 Its existence, its **tool schemas**, and its **liveness** are discovered at
-runtime. The connector announces itself to Atria on startup; Atria then
+runtime. The connector announces itself to Minder on startup; Minder then
 health-polls it. Tool schemas are read live from `GET /connector/manifest` — the
 committed manifest is *not* the source of truth for tools. When the service is
 healthy its tools are in the agent's catalog; when it dies, they leave the catalog
 on the next agent turn. This is the SDK's job.
 
-**B. The guidance folder (file-based, may live outside the Atria repo).**
+**B. The guidance folder (file-based, may live outside the Minder repo).**
 A folder containing `SKILL.md` (the agent's when/how-to-use guidance and runbook)
 and the *presentation* half of `manifest.json` (`display_name`, `dashboard`,
-`activity` labels, `protected_paths`, `remote`). Atria reads this from the modules
+`activity` labels, `protected_paths`, `remote`). Minder reads this from the modules
 root — either the repo's `modules/` dir or an external directory set via
-`ATRIA_MODULES_DIR`. This is *module data*, not Atria source, so keeping a folder
-still satisfies "no Atria-source edit."
+`MINDER_MODULES_DIR`. This is *module data*, not Minder source, so keeping a folder
+still satisfies "no Minder-source edit."
 
 > Rule of thumb: **tools & liveness are live and pushed; guidance & presentation
 > are file-based and pulled.**
 
-What Atria does for a deeply-connected module:
+What Minder does for a deeply-connected module:
 
 1. **Registers its tools as native agent tools**, proxied over HTTP, live from the
-   running connector (`atria/core/modules/remote.py`).
+   running connector (`minder/core/modules/remote.py`).
 2. **Renders its React dashboard natively** via Module Federation (no iframe,
    shares the host's React).
 3. **Renders its chat output natively** — either a generic card (auto) or a
@@ -55,7 +55,7 @@ What Atria does for a deeply-connected module:
 4. **Fails closed** — a dead connector yields a structured low-confidence card
    plus an LLM directive not to freelance, never a crash.
 5. **Reaches any extra endpoint** (sign-off, export, admin) through **one generic
-   passthrough** — Atria core has no per-module routes.
+   passthrough** — Minder core has no per-module routes.
 
 ---
 
@@ -63,20 +63,20 @@ What Atria does for a deeply-connected module:
 
 ```bash
 # Scaffold a full service module under the active modules directory.
-atria-module new my_module --summary "What this module does." --port 9300
+minder-module new my_module --summary "What this module does." --port 9300
 
 # Run the connector backend (uvicorn --reload) + the dashboard (vite dev) together,
 # with the SDK on PYTHONPATH — edit-save-refresh, no docker rebuild. This sets
 # MODULE_PUBLIC_BASE and PYTHONPATH; it does NOT set the announce env.
-atria-module dev my_module
+minder-module dev my_module
 # → connector at http://localhost:9300/connector/health
 
-# To have the local connector announce into a running Atria (so it appears in
-# chat without restarting Atria), also export the announce env before `dev` —
+# To have the local connector announce into a running Minder (so it appears in
+# chat without restarting Minder), also export the announce env before `dev` —
 # see §4.2:
-export ATRIA_URL=http://localhost:8000
-export ATRIA_MODULE_CONNECTOR_URL=http://localhost:9300
-export ATRIA_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+export MINDER_URL=http://localhost:8000
+export MINDER_MODULE_CONNECTOR_URL=http://localhost:9300
+export MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
 ```
 
 The scaffold produces:
@@ -88,8 +88,8 @@ modules/my_module/
 ├── icon.svg
 ├── backend/
 │   ├── app.py                   # SDK connector — a few decorated handlers
-│   ├── service.py               # your pure logic (never imports `atria`)
-│   ├── requirements.txt         # atria-module-sdk + your heavy deps
+│   ├── service.py               # your pure logic (never imports `minder`)
+│   ├── requirements.txt         # minder-module-sdk + your heavy deps
 │   └── Dockerfile               # multi-stage: build frontend → slim python
 ├── frontend/                    # Module-Federation remote (React)
 │   ├── vite.config.ts           # exposes ./Dashboard (+ your chat block components)
@@ -102,10 +102,10 @@ Then wire real logic into `backend/service.py` and paste the compose snippet.
 
 ---
 
-## 3. The backend — `atria_module_sdk`
+## 3. The backend — `minder_module_sdk`
 
 The SDK generates the whole connector HTTP contract from decorated handlers, so the
-service can't drift from what it advertises. Import from `atria_module_sdk`:
+service can't drift from what it advertises. Import from `minder_module_sdk`:
 `Connector`, `card`, `block`, `ServiceUnavailable`, `Principal`,
 `unavailable_card`, `unavailable_suffix`.
 
@@ -113,7 +113,7 @@ service can't drift from what it advertises. Import from `atria_module_sdk`:
 
 ```python
 # backend/app.py
-from atria_module_sdk import Connector, ServiceUnavailable, card
+from minder_module_sdk import Connector, ServiceUnavailable, card
 import service                                   # backend/service.py — pure logic
 
 conn = Connector("my_module", version="1")
@@ -143,12 +143,12 @@ app = conn.asgi()                                # uvicorn app:app --port 9300
 dashboard_dist_env="MODULE_DASHBOARD_DIST")`.
 
 `conn.asgi()` builds a FastAPI app that implements the full contract and, via a
-`lifespan` handler, **auto-announces to Atria on startup** and deregisters on
+`lifespan` handler, **auto-announces to Minder on startup** and deregisters on
 shutdown (see §4). It gives you for free:
 
 - `GET  /connector/health` — `{ok, module, version, capabilities, sidecars}`
 - `GET  /connector/manifest` — authoritative tool specs + remote descriptor
-  (Atria reads this live; it is the source of truth for tool schemas)
+  (Minder reads this live; it is the source of truth for tool schemas)
 - `POST /connector/tools/{name}` — invoke a tool; **never 500s the agent**
 - `POST /connector/tools/{name}/stream` — SSE streaming
 - `/dashboard/*` — serves your built Module-Federation frontend
@@ -172,7 +172,7 @@ Return a `card`, one or more `blocks`, both, or neither.
 ### 3.3 Streaming
 
 Make a handler a generator, mark `streaming=True`, and yield `{"event": ...}` dicts
-(`progress` / `partial` / `final`). Atria streams them to the UI; if the tool is
+(`progress` / `partial` / `final`). Minder streams them to the UI; if the tool is
 called on the non-stream endpoint the SDK drains it to the final result.
 
 ```python
@@ -194,8 +194,8 @@ error inside the handler and return a structured dict yourself (see
 
 ### 3.5 Identity & extra endpoints
 
-A handler can accept `principal` (the acting Atria user, forwarded as a header).
-Register extra endpoints with `@conn.route`; they are reachable through Atria's
+A handler can accept `principal` (the acting Minder user, forwarded as a header).
+Register extra endpoints with `@conn.route`; they are reachable through Minder's
 generic passthrough (§8):
 
 ```python
@@ -230,8 +230,8 @@ def template_typed_query(topic: str, limit: int = 3):
 
 ### 3.7 Auth-gated tools with `requires_auth`
 
-Add `requires_auth=True` to gate a tool on an authenticated principal. Atria
-forwards the acting session user as `X-Atria-Principal`; anonymous callers receive
+Add `requires_auth=True` to gate a tool on an authenticated principal. Minder
+forwards the acting session user as `X-Minder-Principal`; anonymous callers receive
 `{success: False, "output": "authentication required"}` without the handler running.
 
 ```python
@@ -247,7 +247,7 @@ def template_secure(principal=None):
 
 Decorate a zero-argument function with `@conn.readiness_probe`. It returns either a
 `bool` or `{"ready": bool, …}`. While any probe reports not-ready, the connector
-stays alive and answers health checks — but Atria's reconciler keeps the module's
+stays alive and answers health checks — but Minder's reconciler keeps the module's
 tools **out of the agent catalog** until ready flips to `True`. Use it for connectors
 that need a warm-up step (e.g. embedding a local corpus) before they can serve.
 
@@ -269,7 +269,7 @@ logged, not fatal.
 
 A streaming tool may `yield {"event": "block", "block": conn.block("./X", props)}`
 at any point during the stream to push a federated block live into the chat, before
-the final result is ready. Atria renders the block immediately and the `final` event
+the final result is ready. Minder renders the block immediately and the `final` event
 delivers the LLM output.
 
 ```python
@@ -293,7 +293,7 @@ gating, and response normalisation the endpoint applies, but in-process. Ideal f
 unit tests.
 
 ```python
-from atria_module_sdk.connector import Principal
+from minder_module_sdk.connector import Principal
 import app as mt
 
 def test_typed_query_validates():
@@ -318,16 +318,16 @@ Signature: `conn.invoke(tool_name, arguments, *, principal=None, session_id=None
 ## 4. Runtime self-registration & liveness
 
 This is the core of the model: the module is a microservice that **announces
-itself**; Atria treats the running service as the source of truth.
+itself**; Minder treats the running service as the source of truth.
 
 ### 4.1 What happens
 
 1. **Startup announce (once).** `conn.asgi()`'s lifespan handler POSTs to
    `POST /api/modules/register` with `{module, connector_url, remote_entry, api_base}`,
    authenticated by a Keycloak service token bearing the realm role
-   `module-register`. Announce is best-effort — a flaky Atria never crashes your
+   `module-register`. Announce is best-effort — a flaky Minder never crashes your
    module. Disabled automatically when the env isn't set (e.g. TUI/headless).
-2. **Health-poll (continuous).** Atria's `ConnectorReconciler` polls each
+2. **Health-poll (continuous).** Minder's `ConnectorReconciler` polls each
    registered connector: `GET /connector/manifest` (live tool schemas — the source
    of truth) and `GET /connector/health`. A manifest change hot-reloads the tools.
 3. **Liveness = tool visibility.** While the connector is healthy its tools are in
@@ -342,27 +342,27 @@ itself**; Atria treats the running service as the source of truth.
 
 Set these in the module's container (the SDK reads them):
 
-- `ATRIA_URL` — Atria's base URL the connector POSTs to (server→server).
-- `ATRIA_MODULE_CONNECTOR_URL` — this connector's own URL as Atria reaches it
+- `MINDER_URL` — Minder's base URL the connector POSTs to (server→server).
+- `MINDER_MODULE_CONNECTOR_URL` — this connector's own URL as Minder reaches it
   (docker-network service name, e.g. `http://my-module:9300`).
-- `ATRIA_MODULE_REMOTE_ENTRY` — the **browser-facing** `remoteEntry.js` URL of the
+- `MINDER_MODULE_REMOTE_ENTRY` — the **browser-facing** `remoteEntry.js` URL of the
   module's federation remote (e.g. `http://localhost:9300/dashboard/remoteEntry.js`).
   `api_base` is derived from it as `remote_entry.split("/dashboard/")[0]`.
-- `KEYCLOAK_TOKEN_URL`, `ATRIA_MODULE_CLIENT_ID` (default `atria-module`),
-  `ATRIA_MODULE_CLIENT_SECRET` — client-credentials grant for the service token.
+- `KEYCLOAK_TOKEN_URL`, `MINDER_MODULE_CLIENT_ID` (default `minder-module`),
+  `MINDER_MODULE_CLIENT_SECRET` — client-credentials grant for the service token.
   If `KEYCLOAK_TOKEN_URL`/secret are absent the token step is skipped (dev/no-auth).
 
-> **URL boundary:** `ATRIA_MODULE_CONNECTOR_URL` is server→server (Atria-in-container
-> resolves it); `ATRIA_MODULE_REMOTE_ENTRY`/`api_base` are browser-facing (the user's
+> **URL boundary:** `MINDER_MODULE_CONNECTOR_URL` is server→server (Minder-in-container
+> resolves it); `MINDER_MODULE_REMOTE_ENTRY`/`api_base` are browser-facing (the user's
 > browser loads them). Getting these crossed is the most common wiring bug.
 
 ### 4.3 Keycloak — one-time realm setup
 
-Atria's realm needs (already present in `keycloak/realm-export.json`):
+Minder's realm needs (already present in `keycloak/realm-export.json`):
 
 - a realm role `module-register`,
-- a confidential service-account client `atria-module` (serviceAccountsEnabled),
-  granted `module-register` via its `service-account-atria-module` user.
+- a confidential service-account client `minder-module` (serviceAccountsEnabled),
+  granted `module-register` via its `service-account-minder-module` user.
 
 Give the module container the client secret. A token without `module-register` is
 rejected (403); the register/deregister ingress is the only network path to
@@ -396,11 +396,11 @@ When you want a bespoke, interactive card, ship a React component from the modul
 own federation remote and return a **block descriptor**:
 
 ```python
-from atria_module_sdk import block
+from minder_module_sdk import block
 import os
 
 def _answer_block(payload: dict) -> dict:
-    remote_entry = os.environ.get("ATRIA_MODULE_REMOTE_ENTRY", "")
+    remote_entry = os.environ.get("MINDER_MODULE_REMOTE_ENTRY", "")
     return block("./MyAnswer", payload,                     # component key + props
                  remote_name="my_module", remote_entry=remote_entry)
 
@@ -412,7 +412,7 @@ def query(query: str, **kwargs) -> dict:
 
 `block(component, props=None, *, remote_name, remote_entry, height="auto",
 title=None)` emits `{render:"remote", remote_name, remote_entry, component, props,
-api_base, height, title}`. Atria pushes it to the chat, loads the remote in-host
+api_base, height, title}`. Minder pushes it to the chat, loads the remote in-host
 (no iframe, shared React), and renders it as a native message.
 
 **The component contract.** Expose the component as the *default export*, add it to
@@ -480,7 +480,7 @@ page refresh.
 
 ---
 
-## 5b. Reverse-push — the `AtriaClient` outbound channel
+## 5b. Reverse-push — the `MinderClient` outbound channel
 
 A module can proactively push blocks and artifacts into a live session **outside a
 tool call** — for example, a background job reporting progress, or a scheduled
@@ -489,16 +489,16 @@ process attaching a report. This is the reverse-push channel.
 ### Getting the client
 
 ```python
-from atria_module_sdk.client import AtriaClientError
+from minder_module_sdk.client import MinderClientError
 
-client = conn.atria_client()
+client = conn.minder_client()
 ```
 
-`conn.atria_client()` reads the same `ATRIA_URL` the connector already uses for
-announcing, and fetches a service token via the `atria-module` Keycloak client
+`conn.minder_client()` reads the same `MINDER_URL` the connector already uses for
+announcing, and fetches a service token via the `minder-module` Keycloak client
 (client-credentials grant). That client must carry the realm role `module-push`
 (separate from `module-register` — see §4.3). If the env is absent or the token
-request fails, `AtriaClientError` is raised.
+request fails, `MinderClientError` is raised.
 
 ### Pushing and updating blocks
 
@@ -512,9 +512,9 @@ def template_async_job(steps: int = 3, session_id=None):
 
     def _run(sid: str, n: int) -> None:
         try:
-            client = conn.atria_client()
-        except AtriaClientError as exc:
-            logger.warning("async job: atria client unavailable: %s", exc)
+            client = conn.minder_client()
+        except MinderClientError as exc:
+            logger.warning("async job: minder client unavailable: %s", exc)
             return
         bid = client.push_block(sid, "./ShowcaseBlock", {"kind": "job", "pct": 0})
         for i in range(1, n + 1):
@@ -527,8 +527,8 @@ def template_async_job(steps: int = 3, session_id=None):
     return {"output": f"started a {steps}-step background job; watch the block update live."}
 ```
 
-The key pattern: declare `session_id` in the handler signature — Atria forwards it
-via `X-Atria-Session`. The background thread captures it and uses it to target the
+The key pattern: declare `session_id` in the handler signature — Minder forwards it
+via `X-Minder-Session`. The background thread captures it and uses it to target the
 right conversation.
 
 **API summary:**
@@ -537,7 +537,7 @@ right conversation.
 - `client.update_block(session_id, block_id, props) -> None` — updates a live block's props (e.g. progress percentage).
 - `client.remove_block(session_id, block_id) -> None` — removes the block from the conversation.
 
-All three raise `AtriaClientError` on failure — the module decides how to handle it
+All three raise `MinderClientError` on failure — the module decides how to handle it
 (log and continue, retry, etc.).
 
 ### Attaching artifacts
@@ -550,20 +550,20 @@ def template_export(topic: str = "demo", session_id=None):
     if not session_id:
         return {"success": False, "output": "no session to attach an artifact to"}
     try:
-        client = conn.atria_client()
+        client = conn.minder_client()
         aid = client.push_artifact(session_id, f"report_{topic}.md",
                                    service.report_markdown(topic).encode())
-    except AtriaClientError as exc:
+    except MinderClientError as exc:
         return {"success": False, "output": f"export failed: {exc}"}
     return {"output": f"attached report artifact #{aid} to the conversation."}
 ```
 
 `client.push_artifact(session_id, filename, content: bytes) -> int` — attaches a
-file to the conversation; returns the artifact id. Failures raise `AtriaClientError`.
+file to the conversation; returns the artifact id. Failures raise `MinderClientError`.
 
 ### Keycloak — the `module-push` role
 
-The `atria-module` Keycloak client must also have the realm role `module-push`
+The `minder-module` Keycloak client must also have the realm role `module-push`
 assigned to its service account (in addition to `module-register`). The role grants
 access to the `/api/blocks/remote/*` and `/api/artifacts/remote/push` endpoints.
 No additional env vars are needed beyond what §4.2 already sets.
@@ -586,15 +586,15 @@ export default function DashboardApp({ apiBase }: { apiBase: string }) {
 
 `react`/`react-dom` must be `singleton` so the remote uses the host's React. The
 multi-stage `Dockerfile` builds the frontend and copies `dist/` to the path the SDK
-serves at `/dashboard/*` — exactly the `remoteEntry` URL Atria announces. The host
+serves at `/dashboard/*` — exactly the `remoteEntry` URL Minder announces. The host
 loads it via `web-ui/src/lib/federation.ts` + `RemoteDashboard.tsx`.
 
 ---
 
 ## 7. The guidance folder — `SKILL.md` + presentation `manifest.json`
 
-Atria discovers a module folder under the modules root (repo `modules/` or
-`ATRIA_MODULES_DIR`). It supplies the *guidance and presentation* the running
+Minder discovers a module folder under the modules root (repo `modules/` or
+`MINDER_MODULES_DIR`). It supplies the *guidance and presentation* the running
 connector doesn't own:
 
 - **`SKILL.md`** — frontmatter `name` + `description` and a when/how-to-use body.
@@ -630,8 +630,8 @@ The connector's `/connector/manifest` also advertises additional federation meta
 beyond tools. Declare federated block components with `conn.expose_block(key)` and
 they appear in `remote.exposed`; the manifest also carries `card_types` (the set of
 `card_type` values across all tools), `contract_version` (the SDK wire version), and
-`min_core_version` (the minimum Atria build the module requires — set via
-`Connector(min_core_version=…)`). Atria's reconciler reads all of these live:
+`min_core_version` (the minimum Minder build the module requires — set via
+`Connector(min_core_version=…)`). Minder's reconciler reads all of these live:
 
 ```python
 conn = Connector("my_module", version="1", min_core_version="2")
@@ -660,7 +660,7 @@ conn.expose_block("./MyAnswer")    # adds "./MyAnswer" to manifest remote.expose
 
 ## 8. Extra endpoints — the generic passthrough
 
-Atria core has **no per-module routes**. Any endpoint beyond the standard tools is
+Minder core has **no per-module routes**. Any endpoint beyond the standard tools is
 reached through one auth-checked proxy:
 
 ```
@@ -668,18 +668,18 @@ GET|POST  /api/modules/{name}/connector/{path}   → forwarded to the connector
 GET       /api/modules/{name}/health             → health + capabilities
 ```
 
-The acting user is forwarded as `X-Atria-Principal` (and a module-scoped secret as
-`X-Atria-Module-Token` if `ATRIA_MODULE_TOKEN[_<NAME>]` is set). So a dashboard or
+The acting user is forwarded as `X-Minder-Principal` (and a module-scoped secret as
+`X-Minder-Module-Token` if `MINDER_MODULE_TOKEN[_<NAME>]` is set). So a dashboard or
 block button calling `/api/modules/my_module/connector/signoff` lands at your
 `@conn.route("/signoff")` handler with `principal` populated — without ever touching
-Atria core.
+Minder core.
 
 ---
 
 ## 9. Deployment
 
 Paste `docker-compose.snippet.yml` into `docker-compose.yml` (same network as
-`atria`), set the env from §4.2, then:
+`minder`), set the env from §4.2, then:
 
 ```bash
 docker compose up -d --build my-module
@@ -689,18 +689,18 @@ docker compose up -d --build my-module
 - Add a `/connector/health` healthcheck.
 - Set `MODULE_PUBLIC_BASE` so `/connector/manifest` advertises the right
   browser-facing `remoteEntry`.
-- Provide `ATRIA_URL`, `ATRIA_MODULE_CONNECTOR_URL`, `ATRIA_MODULE_REMOTE_ENTRY`,
+- Provide `MINDER_URL`, `MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`,
   and the Keycloak client credentials so the connector can announce.
 
-The module appears in Atria within one health-poll cycle of coming up. No Atria
+The module appears in Minder within one health-poll cycle of coming up. No Minder
 redeploy is needed to add, update, or remove a module.
 
 ---
 
 ## 10. Build checklist
 
-1. `atria-module new my_module` — scaffold (or hand-write the tree in §2).
-2. `backend/service.py` — real logic, **never imports `atria`**.
+1. `minder-module new my_module` — scaffold (or hand-write the tree in §2).
+2. `backend/service.py` — real logic, **never imports `minder`**.
 3. `backend/app.py` — SDK handlers; raise `ServiceUnavailable` when a sidecar is
    down; never 500 the agent. Return `card` and/or `blocks`.
 4. Chat UI — generic `card(...)` for the default look, or ship a federated block
@@ -709,37 +709,37 @@ redeploy is needed to add, update, or remove a module.
 5. `frontend/` — dashboard + any block components as MF remotes; React `singleton`;
    add npm deps the components need.
 6. Guidance folder — `SKILL.md` (when/how-to-use) + `manifest.json` presentation +
-   `protected_paths`. Can live in `ATRIA_MODULES_DIR` outside the repo.
-7. Env — `ATRIA_URL`, `ATRIA_MODULE_CONNECTOR_URL`, `ATRIA_MODULE_REMOTE_ENTRY`,
+   `protected_paths`. Can live in `MINDER_MODULES_DIR` outside the repo.
+7. Env — `MINDER_URL`, `MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`,
    `MODULE_PUBLIC_BASE`, Keycloak client creds (role `module-register`).
 8. Extra endpoints via `@conn.route` + the generic passthrough — never a core route.
 9. `docker-compose.yml` — add the service, publish its port, healthcheck
    `/connector/health`.
-10. `atria-module dev my_module` to iterate locally; deploy via the compose snippet.
+10. `minder-module dev my_module` to iterate locally; deploy via the compose snippet.
 11. **Optional per-tool:** `params_model=MyModel` for typed/validated parameters;
     `requires_auth=True` to gate on an authenticated principal.
 12. **Optional — readiness probe:** `@conn.readiness_probe` + `@conn.on_startup` when
     the connector needs a warm-up phase before tools should enter the catalog.
-13. **Optional — reverse-push channel:** `conn.atria_client()` → `push_block` /
+13. **Optional — reverse-push channel:** `conn.minder_client()` → `push_block` /
     `update_block` / `remove_block` / `push_artifact` for background jobs that need
     to push live progress or attach files to a conversation (requires the `module-push`
-    realm role on the `atria-module` Keycloak client).
+    realm role on the `minder-module` Keycloak client).
 14. **Optional — block federation:** `conn.expose_block("./ComponentKey")` to advertise
     extra chat-block components in `/connector/manifest`; set `min_core_version` on
-    `Connector(…)` if the module requires a minimum Atria build.
+    `Connector(…)` if the module requires a minimum Minder build.
 15. **Testing:** use `conn.invoke(tool_name, arguments, principal=…, session_id=…)` for
     in-process unit tests — same validation and auth gating, no HTTP needed.
 
 Once these are in place the module is deeply connected: its tools appear in the
 agent's toolset live (schema-faithful, proxied over HTTP), its dashboard and chat
 blocks render natively, its cards render by type — and every heavy dependency stays
-isolated in the module's own container, with **zero edits to Atria source**.
+isolated in the module's own container, with **zero edits to Minder source**.
 
 ---
 
 ## Reference
 
-- SDK API: [`atria_module_sdk/README.md`](../atria_module_sdk/README.md)
+- SDK API: [`minder_module_sdk/README.md`](../minder_module_sdk/README.md)
 - Wire contract (every endpoint, header, event): [`docs/connector-contract.md`](../docs/connector-contract.md)
 - **SDK showcase (every feature, one tool each):** [`modules/module_template/`](./module_template) — for a runnable example that exercises **every** SDK capability, see this directory; `README.md` maps each feature to its handler.
 - Real-world module: [`modules/maintenance_copilot/`](./maintenance_copilot) — RAG-backed module with federated block, citations, and bridged follow-ups.

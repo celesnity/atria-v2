@@ -2,18 +2,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atria.core.modules.registry import ConnectorState, reset_registry_for_tests, get_registry
-from atria.web.dependencies.service_auth import require_module_register
-from atria.web.routes.module_connector import router
+from minder.core.modules.registry import ConnectorState, reset_registry_for_tests, get_registry
+from minder.web.dependencies.service_auth import require_module_register
+from minder.web.routes.module_connector import router
 
 
 @pytest.fixture
 def client(monkeypatch, tmp_path):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[require_module_register] = lambda: {"client_id": "atria-module", "roles": ["module-register"]}
+    app.dependency_overrides[require_module_register] = lambda: {"client_id": "minder-module", "roles": ["module-register"]}
     return TestClient(app)
 
 

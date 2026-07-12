@@ -1,9 +1,9 @@
-"""Setup script for Atria."""
+"""Setup script for Minder."""
 
 from setuptools import setup, find_packages
 
 setup(
-    name="atria",
+    name="minder",
     version="0.1.0",
     packages=find_packages(),
     install_requires=[
@@ -17,7 +17,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "atria=atria.cli:main",
+            "minder=minder.cli:main",
         ],
     },
     python_requires=">=3.9",

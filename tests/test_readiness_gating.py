@@ -5,8 +5,8 @@ A connector whose health() reports ok=True but ready=False must remain PENDING
 A connector reporting ok=True, ready=True must transition to READY.
 """
 
-from atria.core.modules import watcher
-from atria.core.modules.registry import ConnectorState, get_registry, reset_registry_for_tests
+from minder.core.modules import watcher
+from minder.core.modules.registry import ConnectorState, get_registry, reset_registry_for_tests
 
 
 class _FakeConn:
@@ -25,7 +25,7 @@ class _FakeConn:
 
 def _reg(monkeypatch, tmp_path, ready: bool):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
     reg = get_registry()
     reg.register_connector(name="m", connector_url="http://m:9200")
     monkeypatch.setattr(watcher, "RemoteConnector", lambda *a, **k: _FakeConn(ready))

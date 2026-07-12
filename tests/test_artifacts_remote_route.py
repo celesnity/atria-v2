@@ -9,9 +9,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atria.web.dependencies.service_auth import require_service_principal
-from atria.web.dependencies.services import get_artifact_service
-from atria.web.routes.artifacts_remote import router
+from minder.web.dependencies.service_auth import require_service_principal
+from minder.web.dependencies.services import get_artifact_service
+from minder.web.routes.artifacts_remote import router
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ class _FakeArtifactService:
 def app_client(monkeypatch):
     """App with both auth and artifact-service dependencies overridden.
     Session manager is monkeypatched on the state singleton."""
-    from atria.web import state as _state_mod
+    from minder.web import state as _state_mod
 
     class _FakeSM:
         async def get_session_by_id(self, session_id: str):
@@ -56,12 +56,12 @@ def app_client(monkeypatch):
     class _FakeState:
         session_manager = _FakeSM()
 
-    monkeypatch.setattr("atria.web.routes.artifacts_remote.get_state", lambda: _FakeState())
+    monkeypatch.setattr("minder.web.routes.artifacts_remote.get_state", lambda: _FakeState())
 
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[require_service_principal] = lambda: {
-        "client_id": "atria-module", "roles": ["module-push"]
+        "client_id": "minder-module", "roles": ["module-push"]
     }
     app.dependency_overrides[get_artifact_service] = lambda: _FakeArtifactService()
     return TestClient(app)
