@@ -25,7 +25,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+node_modules/
 # PyInstaller
 *.manifest
 *.spec
@@ -205,6 +205,12 @@ run-frontend.ps1
 testingData
 
 *.csv
+
+# vetc_copilot is tracked SOURCE (demo module for the VETC Auto-Pilot concept),
+# not a runtime data-module — re-include it so normal `git add` picks it up.
+# Its own modules/vetc_copilot/.gitignore still ignores its runtime data/ dir.
+!modules/vetc_copilot/
+!modules/vetc_copilot/**
 
 .slide/
 

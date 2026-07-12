@@ -1,0 +1,12 @@
+sqlalchemy>=2.0
+openpyxl>=3.1
+pypdf>=4.0
+python-docx>=1.1
+python-pptx>=0.6
+Pillow>=10.0
+pytesseract>=0.3
+# In-process EK ingest on upload (chunk + embed + Qdrant); imported lazily.
+qdrant-client>=1.11
+chonkie>=1.0
+openai>=1.40
+

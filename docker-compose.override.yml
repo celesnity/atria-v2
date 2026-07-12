@@ -1,25 +1,18 @@
-# Local dev override (untracked). Three purposes:
+# Local dev override (untracked). Two purposes:
 #
-# 1. Run the TEI embeddings image under x86 emulation on Apple Silicon (arm64),
-#    since cpu-1.9 ships no arm64 manifest. Kept for fallback; not used while
-#    embeddings are pointed at LM Studio below.
-#
-# 2. Point the maintenance_copilot embedding + chat roles at the host's LM Studio
-#    server (OpenAI-compatible, :1234) instead of the emulated TEI / the
+# 1. Point the maintenance_copilot embedding + chat roles at the host's LM Studio
+#    server (OpenAI-compatible, :1234) instead of the (disabled) TEI / the
 #    GPU-only copilot-llm sidecar. host.docker.internal reaches the host from
 #    inside the containers (both already declare it via extra_hosts). Models +
 #    token come from .env. qwen3-embedding-0.6b-dwq is MLX and LM Studio won't
 #    serve it as embeddings, so we use the GGUF nomic-embed model, which works.
 #
-# 3. Bake the deployed model's token budget into settings.json via the
+# 2. Bake the deployed model's token budget into settings.json via the
 #    entrypoint. ATRIA_MODEL (Qwen3.5-35B-A3B-FP8) has a 30000-token window and
 #    is NOT in the models.dev registry, so Atria cannot auto-derive it and
 #    defaults to max_context_tokens=100000 / max_tokens=16384 — which overflows
 #    the real window. We write the correct values (from .env) instead.
 services:
-  tei:
-    platform: linux/amd64
-
   atria:
     environment:
       - MC_INDEX_EMBED_BASE_URL=http://host.docker.internal:1234/v1
@@ -49,10 +42,10 @@ services:
       - /bin/sh
       - -c
       - |
-        mkdir -p /root/.atria
+        mkdir -p /home/atria/.atria
         : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}"
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}"
-        printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${ATRIA_MODEL}" "$${ATRIA_API_BASE_URL}" "$${ATRIA_MAX_TOKENS:-4096}" "$${ATRIA_MAX_CONTEXT_TOKENS:-24000}" > /root/.atria/settings.json
+        printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${ATRIA_MODEL}" "$${ATRIA_API_BASE_URL}" "$${ATRIA_MAX_TOKENS:-4096}" "$${ATRIA_MAX_CONTEXT_TOKENS:-24000}" > /home/atria/.atria/settings.json
         exec atria --host 0.0.0.0 --port 8080
 
   atria-worker:
@@ -80,8 +73,8 @@ services:
       - /bin/sh
       - -c
       - |
-        mkdir -p /root/.atria
+        mkdir -p /home/atria/.atria
         : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}"
         : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}"
-        printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${ATRIA_MODEL}" "$${ATRIA_API_BASE_URL}" "$${ATRIA_MAX_TOKENS:-4096}" "$${ATRIA_MAX_CONTEXT_TOKENS:-24000}" > /root/.atria/settings.json
+        printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${ATRIA_MODEL}" "$${ATRIA_API_BASE_URL}" "$${ATRIA_MAX_TOKENS:-4096}" "$${ATRIA_MAX_CONTEXT_TOKENS:-24000}" > /home/atria/.atria/settings.json
         exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
