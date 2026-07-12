@@ -171,18 +171,19 @@ function ThinkingSpinner() {
 
 function WelcomeScreen() {
   return (
-    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-6">
-      <CosmicField count={34} className="opacity-70" />
-      <div className="relative z-10 w-full max-w-xl">
-        <div className="glass-card rounded-xl px-8 py-9 text-center md:px-12 md:py-10">
-          <Eyebrow className="mb-4 block text-text-muted">Welcome</Eyebrow>
-          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand">
-            Let&rsquo;s get to work.
-          </h2>
-          <p className="mt-5 text-body-sm leading-[1.6] text-text-secondary">
-            Start a conversation with your AI co-worker.
-          </p>
-        </div>
+    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-4">
+      <CosmicField count={18} className="opacity-60" />
+      <div className="relative z-10 w-full max-w-[240px] text-center">
+        <span className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-xl bg-gradient-brand shadow-glow-accent">
+          <span className="h-2.5 w-2.5 rounded-md bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+        </span>
+        <Eyebrow className="mb-1.5 block text-text-muted">Welcome</Eyebrow>
+        <h2 className="text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
+          Let&rsquo;s get to work.
+        </h2>
+        <p className="mt-2 text-[12.5px] leading-[1.5] text-text-secondary">
+          Start a conversation with your AI co-worker.
+        </p>
       </div>
     </div>
   );

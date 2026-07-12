@@ -30,7 +30,7 @@ const THINKING_STYLES: Record<string, string> = {
 } as const;
 
 const PILL_BASE =
-  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
+  'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-medium cursor-pointer transition-colors select-none active:scale-[0.98] whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30';
 
 export function InputBox() {
   const [fileOptions, setFileOptions] = useState<DataDrivenOptionProps[]>([]);
@@ -227,8 +227,8 @@ export function InputBox() {
     : sendLocked
     ? 'Deep research in progress — sending paused until it finishes…'
     : isLoading
-    ? 'Type to queue a message...'
-    : 'Type your message... (use @ to mention files)';
+    ? 'Queue a message…'
+    : 'Message… (@ to mention)';
 
   return (
     <div className="bg-canvas border-t border-hairline-soft/50 px-2.5 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -315,17 +315,17 @@ export function InputBox() {
         </div>
 
         {hasActiveSession && (
-          <div className="flex items-center gap-2 flex-wrap mt-2.5 px-0.5">
-            {/* Mode pill */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-2 px-0.5">
+            {/* Mode pill — icon + value only; category is in the tooltip. */}
             {status && (
               <button
                 onClick={toggleMode}
                 aria-label={`Mode: ${status.mode === 'normal' ? 'Normal' : 'Plan'}. Click to toggle.`}
                 className={`${PILL_BASE} ${MODE_STYLES[status.mode]}`}
-                title="Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
+                title="Mode — Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
               >
                 <Settings2 className="w-3 h-3" strokeWidth={2} />
-                Mode: {status.mode === 'normal' ? 'Normal' : 'Plan'}
+                {status.mode === 'normal' ? 'Normal' : 'Plan'}
               </button>
             )}
 
@@ -335,10 +335,10 @@ export function InputBox() {
                 onClick={cycleAutonomy}
                 aria-label={`Approval: ${status.autonomy_level}. Click to cycle.`}
                 className={`${PILL_BASE} ${AUTONOMY_STYLES[status.autonomy_level]}`}
-                title="Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
+                title="Approval — Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
               >
                 <Lock className="w-3 h-3" strokeWidth={2} />
-                Approval: {status.autonomy_level}
+                {status.autonomy_level}
               </button>
             )}
 
@@ -348,10 +348,10 @@ export function InputBox() {
                 onClick={cycleThinkingLevel}
                 aria-label={`Think: ${thinkingLevel}. Click to cycle.`}
                 className={`${PILL_BASE} ${THINKING_STYLES[thinkingLevel] || THINKING_STYLES['Medium']}`}
-                title="Controls how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
+                title="Thinking — how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
               >
                 <Brain className="w-3 h-3" strokeWidth={2} />
-                Think: {thinkingLevel}
+                {thinkingLevel}
               </button>
             )}
 
