@@ -29,7 +29,7 @@ const ICONS: Record<Kind, React.ReactNode> = {
 const KIND_COLORS: Record<Kind, string> = {
   success: "#22c55e",
   error: "#ef4444",
-  info: "#3b82f6",
+  info: "#5AA6FF",
 };
 
 let _id = 0;
@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
               style={{
-                background: "#1a1a2e",
+                background: "#111A2E",
                 border: `1px solid ${KIND_COLORS[t.kind]}44`,
                 borderLeft: `3px solid ${KIND_COLORS[t.kind]}`,
                 borderRadius: 8,

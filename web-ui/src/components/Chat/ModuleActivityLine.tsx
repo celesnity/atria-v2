@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { Message } from '../../types';
+import { JsonView } from './JsonView';
 
 interface Props {
   message: Message;
@@ -116,9 +117,14 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
   // a successful call is as inspectable as a failed one. The payload is the full
   // verbose {tool, args, success, summary, result, call_id} dump.
   const isError = view.kind === 'error';
-  const debugJson = view.debug ? JSON.stringify(view.debug, null, 2) : '';
-  const detailText = debugJson && debugJson !== '{}' ? debugJson : view.detail || '';
-  const hasDetail = detailText.trim().length > 0;
+  // Structured payload → render as a JSON tree; only fall back to plain text
+  // when there is no debug object to inspect.
+  const debugObj =
+    view.debug && typeof view.debug === 'object' && Object.keys(view.debug).length > 0
+      ? view.debug
+      : null;
+  const detailText = view.detail || '';
+  const hasDetail = !!debugObj || detailText.trim().length > 0;
 
   const tone = isError
     ? { text: 'text-block-coral', pre: 'bg-block-coral/10 border-block-coral/30' }
@@ -146,12 +152,17 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
         )}
       </div>
       {hasDetail && expanded && (
-        <pre
-          className={`ml-6 text-[11px] font-mono whitespace-pre-wrap break-words border rounded-md px-2 py-1.5 max-h-80 overflow-auto ${tone.pre}`}
-          aria-label="Activity detail payload"
-        >
+        <div className="ml-6 max-h-80 overflow-auto" aria-label="Activity detail payload">
+          {debugObj ? (
+            <JsonView data={debugObj} />
+          ) : (
+            <pre
+              className={`text-[11px] font-mono whitespace-pre-wrap break-words border rounded-md px-2 py-1.5 ${tone.pre}`}
+            >
 {detailText}
-        </pre>
+            </pre>
+          )}
+        </div>
       )}
     </div>
   );

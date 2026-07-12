@@ -84,6 +84,9 @@ class AgentExecutor:
             relies on it for its synchronous reply.
         """
         try:
+            # Anchor for latency metrics: everything (TTFT, total) is measured from
+            # the moment the query reached the executor, not from LLM dispatch.
+            query_started_at = time.monotonic()
             # Mark session as running
             self.state.set_session_running(session_id)
             await ws_manager.broadcast(
@@ -120,13 +123,18 @@ class AgentExecutor:
                     session,
                     persona_name=persona_name,
                     thinking_level_override=thinking_level_override,
+                    query_started_at=query_started_at,
                 ),
             )
 
             # ReactExecutor handles step-by-step persistence — just log the result
+            ttft_ms = response.get("ttft_ms")
+            total_ms = (time.monotonic() - query_started_at) * 1000
             logger.info(
                 f"Agent response: summary={(response.get('summary') or '')[:100]}, "
-                f"error={response.get('error')}"
+                f"error={response.get('error')}, "
+                f"ttft_ms={ttft_ms if ttft_ms is None else round(ttft_ms)}, "
+                f"total_ms={round(total_ms)}"
             )
 
             # Broadcast message complete
@@ -213,6 +221,7 @@ class AgentExecutor:
         *,
         persona_name: str | None = None,
         thinking_level_override: str | None = None,
+        query_started_at: float | None = None,
     ) -> Dict[str, Any]:
         """Run agent synchronously in thread pool using ReactExecutor.
 
@@ -224,9 +233,11 @@ class AgentExecutor:
             session: Pre-loaded Session object
             persona_name: Optional persona name to prepend its system prompt
             thinking_level_override: Force this run's thinking level (per-run)
+            query_started_at: ``time.monotonic()`` stamp of query arrival; when
+                set, time-to-first-token is measured against it
 
         Returns:
-            Dict with summary, error, latency_ms
+            Dict with summary, error, latency_ms, ttft_ms
         """
         from minder.core.runtime.services import RuntimeService
         from minder.core.context_engineering.tools.implementations import (
@@ -266,6 +277,7 @@ class AgentExecutor:
 
         # Create web UI callback for plan approval, subagent events, etc.
         web_ui_callback = WebUICallback(ws_manager, loop, session_id, self.state)
+        web_ui_callback.query_started_at = query_started_at
 
         # Register the callback so module code (push_block, etc.) can reach it
         # via session_id or the contextvar. Cleared in the run-cleanup path.
@@ -525,7 +537,12 @@ class AgentExecutor:
                 undo_manager=self.state.undo_manager,
                 ui_callback=web_ui_callback,
             )
-            return {"summary": summary, "error": error, "latency_ms": latency_ms}
+            return {
+                "summary": summary,
+                "error": error,
+                "latency_ms": latency_ms,
+                "ttft_ms": web_ui_callback.first_token_ms,
+            }
         except Exception as e:
             logger.error(f"ReactExecutor error: {e}")
             import traceback

@@ -43,10 +43,10 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={barData} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2d2d44" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#22304D" />
               <XAxis dataKey="status" tick={{ fill: "#94a3b8", fontSize: 12 }} />
               <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} />
-              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid #2d2d44", borderRadius: 8, color: "#e2e8f0" }} />
+              <Tooltip contentStyle={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 8, color: "#e2e8f0" }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {barData.map((entry) => (
                   <Cell key={entry.status} fill={STATUS_COLORS[entry.status] || CHART_COLORS[0]} />
@@ -74,7 +74,7 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
                   <Cell key={entry.status} fill={STATUS_COLORS[entry.status] || CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: "#1a1a2e", border: "1px solid #2d2d44", borderRadius: 8, color: "#e2e8f0" }} />
+              <Tooltip contentStyle={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 8, color: "#e2e8f0" }} />
               <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
@@ -85,7 +85,7 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        style={{ background: "#1a1a2e", border: "1px solid #2d2d44", borderRadius: 10, padding: "14px 16px" }}
+        style={{ background: "#111A2E", border: "1px solid #22304D", borderRadius: 10, padding: "14px 16px" }}
       >
         <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 4 }}>Media Storage</div>
         <div style={{ color: "#e2e8f0", fontSize: 22, fontWeight: 700 }}>

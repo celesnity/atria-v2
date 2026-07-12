@@ -44,6 +44,9 @@ class WSMessageType(str, Enum):
     MESSAGE_CHUNK = "message_chunk"
     MESSAGE_START = "message_start"
     MESSAGE_COMPLETE = "message_complete"
+    # Remove the last N code points of streamed assistant text — sent when the
+    # executor withholds or replaces a message whose tokens already streamed.
+    MESSAGE_RETRACT = "message_retract"
     SESSION_ACTIVITY = "session_activity"
     USER_MESSAGE = "user_message"
     MCP_STATUS_CHANGED = "mcp:status_changed"

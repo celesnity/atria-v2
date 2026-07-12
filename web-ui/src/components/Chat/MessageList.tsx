@@ -1,6 +1,6 @@
-import { memo, useEffect, useRef, useState, useMemo } from 'react';
+import React, { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, FileText, Pencil, TerminalSquare, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,6 +26,37 @@ import { MessageActions } from './MessageActions';
 import { useMessageActions } from '../../hooks/useMessageActions';
 import { CosmicField } from '../ui/CosmicField';
 import { Eyebrow } from '../ui/Eyebrow';
+import { isUnverifiedSuggestion, splitCitations } from '../../utils/citations';
+import { latencySummary } from '../../utils/latency';
+
+// Wrap inline [DOC#chunk] citation refs as monospaced badges.
+function wrapCitations(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    const parts = splitCitations(child);
+    if (parts.length === 1 && typeof parts[0] === 'string') return child;
+    return parts.map((part, i) =>
+      typeof part === 'string' ? (
+        part
+      ) : (
+        <span
+          key={`${part.cite}-${i}`}
+          className="mx-0.5 inline-block rounded-sm border border-hairline-soft bg-canvas/60 px-1 py-0.5 align-baseline font-mono text-[11px] font-[540] text-ink/80"
+          title="Trích dẫn tài liệu"
+        >
+          [{part.cite}]
+        </span>
+      )
+    );
+  });
+}
+
+function nodeText(node: React.ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (React.isValidElement(node)) return nodeText((node.props as { children?: React.ReactNode }).children);
+  return '';
+}
 
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
@@ -51,7 +82,7 @@ const MARKDOWN_COMPONENTS: Components = {
     );
   },
   p({ children }) {
-    return <p className="mb-2 last:mb-0 text-ink text-[13.5px] leading-relaxed">{children}</p>;
+    return <p className="mb-2 last:mb-0 text-ink text-[13.5px] leading-relaxed">{wrapCitations(children)}</p>;
   },
   ul({ children }) {
     return <ul className="list-disc pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ul>;
@@ -60,7 +91,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return <ol className="list-decimal pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-[13.5px] leading-snug marker:text-ink/40">{children}</li>;
+    return <li className="text-ink text-[13.5px] leading-snug marker:text-ink/40">{wrapCitations(children)}</li>;
   },
   strong({ children }) {
     return <strong className="font-[600] text-ink">{children}</strong>;
@@ -75,6 +106,13 @@ const MARKDOWN_COMPONENTS: Components = {
   h5({ children }) { return <h5 className="text-[11.5px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/70">{children}</h5>; },
   h6({ children }) { return <h6 className="text-[11px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/50">{children}</h6>; },
   blockquote({ children }) {
+    if (isUnverifiedSuggestion(nodeText(children))) {
+      return (
+        <blockquote className="my-2 rounded-md border border-amber-500/40 border-l-4 border-l-amber-500 bg-amber-500/10 px-3 py-2 text-ink [&_p]:mb-0">
+          {children}
+        </blockquote>
+      );
+    }
     return <blockquote className="border-l-2 border-accent-cobalt/40 pl-2.5 my-2 text-[13px] italic text-text-secondary">{children}</blockquote>;
   },
   hr() { return <hr className="my-3 border-0 border-t border-hairline-soft" />; },
@@ -130,7 +168,14 @@ function MinderAvatar() {
   );
 }
 
-const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content: string }) {
+const AssistantMarkdown = memo(function AssistantMarkdown({
+  content,
+  metrics,
+}: {
+  content: string;
+  metrics?: Message['metrics'];
+}) {
+  const latency = latencySummary(metrics);
   return (
     <div>
       <div className="flex items-center gap-2 mb-2">
@@ -142,6 +187,11 @@ const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content
           {content}
         </ReactMarkdown>
       </div>
+      {latency && (
+        <div className="mt-1.5 font-mono text-[10px] text-ink/30" title="Đo từ lúc gửi tin nhắn">
+          ⚡ {latency}
+        </div>
+      )}
     </div>
   );
 });
@@ -276,7 +326,7 @@ function MessageBody({
   if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
   return message.role === 'user'
     ? <UserTurn content={message.content} />
-    : <AssistantMarkdown content={message.content} />;
+    : <AssistantMarkdown content={message.content} metrics={message.metrics} />;
 }
 
 const MessageItem = memo(function MessageItem({
@@ -310,14 +360,25 @@ const MessageItem = memo(function MessageItem({
 
 // ─── activity group: collapses intra-turn thinking + tool exec ───────────────
 
-function activitySummaryText(s: ReturnType<typeof summarizeActivity>): string {
-  const parts: string[] = [];
-  if (s.reads) parts.push(`${s.reads} đọc`);
-  if (s.edits) parts.push(`${s.edits} sửa`);
-  if (s.commands) parts.push(`${s.commands} lệnh`);
-  if (s.other) parts.push(`${s.other} khác`);
-  if (s.thinking) parts.push(`${s.thinking} suy nghĩ`);
-  return parts.join(' · ');
+// Iconised, single-line activity breakdown — compact enough to sit on one row
+// in the ~20vw rail (icon + count chips) instead of a text list that wraps.
+function ActivityMeta({ s }: { s: ReturnType<typeof summarizeActivity> }) {
+  const chips: Array<{ icon: typeof FileText; n: number; title: string }> = [];
+  if (s.reads) chips.push({ icon: FileText, n: s.reads, title: 'đọc' });
+  if (s.edits) chips.push({ icon: Pencil, n: s.edits, title: 'sửa' });
+  if (s.commands) chips.push({ icon: TerminalSquare, n: s.commands, title: 'lệnh' });
+  if (s.thinking) chips.push({ icon: Sparkles, n: s.thinking, title: 'suy nghĩ' });
+  if (!chips.length) return null;
+  return (
+    <span className="flex items-center gap-1.5">
+      {chips.map(({ icon: Icon, n, title }, i) => (
+        <span key={i} title={title} className="inline-flex items-center gap-0.5 flex-shrink-0 tabular-nums">
+          <Icon className="w-3 h-3 opacity-80" strokeWidth={1.75} aria-hidden="true" />
+          {n}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 const ActivityGroupItem = memo(function ActivityGroupItem({
@@ -336,7 +397,6 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
 
   const summary = summarizeActivity(entries);
   const stepCount = summary.steps;
-  const summaryText = activitySummaryText(summary);
 
   // Live label = the last entry's current action (for the running state).
   const last = entries[entries.length - 1]?.message;
@@ -351,23 +411,24 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
         type="button"
         onClick={() => setExpanded(v => !v)}
         aria-expanded={expanded}
-        className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring"
+        aria-label={running ? liveLabel : 'Activity'}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring min-w-0"
       >
         {running ? (
           <Loader2 className="w-3.5 h-3.5 text-ink/45 flex-shrink-0 animate-spin motion-reduce:animate-none" strokeWidth={1.75} aria-hidden="true" />
         ) : (
           <ChevronRight className={`w-3.5 h-3.5 text-ink/35 flex-shrink-0 transition-transform duration-fast ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
         )}
-        <span className="text-[13px] font-[450] text-ink/55">
+        <span className="text-[12.5px] font-[500] text-ink/60 flex-shrink-0 truncate max-w-[52%]">
           {running ? liveLabel : 'Activity'}
         </span>
-        <span className="text-[12px] text-ink/35 font-mono ml-0.5">
-          {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
-          {summaryText ? ` · ${summaryText}` : ''}
+        {/* Meta: step count + iconised breakdown, clipped (never wrapped) in the rail. */}
+        <span className="ml-auto flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[11px] text-ink/35 font-mono">
+          <span className="flex-shrink-0 tabular-nums">
+            {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
+          </span>
+          {!running && <ActivityMeta s={summary} />}
         </span>
-        {!running && (
-          <span className="ml-auto text-[11px] text-ink/30">{expanded ? 'thu gọn' : 'bung'}</span>
-        )}
       </button>
 
       {expanded && (

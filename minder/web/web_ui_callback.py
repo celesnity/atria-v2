@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -33,6 +34,10 @@ class WebUICallback(BaseUICallback):
     pattern as WebAskUserManager and WebApprovalManager.
     """
 
+    # Opt in to token streaming: the executor passes on_assistant_token as the
+    # LLM content-delta callback (see iteration.py).
+    wants_stream_tokens = True
+
     def __init__(
         self,
         ws_manager: Any,
@@ -45,6 +50,15 @@ class WebUICallback(BaseUICallback):
         self.session_id = session_id
         self.state = state
         self._pending_nested_calls: list[ToolCall] = []
+        # Time-to-first-token: agent_executor stamps query_started_at
+        # (time.monotonic()) when the query arrives; the first assistant text
+        # broadcast records first_token_ms against it.
+        self.query_started_at: float | None = None
+        self.first_token_ms: float | None = None
+        # Raw text streamed to the UI for the in-flight LLM response and not
+        # yet reconciled against a display decision (on_assistant_message /
+        # on_assistant_retract). Its length is what a retract must trim.
+        self._streamed_buf: str = ""
 
     # ------------------------------------------------------------------
     # Plan approval (used by PresentPlanTool via registry)
@@ -589,17 +603,69 @@ class WebUICallback(BaseUICallback):
     # Assistant message
     # ------------------------------------------------------------------
 
+    def _stamp_first_token(self, data: dict[str, Any]) -> None:
+        """Record TTFT on the first assistant text of the run (in-place)."""
+        if self.first_token_ms is None and self.query_started_at is not None:
+            self.first_token_ms = (time.monotonic() - self.query_started_at) * 1000
+            data["ttft_ms"] = self.first_token_ms
+            logger.info(f"TTFT {self.first_token_ms:.0f}ms session={self.session_id}")
+
+    def on_assistant_token(self, token: str) -> None:
+        """Stream one content delta to the UI as it is generated.
+
+        The first token of a run carries ``ttft_ms`` (server-side
+        time-to-first-token, measured from query arrival).
+        """
+        if not token:
+            return
+        data: dict[str, Any] = {"content": token, "session_id": self.session_id}
+        self._stamp_first_token(data)
+        self._streamed_buf += token
+        self._broadcast({"type": WSMessageType.MESSAGE_CHUNK, "data": data})
+
+    def on_assistant_retract(self) -> None:
+        """Withdraw streamed tokens the executor decided not to display."""
+        self._retract_streamed()
+
+    def _retract_streamed(self) -> None:
+        if not self._streamed_buf:
+            return
+        # Code points, not bytes/UTF-16 units — the frontend trims with the
+        # same unit (Array.from) so astral chars stay aligned.
+        trim = len(self._streamed_buf)
+        self._streamed_buf = ""
+        self._broadcast(
+            {
+                "type": WSMessageType.MESSAGE_RETRACT,
+                "data": {"trim_chars": trim, "session_id": self.session_id},
+            }
+        )
+
     def on_assistant_message(self, content: str) -> None:
-        """Broadcast assistant message content as a message_chunk."""
+        """Broadcast assistant message content as a message_chunk.
+
+        Reconciles with token streaming: when this content already streamed
+        (modulo the response cleaner's whitespace/token stripping), the UI has
+        it — skip the duplicate. When the streamed text differs (cleaned
+        content, or a task_complete summary replacing commentary), retract the
+        streamed tokens and send the authoritative text.
+        """
         if not content:
             return
+        if self._streamed_buf:
+            if self._streamed_buf.strip() == content.strip():
+                self._streamed_buf = ""
+                return
+            self._retract_streamed()
+        data: dict[str, Any] = {
+            "content": content,
+            "session_id": self.session_id,
+        }
+        self._stamp_first_token(data)
         self._broadcast(
             {
                 "type": WSMessageType.MESSAGE_CHUNK,
-                "data": {
-                    "content": content,
-                    "session_id": self.session_id,
-                },
+                "data": data,
             }
         )
 

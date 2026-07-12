@@ -69,23 +69,23 @@ export default function MediaPanel({ apiBase }: { apiBase: string }) {
       <h3 style={{ margin: "0 0 16px", color: "#e2e8f0", fontSize: 16, fontWeight: 600 }}>Media</h3>
 
       <motion.div
-        animate={{ scale: dragging ? 1.02 : 1, borderColor: dragging ? "#6366f1" : "#2d2d44" }}
+        animate={{ scale: dragging ? 1.02 : 1, borderColor: dragging ? "#2563EB" : "#22304D" }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
         style={{
-          border: "2px dashed #2d2d44",
+          border: "2px dashed #22304D",
           borderRadius: 12,
           padding: "28px 20px",
           textAlign: "center",
           cursor: "pointer",
           marginBottom: 20,
-          background: dragging ? "#6366f108" : "transparent",
+          background: dragging ? "#2563EB08" : "transparent",
           transition: "background 0.2s",
         }}
       >
-        <Upload size={24} style={{ color: "#6366f1", marginBottom: 8 }} />
+        <Upload size={24} style={{ color: "#2563EB", marginBottom: 8 }} />
         <div style={{ color: "#94a3b8", fontSize: 13 }}>
           {uploading ? "Uploading…" : "Drop a file or click to upload"}
         </div>
@@ -110,11 +110,11 @@ export default function MediaPanel({ apiBase }: { apiBase: string }) {
                 exit="exit"
                 whileHover={{ y: -2 }}
                 style={{
-                  background: "#1a1a2e", border: "1px solid #2d2d44",
+                  background: "#111A2E", border: "1px solid #22304D",
                   borderRadius: 10, padding: "12px 14px",
                 }}
               >
-                <Film size={20} style={{ color: "#6366f1", marginBottom: 8 }} />
+                <Film size={20} style={{ color: "#2563EB", marginBottom: 8 }} />
                 <a
                   href={m.url}
                   target="_blank"

@@ -58,7 +58,7 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
           onClick={startJob}
           disabled={starting}
           style={{
-            display: "flex", alignItems: "center", gap: 6, background: "#6366f1",
+            display: "flex", alignItems: "center", gap: 6, background: "#2563EB",
             border: "none", borderRadius: 8, padding: "7px 14px", color: "#fff",
             fontSize: 13, cursor: starting ? "wait" : "pointer", fontWeight: 500,
             opacity: starting ? 0.7 : 1,
@@ -91,8 +91,8 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
                   variants={variants.listItem}
                   exit="exit"
                   style={{
-                    background: "#1a1a2e",
-                    border: "1px solid #2d2d44",
+                    background: "#111A2E",
+                    border: "1px solid #22304D",
                     borderRadius: 10,
                     padding: "12px 14px",
                   }}
@@ -108,7 +108,7 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
                       {job.status}
                     </span>
                   </div>
-                  <div style={{ background: "#0f0f1a", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                  <div style={{ background: "#060711", borderRadius: 4, height: 6, overflow: "hidden" }}>
                     <motion.div
                       animate={{ width: `${job.pct ?? 0}%` }}
                       transition={{ duration: 0.5, ease: "easeOut" }}

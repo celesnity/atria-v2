@@ -1,25 +1,25 @@
 export const COLORS = {
-  primary: '#6366f1',
-  secondary: '#8b5cf6',
+  primary: '#2563EB',
+  secondary: '#2E6BF6',
   success: '#22c55e',
   warning: '#f59e0b',
   error: '#ef4444',
-  info: '#3b82f6',
-  bg: '#0f0f1a',
-  surface: '#1a1a2e',
-  border: '#2d2d44',
+  info: '#5AA6FF',
+  bg: '#060711',
+  surface: '#111A2E',
+  border: '#22304D',
   text: '#e2e8f0',
   muted: '#94a3b8',
 };
 
 export const STATUS_COLORS: Record<string, string> = {
   queued: '#f59e0b',
-  running: '#6366f1',
+  running: '#2563EB',
   done: '#22c55e',
   error: '#ef4444',
 };
 
-export const CHART_COLORS = ['#6366f1', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#3b82f6'];
+export const CHART_COLORS = ['#2563EB', '#2E6BF6', '#22c55e', '#f59e0b', '#ef4444', '#5AA6FF'];
 
 export const variants = {
   listContainer: {

@@ -165,6 +165,12 @@ export interface Message {
   image_src?: string;
   image_mime?: string;
   image_caption?: string;
+  // latency metrics attached to the assistant bubble on message_complete
+  metrics?: {
+    ttftMs?: number;       // client-perceived time-to-first-token (ms)
+    totalMs?: number;      // client-perceived total turn duration (ms)
+    serverTtftMs?: number; // server-side TTFT reported by backend
+  };
 }
 
 // Session types

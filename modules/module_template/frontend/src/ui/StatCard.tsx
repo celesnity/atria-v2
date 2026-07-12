@@ -16,8 +16,8 @@ export default function StatCard({ icon, label, value, suffix }: StatCardProps) 
       whileHover={{ y: -2, boxShadow: "0 8px 32px rgba(99,102,241,0.2)" }}
       transition={{ duration: 0.2 }}
       style={{
-        background: "#1a1a2e",
-        border: "1px solid #2d2d44",
+        background: "#111A2E",
+        border: "1px solid #22304D",
         borderRadius: 12,
         padding: "16px 20px",
         display: "flex",

@@ -5,7 +5,6 @@ import {
   Folder,
   MessageSquare,
   Plus,
-  Settings,
   Trash2,
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
@@ -372,13 +371,6 @@ export function ProjectSidebar() {
               </motion.div>
             )}
           </div>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-soft hover:text-ink"
-            title="Settings"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
         </div>
       </div>
 

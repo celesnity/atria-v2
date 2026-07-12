@@ -48,12 +48,14 @@ export default function DashboardApp({ apiBase }: Props) {
 
   return (
     <ToastProvider>
-      <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#e2e8f0", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div style={{ minHeight: "100vh", background: "radial-gradient(120% 90% at 15% 0%, #12245C 0%, #0A1030 42%, #060711 100%)", color: "#e2e8f0", fontFamily: "system-ui, -apple-system, sans-serif" }}>
         {/* Header */}
-        <div style={{ borderBottom: "1px solid #2d2d44", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Activity size={20} style={{ color: COLORS.primary }} />
-            <span style={{ fontWeight: 700, fontSize: 18, color: "#e2e8f0" }}>Module Dashboard</span>
+        <div style={{ borderBottom: "1px solid #22304D", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <span style={{ display: "grid", placeItems: "center", width: 32, height: 32, borderRadius: 9, background: "linear-gradient(135deg, #1E50D8 0%, #2E6BF6 55%, #5AA6FF 100%)", boxShadow: "0 6px 20px rgba(46,107,246,0.40)" }}>
+              <Activity size={17} style={{ color: "#fff" }} />
+            </span>
+            <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em", background: "linear-gradient(90deg, #EAF1FF, #9EC2FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Module Template</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
             <motion.span
@@ -78,7 +80,7 @@ export default function DashboardApp({ apiBase }: Props) {
         </div>
 
         {/* Tab bar */}
-        <div style={{ padding: "20px 24px 0", display: "flex", gap: 4, borderBottom: "1px solid #2d2d44", position: "relative" }}>
+        <div style={{ padding: "20px 24px 0", display: "flex", gap: 4, borderBottom: "1px solid #22304D", position: "relative" }}>
           {TABS.map((t) => (
             <button
               key={t.id}

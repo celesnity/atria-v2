@@ -35,7 +35,7 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           onClick={fetchData}
-          style={{ background: "none", border: "1px solid #2d2d44", borderRadius: 8, padding: "6px 12px", color: "#94a3b8", cursor: "pointer" }}
+          style={{ background: "none", border: "1px solid #22304D", borderRadius: 8, padding: "6px 12px", color: "#94a3b8", cursor: "pointer" }}
         >
           <motion.div animate={{ rotate: loading ? 360 : 0 }} transition={{ duration: 0.6, repeat: loading ? Infinity : 0, ease: "linear" }}>
             <RefreshCw size={15} />
@@ -71,12 +71,12 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
                     layout
                     variants={variants.listItem}
                     style={{
-                      background: "#1a1a2e", border: "1px solid #2d2d44",
+                      background: "#111A2E", border: "1px solid #22304D",
                       borderRadius: 10, padding: "10px 14px",
                       display: "flex", alignItems: "center", gap: 10,
                     }}
                   >
-                    <MessageSquare size={15} style={{ color: "#6366f1", flexShrink: 0 }} />
+                    <MessageSquare size={15} style={{ color: "#2563EB", flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ color: "#e2e8f0", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title || c.id}</div>
                       <div style={{ color: "#64748b", fontSize: 11, marginTop: 2 }}>{c.status}</div>
