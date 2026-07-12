@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
-from typing import TYPE_CHECKING, Optional
+from functools import lru_cache
+from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
     pass
@@ -15,6 +17,23 @@ from minder.core.agents.prompts.reminders import append_nudge
 from minder.db.sync import run_sync
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=128)
+def _func_accepts_delta(func: Callable) -> bool:
+    """True if `func` accepts an ``on_content_delta`` keyword (or **kwargs)."""
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    if "on_content_delta" in params:
+        return True
+    return any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
+def _call_llm_accepts_delta(bound_method: Callable) -> bool:
+    """Signature check for a (possibly bound) ``call_llm``, cached per function."""
+    return _func_accepts_delta(getattr(bound_method, "__func__", bound_method))
 
 _ctx_logger = logging.getLogger("swecli.context_debug")
 
@@ -146,21 +165,31 @@ class IterationMixin:
                 ctx.ui_callback.on_interrupt()
             return LoopAction.BREAK
 
-    def _call_action_llm(self, agent, messages, task_monitor, thinking_visible):
+    def _call_action_llm(
+        self, agent, messages, task_monitor, thinking_visible, on_content_delta=None
+    ):
         """Call LLM for action phase. Uses llm_caller if available (TUI spinner), otherwise direct.
 
         Returns:
             Tuple of (response_dict, latency_ms)
         """
         if self._llm_caller:
+            # TUI path renders whole messages; token streaming is web-only.
             return self._llm_caller.call_llm_with_progress(
                 agent, messages, task_monitor, thinking_visible=thinking_visible
             )
         import time
 
+        # Pass the delta callback only when streaming is wanted AND the agent's
+        # call_llm actually accepts it — some agents (e.g. the main agent's
+        # LlmCallsMixin) keep the older non-streaming signature, and forwarding
+        # the kwarg to them raises TypeError mid-turn.
+        kwargs = {}
+        if on_content_delta is not None and _call_llm_accepts_delta(agent.call_llm):
+            kwargs["on_content_delta"] = on_content_delta
         start = time.monotonic()
         response = agent.call_llm(
-            messages, task_monitor=task_monitor, thinking_visible=thinking_visible
+            messages, task_monitor=task_monitor, thinking_visible=thinking_visible, **kwargs
         )
         latency = int((time.monotonic() - start) * 1000)
         return response, latency
@@ -307,8 +336,23 @@ class IterationMixin:
             message_count=len(ctx.messages),
             thinking_visible=thinking_visible,
         )
+        # Stream content tokens to UIs that opt in (web); each delta arrives
+        # as it is generated instead of after the full response.
+        on_content_delta = None
+        _cb = ctx.ui_callback
+        if (
+            _cb is not None
+            and getattr(_cb, "wants_stream_tokens", False)
+            and hasattr(_cb, "on_assistant_token")
+        ):
+            on_content_delta = _cb.on_assistant_token
+
         response, latency_ms = self._call_action_llm(
-            ctx.agent, ctx.messages, task_monitor, thinking_visible=thinking_visible
+            ctx.agent,
+            ctx.messages,
+            task_monitor,
+            thinking_visible=thinking_visible,
+            on_content_delta=on_content_delta,
         )
         debug_log("ReactExecutor", f"_call_action_llm returned, success={response.get('success')}")
         self._last_latency_ms = latency_ms

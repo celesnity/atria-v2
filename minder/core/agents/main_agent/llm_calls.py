@@ -177,6 +177,7 @@ class LlmCallsMixin:
         messages: list[dict],
         task_monitor: Optional[Any] = None,
         thinking_visible: bool = True,
+        on_content_delta: Optional[Any] = None,
     ) -> dict:
         """Call LLM with tools for action phase.
 
@@ -184,6 +185,9 @@ class LlmCallsMixin:
             messages: Conversation messages
             task_monitor: Optional monitor for tracking progress
             thinking_visible: If False, excludes think tool from schemas
+            on_content_delta: When set (and the client supports it), the
+                request streams via SSE and each content delta is forwarded
+                here as it arrives; the returned dict is unchanged in shape.
 
         Returns:
             Dict with success status, content, tool_calls, etc.
@@ -206,6 +210,8 @@ class LlmCallsMixin:
         if fallback and fallback != model_id:
             candidates.append(fallback)
 
+        use_stream = on_content_delta is not None and hasattr(http_client, "stream_json")
+
         last_error = "Unknown error"
         for idx, candidate in enumerate(candidates):
             has_next = idx < len(candidates) - 1
@@ -217,6 +223,30 @@ class LlmCallsMixin:
                 **build_temperature_param(candidate, self.config.temperature),
                 **build_max_tokens_param(candidate, self.config.max_tokens),
             }
+
+            if use_stream:
+                stream = http_client.stream_json(
+                    payload, task_monitor=task_monitor, on_content_delta=on_content_delta
+                )
+                if stream.interrupted:
+                    return {
+                        "success": False,
+                        "error": stream.error or "Interrupted",
+                        "interrupted": True,
+                    }
+                if not stream.success:
+                    last_error = stream.error or "Unknown error"
+                    can_fallback = has_next and stream.emitted == 0
+                    if can_fallback:
+                        _logger.warning(
+                            "Streaming LLM call failed on %s (%s); falling back to %s",
+                            candidate,
+                            last_error,
+                            candidates[idx + 1],
+                        )
+                        continue
+                    return {"success": False, "error": last_error}
+                return self._build_llm_result(stream.data or {}, candidate, idx, task_monitor)
 
             result = http_client.post_json(payload, task_monitor=task_monitor)
 
@@ -259,33 +289,46 @@ class LlmCallsMixin:
                 return {"success": False, "error": last_error}
 
             response_data = response.json()
-            choice = response_data["choices"][0]
-            message_data = choice["message"]
-
-            raw_content = message_data.get("content")
-            cleaned_content = self._response_cleaner.clean(raw_content) if raw_content else None
-
-            # Extract reasoning_content for OpenAI reasoning models (o1, o3, etc.)
-            # This is the native thinking/reasoning trace from models like o1-preview
-            reasoning_content = message_data.get("reasoning_content")
-
-            if task_monitor and "usage" in response_data:
-                usage = response_data["usage"]
-                total_tokens = usage.get("total_tokens", 0)
-                if total_tokens > 0:
-                    task_monitor.update_tokens(total_tokens)
-
-            if idx > 0:
-                _logger.info("LLM call succeeded on fallback model %s", candidate)
-
-            return {
-                "success": True,
-                "message": message_data,
-                "content": cleaned_content,
-                "tool_calls": message_data.get("tool_calls"),
-                "reasoning_content": reasoning_content,  # Native thinking trace from model
-                "usage": response_data.get("usage"),
-                "model_used": candidate,
-            }
+            return self._build_llm_result(response_data, candidate, idx, task_monitor)
 
         return {"success": False, "error": last_error}
+
+    def _build_llm_result(
+        self,
+        response_data: dict,
+        candidate: str,
+        idx: int,
+        task_monitor: Optional[Any],
+    ) -> dict:
+        """Assemble call_llm's result dict from a Chat Completions body.
+
+        Shared by the blocking and streaming paths — stream_json returns the
+        same body shape as a non-streaming response.
+        """
+        choice = response_data["choices"][0]
+        message_data = choice["message"]
+
+        raw_content = message_data.get("content")
+        cleaned_content = self._response_cleaner.clean(raw_content) if raw_content else None
+
+        # Extract reasoning_content for OpenAI reasoning models (o1, o3, etc.)
+        reasoning_content = message_data.get("reasoning_content")
+
+        if task_monitor and "usage" in response_data:
+            usage = response_data["usage"]
+            total_tokens = usage.get("total_tokens", 0)
+            if total_tokens > 0:
+                task_monitor.update_tokens(total_tokens)
+
+        if idx > 0:
+            _logger.info("LLM call succeeded on fallback model %s", candidate)
+
+        return {
+            "success": True,
+            "message": message_data,
+            "content": cleaned_content,
+            "tool_calls": message_data.get("tool_calls"),
+            "reasoning_content": reasoning_content,
+            "usage": response_data.get("usage"),
+            "model_used": candidate,
+        }
