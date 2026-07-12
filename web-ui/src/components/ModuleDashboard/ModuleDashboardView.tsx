@@ -75,20 +75,6 @@ export function ModuleDashboardView({ moduleName }: ModuleDashboardViewProps) {
   if (summary?.remote) {
     return (
       <div className="flex h-full w-full flex-col bg-bg-000">
-        <header className="flex items-center gap-3 px-4 py-2 border-b border-border-300/15 bg-bg-100">
-          <button
-            type="button"
-            onClick={closeDashboard}
-            className="flex items-center gap-1.5 text-xs text-text-300 hover:text-text-100 transition-colors"
-            aria-label="Back to chat"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
-          </button>
-          <span className="text-sm text-text-100">{title}</span>
-        </header>
-        {/* min-h-0: without it a flex child keeps min-height:auto and grows to
-            content height, so overflow-auto never scrolls (the panel overflows
-            the viewport instead). This also lets the remote's height:100% resolve. */}
         <div className="flex-1 min-h-0 overflow-auto">
           <RemoteDashboard summary={summary as any} activeTab={activeTabId} />
         </div>
