@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="blocks/v4.css" />
   <style>
     /* ── Marlow Bay design tokens (claude.ai/design "Modern map application
          design"). Explicit data-theme beats the system preference: the media
@@ -73,27 +74,63 @@
     @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     @keyframes dots { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
     @keyframes pinDrop { from { opacity: 0; transform: translateY(-9px); } to { opacity: 1; transform: none; } }
+    @keyframes orbP { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 
-    .app { display: flex; width: 100vw; height: 100vh; background: var(--bg); }
+    .app { position: relative; width: 100vw; height: 100vh; background: var(--bg); overflow: hidden; }
 
-    /* ── Sidebar ─────────────────────────────────────────────────────── */
-    .sidebar {
-      width: 376px; flex: none; display: flex; flex-direction: column; min-height: 0;
-      background: var(--surface); border-right: 1px solid var(--line);
-      box-shadow: var(--sh2); z-index: 30;
-      transition: background-color .35s;
+    /* ── Floating agent panel (v3: draggable + collapsible, over a full-bleed map) ── */
+    .agent-panel {
+      position: absolute; left: 16px; top: 16px; z-index: 1005;
+      width: min(400px, calc(100vw - 32px));
+      height: min(624px, calc(100vh - 32px));
+      display: flex; flex-direction: column; min-height: 0;
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 22px; box-shadow: var(--sh); overflow: hidden;
+      animation: scaleIn .25s ease both; transition: background-color .35s;
     }
-    .brand-row { display: flex; align-items: center; gap: 9px; padding: 15px 16px 10px; }
-    .brand {
-      font: 700 25px 'Baloo 2', ui-rounded, system-ui; letter-spacing: .2px;
-      color: var(--ink); line-height: 1;
+    .agent-panel.collapsed { display: none; }
+    .ap-head {
+      flex: none; display: flex; align-items: center; gap: 9px;
+      padding: 13px 14px 11px; cursor: grab; user-select: none;
+      border-bottom: 1px solid var(--line); touch-action: none;
     }
-    .brand em { font-style: normal; color: var(--accent); }
+    .ap-head:active { cursor: grabbing; }
+    .ap-orb {
+      width: 34px; height: 34px; flex: none; border-radius: 50%; color: #fff; font-size: 16px;
+      background: radial-gradient(circle at 32% 28%, #b9a5ec, var(--ai) 70%);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(122, 95, 208, .4); animation: orbP 3s ease-in-out infinite;
+    }
+    .ap-titles { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .ap-brand { font: 700 19px 'Baloo 2', ui-rounded, system-ui; color: var(--ink); line-height: 1.15; }
+    .ap-brand em { font-style: normal; color: var(--accent); }
+    .ap-status { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .locale-pill {
-      font-size: 11px; font-weight: 700; color: var(--muted);
+      font-size: 10.5px; font-weight: 700; color: var(--muted); flex: none;
       background: var(--surface2); border: 1px solid var(--line);
-      border-radius: 999px; padding: 3px 10px;
+      border-radius: 999px; padding: 3px 9px;
     }
+    .ap-min {
+      flex: none; width: 27px; height: 27px; border-radius: 50%; border: 0;
+      background: var(--surface2); color: var(--muted); font-size: 17px; line-height: 1; cursor: pointer;
+      transition: color .2s, background-color .2s;
+    }
+    .ap-min:hover { color: var(--ink); background: var(--line); }
+    .ap-tabs { flex: none; display: flex; align-items: center; gap: 6px; padding: 9px 12px 3px; }
+    .ap-tab {
+      border: 1.4px solid var(--line); background: var(--surface); color: var(--muted);
+      border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: color .2s, border-color .2s, background-color .2s;
+    }
+    .ap-tab:hover { color: var(--ink); }
+    .ap-tab.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .ap-tab-reset {
+      margin-left: auto; width: 28px; height: 28px; border-radius: 50%;
+      border: 1.4px solid var(--line); background: var(--surface); color: var(--muted);
+      font-size: 14px; cursor: pointer; transition: color .2s;
+    }
+    .ap-tab-reset:hover { color: var(--ink); }
+    .ap-mode { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
     .omnibox {
       display: flex; align-items: center; gap: 8px; margin: 4px 16px 10px;
@@ -165,6 +202,17 @@
     .poi-open { font-size: 11px; color: var(--good); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .poi-chevron { color: var(--muted); font-size: 15px; flex: none; }
 
+    /* Top-3 / extras divider (mirrors the Jarvis reply grouping) */
+    .list-divider {
+      display: flex; align-items: center; gap: 8px;
+      margin: 11px 16px 5px; font-size: 10px; font-weight: 800;
+      letter-spacing: .4px; text-transform: uppercase; color: var(--muted);
+      animation: fadeUp .3s ease both;
+    }
+    .list-divider::before, .list-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--line);
+    }
+
     .empty-card {
       margin: 10px 16px; padding: 18px 14px; text-align: center;
       border: 1.6px dashed var(--line); border-radius: 16px; color: var(--muted);
@@ -224,10 +272,13 @@
       font-size: 10px; color: var(--muted);
     }
 
-    /* ── Map pane ────────────────────────────────────────────────────── */
-    .map-pane { flex: 1; position: relative; min-width: 0; overflow: hidden; }
+    /* ── Map pane (full-bleed; the agent panel floats over it) ─────────── */
+    .map-pane { position: absolute; inset: 0; overflow: hidden; }
     #map { position: absolute; inset: 0; background: var(--map); }
-    .leaflet-tile { filter: var(--tile-filter); }
+    /* Tint the whole tile PANE once (one composited layer) rather than every
+       512@2x tile individually — same warm look, far cheaper to repaint on
+       pan/zoom. Markers live in a separate pane, so they stay untinted. */
+    .leaflet-tile-pane { filter: var(--tile-filter); }
     .leaflet-container { background: var(--map); font-family: 'Nunito', sans-serif; }
 
     .map-btn {
@@ -238,7 +289,10 @@
       transition: transform .15s, background-color .2s;
     }
     .map-btn:hover { transform: translateY(-1px); background: var(--surface2); }
-    .map-ctl-top { position: absolute; top: 14px; right: 14px; z-index: 1001; }
+    .map-ctl-top {
+      position: absolute; top: 14px; right: 14px; z-index: 1001;
+      display: flex; flex-direction: column; gap: 6px;
+    }
     .zoom-ctl {
       position: absolute; right: 14px; bottom: 96px; z-index: 1001;
       display: flex; flex-direction: column; gap: 6px;
@@ -273,7 +327,7 @@
     .poi-pin {
       width: 27px; height: 27px; border-radius: 50% 50% 50% 4px;
       transform: rotate(-45deg); border: 2.5px solid var(--pin-border);
-      box-shadow: 0 3px 9px rgba(0, 0, 0, .28);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .3);
       display: flex; align-items: center; justify-content: center;
       transition: transform .15s;
     }
@@ -308,6 +362,20 @@
       border-radius: 50%; animation: ping 1.8s ease-out infinite; pointer-events: none;
     }
 
+    /* ── User GPS marker ("you are here") — blue, distinct from every other pin ── */
+    .user-divicon { background: transparent; border: 0; }
+    .user-dot {
+      position: relative; width: 16px; height: 16px; border-radius: 50%;
+      background: #2f7fe0; border: 2.5px solid #fff;
+      box-shadow: 0 0 0 2px rgba(47, 127, 224, .45), 0 2px 8px rgba(47, 127, 224, .5);
+    }
+    .user-dot::after {
+      content: ''; position: absolute; inset: -9px; border: 2px solid #2f7fe0;
+      border-radius: 50%; animation: ping 1.8s ease-out infinite; pointer-events: none;
+    }
+    .map-btn.locating { color: var(--accent-ink); }
+    .map-btn.on { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
+
     /* ── Jarvis popover + FAB ───────────────────────────────────────── */
     #jarvisFab {
       position: absolute; right: 16px; bottom: 18px; z-index: 1002;
@@ -324,31 +392,6 @@
       display: none;
     }
     #jarvisFab.has-unread .unread { display: block; }
-
-    #jarvisPopover {
-      position: absolute; right: 16px; bottom: 88px; z-index: 1003;
-      width: 372px; max-width: calc(100% - 32px); height: 478px; max-height: calc(100% - 110px);
-      display: none; flex-direction: column;
-      background: var(--surface); border: 1px solid var(--line);
-      border-radius: 22px; box-shadow: var(--sh); overflow: hidden;
-    }
-    #jarvisPopover.open { display: flex; animation: scaleIn .25s ease both; }
-    .pop-head {
-      flex: none; display: flex; align-items: center; gap: 9px;
-      padding: 12px 14px; border-bottom: 1px solid var(--line);
-    }
-    .pop-avatar {
-      width: 30px; height: 30px; border-radius: 50%; flex: none;
-      background: var(--ai); color: #fff; font-size: 14px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .pop-title { font: 700 15px 'Baloo 2', ui-rounded, system-ui; color: var(--ink); line-height: 1.1; }
-    .pop-sub { font-size: 10.5px; color: var(--muted); }
-    .pop-close {
-      margin-left: auto; border: 0; background: transparent; color: var(--muted);
-      font-size: 15px; cursor: pointer; padding: 4px; line-height: 1;
-    }
-    .pop-close:hover { color: var(--ink); }
 
     .msgs {
       flex: 1; min-height: 0; overflow-y: auto; padding: 12px;
@@ -421,78 +464,79 @@
     .composer button:disabled { opacity: .5; cursor: default; }
 
     @media (max-width: 760px) {
-      .app { flex-direction: column; }
-      .sidebar { width: auto; height: 44vh; }
-      #jarvisPopover { width: calc(100vw - 24px); right: 12px; max-height: 60vh; }
+      .agent-panel {
+        left: 12px; right: 12px; top: 12px; width: auto;
+        height: min(72vh, calc(100vh - 24px));
+      }
     }
     @media (prefers-reduced-motion: reduce) {
-      #jarvisFab { animation: none; }
+      #jarvisFab, .ap-orb { animation: none; }
       .ai-pin-ring { animation: none; opacity: 0; }
-      .ai-wrap, .msg, .poi-card, #detailView, .empty-card { animation: none; }
-      #jarvisPopover.open { animation: none; }
+      .ai-wrap, .msg, .poi-card, #detailView, .empty-card, .agent-panel { animation: none; }
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar">
-      <div class="brand-row">
-        <span class="brand">Jarvis Map<em>&deg;</em></span>
-        <span class="locale-pill">Vi&#7879;t Nam</span>
-      </div>
-
-      <div class="omnibox">
-        <span class="glyph" aria-hidden="true">&#10022;</span>
-        <input id="search" type="text" placeholder="T&#236;m &#273;&#7883;a &#273;i&#7875;m&#8230; (vd: cafe q1)" autocomplete="off" />
-        <button id="clearSearch" class="clear-btn" aria-label="Clear search">&#10005;</button>
-      </div>
-
-      <div id="legend" class="chips"></div>
-      <div class="divider"></div>
-
-      <div class="side-scroll">
-        <section id="exploreView">
-          <div class="list-head">
-            <span id="listTitle">Kh&#225;m ph&#225; / Explore</span>
-            <span id="count" class="count-line">Loading&#8230;</span>
-          </div>
-          <div id="poiList"></div>
-          <div id="emptyState" class="empty-card" style="display:none">
-            <div>Kh&#244;ng t&#236;m th&#7845;y &#273;&#7883;a &#273;i&#7875;m n&#224;o. / Nothing matches.</div>
-            <button id="emptyAsk">&#10022; H&#7887;i Jarvis / Ask Jarvis</button>
-          </div>
-        </section>
-
-        <section id="detailView" style="display:none">
-          <button id="detailBack" class="back-pill">&#8249; Quay l&#7841;i / Back</button>
-          <div id="detailBody"></div>
-        </section>
-      </div>
-
-      <div class="side-foot">Tasco &middot; Jarvis Map &mdash; d&#7919; li&#7879;u b&#7843;n &#273;&#7891; &copy; OpenStreetMap</div>
-    </aside>
-
     <div class="map-pane">
       <div id="map" role="application" aria-label="Map of Vietnam places"></div>
 
       <div class="map-ctl-top">
+        <button id="basemapToggle" class="map-btn" aria-label="Switch basemap" title="Đổi nền bản đồ / Basemap">&#128506;</button>
         <button id="themeToggle" class="map-btn" aria-label="Toggle dark mode">&#9790;</button>
       </div>
       <div class="zoom-ctl">
+        <button id="locateMe" class="map-btn" aria-label="Use my location" title="Vi tri cua toi / My location">&#9678;</button>
         <button id="zoomIn" class="map-btn" aria-label="Zoom in">+</button>
         <button id="zoomOut" class="map-btn" aria-label="Zoom out">&#8722;</button>
       </div>
+    </div>
 
-      <div id="jarvisPopover" role="dialog" aria-label="Jarvis chat">
-        <div class="pop-head">
-          <span class="pop-avatar" aria-hidden="true">&#10022;</span>
-          <span>
-            <span class="pop-title">Jarvis</span><br>
-            <span class="pop-sub" id="jarvisStatus">bi&#7871;t &#273;&#7883;a &#273;i&#7875;m Vi&#7879;t Nam</span>
-          </span>
-          <button class="pop-close" id="jarvisReset" aria-label="New chat" title="Cu&#7897;c tr&#242; chuy&#7879;n m&#7899;i">&#8635;</button>
-          <button class="pop-close" id="jarvisClose" aria-label="Close chat">&#10005;</button>
+    <aside id="agentPanel" class="agent-panel" aria-label="Jarvis agent">
+      <div class="ap-head" id="apHead">
+        <span class="ap-orb" aria-hidden="true">&#10022;</span>
+        <span class="ap-titles">
+          <span class="ap-brand">Jarvis Map<em>&deg;</em></span>
+          <span class="ap-status" id="jarvisStatus">bi&#7871;t &#273;&#7883;a &#273;i&#7875;m Vi&#7879;t Nam</span>
+        </span>
+        <span class="locale-pill">Vi&#7879;t Nam</span>
+        <button class="ap-min" id="panelMin" aria-label="Thu g&#7885;n / Minimize" title="Thu g&#7885;n">&#8211;</button>
+      </div>
+
+      <div class="ap-tabs">
+        <button id="tabExplore" class="ap-tab on">&#128269; Kh&#225;m ph&#225;</button>
+        <button id="tabChat" class="ap-tab">&#10022; Jarvis</button>
+        <button class="ap-tab-reset" id="jarvisReset" aria-label="New chat" title="Cu&#7897;c tr&#242; chuy&#7879;n m&#7899;i">&#8635;</button>
+      </div>
+
+      <div id="exploreMode" class="ap-mode">
+        <div class="omnibox">
+          <span class="glyph" aria-hidden="true">&#10022;</span>
+          <input id="search" type="text" placeholder="T&#236;m &#273;&#7883;a &#273;i&#7875;m&#8230; (vd: cafe q1)" autocomplete="off" />
+          <button id="clearSearch" class="clear-btn" aria-label="Clear search">&#10005;</button>
         </div>
+        <div id="legend" class="chips"></div>
+        <div class="side-scroll">
+          <section id="exploreView">
+            <div class="list-head">
+              <span id="listTitle">Kh&#225;m ph&#225; / Explore</span>
+              <span id="count" class="count-line">Loading&#8230;</span>
+            </div>
+            <div id="poiList"></div>
+            <div id="emptyState" class="empty-card" style="display:none">
+              <div>Kh&#244;ng t&#236;m th&#7845;y &#273;&#7883;a &#273;i&#7875;m n&#224;o. / Nothing matches.</div>
+              <button id="emptyAsk">&#10022; H&#7887;i Jarvis / Ask Jarvis</button>
+            </div>
+          </section>
+
+          <section id="detailView" style="display:none">
+            <button id="detailBack" class="back-pill">&#8249; Quay l&#7841;i / Back</button>
+            <div id="detailBody"></div>
+          </section>
+        </div>
+      </div>
+
+      <div id="chatMode" class="ap-mode" style="display:none">
         <div id="msgs" class="msgs" role="log" aria-live="polite">
           <div class="msg ai">Xin ch&#224;o! T&#244;i l&#224; Jarvis &#8212; h&#7887;i t&#244;i v&#7873; &#273;&#7883;a &#273;i&#7875;m &#7903; TP.HCM, H&#224; N&#7897;i hay &#272;&#224; N&#7861;ng. / Ask me about places in Vietnam.</div>
         </div>
@@ -502,12 +546,16 @@
           <button id="chatSend" aria-label="Send">&#8594;</button>
         </div>
       </div>
-      <button id="jarvisFab" aria-label="M&#7903; Jarvis chat" aria-expanded="false">&#10022;<span class="unread"></span></button>
-    </div>
+
+      <div class="side-foot">Tasco &middot; Jarvis Map &mdash; d&#7919; li&#7879;u b&#7843;n &#273;&#7891; &copy; Mapbox / OpenStreetMap</div>
+    </aside>
+
+    <button id="jarvisFab" aria-label="M&#7903; Jarvis" aria-expanded="true" style="display:none">&#10022;<span class="unread"></span></button>
   </div>
 
   <script src="__bridge.js"></script>
   <script src="vendor/leaflet/leaflet-global.js"></script>
+  <script src="blocks/v4.js"></script>
   <script>
   (function () {
     'use strict';
@@ -546,7 +594,6 @@
     var sessionId = null;      // Jarvis chat session
     var busy = false;
     var selectedPoi = null;    // poi shown in the detail view
-    var popoverOpen = false;
     var themeMode = null;      // null = follow system; 'light'|'dark' = explicit
 
     var $ = function (id) { return document.getElementById(id); };
@@ -576,13 +623,33 @@
     var map = new L.LeafletMap('map', {
       center: [16.0, 106.5], zoom: 6, minZoom: 4, maxZoom: 19, zoomControl: false,
     });
-    new L.TileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    // Default basemap: CARTO Voyager — clean modern cartography over the same
+    // open data, a clear upgrade on raw OSM tiles. Auto-swaps to Google tiles
+    // when the Map Tiles API is available (see setBasemap).
+    var CARTO_URL = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+    var CARTO_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    var baseLayer = new L.TileLayer(CARTO_URL, { maxZoom: 20, attribution: CARTO_ATTR }).addTo(map);
+    // Mapbox raster tiles (Styles API) — the PRIMARY basemap when a token is present
+    // in .env (fetched at runtime via mapbox.py; see loadMapbox). The CARTO layer
+    // above stays as the offline / no-token fallback. The cream --tile-filter warms
+    // whatever tiles load toward the Marlow Bay palette.
+    var mapboxKey = null;
+    var mapboxStyle = 'mapbox/light-v11';
+    var MAPBOX_ATTR = '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    function mapboxTileUrl() {
+      // mapboxStyle is "user/style_id" (e.g. "mapbox/light-v11").
+      // Only request @2x (1024px) tiles on hi-DPI screens; on DPR-1 desktops a
+      // 512px tile is pixel-perfect, so @2x would be 4x the decode + filter area
+      // for no visual gain — a big pan/zoom saving.
+      var hi = (window.devicePixelRatio || 1) > 1.25;
+      return 'https://api.mapbox.com/styles/v1/' + mapboxStyle
+        + '/tiles/512/{z}/{x}/{y}' + (hi ? '@2x' : '')
+        + '?access_token=' + encodeURIComponent(mapboxKey);
+    }
     aiLayer = new L.LayerGroup().addTo(map);
     var routeLayer = new L.LayerGroup().addTo(map);   // dashed navigation line
     var anchorLayer = new L.LayerGroup().addTo(map);  // proximity/nav reference
+    var userLayer = new L.LayerGroup().addTo(map);    // GPS "you are here"
     function accentColor() {
       return (getComputedStyle(document.documentElement)
         .getPropertyValue('--accent') || '#e2683f').trim();
@@ -607,6 +674,285 @@
     }
     $('zoomIn').addEventListener('click', function () { map.zoomIn(); });
     $('zoomOut').addEventListener('click', function () { map.zoomOut(); });
+
+    /* ── GPS current location ──────────────────────────────────────────
+       userLoc is the user's real position (distinct from the map viewport,
+       which is only where the map is looking). When set it is sent to Jarvis
+       as user_location and takes precedence over the viewport for "near me"
+       distance ranking. Fully optional: denial/error keeps prior behaviour. */
+    var userLoc = null;
+    function makeUserIcon() {
+      return new L.DivIcon({
+        html: '<div class="user-dot"></div>', className: 'user-divicon',
+        iconSize: [16, 16], iconAnchor: [8, 8],
+      });
+    }
+    function showUserMarker(lat, lng) {
+      userLayer.clearLayers();
+      var m = new L.Marker([lat, lng], { icon: makeUserIcon(), zIndexOffset: 700 });
+      m.bindPopup(new L.Popup().setContent(
+        '<div class="poi-popup"><b>Vị trí của bạn</b><br><small>Your location</small></div>'));
+      userLayer.addLayer(m);
+    }
+    function locateMe() {
+      var btn = $('locateMe');
+      if (!navigator.geolocation) {
+        AtriaDash.toast({ message: 'Trình duyệt không hỗ trợ định vị / Geolocation unavailable', severity: 'info' });
+        return;
+      }
+      btn.classList.add('locating');
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        btn.classList.remove('locating');
+        btn.classList.add('on');
+        userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        showUserMarker(userLoc.lat, userLoc.lng);
+        map.setView([userLoc.lat, userLoc.lng], Math.max(map.getZoom(), 14));
+        AtriaDash.toast({ message: 'Đã xác định vị trí — hỏi "gần tôi" để tìm quanh đây', severity: 'success' });
+      }, function (err) {
+        btn.classList.remove('locating');
+        var msg = err && err.code === 1
+          ? 'Bạn đã từ chối chia sẻ vị trí / Location permission denied'
+          : 'Không lấy được vị trí / Could not get your location';
+        AtriaDash.toast({ message: msg, severity: 'info' });
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+    }
+    $('locateMe').addEventListener('click', locateMe);
+
+    /* ── Google Maps JS SDK (browser) — OPTIONAL enhancement ───────────────
+       The referrer-restricted key is fetched from .env at runtime (never baked
+       into the committed HTML) and injected here. It currently powers real
+       Directions routes; the OSM basemap and every existing behaviour stay put
+       and are the fallback whenever Google is unavailable (no key, billing off,
+       or this origin isn't in the key's referrer allow-list). On an auth failure
+       the exact Google error (BillingNotEnabled / RefererNotAllowed /
+       ApiNotActivated / InvalidKey) is surfaced in a toast so it's diagnosable
+       from the real serving origin. */
+    var googleReady = false;
+    var gmapsError = null;
+    var gmapsKey = null;
+    var gDirections = null;
+    window.gm_authFailure = function () {
+      googleReady = false;
+      AtriaDash.toast({ message: 'Google Maps: ' + (gmapsError || 'auth failed') + ' — dùng bản đồ OSM', severity: 'error' });
+    };
+    (function captureGmapsError() {
+      var orig = console.error ? console.error.bind(console) : function () {};
+      console.error = function () {
+        var s = Array.prototype.join.call(arguments, ' ');
+        var m = s.match(/([A-Za-z]+MapError|BillingNotEnabled|RefererNotAllowed|ApiNotActivated|InvalidKey)/);
+        if (m) gmapsError = m[1];
+        orig.apply(null, arguments);
+      };
+    })();
+    window.__gmapsInit = function () {
+      googleReady = true;
+      // Google powers OPTIONAL Directions/Places only; the Mapbox (or CARTO)
+      // basemap stays the default and is never auto-replaced.
+    };
+    function loadGoogleMaps() {
+      AtriaDash.json('gmaps.py', ['config']).then(function (cfg) {
+        if (!cfg || !cfg.key_present || !cfg.key) return;   // no key -> stay on OSM
+        gmapsKey = cfg.key;
+        var s = document.createElement('script');
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(cfg.key)
+          + '&libraries=' + encodeURIComponent(cfg.libraries || 'places,geometry')
+          + '&region=' + encodeURIComponent(cfg.region || 'vn')
+          + '&language=' + encodeURIComponent(cfg.language || 'vi')
+          + '&loading=async&callback=__gmapsInit';
+        s.async = true;
+        s.onerror = function () { AtriaDash.toast({ message: 'Không tải được Google Maps SDK', severity: 'error' }); };
+        document.head.appendChild(s);
+      }).catch(function () { /* offline / bridge error -> stay on OSM */ });
+    }
+
+    function drawStraightRoute(from, to) {
+      routeLayer.addLayer(new L.Polyline(
+        [[from.lat, from.lng], [to.lat, to.lng]],
+        { color: accentColor(), weight: 3, opacity: 0.85, dashArray: '8,9', lineCap: 'round' }));
+    }
+    function drawRoute(from, to) {
+      clearRoute();
+      if (!googleReady || !window.google || !google.maps) { drawStraightRoute(from, to); return; }
+      try {
+        if (!gDirections) gDirections = new google.maps.DirectionsService();
+        gDirections.route({
+          origin: { lat: from.lat, lng: from.lng },
+          destination: { lat: to.lat, lng: to.lng },
+          travelMode: google.maps.TravelMode.DRIVING,
+        }, function (result, status) {
+          if (status === 'OK' && result.routes && result.routes[0]) {
+            var path = result.routes[0].overview_path.map(function (p) { return [p.lat(), p.lng()]; });
+            routeLayer.addLayer(new L.Polyline(path,
+              { color: accentColor(), weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }));
+          } else {
+            drawStraightRoute(from, to);   // real route unavailable -> straight fallback
+            // Surface a config problem (e.g. Directions API not enabled) so a
+            // straight line isn't silently ambiguous. ZERO_RESULTS is a genuine
+            // "no road route" and stays quiet.
+            if (status && status !== 'ZERO_RESULTS') {
+              AtriaDash.toast({ message: 'Google Directions: ' + status + ' — dùng đường thẳng', severity: 'info' });
+            }
+          }
+        });
+      } catch (e) { drawStraightRoute(from, to); }
+    }
+
+    /* ── Google live Places + Geocoder (browser SDK) ───────────────────────
+       Used ONLY as a fallback when the local dataset returns nothing, so the
+       curated data stays the primary source and Google augments the long tail.
+       External results are clearly labelled. Chains: dataset miss -> Places
+       text search -> (if none) Geocoder for a bare address. Any Google error
+       (e.g. the Places API itself not enabled) degrades to the plain not-found
+       toast, carrying Google's status so it's diagnosable. */
+    var gPlaces = null;
+    var gGeocoder = null;
+    function notFound(q, status) {
+      var extra = status && status !== 'ZERO_RESULTS' ? ' (Google: ' + status + ')' : '';
+      AtriaDash.toast({ message: 'Không tìm thấy "' + q + '"' + extra, severity: 'info' });
+    }
+    function googlePlacesFallback(q) {
+      if (!googleReady || !window.google || !google.maps || !google.maps.places) {
+        notFound(q); return;
+      }
+      try {
+        if (!gPlaces) gPlaces = new google.maps.places.PlacesService(document.createElement('div'));
+        var o = userLoc || map.getCenter();
+        gPlaces.textSearch({
+          query: q, location: new google.maps.LatLng(o.lat, o.lng), radius: 20000,
+        }, function (results, status) {
+          if (status !== google.maps.places.PlacesServiceStatus.OK || !results || !results.length) {
+            googleGeocodeFallback(q, status);   // no places -> try a bare address
+            return;
+          }
+          var items = results.slice(0, 10).map(function (r, i) {
+            return {
+              n: i + 1, poi_id: 'gpl' + i, name: r.name,
+              lat: r.geometry.location.lat(), lng: r.geometry.location.lng(),
+              rating: r.rating || '',
+              detail: (r.formatted_address || '') + ' · Google Places (external)',
+              external: true,
+            };
+          });
+          applyActions([{ type: 'pins', items: items, fit: true }]);
+          $('listTitle').textContent = 'Google Places · external';
+          AtriaDash.toast({ message: items.length + ' kết quả từ Google Places (external)', severity: 'success' });
+        });
+      } catch (e) { notFound(q); }
+    }
+    function googleGeocodeFallback(q, placesStatus) {
+      if (!googleReady || !window.google || !google.maps || !google.maps.Geocoder) {
+        notFound(q, placesStatus); return;
+      }
+      try {
+        if (!gGeocoder) gGeocoder = new google.maps.Geocoder();
+        gGeocoder.geocode({ address: q, region: 'vn' }, function (results, status) {
+          if (status === 'OK' && results && results[0]) {
+            var loc = results[0].geometry.location;
+            clearRoute();
+            dropAnchor(loc.lat(), loc.lng(), results[0].formatted_address);
+            map.flyTo([loc.lat(), loc.lng()], 15);
+            $('listTitle').textContent = 'Google · external';
+            AtriaDash.toast({ message: 'Vị trí từ Google: ' + results[0].formatted_address, severity: 'success' });
+          } else {
+            notFound(q, placesStatus || status);
+          }
+        });
+      } catch (e) { notFound(q, placesStatus); }
+    }
+
+    /* ── Basemap switcher — real Google tiles via the Map Tiles API ─────────
+       The Map Tiles API is a SEPARATELY-enabled Google API and needs a session
+       token, created here from the browser so the referrer key is accepted.
+       Only the tiles change — the POI data + overlays are untouched (Leaflet
+       keeps markers/routes in higher panes). If the Map Tiles API isn't enabled
+       the swap fails and we keep OSM, surfacing Google's status. The ◎ button
+       cycles OSM -> Google roadmap -> Google satellite. */
+    // Google Maps is an OPTIONAL enhancement layer (Directions/Places/Geocoder +
+    // Google basemap tiles). Disabled for now — flip this to true (and ensure
+    // GG_MAP_API_KEY is valid with billing on) to restore every Google feature.
+    // Nothing else needs changing: all Google code below self-gates on googleReady,
+    // which only turns true once loadGoogleMaps() runs.
+    var USE_GOOGLE = false;
+    var basemapMode = 'standard';
+    var gTileSessions = {};              // mapType -> session token (cached)
+    // When Google is off the ◎ button just cycles Mapbox <-> CARTO (no dead options).
+    var BASE_CYCLE = USE_GOOGLE ? ['mapbox', 'standard', 'roadmap', 'satellite']
+                                : ['mapbox', 'standard'];
+    var BASE_GLYPH = { mapbox: '🗺', standard: '🧭', roadmap: '🌍', satellite: '🛰' };
+
+    function makeBaseLayer(mode, session) {
+      if (mode === 'mapbox') {
+        return new L.TileLayer(mapboxTileUrl(),
+          { maxZoom: 20, tileSize: 512, zoomOffset: -1, attribution: MAPBOX_ATTR });
+      }
+      if (mode === 'roadmap' || mode === 'satellite') {
+        return new L.TileLayer(
+          'https://tile.googleapis.com/v1/2dtiles/{z}/{x}/{y}?session=' + session
+          + '&key=' + encodeURIComponent(gmapsKey),
+          { maxZoom: 20, attribution: 'Imagery &copy; Google' });
+      }
+      return new L.TileLayer(CARTO_URL, { maxZoom: 20, attribution: CARTO_ATTR });
+    }
+    function swapBase(mode, session) {
+      var next = makeBaseLayer(mode, session);
+      next.addTo(map);
+      if (baseLayer) map.removeLayer(baseLayer);
+      baseLayer = next;
+      basemapMode = mode;
+      $('basemapToggle').textContent = BASE_GLYPH[mode] || BASE_GLYPH.standard;
+    }
+    function setBasemap(mode) {
+      if (mode === 'mapbox') {
+        if (!mapboxKey) { AtriaDash.toast({ message: 'Mapbox chưa sẵn sàng — dùng bản đồ mặc định', severity: 'info' }); return; }
+        swapBase('mapbox'); return;
+      }
+      if (mode === 'standard') { swapBase('standard'); return; }
+      if (!googleReady || !gmapsKey) {
+        AtriaDash.toast({ message: 'Google Maps chưa sẵn sàng — dùng bản đồ mặc định', severity: 'info' });
+        return;
+      }
+      var mapType = mode === 'satellite' ? 'satellite' : 'roadmap';
+      if (gTileSessions[mapType]) { swapBase(mode, gTileSessions[mapType]); return; }
+      fetch('https://tile.googleapis.com/v1/createSession?key=' + encodeURIComponent(gmapsKey), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mapType: mapType, language: 'vi-VN', region: 'VN',
+          layerTypes: mapType === 'satellite' ? ['layerRoadmap'] : undefined,
+        }),
+      }).then(function (r) { return r.json(); }).then(function (s) {
+        if (!s || !s.session) {
+          var st = (s && s.error && (s.error.status || s.error.message)) || 'no session';
+          AtriaDash.toast({ message: 'Google tiles: ' + st + ' — cần bật Map Tiles API', severity: 'info' });
+          return;
+        }
+        gTileSessions[mapType] = s.session;
+        swapBase(mode, s.session);
+        AtriaDash.toast({ message: mode === 'satellite' ? 'Google vệ tinh / satellite' : 'Google Maps', severity: 'success' });
+      }).catch(function () {
+        AtriaDash.toast({ message: 'Không tải được Google tiles — dùng OSM', severity: 'info' });
+      });
+    }
+    function cycleBasemap() {
+      var i = BASE_CYCLE.indexOf(basemapMode);
+      setBasemap(BASE_CYCLE[(i + 1) % BASE_CYCLE.length]);
+    }
+    $('basemapToggle').addEventListener('click', cycleBasemap);
+
+    /* ── Mapbox basemap (default when a token is in .env) ───────────────────
+       Fetched at runtime via the bridge so the token is never baked into the
+       served HTML. When present, Mapbox becomes the default basemap (swapping
+       out the initial CARTO layer); otherwise we stay on CARTO. Google, if it
+       loads, stays a background Directions/Places helper only. */
+    function loadMapbox() {
+      AtriaDash.json('mapbox.py', ['config']).then(function (cfg) {
+        if (!cfg || !cfg.key_present || !cfg.key) return;   // no token -> stay on CARTO
+        mapboxKey = cfg.key;
+        if (cfg.style) mapboxStyle = cfg.style;
+        swapBase('mapbox');   // make Mapbox the default basemap
+      }).catch(function () { /* offline / bridge error -> stay on CARTO */ });
+    }
+    loadMapbox();
+    if (USE_GOOGLE) loadGoogleMaps();   // disabled for now; flip USE_GOOGLE to restore
 
     function makeIcon(cat) {
       var c = CATS[cat] || { color: '#555', emoji: '' };
@@ -641,7 +987,13 @@
     /* ── Visibility: category chips + live filter + authoritative search.
          refresh() is the single authority — it also feeds the sidebar list,
          so markers and cards can never disagree. ── */
+    var _refreshTimer = null;
+    function scheduleRefresh() {          // debounce the heavy rebuild while typing
+      if (_refreshTimer) clearTimeout(_refreshTimer);
+      _refreshTimer = setTimeout(function () { _refreshTimer = null; refresh(); }, 140);
+    }
     function refresh() {
+      if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
       var visible = [];
       for (var i = 0; i < items.length; i++) {
         var it = items[i];
@@ -678,7 +1030,16 @@
         });
       }
       var frag = document.createDocumentFragment();
-      rows.forEach(function (p) {
+      rows.forEach(function (p, i) {
+        // Top-3 best first, then a labeled divider, then extras — mirrors the
+        // Jarvis chat reply. Only for an authoritative (score-ordered) search,
+        // where "best" is meaningful; the Explore browse list stays ungrouped.
+        if (searchOrder && i === 3 && rows.length > 3) {
+          var dv = document.createElement('div');
+          dv.className = 'list-divider';
+          dv.textContent = 'Gợi ý thêm / More suggestions';
+          frag.appendChild(dv);
+        }
         var c = CATS[p.category] || { color: '#555', emoji: '' };
         var card = document.createElement('div');
         card.className = 'poi-card';
@@ -699,9 +1060,11 @@
       list.appendChild(frag);
     }
 
-    /* ── Sidebar detail view ── */
+    /* ── Detail view (in the panel's Explore mode) ── */
     function openDetail(p) {
       selectedPoi = p;
+      expandPanel();        // a map-popup "Chi tiết" click must reveal the panel...
+      setMode('explore');   // ...in Explore mode where the detail view lives
       var c = CATS[p.category] || { label: p.category, emoji: '' };
       var body = $('detailBody');
       body.innerHTML =
@@ -810,7 +1173,8 @@
           if (res.anchor && res.anchor.lat != null) pts.push([res.anchor.lat, res.anchor.lng]);
           map.fitBounds(new L.LatLngBounds(pts), { padding: [46, 46], maxZoom: 15 });
         } else {
-          AtriaDash.toast({ message: 'No places found for "' + q + '"', severity: 'info' });
+          // Dataset miss -> augment with Google (live Places, then Geocoder).
+          googlePlacesFallback(q);
         }
         $('clearSearch').style.display = 'inline';
       }).catch(function (e) {
@@ -830,7 +1194,7 @@
       $('listTitle').textContent = 'Khám phá / Explore';
       $('clearSearch').style.display = e.target.value ? 'inline' : 'none';
       liveFilter = expandAbbrev(fold(e.target.value));
-      refresh();
+      scheduleRefresh();   // debounced: don't rebuild 301 markers+cards per keystroke
     });
     $('search').addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && e.target.value.trim()) runSearch(e.target.value.trim());
@@ -859,7 +1223,9 @@
               '<div class="poi-popup"><b>' + it.n + '. ' + esc(it.name) + '</b><br>' + stars + detail + '</div>'));
             aiLayer.addLayer(m);
             aiMarkerByN[it.n] = m;
-            activePins.push({ n: it.n, poi_id: it.poi_id, name: it.name });
+            // External (Google) pins aren't dataset POIs — keep them out of the
+            // chat-context pin list so they aren't sent back to jarvis_chat.
+            if (!it.external) activePins.push({ n: it.n, poi_id: it.poi_id, name: it.name });
           });
           if (a.fit !== false) {
             var b = new L.LatLngBounds(a.items.map(function (it) { return [it.lat, it.lng]; }));
@@ -868,10 +1234,7 @@
         } else if (a.type === 'focus' && a.lat != null) {
           map.flyTo([a.lat, a.lng], a.zoom || 15);
         } else if (a.type === 'route' && a.from && a.to) {
-          clearRoute();
-          routeLayer.addLayer(new L.Polyline(
-            [[a.from.lat, a.from.lng], [a.to.lat, a.to.lng]],
-            { color: accentColor(), weight: 3, opacity: 0.85, dashArray: '8,9', lineCap: 'round' }));
+          drawRoute(a.from, a.to);   // real Google route when connected, else straight line
           dropAnchor(a.to.lat, a.to.lng);
         } else if (a.type === 'clear') {
           if (a.what === 'ai' || a.what === 'all') clearAiPins();
@@ -880,23 +1243,80 @@
       });
     }
 
-    /* ── Jarvis popover ── */
-    function togglePopover(open) {
-      popoverOpen = open == null ? !popoverOpen : !!open;
-      $('jarvisPopover').classList.toggle('open', popoverOpen);
-      $('jarvisFab').setAttribute('aria-expanded', popoverOpen ? 'true' : 'false');
-      if (popoverOpen) {
+    /* ── Floating panel: collapse/expand + Explore⇄Chat mode + drag ──────
+       The v3 agent panel is one draggable surface with two modes. "Open Jarvis"
+       (from a detail card / empty-state) == expand + switch to chat. Collapsing
+       drops to the ✦ FAB. All the old contract IDs are preserved. */
+    var panelCollapsed = false;
+    var chatMode = false;
+    function chatVisible() { return !panelCollapsed && chatMode; }
+    function setMode(mode) {
+      chatMode = (mode === 'chat');
+      $('exploreMode').style.display = chatMode ? 'none' : 'flex';
+      $('chatMode').style.display = chatMode ? 'flex' : 'none';
+      $('tabExplore').classList.toggle('on', !chatMode);
+      $('tabChat').classList.toggle('on', chatMode);
+      if (chatMode) {
         $('jarvisFab').classList.remove('has-unread');
-        $('msgs').scrollTop = $('msgs').scrollHeight;
         renderSuggestions();
+        $('msgs').scrollTop = $('msgs').scrollHeight;
         $('chatInput').focus();
       }
     }
-    $('jarvisFab').addEventListener('click', function () { togglePopover(); });
-    $('jarvisClose').addEventListener('click', function () { togglePopover(false); });
+    function expandPanel() {
+      panelCollapsed = false;
+      $('agentPanel').classList.remove('collapsed');
+      $('jarvisFab').style.display = 'none';
+      $('jarvisFab').setAttribute('aria-expanded', 'true');
+    }
+    function collapsePanel() {
+      panelCollapsed = true;
+      $('agentPanel').classList.add('collapsed');
+      $('jarvisFab').style.display = 'flex';
+      $('jarvisFab').setAttribute('aria-expanded', 'false');
+    }
+    // Back-compat shim used by the detail card + empty state: open == chat mode.
+    function togglePopover(open) {
+      var want = open == null ? !chatVisible() : !!open;
+      if (want) { expandPanel(); setMode('chat'); }
+      else { setMode('explore'); }
+    }
+    $('tabExplore').addEventListener('click', function () { setMode('explore'); });
+    $('tabChat').addEventListener('click', function () { setMode('chat'); });
+    $('panelMin').addEventListener('click', collapsePanel);
+    $('jarvisFab').addEventListener('click', function () { expandPanel(); });
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && popoverOpen) togglePopover(false);
+      if (e.key === 'Escape' && chatVisible()) setMode('explore');
     });
+
+    /* Drag the panel by its header (pointer events; clamped to the viewport). */
+    (function enablePanelDrag() {
+      var panel = $('agentPanel'), head = $('apHead');
+      var dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      head.addEventListener('pointerdown', function (e) {
+        if (e.target.closest('button')) return;   // minimize button isn't a drag handle
+        dragging = true;
+        var r = panel.getBoundingClientRect();
+        ox = r.left; oy = r.top; sx = e.clientX; sy = e.clientY;
+        panel.style.right = 'auto'; panel.style.bottom = 'auto';
+        try { head.setPointerCapture(e.pointerId); } catch (x) {}
+      });
+      head.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var nx = ox + (e.clientX - sx), ny = oy + (e.clientY - sy);
+        var maxX = window.innerWidth - panel.offsetWidth - 6;
+        var maxY = window.innerHeight - panel.offsetHeight - 6;
+        panel.style.left = Math.max(6, Math.min(nx, maxX)) + 'px';
+        panel.style.top = Math.max(6, Math.min(ny, maxY)) + 'px';
+      });
+      function endDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        try { head.releasePointerCapture(e.pointerId); } catch (x) {}
+      }
+      head.addEventListener('pointerup', endDrag);
+      head.addEventListener('pointercancel', endDrag);
+    })();
 
     var SUGGESTIONS = ['cafe gần đây', 'nhà thuốc quận 1', 'chỉ đường đến chợ Bến Thành'];
     function renderSuggestions() {
@@ -943,7 +1363,9 @@
       }
       $('msgs').appendChild(div);
       $('msgs').scrollTop = $('msgs').scrollHeight;
-      if (kind === 'ai' && !popoverOpen) $('jarvisFab').classList.add('has-unread');
+      // Unread badge only matters while the chat isn't visible (panel collapsed
+      // to the FAB, or sitting in Explore mode).
+      if (kind === 'ai' && !chatVisible()) $('jarvisFab').classList.add('has-unread');
       renderSuggestions();
       return div;
     }
@@ -971,6 +1393,7 @@
         viewport: { lat: c.lat, lng: c.lng, zoom: map.getZoom() },
         pins: activePins,
       };
+      if (userLoc) payload.user_location = { lat: userLoc.lat, lng: userLoc.lng };
       AtriaDash.json('jarvis_chat.py', [], {
         stdin: JSON.stringify(payload), timeout_ms: 110000,
       }).then(function (res) {
@@ -1069,6 +1492,22 @@
     renderSuggestions();
     setTimeout(function () { map.invalidateSize(); }, 250);
     window.addEventListener('resize', function () { map.invalidateSize(); });
+
+    /* ── Marlow Bay Agent v4 ("new design", map-first) ─────────────────────
+       Everything new lives in blocks/v4.js+css; this is the only hand-off.
+       If the block script failed to load, the legacy dashboard runs exactly
+       as before. The toggle chip + body.design-v4 class + #legacy hash routing
+       + hiding the legacy panel all live inside the block. */
+    if (window.V4 && window.V4.loaded) {
+      V4.init({
+        map: map,
+        applyActionsLegacy: applyActions,
+        askJarvis: askJarvis,
+        esc: esc,
+        AtriaDash: AtriaDash,
+        userLoc: function () { return userLoc; },   // real device GPS, or null
+      });
+    }
   })();
   </script>
 </body>

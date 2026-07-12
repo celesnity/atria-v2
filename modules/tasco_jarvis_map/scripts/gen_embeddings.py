@@ -36,6 +36,11 @@ def _poi_text(raw: dict, cat: dict | None) -> str:
     category = raw.get("category", "")
     if cat:
         category = f"{cat['label']} ({cat['label_vi']})"
+    # sub_category carries the semantic head an implicit-category query keys on
+    # ("Rooftop"/"Resort"/"Phở") — put it next to the category so the vector
+    # binds those meanings even when they never appear in the POI name.
+    if raw.get("sub_category"):
+        category = f"{category} - {raw['sub_category']}"
     lines = [f"Name: {name}", f"Category: {category}"]
     if raw.get("brand"):
         lines.append(f"Brand: {raw['brand']}")
@@ -43,6 +48,17 @@ def _poi_text(raw: dict, cat: dict | None) -> str:
     lines.append(f"Address: {addr}")
     if raw.get("aliases"):
         lines.append(f"Aliases: {', '.join(raw['aliases'])}")
+    # Track-2 enrichment (accented — diacritics carry semantic signal). These are
+    # the amenity/description surfaces that make "quán yên tĩnh để làm việc" or
+    # "resort sang chảnh" retrievable by meaning rather than by name overlap.
+    attrs = raw.get("attributes") or []
+    tags = raw.get("tags") or []
+    if attrs:
+        lines.append(f"Attributes: {', '.join(attrs)}")
+    if tags:
+        lines.append(f"Tags: {', '.join(tags)}")
+    if raw.get("description"):
+        lines.append(f"Description: {raw['description']}")
     return "\n".join(lines)
 
 

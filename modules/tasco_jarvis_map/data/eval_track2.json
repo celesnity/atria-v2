@@ -1,0 +1,1409 @@
+{
+ "queries": [
+  {
+   "query_id": "P001",
+   "input_query": "qu\u00e1n c\u00e0 ph\u00ea y\u00ean t\u0129nh \u0111\u1ec3 l\u00e0m vi\u1ec7c",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C001",
+    "C004",
+    "C007"
+   ],
+   "expected_top_poi_names": [
+    "The Workshop Coffee",
+    "Tranquil Books & Coffee",
+    "WorkHub Cafe C\u1ea7u Gi\u1ea5y"
+   ],
+   "expected_semantic_requirements": [
+    "wifi",
+    "y\u00ean t\u0129nh",
+    "ph\u00f9 h\u1ee3p l\u00e0m vi\u1ec7c"
+   ],
+   "ranking_signals_to_use": [
+    "relevance",
+    "attributes",
+    "rating"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Attribute;Ranking"
+  },
+  {
+   "query_id": "P002",
+   "input_query": "cafe c\u00f3 wifi g\u1ea7n h\u1ed3 g\u01b0\u01a1m",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C003",
+    "C004"
+   ],
+   "expected_top_poi_names": [
+    "C\u1ed9ng C\u00e0 Ph\u00ea H\u1ed3 G\u01b0\u01a1m",
+    "Tranquil Books & Coffee"
+   ],
+   "expected_semantic_requirements": [
+    "qu\u00e1n c\u00e0 ph\u00ea",
+    "wifi",
+    "g\u1ea7n H\u1ed3 G\u01b0\u01a1m"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "attributes",
+    "relevance"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Location"
+  },
+  {
+   "query_id": "P003",
+   "input_query": "n\u01a1i ph\u00f9 h\u1ee3p \u0111\u1ec3 h\u1eb9n h\u00f2 \u1edf qu\u1eadn 1",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "R002",
+    "R008",
+    "C002"
+   ],
+   "expected_top_poi_names": [
+    "Pizza 4P's L\u00ea Th\u00e1nh T\u00f4n",
+    "Rooftop Sky Garden",
+    "Highlands Coffee Nguy\u1ec5n Hu\u1ec7"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00f4ng gian l\u00e3ng m\u1ea1n",
+    "Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "relevance",
+    "location",
+    "rating"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Semantic;Ranking"
+  },
+  {
+   "query_id": "P004",
+   "input_query": "nh\u00e0 h\u00e0ng cho gia \u0111\u00ecnh c\u00f3 tr\u1ebb nh\u1ecf",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R001",
+    "R010",
+    "R005"
+   ],
+   "expected_top_poi_names": [
+    "Nh\u00e0 h\u00e0ng Ngon 138",
+    "Nh\u00e0 h\u00e0ng Gia \u0110\u00ecnh Hoa Sen",
+    "B\u1ebfp Nh\u00e0 \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "ph\u00f9 h\u1ee3p gia \u0111\u00ecnh",
+    "tr\u1ebb em"
+   ],
+   "ranking_signals_to_use": [
+    "attributes",
+    "review",
+    "rating"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Attribute"
+  },
+  {
+   "query_id": "P005",
+   "input_query": "kh\u00e1ch s\u1ea1n g\u1ea7n bi\u1ec3n \u0111\u00e0 n\u1eb5ng c\u00f3 h\u1ed3 b\u01a1i",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H001",
+    "H002"
+   ],
+   "expected_top_poi_names": [
+    "Sea Pearl Hotel \u0110\u00e0 N\u1eb5ng",
+    "Ocean View Resort \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n \u0110\u00e0 N\u1eb5ng",
+    "g\u1ea7n bi\u1ec3n",
+    "h\u1ed3 b\u01a1i"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "attributes",
+    "rating"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Location;Attribute"
+  },
+  {
+   "query_id": "P006",
+   "input_query": "qu\u00e1n \u0103n m\u1edf c\u1eeda sau 11 gi\u1edd t\u1ed1i",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R006",
+    "R008"
+   ],
+   "expected_top_poi_names": [
+    "Qu\u00e1n \u0102n \u0110\u00eam 24h Nguy\u1ec5n Tr\u00e3i",
+    "Rooftop Sky Garden"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 h\u00e0ng/qu\u00e1n \u0103n m\u1edf khuya sau 23h"
+   ],
+   "ranking_signals_to_use": [
+    "opening_hours",
+    "relevance"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Time"
+  },
+  {
+   "query_id": "P007",
+   "input_query": "\u0111\u1ecba \u0111i\u1ec3m check-in \u0111\u1eb9p \u1edf \u0111\u00e0 l\u1ea1t",
+   "query_category": "Discovery Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A004",
+    "C006",
+    "H004"
+   ],
+   "expected_top_poi_names": [
+    "Qu\u1ea3ng tr\u01b0\u1eddng L\u00e2m Vi\u00ean",
+    "Dalat View Coffee",
+    "Dalat Garden Homestay"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111i\u1ec3m check-in",
+    "\u0110\u00e0 L\u1ea1t",
+    "view \u0111\u1eb9p"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "popularity",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Discovery;Semantic"
+  },
+  {
+   "query_id": "P008",
+   "input_query": "atm r\u00fat ti\u1ec1n 24/7 g\u1ea7n ph\u1ed1 \u0111i b\u1ed9 nguy\u1ec5n hu\u1ec7",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Nearby Search",
+   "expected_top_poi_ids": [
+    "S001"
+   ],
+   "expected_top_poi_names": [
+    "ATM Vietcombank Nguy\u1ec5n Hu\u1ec7"
+   ],
+   "expected_semantic_requirements": [
+    "ATM 24/7 g\u1ea7n Nguy\u1ec5n Hu\u1ec7"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Location;Attribute"
+  },
+  {
+   "query_id": "P009",
+   "input_query": "c\u00e2y x\u0103ng c\u00f3 toilet tr\u00ean \u0111\u01b0\u1eddng \u0111i h\u1ea1 long",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S003"
+   ],
+   "expected_top_poi_names": [
+    "Tr\u1ea1m x\u0103ng Petrolimex C\u1ea7u Gi\u1ea5y"
+   ],
+   "expected_semantic_requirements": [
+    "tr\u1ea1m x\u0103ng",
+    "toilet",
+    "24/7"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "relevance"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Synonym;Attribute"
+  },
+  {
+   "query_id": "P010",
+   "input_query": "tr\u1ea1m s\u1ea1c xe \u0111i\u1ec7n g\u1ea7n trung t\u00e2m \u0111\u00e0 n\u1eb5ng",
+   "query_category": "Category Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S004"
+   ],
+   "expected_top_poi_names": [
+    "Tr\u1ea1m s\u1ea1c EV One \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "g\u1ea7n trung t\u00e2m \u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Category;Location"
+  },
+  {
+   "query_id": "P011",
+   "input_query": "qu\u00e1n cafe h\u1ecdc b\u00e0i \u1edf ho\u00e0n ki\u1ebfm",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C004",
+    "C003"
+   ],
+   "expected_top_poi_names": [
+    "Tranquil Books & Coffee",
+    "C\u1ed9ng C\u00e0 Ph\u00ea H\u1ed3 G\u01b0\u01a1m"
+   ],
+   "expected_semantic_requirements": [
+    "qu\u00e1n c\u00e0 ph\u00ea y\u00ean t\u0129nh",
+    "h\u1ecdc t\u1eadp",
+    "Ho\u00e0n Ki\u1ebfm"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Location"
+  },
+  {
+   "query_id": "P012",
+   "input_query": "qu\u00e1n c\u00e0 ph\u00ea c\u00f3 ch\u1ed7 \u0111\u1eadu xe \u1edf c\u1ea7u gi\u1ea5y",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C007"
+   ],
+   "expected_top_poi_names": [
+    "WorkHub Cafe C\u1ea7u Gi\u1ea5y"
+   ],
+   "expected_semantic_requirements": [
+    "cafe",
+    "b\u00e3i \u0111\u1ed7 xe",
+    "C\u1ea7u Gi\u1ea5y"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P013",
+   "input_query": "nh\u00e0 h\u00e0ng chay y\u00ean t\u0129nh qu\u1eadn 3",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R007"
+   ],
+   "expected_top_poi_names": [
+    "Chay An L\u1ea1c"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 h\u00e0ng chay",
+    "y\u00ean t\u0129nh",
+    "Qu\u1eadn 3"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P014",
+   "input_query": "rooftop view \u0111\u1eb9p \u0111\u1ec3 \u0111i t\u1ed1i nay",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "R008"
+   ],
+   "expected_top_poi_names": [
+    "Rooftop Sky Garden"
+   ],
+   "expected_semantic_requirements": [
+    "rooftop",
+    "view \u0111\u1eb9p",
+    "m\u1edf bu\u1ed5i t\u1ed1i"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "opening_hours",
+    "rating"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Time"
+  },
+  {
+   "query_id": "P015",
+   "input_query": "kh\u00e1ch s\u1ea1n \u0111i c\u00f4ng t\u00e1c g\u1ea7n duy t\u00e2n",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H003"
+   ],
+   "expected_top_poi_names": [
+    "Hanoi Business Hotel"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n ph\u00f9 h\u1ee3p c\u00f4ng t\u00e1c",
+    "g\u1ea7n Duy T\u00e2n"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Location"
+  },
+  {
+   "query_id": "P016",
+   "input_query": "b\u1ec7nh vi\u1ec7n c\u1ea5p c\u1ee9u 24/7 h\u00e0 n\u1ed9i",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S005"
+   ],
+   "expected_top_poi_names": [
+    "B\u1ec7nh vi\u1ec7n B\u1ea1ch Mai"
+   ],
+   "expected_semantic_requirements": [
+    "b\u1ec7nh vi\u1ec7n c\u1ea5p c\u1ee9u 24/7 \u1edf H\u00e0 N\u1ed9i"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P017",
+   "input_query": "trung t\u00e2m th\u01b0\u01a1ng m\u1ea1i c\u00f3 r\u1ea1p phim \u1edf h\u00e0 n\u1ed9i",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "M002",
+    "A005"
+   ],
+   "expected_top_poi_names": [
+    "Vincom Nguy\u1ec5n Ch\u00ed Thanh",
+    "Lotte Center H\u00e0 N\u1ed9i"
+   ],
+   "expected_semantic_requirements": [
+    "mall",
+    "r\u1ea1p phim",
+    "H\u00e0 N\u1ed9i"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Category"
+  },
+  {
+   "query_id": "P018",
+   "input_query": "qu\u00e1n ph\u1edf n\u1ed5i ti\u1ebfng h\u00e0 n\u1ed9i",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R004"
+   ],
+   "expected_top_poi_names": [
+    "Ph\u1edf Th\u00ecn L\u00f2 \u0110\u00fac"
+   ],
+   "expected_semantic_requirements": [
+    "ph\u1edf n\u1ed5i ti\u1ebfng H\u00e0 N\u1ed9i"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "popularity",
+    "location"
+   ],
+   "difficulty": "Easy",
+   "skills_tested": "Semantic;Popularity"
+  },
+  {
+   "query_id": "P019",
+   "input_query": "qu\u00e1n b\u00fan ch\u1ea3 cho kh\u00e1ch du l\u1ecbch",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R003"
+   ],
+   "expected_top_poi_names": [
+    "B\u00fan Ch\u1ea3 H\u01b0\u01a1ng Li\u00ean"
+   ],
+   "expected_semantic_requirements": [
+    "b\u00fan ch\u1ea3",
+    "ph\u00f9 h\u1ee3p du l\u1ecbch"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "popularity"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Popularity"
+  },
+  {
+   "query_id": "P020",
+   "input_query": "resort g\u1ea7n bi\u1ec3n cho c\u1eb7p \u0111\u00f4i \u1edf \u0111\u00e0 n\u1eb5ng",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H002"
+   ],
+   "expected_top_poi_names": [
+    "Ocean View Resort \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "resort",
+    "g\u1ea7n bi\u1ec3n",
+    "c\u1eb7p \u0111\u00f4i",
+    "\u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Attribute;Location"
+  },
+  {
+   "query_id": "P021",
+   "input_query": "mua s\u1eafm \u0103n u\u1ed1ng trung t\u00e2m qu\u1eadn 1",
+   "query_category": "Discovery Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "M001"
+   ],
+   "expected_top_poi_names": [
+    "Vincom Center \u0110\u1ed3ng Kh\u1edfi"
+   ],
+   "expected_semantic_requirements": [
+    "trung t\u00e2m th\u01b0\u01a1ng m\u1ea1i",
+    "\u0103n u\u1ed1ng",
+    "mua s\u1eafm",
+    "Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "location",
+    "popularity"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Discovery;Location"
+  },
+  {
+   "query_id": "P022",
+   "input_query": "\u0111i \u0111\u00e2u v\u1edbi tr\u1ebb em \u1edf s\u00e0i g\u00f2n cu\u1ed1i tu\u1ea7n",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A001"
+   ],
+   "expected_top_poi_names": [
+    "Th\u1ea3o C\u1ea7m Vi\u00ean S\u00e0i G\u00f2n"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111\u1ecba \u0111i\u1ec3m ph\u00f9 h\u1ee3p tr\u1ebb em",
+    "gia \u0111\u00ecnh",
+    "TP.HCM"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Semantic"
+  },
+  {
+   "query_id": "P023",
+   "input_query": "cafe view \u0111\u1eb9p \u0111\u1ec3 ch\u1ee5p \u1ea3nh \u1edf \u0111\u00e0 l\u1ea1t",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C006"
+   ],
+   "expected_top_poi_names": [
+    "Dalat View Coffee"
+   ],
+   "expected_semantic_requirements": [
+    "cafe view \u0111\u1eb9p",
+    "check-in",
+    "\u0110\u00e0 L\u1ea1t"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P024",
+   "input_query": "\u0111\u1ecba \u0111i\u1ec3m mi\u1ec5n ph\u00ed g\u1ea7n h\u1ed3 xu\u00e2n h\u01b0\u01a1ng",
+   "query_category": "Discovery Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A004"
+   ],
+   "expected_top_poi_names": [
+    "Qu\u1ea3ng tr\u01b0\u1eddng L\u00e2m Vi\u00ean"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111\u1ecba \u0111i\u1ec3m mi\u1ec5n ph\u00ed",
+    "g\u1ea7n h\u1ed3 Xu\u00e2n H\u01b0\u01a1ng"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Discovery;Location"
+  },
+  {
+   "query_id": "P025",
+   "input_query": "kh\u00e1ch s\u1ea1n trung t\u00e2m g\u1ea7n ch\u1ee3 b\u1ebfn th\u00e0nh",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H005"
+   ],
+   "expected_top_poi_names": [
+    "Saigon Central Hotel"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n trung t\u00e2m Qu\u1eadn 1",
+    "g\u1ea7n ch\u1ee3"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "semantic"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Location;Semantic"
+  },
+  {
+   "query_id": "P026",
+   "input_query": "qu\u00e1n \u0103n nh\u00f3m \u1edf \u0111\u00e0 l\u1ea1t tr\u1eddi l\u1ea1nh",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R009"
+   ],
+   "expected_top_poi_names": [
+    "L\u1ea9u G\u00e0 L\u00e1 \u00c9 Tao Ng\u1ed9"
+   ],
+   "expected_semantic_requirements": [
+    "l\u1ea9u/\u1ea5m c\u00fang",
+    "ph\u00f9 h\u1ee3p nh\u00f3m",
+    "\u0110\u00e0 L\u1ea1t"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Semantic"
+  },
+  {
+   "query_id": "P027",
+   "input_query": "n\u01a1i l\u00e0m vi\u1ec7c ngo\u00e0i v\u0103n ph\u00f2ng c\u1ea7u gi\u1ea5y",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C007",
+    "H003"
+   ],
+   "expected_top_poi_names": [
+    "WorkHub Cafe C\u1ea7u Gi\u1ea5y",
+    "Hanoi Business Hotel"
+   ],
+   "expected_semantic_requirements": [
+    "work-friendly/coworking-like",
+    "C\u1ea7u Gi\u1ea5y"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Intent"
+  },
+  {
+   "query_id": "P028",
+   "input_query": "qu\u00e1n \u0103n gi\u00e1 r\u1ebb m\u1edf khuya qu\u1eadn 1",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R006"
+   ],
+   "expected_top_poi_names": [
+    "Qu\u00e1n \u0102n \u0110\u00eam 24h Nguy\u1ec5n Tr\u00e3i"
+   ],
+   "expected_semantic_requirements": [
+    "gi\u00e1 r\u1ebb",
+    "m\u1edf khuya",
+    "Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location",
+    "price"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Price;Location"
+  },
+  {
+   "query_id": "P029",
+   "input_query": "b\u00e3i \u0111\u1ed7 xe v\u00e0 cafe s\u00e2n v\u01b0\u1eddn th\u1ee7 \u0111\u1ee9c",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C008"
+   ],
+   "expected_top_poi_names": [
+    "M\u1ed9c Cafe Th\u1ee7 \u0110\u1ee9c"
+   ],
+   "expected_semantic_requirements": [
+    "cafe s\u00e2n v\u01b0\u1eddn",
+    "b\u00e3i \u0111\u1ed7 xe",
+    "Th\u1ee7 \u0110\u1ee9c"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P030",
+   "input_query": "r\u1ea1p phim trong vincom \u0111\u00e0 n\u1eb5ng",
+   "query_category": "POI Search",
+   "expected_intent": "POI Search",
+   "expected_top_poi_ids": [
+    "M004"
+   ],
+   "expected_top_poi_names": [
+    "CGV Vincom \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "r\u1ea1p phim CGV trong Vincom \u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "poi",
+    "location"
+   ],
+   "difficulty": "Easy",
+   "skills_tested": "POI;Location"
+  },
+  {
+   "query_id": "P031",
+   "input_query": "nh\u00e0 h\u00e0ng h\u1ea3i s\u1ea3n g\u1ea7n bi\u1ec3n m\u1ef9 kh\u00ea cho gia \u0111\u00ecnh",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R005"
+   ],
+   "expected_top_poi_names": [
+    "B\u1ebfp Nh\u00e0 \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "h\u1ea3i s\u1ea3n",
+    "g\u1ea7n bi\u1ec3n",
+    "ph\u00f9 h\u1ee3p gia \u0111\u00ecnh"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Attribute"
+  },
+  {
+   "query_id": "P032",
+   "input_query": "pharmacy m\u1edf mu\u1ed9n qu\u1eadn 1",
+   "query_category": "Mixed Language Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S007"
+   ],
+   "expected_top_poi_names": [
+    "Nh\u00e0 thu\u1ed1c Pharmacity Nguy\u1ec5n Tr\u00e3i"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 thu\u1ed1c m\u1edf mu\u1ed9n Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "mixed_language",
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "MixedLanguage;Attribute"
+  },
+  {
+   "query_id": "P033",
+   "input_query": "quiet coffee shop to work near hoan kiem",
+   "query_category": "Mixed Language Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C004",
+    "C003"
+   ],
+   "expected_top_poi_names": [
+    "Tranquil Books & Coffee",
+    "C\u1ed9ng C\u00e0 Ph\u00ea H\u1ed3 G\u01b0\u01a1m"
+   ],
+   "expected_semantic_requirements": [
+    "cafe y\u00ean t\u0129nh l\u00e0m vi\u1ec7c g\u1ea7n Ho\u00e0n Ki\u1ebfm"
+   ],
+   "ranking_signals_to_use": [
+    "mixed_language",
+    "semantic",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "MixedLanguage;Semantic"
+  },
+  {
+   "query_id": "P034",
+   "input_query": "family restaurant with parking in tay ho",
+   "query_category": "Mixed Language Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R010"
+   ],
+   "expected_top_poi_names": [
+    "Nh\u00e0 h\u00e0ng Gia \u0110\u00ecnh Hoa Sen"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 h\u00e0ng gia \u0111\u00ecnh",
+    "b\u00e3i \u0111\u1ed7 xe",
+    "T\u00e2y H\u1ed3"
+   ],
+   "ranking_signals_to_use": [
+    "mixed_language",
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "MixedLanguage;Attribute"
+  },
+  {
+   "query_id": "P035",
+   "input_query": "best mall for shopping and food in q1",
+   "query_category": "Mixed Language Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "M001"
+   ],
+   "expected_top_poi_names": [
+    "Vincom Center \u0110\u1ed3ng Kh\u1edfi"
+   ],
+   "expected_semantic_requirements": [
+    "mall mua s\u1eafm \u0103n u\u1ed1ng Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "mixed_language",
+    "category",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "MixedLanguage;Ranking"
+  },
+  {
+   "query_id": "P036",
+   "input_query": "n\u01a1i \u0103n u\u1ed1ng l\u00e3ng m\u1ea1n view th\u00e0nh ph\u1ed1",
+   "query_category": "Semantic Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "R008",
+    "R002"
+   ],
+   "expected_top_poi_names": [
+    "Rooftop Sky Garden",
+    "Pizza 4P's L\u00ea Th\u00e1nh T\u00f4n"
+   ],
+   "expected_semantic_requirements": [
+    "l\u00e3ng m\u1ea1n",
+    "view \u0111\u1eb9p",
+    "bu\u1ed5i t\u1ed1i"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Discovery"
+  },
+  {
+   "query_id": "P037",
+   "input_query": "cafe kh\u00f4ng qu\u00e1 \u0111\u00f4ng \u0111\u1ec3 h\u1ecdp nh\u00f3m",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C007",
+    "C001"
+   ],
+   "expected_top_poi_names": [
+    "WorkHub Cafe C\u1ea7u Gi\u1ea5y",
+    "The Workshop Coffee"
+   ],
+   "expected_semantic_requirements": [
+    "qu\u00e1n cafe ph\u00f2ng h\u1ecdp/nh\u00f3m",
+    "y\u00ean t\u0129nh"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Attribute"
+  },
+  {
+   "query_id": "P038",
+   "input_query": "\u0111i\u1ec3m tham quan gia \u0111\u00ecnh \u1edf \u0111\u00e0 n\u1eb5ng",
+   "query_category": "Discovery Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A003"
+   ],
+   "expected_top_poi_names": [
+    "C\u1ea7u V\u00e0ng B\u00e0 N\u00e0 Hills"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111i\u1ec3m tham quan ph\u00f9 h\u1ee3p gia \u0111\u00ecnh \u1edf \u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Discovery;Location"
+  },
+  {
+   "query_id": "P039",
+   "input_query": "kh\u00e1ch s\u1ea1n c\u00f3 ph\u00f2ng h\u1ecdp g\u1ea7n khu v\u0103n ph\u00f2ng",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H003"
+   ],
+   "expected_top_poi_names": [
+    "Hanoi Business Hotel"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n c\u00f4ng t\u00e1c",
+    "ph\u00f2ng h\u1ecdp",
+    "g\u1ea7n v\u0103n ph\u00f2ng"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "semantic"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Attribute;Semantic"
+  },
+  {
+   "query_id": "P040",
+   "input_query": "cafe g\u1ea7n s\u00f4ng h\u00e0n \u0111\u1ec3 l\u00e0m vi\u1ec7c",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C005"
+   ],
+   "expected_top_poi_names": [
+    "Dream Beans Coffee \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "cafe g\u1ea7n s\u00f4ng H\u00e0n",
+    "ph\u00f9 h\u1ee3p l\u00e0m vi\u1ec7c"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "attributes"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Location;Attribute"
+  },
+  {
+   "query_id": "P041",
+   "input_query": "nh\u00e0 h\u00e0ng m\u00f3n vi\u1ec7t r\u1ed9ng r\u00e3i cho \u0111o\u00e0n kh\u00e1ch",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R001"
+   ],
+   "expected_top_poi_names": [
+    "Nh\u00e0 h\u00e0ng Ngon 138"
+   ],
+   "expected_semantic_requirements": [
+    "m\u00f3n Vi\u1ec7t",
+    "kh\u00f4ng gian r\u1ed9ng",
+    "nh\u00f3m/\u0111o\u00e0n"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Attribute"
+  },
+  {
+   "query_id": "P042",
+   "input_query": "\u0111\u1ecba \u0111i\u1ec3m c\u00f3 view th\u00e0nh ph\u1ed1 v\u00e0 \u0103n t\u1ed1i",
+   "query_category": "Semantic Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "R008",
+    "A005"
+   ],
+   "expected_top_poi_names": [
+    "Rooftop Sky Garden",
+    "Lotte Center H\u00e0 N\u1ed9i"
+   ],
+   "expected_semantic_requirements": [
+    "view \u0111\u1eb9p",
+    "\u0103n t\u1ed1i",
+    "rooftop/mall"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Discovery"
+  },
+  {
+   "query_id": "P043",
+   "input_query": "trung t\u00e2m th\u01b0\u01a1ng m\u1ea1i c\u00f3 b\u00e3i \u0111\u1eadu xe ba \u0111\u00ecnh",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "A005"
+   ],
+   "expected_top_poi_names": [
+    "Lotte Center H\u00e0 N\u1ed9i"
+   ],
+   "expected_semantic_requirements": [
+    "mall c\u00f3 b\u00e3i \u0111\u1ed7 xe \u1edf Ba \u0110\u00ecnh"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P044",
+   "input_query": "qu\u00e1n \u0103n healthy kh\u00f4ng th\u1ecbt",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R007"
+   ],
+   "expected_top_poi_names": [
+    "Chay An L\u1ea1c"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 h\u00e0ng chay",
+    "healthy"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "category"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Synonym"
+  },
+  {
+   "query_id": "P045",
+   "input_query": "n\u01a1i c\u00f3 th\u1ec3 \u0111\u01b0a tr\u1ebb \u0111i ch\u01a1i ngo\u00e0i tr\u1eddi",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A001",
+    "A002"
+   ],
+   "expected_top_poi_names": [
+    "Th\u1ea3o C\u1ea7m Vi\u00ean S\u00e0i G\u00f2n",
+    "C\u00f4ng vi\u00ean Th\u1ed1ng Nh\u1ea5t"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111\u1ecba \u0111i\u1ec3m ngo\u00e0i tr\u1eddi ph\u00f9 h\u1ee3p tr\u1ebb em"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Semantic"
+  },
+  {
+   "query_id": "P046",
+   "input_query": "atm g\u1ea7n h\u1ed3 g\u01b0\u01a1m 24h",
+   "query_category": "Location-Aware Search",
+   "expected_intent": "Nearby Search",
+   "expected_top_poi_ids": [
+    "S002"
+   ],
+   "expected_top_poi_names": [
+    "ATM Techcombank H\u1ed3 G\u01b0\u01a1m"
+   ],
+   "expected_semantic_requirements": [
+    "ATM 24/7 g\u1ea7n H\u1ed3 G\u01b0\u01a1m"
+   ],
+   "ranking_signals_to_use": [
+    "location",
+    "attribute"
+   ],
+   "difficulty": "Easy",
+   "skills_tested": "Location;Attribute"
+  },
+  {
+   "query_id": "P047",
+   "input_query": "hotel near beach da nang with pool",
+   "query_category": "Mixed Language Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H001",
+    "H002"
+   ],
+   "expected_top_poi_names": [
+    "Sea Pearl Hotel \u0110\u00e0 N\u1eb5ng",
+    "Ocean View Resort \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n g\u1ea7n bi\u1ec3n \u0110\u00e0 N\u1eb5ng c\u00f3 h\u1ed3 b\u01a1i"
+   ],
+   "ranking_signals_to_use": [
+    "mixed_language",
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "MixedLanguage;Attribute"
+  },
+  {
+   "query_id": "P048",
+   "input_query": "qu\u00e1n l\u1ea9u ngon \u0111i nh\u00f3m \u1edf \u0111\u00e0 l\u1ea1t",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R009"
+   ],
+   "expected_top_poi_names": [
+    "L\u1ea9u G\u00e0 L\u00e1 \u00c9 Tao Ng\u1ed9"
+   ],
+   "expected_semantic_requirements": [
+    "l\u1ea9u",
+    "ph\u00f9 h\u1ee3p nh\u00f3m",
+    "\u0110\u00e0 L\u1ea1t"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "semantic",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Location"
+  },
+  {
+   "query_id": "P049",
+   "input_query": "b\u1ec7nh vi\u1ec7n qu\u1ed1c t\u1ebf \u1edf b\u00ecnh th\u1ea1nh",
+   "query_category": "Category Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S006"
+   ],
+   "expected_top_poi_names": [
+    "B\u1ec7nh vi\u1ec7n Vinmec Central Park"
+   ],
+   "expected_semantic_requirements": [
+    "b\u1ec7nh vi\u1ec7n qu\u1ed1c t\u1ebf \u1edf B\u00ecnh Th\u1ea1nh"
+   ],
+   "ranking_signals_to_use": [
+    "category",
+    "location",
+    "attribute"
+   ],
+   "difficulty": "Easy",
+   "skills_tested": "Category;Location"
+  },
+  {
+   "query_id": "P050",
+   "input_query": "cafe gi\u00e1 r\u1ebb c\u00f3 s\u00e2n v\u01b0\u1eddn",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C008"
+   ],
+   "expected_top_poi_names": [
+    "M\u1ed9c Cafe Th\u1ee7 \u0110\u1ee9c"
+   ],
+   "expected_semantic_requirements": [
+    "cafe gi\u00e1 r\u1ebb",
+    "s\u00e2n v\u01b0\u1eddn"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "price"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Price"
+  },
+  {
+   "query_id": "P051",
+   "input_query": "\u0103n t\u1ed1i g\u1ea7n bi\u1ec3n v\u1edbi h\u1ea3i s\u1ea3n \u0111\u00e0 n\u1eb5ng",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R005"
+   ],
+   "expected_top_poi_names": [
+    "B\u1ebfp Nh\u00e0 \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "nh\u00e0 h\u00e0ng h\u1ea3i s\u1ea3n g\u1ea7n bi\u1ec3n \u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Location"
+  },
+  {
+   "query_id": "P052",
+   "input_query": "\u0111\u1ecba \u0111i\u1ec3m checkin n\u1ed5i ti\u1ebfng \u1edf \u0111\u00e0 n\u1eb5ng",
+   "query_category": "Discovery Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A003"
+   ],
+   "expected_top_poi_names": [
+    "C\u1ea7u V\u00e0ng B\u00e0 N\u00e0 Hills"
+   ],
+   "expected_semantic_requirements": [
+    "\u0111i\u1ec3m check-in n\u1ed5i ti\u1ebfng \u0110\u00e0 N\u1eb5ng"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "popularity"
+   ],
+   "difficulty": "Easy",
+   "skills_tested": "Discovery;Popularity"
+  },
+  {
+   "query_id": "P053",
+   "input_query": "kh\u00e1ch s\u1ea1n gi\u00e1 h\u1ee3p l\u00fd cho nh\u00f3m b\u1ea1n \u1edf \u0111\u00e0 l\u1ea1t",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H004"
+   ],
+   "expected_top_poi_names": [
+    "Dalat Garden Homestay"
+   ],
+   "expected_semantic_requirements": [
+    "homestay/kh\u00e1ch s\u1ea1n gi\u00e1 h\u1ee3p l\u00fd",
+    "ph\u00f9 h\u1ee3p nh\u00f3m"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "price",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Price;Location"
+  },
+  {
+   "query_id": "P054",
+   "input_query": "qu\u00e1n c\u00e0 ph\u00ea specialty y\u00ean t\u0129nh qu\u1eadn 1",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C001"
+   ],
+   "expected_top_poi_names": [
+    "The Workshop Coffee"
+   ],
+   "expected_semantic_requirements": [
+    "specialty coffee",
+    "y\u00ean t\u0129nh",
+    "Qu\u1eadn 1"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Location"
+  },
+  {
+   "query_id": "P055",
+   "input_query": "n\u01a1i mua s\u1eafm c\u00f3 nhi\u1ec1u nh\u00e0 h\u00e0ng g\u1ea7n qu\u1eadn 1",
+   "query_category": "Discovery Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "M001"
+   ],
+   "expected_top_poi_names": [
+    "Vincom Center \u0110\u1ed3ng Kh\u1edfi"
+   ],
+   "expected_semantic_requirements": [
+    "mall \u1edf Qu\u1eadn 1 c\u00f3 \u0103n u\u1ed1ng v\u00e0 mua s\u1eafm"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Discovery;Location"
+  },
+  {
+   "query_id": "P056",
+   "input_query": "\u0111i ch\u01a1i mi\u1ec5n ph\u00ed \u1edf h\u00e0 n\u1ed9i cho tr\u1ebb em",
+   "query_category": "Intent-Based Search",
+   "expected_intent": "Discovery Search",
+   "expected_top_poi_ids": [
+    "A002"
+   ],
+   "expected_top_poi_names": [
+    "C\u00f4ng vi\u00ean Th\u1ed1ng Nh\u1ea5t"
+   ],
+   "expected_semantic_requirements": [
+    "c\u00f4ng vi\u00ean/ngo\u00e0i tr\u1eddi",
+    "mi\u1ec5n ph\u00ed/gi\u00e1 r\u1ebb",
+    "tr\u1ebb em"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Intent;Semantic"
+  },
+  {
+   "query_id": "P057",
+   "input_query": "t\u00ecm ch\u1ed7 s\u1ea1c xe \u0111i\u1ec7n c\u00f3 b\u00e3i \u0111\u1ed7 xe",
+   "query_category": "Attribute Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "S004"
+   ],
+   "expected_top_poi_names": [
+    "Tr\u1ea1m s\u1ea1c EV One \u0110\u00e0 N\u1eb5ng"
+   ],
+   "expected_semantic_requirements": [
+    "tr\u1ea1m s\u1ea1c \u0111i\u1ec7n",
+    "b\u00e3i \u0111\u1ed7 xe"
+   ],
+   "ranking_signals_to_use": [
+    "attribute",
+    "category"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Attribute;Category"
+  },
+  {
+   "query_id": "P058",
+   "input_query": "n\u01a1i u\u1ed1ng cafe v\u00e0 \u0111\u1ecdc s\u00e1ch y\u00ean t\u0129nh",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "C004"
+   ],
+   "expected_top_poi_names": [
+    "Tranquil Books & Coffee"
+   ],
+   "expected_semantic_requirements": [
+    "cafe s\u00e1ch",
+    "y\u00ean t\u0129nh"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "attributes"
+   ],
+   "difficulty": "Medium",
+   "skills_tested": "Semantic;Attribute"
+  },
+  {
+   "query_id": "P059",
+   "input_query": "qu\u00e1n \u0103n \u0111\u1ecba ph\u01b0\u01a1ng n\u1ed5i ti\u1ebfng cho kh\u00e1ch du l\u1ecbch h\u00e0 n\u1ed9i",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "R003",
+    "R004"
+   ],
+   "expected_top_poi_names": [
+    "B\u00fan Ch\u1ea3 H\u01b0\u01a1ng Li\u00ean",
+    "Ph\u1edf Th\u00ecn L\u00f2 \u0110\u00fac"
+   ],
+   "expected_semantic_requirements": [
+    "m\u00f3n \u0111\u1ecba ph\u01b0\u01a1ng n\u1ed5i ti\u1ebfng",
+    "du l\u1ecbch",
+    "H\u00e0 N\u1ed9i"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location",
+    "popularity"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Popularity"
+  },
+  {
+   "query_id": "P060",
+   "input_query": "kh\u00e1ch s\u1ea1n g\u1ea7n ch\u1ee3 v\u00e0 \u0111i b\u1ed9 tham quan s\u00e0i g\u00f2n",
+   "query_category": "Semantic Search",
+   "expected_intent": "Category Search",
+   "expected_top_poi_ids": [
+    "H005"
+   ],
+   "expected_top_poi_names": [
+    "Saigon Central Hotel"
+   ],
+   "expected_semantic_requirements": [
+    "kh\u00e1ch s\u1ea1n trung t\u00e2m",
+    "g\u1ea7n ch\u1ee3",
+    "\u0111i b\u1ed9 tham quan"
+   ],
+   "ranking_signals_to_use": [
+    "semantic",
+    "location"
+   ],
+   "difficulty": "Hard",
+   "skills_tested": "Semantic;Location"
+  }
+ ]
+}

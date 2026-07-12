@@ -14,11 +14,14 @@ Run with PYTHONUTF8=1 on Windows.
 from __future__ import annotations
 
 import argparse
+import math
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gazetteer  # noqa: E402 — data-derived place index (no hardcoded places)
+import need_taxonomy  # noqa: E402 — controlled need vocab (hard/soft, no places)
 import query_intent  # noqa: E402 — language-level intent router (no hardcoded places)
 from _data import (  # noqa: E402
     emit,
@@ -71,7 +74,11 @@ CATEGORY_SYNONYMS = {
     "electronics": ["dien may", "electronics", "dien thoai", "may tinh"],
     "airport": ["san bay", "airport"],
     "bus_station": ["ben xe", "bus station"],
-    "market": ["cho", "market"],
+    # "cho" (chợ) dropped as a bare synonym: it folds identically to the very
+    # common function word "cho" (=for, "quán cho gia đình"), which mis-fired the
+    # market category on non-market queries. Markets are still found by name
+    # ("Chợ Bến Thành") and the "market" token.
+    "market": ["market"],
     "attraction": ["diem du lich", "du lich", "tham quan", "attraction", "attractions",
                    "checkin", "check in", "dia diem checkin", "diem checkin", "song ao"],
 }
@@ -108,12 +115,23 @@ def _load():
     return pois["categories"], pois["pois"], terms, max_ngram
 
 
+# Folded category phrases that collide with a common function word and so must
+# not, on their own, trigger a category. "cho" is both fold("Chợ") (market) and
+# the ubiquitous particle "cho" (=for, "quán cho gia đình") — letting it fire the
+# market category mis-routed every "... cho ..." query with no stronger category.
+# Markets are still found by name ("Chợ Bến Thành") and the English "market".
+_CATEGORY_PHRASE_IGNORE = frozenset({"cho"})
+
+
 def _category_index(categories: dict) -> dict[str, str]:
     """folded phrase -> category key, longest phrases first (for prefix scan)."""
     idx: dict[str, str] = {}
     for key, meta in categories.items():
         for phrase in [meta["label"], meta["label_vi"], *CATEGORY_SYNONYMS.get(key, [])]:
-            idx[fold(phrase)] = key
+            folded = fold(phrase)
+            if folded in _CATEGORY_PHRASE_IGNORE:
+                continue
+            idx[folded] = key
     return idx
 
 
@@ -189,7 +207,8 @@ def _location_score(remainder: str, p: dict) -> float:
     return hit
 
 
-def _public(p: dict, score: float | None = None, distance_km: float | None = None) -> dict:
+def _public(p: dict, score: float | None = None, distance_km: float | None = None,
+            reasons: list[str] | None = None) -> dict:
     out = {
         "poi_id": p["poi_id"], "name": p["name"], "name_en": p["name_en"],
         "category": p["category"], "lat": p["lat"], "lng": p["lng"],
@@ -200,13 +219,215 @@ def _public(p: dict, score: float | None = None, distance_km: float | None = Non
         out["score"] = round(score, 1)
     if distance_km is not None:
         out["distance_km"] = round(distance_km, 2)
+    if reasons:
+        out["reasons"] = reasons
     return out
 
 
+def _popularity_bonus(p: dict) -> float:
+    """A sub-1 ranking tiebreak from rating + popularity + review volume, so it
+    only orders POIs already tied on the primary 0-100 score and never crosses a
+    score band. Legacy POIs (no popularity/review) fall back to the rating-only
+    term, preserving their prior order."""
+    rating = (p.get("rating") or 0) / 100.0                       # 0 .. 0.05
+    pop = (p.get("popularity_score") or 0) / 10000.0              # 0 .. 0.0098
+    rev = math.log10((p.get("review_count") or 0) + 1) / 1000.0   # ~0 .. 0.0042
+    return rating + pop + rev
+
+
+def _attr_frac(qattr: set[str], p: dict) -> float:
+    """Fraction of the query's amenity tokens the POI satisfies (via its xfold'd
+    q.attrs). 0 when the query names no amenity or the POI has none."""
+    if not qattr:
+        return 0.0
+    poi_attr = p["q"].get("attrs", "")
+    if not poi_attr:
+        return 0.0
+    return len(qattr & set(poi_attr.split())) / len(qattr)
+
+
+# Reason-token hygiene: connectors/particles that must not, on their own, link a
+# query to a POI phrase. Language-level (like fold's đ->d) — no place data.
+_REASON_STOP = frozenset(
+    {"de", "va", "co", "cua", "cac", "mot", "the", "for", "with", "and", "in",
+     "at", "o", "tai", "la", "khong", "rat", "nhieu", "gio"}
+)
+_CAT_PHRASES: frozenset[str] | None = None
+
+
+def _category_phrases() -> frozenset[str]:
+    """Folded category labels + synonyms, cached — a phrase equal to one of these
+    is the category itself, never a distinguishing 'reason' (skip 'cà phê' etc.)."""
+    global _CAT_PHRASES
+    if _CAT_PHRASES is None:
+        cats = load_json("pois.json")["categories"]
+        phrases = set()
+        for key, meta in cats.items():
+            for ph in [meta["label"], meta["label_vi"], *CATEGORY_SYNONYMS.get(key, [])]:
+                phrases.add(fold(ph))
+        _CAT_PHRASES = frozenset(phrases)
+    return _CAT_PHRASES
+
+
+def _match_reasons(p: dict, qattr: set[str], query: str, terms: dict, max_ngram: int) -> list[str]:
+    """The POI's own amenity/tag phrases that satisfy the query — the human-readable
+    'why this matches' (e.g. ['wifi', 'yên tĩnh', 'phù hợp làm việc']). A phrase is
+    surfaced when its folded tokens overlap the query's detected amenity tokens
+    (qattr) OR the query's own content tokens, so both explicit amenity asks and
+    descriptor queries ('học bài' -> tag 'học tập') are explained. Pure category
+    phrases ('cà phê') are skipped — they describe the class, not the choice.
+    Empty when nothing relevant overlaps, so bare name/nav queries gain none."""
+    keys = set(qattr)
+    for t in normalize_query(query, terms, max_ngram).split():
+        if len(t) >= 2 and t not in _REASON_STOP:
+            keys.add(t)
+    if not keys:
+        return []
+    cat_phrases = _category_phrases()
+    out: list[str] = []
+    seen: set[str] = set()
+    for a in [*(p.get("attributes") or []), *(p.get("tags") or [])]:
+        folded = normalize_query(a, terms, max_ngram)
+        if folded in cat_phrases:
+            continue  # the category label itself is not a reason
+        toks = {t for t in folded.split() if t not in _REASON_STOP}
+        if toks & keys and a not in seen:
+            seen.add(a)
+            out.append(a)
+    return out[:5]
+
+
+# ── Needs: hard filtering + per-need confirmation evidence ──────────────────
+# HARD needs (wifi/parking/pool/wc/private_room/charging/24h + price/stars proxy)
+# gate candidates; SOFT needs only rank (via the existing _attr_frac lift). A need
+# is "confirmed" only when the POI's data shows it — absence is "not_confirmed",
+# never a fabricated false. Price/stars are proxied onto ordinal price_level /
+# review rating (the corpus has no VND or star fields) and always flagged approx.
+
+
+def _numeric_need_ok(p: dict, num: dict) -> bool | None:
+    """True/False/None(=unknown) for a numeric need against the proxy fields."""
+    if num["key"] == "price_max":
+        pl = p.get("price_level")
+        return None if pl is None else (pl <= 2)
+    if num["key"] == "stars":
+        r = p.get("rating")
+        return None if r is None else (r >= (num.get("value") or 0))
+    return None
+
+
+def _hard_needs_confirmed(p: dict, needs: dict, need_index: dict) -> bool:
+    """True iff EVERY hard must_have phrase + numeric need is confirmed by the POI.
+    Unknown/absent data ⇒ not confirmed (graceful — the POI drops to the fallback
+    set, it is never claimed to satisfy the need)."""
+    poi_attrs = p["q"].get("attrs", "")
+    for need in needs.get("must_have", []):
+        if need_taxonomy.match_need(need["key"], poi_attrs, need_index) is None:
+            return False
+    for num in needs.get("numeric", []):
+        if _numeric_need_ok(p, num) is not True:
+            return False
+    return True
+
+
+def _need_evidence(p: dict, needs: dict, need_index: dict) -> list[dict]:
+    """Per-need confirmation status for a POI (spec §9/§18): confirmed |
+    not_confirmed, with the source field, for every parsed need."""
+    poi_attrs = p["q"].get("attrs", "")
+    out: list[dict] = []
+    for need in [*needs.get("must_have", []), *needs.get("should_have", [])]:
+        ph = need_taxonomy.match_need(need["key"], poi_attrs, need_index)
+        out.append({
+            "need": need["key"], "label": need.get("label_vi") or need["key"],
+            "status": "confirmed" if ph else "not_confirmed",
+            "source": "attribute" if ph else None,
+        })
+    for num in needs.get("numeric", []):
+        ok = _numeric_need_ok(p, num)
+        out.append({
+            "need": num["key"],
+            "status": "confirmed" if ok is True else "not_confirmed",
+            "source": ("price_level" if num["key"] == "price_max" else "rating"),
+            "approx": True, "proxy": num.get("proxy"),
+        })
+    return out
+
+
+def _has_hard_needs(needs: dict | None) -> bool:
+    return bool(needs and (needs.get("must_have") or needs.get("numeric")))
+
+
+def _apply_need_filter(scored: list, needs: dict | None) -> tuple[list, bool]:
+    """Graceful hard-need partition: keep only POIs confirming every hard need; if
+    that would empty the (already city/scope-filtered) set, return the original set
+    and signal `relaxed=True` so results are labelled not_confirmed rather than
+    hidden. Never returns empty when the input had candidates."""
+    if not _has_hard_needs(needs):
+        return scored, False
+    need_index = query_intent.context()["need_index"]
+    primary = [(s, p) for s, p in scored if _hard_needs_confirmed(p, needs, need_index)]
+    if primary:
+        return primary, False
+    return scored, True
+
+
+def _attach_needs(out: dict, p: dict, needs: dict | None) -> dict:
+    """Attach per-need confirmation evidence to a result dict (when needs present)."""
+    if needs and any(needs.get(k) for k in ("must_have", "should_have", "numeric")):
+        need_index = query_intent.context()["need_index"]
+        out["matched_needs"] = _need_evidence(p, needs, need_index)
+    return out
+
+
+def _needs_summary(needs: dict | None, relaxed: bool) -> dict | None:
+    """Compact query-understanding block for the response (spec §19 geo_contract /
+    §22). `hard_relaxed=True` means no POI confirmed all hard needs, so results are
+    the graceful fallback (labelled not_confirmed) — not confirmed matches."""
+    if not needs or not any(needs.get(k)
+                            for k in ("must_have", "should_have", "numeric", "negative")):
+        return None
+    return {
+        "must_have": [n["key"] for n in needs.get("must_have", [])],
+        "should_have": [n["key"] for n in needs.get("should_have", [])],
+        "numeric": [{"key": n["key"], "value": n.get("value"),
+                     "proxy": n.get("proxy"), "approx": True}
+                    for n in needs.get("numeric", [])],
+        "negative": [n["key"] for n in needs.get("negative", [])],
+        "hard_relaxed": relaxed,
+    }
+
+
+def _validation_block(results: list, intent_label: str, geo_contract: dict | None,
+                      needs_relaxed: bool) -> dict:
+    """Post-search invariants (spec §20), surfaced for observability + the eval
+    gates: a coordinate/nearby answer must carry distance on every result, and an
+    explicitly-scoped answer must not leak another city. These are already enforced
+    by the pipeline; the block makes a violation visible rather than silent."""
+    is_geo = intent_label in ("Coordinate Search", "Nearby Search")
+    dist_ok = True
+    if is_geo and results:
+        dist_ok = all("distance_km" in r for r in results)
+    return {
+        "distance_present": dist_ok,
+        "scope_leak": bool((geo_contract or {}).get("multi_city_leak_detected")),
+        "needs_relaxed": needs_relaxed,
+    }
+
+
+class MapDbFallback(RuntimeError):
+    """Raised (only under ATRIA_MAP_STRICT_DB) when the db engine fails and would
+    otherwise silently fall back to JSON — so eval surfaces the degradation."""
+
+
 def _dispatch(json_impl, db_name: str, args) -> dict:
-    """Route to the Postgres engine (search_db) when ATRIA_MAP_BACKEND=db,
-    silently falling back to the JSON engine on ANY db-side failure (stderr
-    warning only — stdout shape never changes)."""
+    """Route to the Postgres engine (search_db) when ATRIA_MAP_BACKEND=db, falling
+    back to the JSON engine on ANY db-side failure (stderr warning only — stdout
+    shape never changes).
+
+    The fallback is convenient in production but dangerous for evaluation: a
+    stopped container or missing driver makes `--backend db` quietly measure the
+    JSON engine. Set ATRIA_MAP_STRICT_DB=1 to turn the failure into a hard error
+    instead, so eval can never silently degrade."""
     import _db
 
     if _db.backend() == "db":
@@ -215,6 +436,9 @@ def _dispatch(json_impl, db_name: str, args) -> dict:
 
             return getattr(search_db, db_name)(args)
         except Exception as exc:
+            if os.environ.get("ATRIA_MAP_STRICT_DB", "").strip().lower() in ("1", "true", "yes"):
+                raise MapDbFallback(
+                    f"map-db unavailable and ATRIA_MAP_STRICT_DB is set: {exc}") from exc
             print(f"WARN map-db unavailable, json fallback: {exc}", file=sys.stderr)
     return json_impl(args)
 
@@ -290,7 +514,38 @@ def _merge_prior(args, parsed: dict) -> None:
         parsed["destination_text"] = None
         parsed["origin_text"] = None
         parsed["_inherited"] = True
+        # Carry the prior brand forward for DISPLAY/labeling only (so the reply can
+        # tell exact brand matches apart from same-category fills). Deliberately NOT
+        # written to parsed["brands"] — that would re-arm the hard brand filter and
+        # drop the related fills the user wants to keep.
+        prior_brand = prior.get("brands")
+        if isinstance(prior_brand, (list, tuple)):
+            prior_brand = prior_brand[0] if prior_brand else None
+        if prior_brand:
+            parsed["_inherited_brand"] = prior_brand
+        # Keep an established opening-hours filter across a city switch ("cafe q1
+        # mở sau 9h" -> "tôi ở SG" still means open-after-9pm cafes in HCMC).
+        if not parsed.get("time") and prior.get("time"):
+            parsed["time"] = prior["time"]
         args.city = parsed["city_entry"]["canonical"]
+        return
+
+    # R3: an opening-hours-only refinement ("còn mở cửa không?", "sau 9h tối") with
+    # no subject of its own inherits the prior category (+ city) and re-runs it with
+    # the new hours filter — so the user can narrow the same list by time.
+    if (parsed.get("time") and prior_cat and not parsed.get("category")
+            and not parsed.get("brands") and parsed.get("city_entry") is None
+            and parsed.get("coords") is None and parsed.get("anchor_text") is None
+            and parsed.get("anchor_coords") is None):
+        parsed["category"] = prior_cat
+        args.category = prior_cat
+        parsed["intent"] = "category"
+        parsed["_inherited"] = True
+        if prior_city and not getattr(args, "city", None):
+            args.city = prior_city
+            entry = _city_entry_for(prior_city)
+            if entry is not None:
+                parsed["city_entry"] = entry
         return
 
     # R2: a content turn with no city of its own inherits the prior city.
@@ -327,6 +582,23 @@ def cmd_search(args) -> dict:
     _merge_prior(args, parsed)  # multi-turn context (no-op unless args.prior set)
     intent = parsed["intent"]
 
+    # "tọa độ/địa chỉ của <POI>" — score the clean extracted name, not the raw
+    # wrapper ("toa do cua ... la gi"), whose extra tokens dilute the POI below
+    # threshold. Re-dispatch on the wrapper-free name, then restamp the lookup
+    # action from this authoritative parse (the re-parse of the bare name won't
+    # re-detect it). Mirrors the bare "chợ bến thành" search, which resolves fine.
+    if parsed.get("coord_lookup_name"):
+        original_q = args.query
+        args.query = parsed["coord_lookup_name"]
+        try:
+            resp = _dispatch(_cmd_search_json, "cmd_search_db", args)
+        finally:
+            args.query = original_q
+        resp["query"] = original_q
+        resp["intent"] = query_intent.competition_intent(parsed)
+        resp["entities"] = parsed["entities"]
+        return resp
+
     if intent in ("coordinate", "reverse_geocode") and parsed["coords"] is not None:
         reverse = intent == "reverse_geocode"
         anchor = {"kind": "coordinate",
@@ -340,16 +612,28 @@ def cmd_search(args) -> dict:
             # reply describes the location instead of listing nearby options.
             resp["reverse_geocode"] = True
         return resp
+    # Geometric intents answer with a specialized retrieval; if it comes back
+    # EMPTY (nav destination absent from the dataset, "gần <landmark>" where the
+    # landmark doesn't resolve, e.g. "resort gần biển", "đi đâu với trẻ em"), fall
+    # through to the plain engine below rather than returning nothing. The plain
+    # engine still re-derives + applies the detected city/category, so precision
+    # (city filter) is preserved — only the proximity/nav constraint is dropped,
+    # letting hybrid vector recall answer the open-ended discovery query. Explicit
+    # coordinate intents never fall back (the point is unambiguous).
     if intent == "navigation" and parsed["destination_text"]:
-        return _navigation_response(args, parsed, categories, pois, terms, max_ngram)
-    if intent == "nearby" and (parsed["anchor_text"] or parsed["anchor_coords"] is not None):
+        nav = _navigation_response(args, parsed, categories, pois, terms, max_ngram)
+        if nav.get("count"):
+            return nav
+    elif intent == "nearby" and (parsed["anchor_text"] or parsed["anchor_coords"] is not None):
         addresses = load_json("addresses.json")["addresses"]
         anchor_city = parsed["city_entry"]["canonical"] if parsed["city_entry"] else None
         anchor = _resolve_anchor(parsed, pois, addresses, terms, max_ngram, city=anchor_city)
         if anchor is not None:
-            return _anchored_response(args, parsed, pois,
-                                      (anchor["lat"], anchor["lng"]), anchor)
-        # tentative-split revert: anchor unresolved -> plain, city-filtered search
+            anc = _anchored_response(args, parsed, pois,
+                                     (anchor["lat"], anchor["lng"]), anchor)
+            if anc.get("count"):
+                return anc
+        # anchor unresolved or nothing near it -> plain, city-filtered search
 
     resp = _dispatch(_cmd_search_json, "cmd_search_db", args)
     if parsed.get("_inherited"):
@@ -357,6 +641,23 @@ def cmd_search(args) -> dict:
         # "toi o SG" re-derives its nav misfire there and mislabels the response.
         # Restamp the intent from the authoritative merged parse.
         resp["intent"] = query_intent.competition_intent(parsed)
+        # Inherited brand: tag which results are the real brand and which are
+        # same-category fills, and surface a display label — so the interactive
+        # reply can list the exact matches first and label the extras. Only ever
+        # runs on the interactive multi-turn path (args.prior set); the bench/eval
+        # never set prior, so resp is untouched for them.
+        ib = parsed.get("_inherited_brand")
+        if ib:
+            tok = fold(ib)
+            poi_by_id = {p["poi_id"]: p for p in pois}
+            label = None
+            for r in resp.get("results") or []:
+                p = poi_by_id.get(r["poi_id"])
+                hit = bool(p and _brand_hit([tok], p))
+                r["is_brand_match"] = hit
+                if hit and label is None and p.get("brand"):
+                    label = p["brand"]
+            resp["inherited_brand"] = label or str(ib).title()
     return resp
 
 
@@ -585,10 +886,25 @@ def _anchored_response(args, parsed: dict, pois: list[dict], origin: tuple[float
         if branded:
             rows = branded
     rows.sort(key=lambda t: t[0])
+    # Nearby + needs: within the radius, keep only POIs confirming every hard need
+    # (distance stays the primary ranking within the confirmed set); graceful — if
+    # none confirm, keep the distance-ranked set tagged not_confirmed.
+    needs = parsed.get("needs") or {}
+    rows, needs_relaxed = _apply_need_filter(rows, needs)
     top = rows[: args.limit]
     intent_label = query_intent.competition_intent(parsed)
-    results = [_public(p, distance_km=d) for d, p in top]
+    # Amenity matches also annotate the reason ("cafe có wifi gần hồ gươm" -> wifi).
+    qattr = set(parsed.get("attr_tokens") or [])
+    r_terms, r_ngram = load_abbreviations()
+    results = [
+        _attach_needs(
+            _public(p, distance_km=d,
+                    reasons=_match_reasons(p, qattr, args.query, r_terms, r_ngram)),
+            p, needs)
+        for d, p in top
+    ]
     resp_city = parsed["city_entry"]["canonical"] if parsed["city_entry"] else None
+    geo_contract = _geo_contract(resp_city, None, anchor, results)
     return {
         "query": args.query,
         "normalized_query": parsed["normalized_query"],
@@ -597,8 +913,10 @@ def _anchored_response(args, parsed: dict, pois: list[dict], origin: tuple[float
         "intent": intent_label,
         "anchor": anchor,
         "place_scope": None,
-        "geo_contract": _geo_contract(resp_city, None, anchor, results),
+        "geo_contract": geo_contract,
         "entities": parsed["entities"],
+        "needs": _needs_summary(needs, needs_relaxed),
+        "validation": _validation_block(results, intent_label, geo_contract, needs_relaxed),
         "confidence_score": _confidence(intent_label, results, anchor),
         "results": results,
         "count": len(top),
@@ -765,6 +1083,7 @@ def _cmd_search_json(args) -> dict:
         else (place["canonical"] if place else None)
     )
     brand_remainder = parsed["remainder"]
+    qattr = set(parsed.get("attr_tokens") or [])  # amenity ranking signal
     # Brand + category ("atm vcb", "nt long chau q1") = the brand is a hard
     # filter: the user named a specific chain, so a different chain of the same
     # category is wrong. Applied only when the brand actually has a POI in that
@@ -786,10 +1105,12 @@ def _cmd_search_json(args) -> dict:
         name_s = max(_score_text(norm, keys), _score_text(raw, keys) if raw != norm else 0,
                      _coverage_score(norm, p))
         if cat_key and p["category"] == cat_key:
-            # category query: score the remainder as a location/name constraint
+            # category query: score the remainder as a location/name constraint,
+            # and lift by amenity match ("quán cà phê YÊN TĨNH ĐỂ LÀM VIỆC") — all
+            # three share the 55..90 band so the score scale/thresholds are intact.
             loc = _location_score(remainder, p)
             rem_name = _score_text(remainder, _poi_keys(p)) if remainder else 0
-            cat_s = 55 + 35 * max(loc, rem_name / 100)
+            cat_s = 55 + 35 * max(loc, rem_name / 100, _attr_frac(qattr, p))
             s = max(name_s, cat_s)
         elif cat_key:
             # off-category for a CATEGORY search: keep only a near-exact NAME match
@@ -806,17 +1127,27 @@ def _cmd_search_json(args) -> dict:
             rem_name = _score_text(brand_remainder, keys) / 100 if brand_remainder else 0.0
             s = max(s, 58 + 34 * rem_name)
         if s > 20:
-            scored.append((s + (p["rating"] or 0) / 100, p))
+            scored.append((s + _popularity_bonus(p), p))
 
     # Sub-city scope: keep only results in a named district/street when present.
     scored, scope_note = _apply_scope(scored, norm)
+    # Graceful hard-need filter: keep only POIs confirming every hard need; if that
+    # empties the (city/scope-filtered) set, fall back to the full set tagged
+    # not_confirmed so we never return empty when the area has category matches.
+    needs = parsed.get("needs") or {}
+    scored, needs_relaxed = _apply_need_filter(scored, needs)
     scored.sort(key=lambda t: -t[0])
     top = scored[: args.limit]
     # The intent stays as parsed even when a landmark anchor failed to resolve:
     # the USER intent is still a nearby search; only the retrieval degraded (to a
     # plain, city-filtered search) — disclosed by anchor=null.
     intent_label = query_intent.competition_intent(parsed)
-    results = [_public(p, score=s) for s, p in top]
+    results = [
+        _attach_needs(
+            _public(p, score=s, reasons=_match_reasons(p, qattr, args.query, terms, max_ngram)),
+            p, needs)
+        for s, p in top
+    ]
     return {
         "query": args.query,
         "normalized_query": norm,
@@ -827,6 +1158,10 @@ def _cmd_search_json(args) -> dict:
         "place_scope": scope_note,
         "geo_contract": _geo_contract(eff_city, scope_note, None, results),
         "entities": parsed["entities"],
+        "needs": _needs_summary(needs, needs_relaxed),
+        "validation": _validation_block(results, intent_label,
+                                        _geo_contract(eff_city, scope_note, None, results),
+                                        needs_relaxed),
         "confidence_score": _confidence(intent_label, results, None),
         "results": results,
         "count": len(top),

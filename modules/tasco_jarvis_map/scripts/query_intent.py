@@ -37,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import gazetteer  # noqa: E402
+import need_taxonomy  # noqa: E402
 from _data import expand_abbrev, fold, load_abbreviations, load_json  # noqa: E402
 
 # --- Language-level constants (like fold()'s d-bar->d — NOT place/brand data) ---
@@ -100,9 +101,87 @@ OPEN_NOW_RE = re.compile(r"\b(con|dang)\s+mo(?:\s+cua)?\b|open now|con mo cua")
 OPEN_LATE_RE = re.compile(r"mo cua muon|open late|\ban dem\b|ve khuya|khuya")
 FULL_DAY_RE = re.compile(r"\b24/7\b|24h|24 gio|ca ngay")
 
+# Ordinal / prior-result selection ("cai thu 2", "the second one", "so 3", "cai
+# cuoi cung"). MULTI-TURN ONLY: jarvis_chat resolves the returned index against
+# the previous turn's result list. Patterns are deliberately tight so a place
+# query carrying a number ("khach san 4 sao", "quan 3" = district 3, "so 3 nguyen
+# hue" = a street address, "quan mo thu 2" = open on Monday) is never misread as a
+# selection.
+_ORD_EN_WORDS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5,
+                 "sixth": 6, "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10}
+_ORD_VI_WORDS = {"nhat": 1, "hai": 2, "nhi": 2, "ba": 3, "tu": 4, "bon": 4,
+                 "nam": 5, "sau": 6, "bay": 7, "tam": 8, "chin": 9, "muoi": 10}
+_ORD_LAST_RE = re.compile(r"\b(cai cuoi(?:\s+cung)?|cuoi cung|last(?:\s+one)?|"
+                          r"cuoi danh sach)\b")
+_ORD_FIRST_RE = re.compile(r"\b(dau tien|first(?:\s+one)?)\b")
+_ORD_UNIT_RE = re.compile(
+    r"\b\d+\s*(sao|star|stars|km|phut|gio|nghin|nguoi|cho|tang|do|độ)\b")
+_ORD_DISTRICT_RE = re.compile(r"\bquan\s+\d")
+_ORD_VI_THU_WORD_RE = re.compile(
+    r"\bthu\s+(nhat|nhi|ba|tu|bon|nam|sau|bay|tam|chin|muoi)\b")
+_ORD_NUM_RE = re.compile(
+    r"\bthu\s+(\d{1,2})\b|"                         # "cai thu 2"
+    r"\b(?:cai|quan an|dia diem|diem|so|option|number|muc|lua chon|phuong an)"
+    r"\s+(\d{1,2})\b|"                              # "so 3", "dia diem 2"
+    r"\b(\d{1,2})(?:st|nd|rd|th)\b")                # "2nd", "3rd"
+
+
+def detect_ordinal(text: str):
+    """Return a 1-based ordinal index (or -1 for 'last') when the message selects
+    from a prior result list, else None. Interactive-only. Excludes unit/star/
+    district/address/opening-hours phrasings so real place queries never match."""
+    f = fold(text)
+    # An hours refinement ("con mo cua", "sau 9h", "mo thu 2"=Monday) is NOT a
+    # selection — it is handled by search._merge_prior's carry-over branch.
+    if (OPEN_NOW_RE.search(f) or TIME_AFTER_RE.search(f) or "mo cua" in f
+            or _ORD_UNIT_RE.search(f) or _ORD_DISTRICT_RE.search(f)):
+        return None
+    if ADDR_RE.match(f):                 # "so 3 nguyen hue" is an address, not #3
+        return None
+    if _ORD_LAST_RE.search(f):
+        return -1
+    if _ORD_FIRST_RE.search(f):
+        return 1
+    m = _ORD_VI_THU_WORD_RE.search(f)
+    if m:
+        return _ORD_VI_WORDS.get(m.group(1))
+    m = _ORD_NUM_RE.search(f)
+    if m:
+        g = next((x for x in m.groups() if x), None)
+        if g and 1 <= int(g) <= 20:
+            return int(g)
+    toks = f.split()
+    if len(toks) <= 4:                   # bare "the second one" / "second"
+        for w, n in _ORD_EN_WORDS.items():
+            if w in toks:
+                return n
+    return None
+
 
 def _norm_val(v: str) -> str:
     return fold(str(v))
+
+
+def _category_words(categories: dict) -> frozenset[str]:
+    """Folded category phrases + their individual tokens. Used to stop a generic
+    category noun ("ca phe", "phe", "nha hang") from being registered as a brand
+    shortcut. Sourced from the category labels and, when importable,
+    search.CATEGORY_SYNONYMS — all data-derived, no hardcoded place names."""
+    phrases: set[str] = set()
+    for meta in categories.values():
+        for lbl in (meta.get("label"), meta.get("label_vi")):
+            if lbl:
+                phrases.add(fold(lbl))
+    try:  # runtime import — search imports query_intent, so keep this lazy.
+        from search import CATEGORY_SYNONYMS
+        for lst in CATEGORY_SYNONYMS.values():
+            phrases.update(fold(ph) for ph in lst)
+    except Exception:
+        pass
+    words = set(phrases)
+    for ph in phrases:
+        words.update(ph.split())
+    return frozenset(words)
 
 
 def build_context() -> dict:
@@ -122,6 +201,16 @@ def build_context() -> dict:
         if "nearby" in val:
             nearby_terms.add(_norm_val(term))
 
+    # Category vocabulary — so a generic category word never becomes a brand
+    # shortcut. A brand like "Cộng Cà Phê" must NOT register "ca phe"/"phe" as a
+    # variant, or every "quán cà phê ..." category query would be brand-filtered
+    # to that one chain. Derived from the category labels + synonyms (data-driven).
+    cat_words = _category_words(pois_doc["categories"])
+
+    def _is_category_word(v: str) -> bool:
+        toks = v.split()
+        return bool(toks) and (v in cat_words or all(t in cat_words for t in toks))
+
     # Brands derived from distinct POI brand values (+ no-accent/no-space forms).
     brand_set: set[str] = set()
     brand_family: dict[str, str] = {}  # variant -> canonical folded brand
@@ -135,7 +224,7 @@ def build_context() -> dict:
         brand_set.add(fb)
         brand_family[fb] = fb
         head = fb.split()[0]
-        if len(head) >= 4 and head not in GENERIC_BRAND_HEADS:
+        if len(head) >= 4 and head not in GENERIC_BRAND_HEADS and not _is_category_word(head):
             brand_family.setdefault(head, fb)
         # Distinctive tail: drop leading generic nouns ("nha thuoc long chau"
         # -> "long chau") so a query using the short chain name still matches.
@@ -144,11 +233,39 @@ def build_context() -> dict:
         while i < len(toks) - 1 and toks[i] in GENERIC_LEADING:
             i += 1
         tail = " ".join(toks[i:])
-        if 0 < i and len(tail) >= 3 and tail != fb:
+        if 0 < i and len(tail) >= 3 and tail != fb and not _is_category_word(tail):
             brand_family.setdefault(tail, fb)
 
     streets = {fold(a["street"]) for a in addresses if a.get("street")}
     streets |= {fold(p["district"]) for p in pois if p.get("district")}
+
+    # Amenity vocabulary — data-derived from POI attributes/tags + the taxonomy.
+    # Keys are xfold'd (fold + abbreviation-expand) exactly like a POI's q.attrs
+    # and a parsed query, so "wifi"/"wi-fi" align across all three.
+    def _xf(text: str) -> str:
+        return expand_abbrev(fold(text), terms, max_ngram)
+
+    attr_tokens: set[str] = set()
+    attr_display: dict[str, str] = {}  # xfolded phrase -> display phrase
+    protected: set[str] = set()        # curated amenity tokens (never a cat word)
+    for p in pois:
+        for a in (p.get("attributes") or []) + (p.get("tags") or []):
+            fa = _xf(a)
+            if fa:
+                attr_display.setdefault(fa, a)
+                attr_tokens.update(fa.split())
+    try:
+        for t in load_json("attribute_taxonomy.json")["attributes"]:
+            fa = _xf(t["attribute"])
+            attr_display.setdefault(fa, t["attribute"])
+            attr_tokens.update(fa.split())
+            protected.update(fa.split())
+    except Exception:
+        pass
+    # Drop category words ("coffee", "ca phe", "nha hang") that leaked in via
+    # tags — but keep any token the curated taxonomy vouches for as a real amenity
+    # (e.g. "tinh" from "yên tĩnh" also appears in the "may tinh" category synonym).
+    attr_tokens -= (cat_words - protected)
 
     gaz = gazetteer.build_from_data()
     return {
@@ -160,6 +277,11 @@ def build_context() -> dict:
         "brand_set": brand_set,
         "brand_family": brand_family,
         "streets": streets,
+        "attr_tokens": attr_tokens,
+        "attr_display": attr_display,
+        # Canonical need vocabulary (hard/soft), folded with the same _xf so a
+        # need's phrases align with the query and a POI's q.attrs.
+        "need_index": need_taxonomy.build_need_index(_xf),
     }
 
 
@@ -215,10 +337,27 @@ def _coords_in_range(lat: float, lng: float) -> bool:
     return -90 <= lat <= 90 and -180 <= lng <= 180
 
 
+# Rough Vietnam bounds — used to pick the correct lat/lng orientation. A pair that
+# is valid only when swapped was given lng,lat and is corrected.
+VN_LAT_RANGE = (8.0, 24.5)
+VN_LNG_RANGE = (102.0, 110.5)
+
+
+def _in_vietnam(lat: float, lng: float) -> bool:
+    return (VN_LAT_RANGE[0] <= lat <= VN_LAT_RANGE[1]
+            and VN_LNG_RANGE[0] <= lng <= VN_LNG_RANGE[1])
+
+
 def _mk_coord(a: float, b: float) -> dict | None:
     """Order-correct and range-gate a numeric pair -> {lat,lng,order_corrected}.
-    If the first value can only be a longitude (|.|>90) and the second is a valid
-    latitude, the pair was given lng,lat and is swapped."""
+    Prefers the Vietnam-valid orientation (so "106.70,10.77" is recognised as
+    lng,lat and swapped); falls back to the global range + the |lat|>90 heuristic
+    for any coordinate outside Vietnam."""
+    if _in_vietnam(a, b):
+        return {"lat": a, "lng": b, "order_corrected": False}
+    if _in_vietnam(b, a):
+        return {"lat": b, "lng": a, "order_corrected": True}
+    # Outside VN — keep the previous global behaviour so non-VN coords still parse.
     lat, lng, corrected = a, b, False
     if abs(lat) > 90 and abs(lng) <= 90:
         lat, lng, corrected = b, a, True
@@ -323,6 +462,102 @@ def _detect_brands(text: str, ctx: dict) -> tuple[list[str], str]:
     return found, remainder
 
 
+# Generic tokens that appear in amenity phrases but carry no amenity intent on
+# their own (connectors, fillers). Kept tiny and language-level, not place data.
+_ATTR_STOPWORDS = frozenset({
+    "de", "va", "co", "cho", "o", "tai", "in", "at", "the", "for", "with",
+    "phu", "hop", "gan", "mo",
+})
+
+
+def _detect_attributes(text: str, ctx: dict) -> tuple[list[str], list[str]]:
+    """Find the amenity/attribute intent in a folded+expanded query.
+
+    Returns (display_attributes, query_attr_tokens):
+      - query_attr_tokens: the query tokens that belong to the data-derived amenity
+        vocabulary (drives the per-POI attribute score);
+      - display_attributes: the canonical amenity phrases the query references
+        (any vocab phrase whose token-set overlaps the query tokens) — for the
+        output contract and reason phrasing.
+    Empty when the query names no amenity.
+    """
+    qtokens = [
+        t for t in text.split()
+        if t in ctx["attr_tokens"] and t not in _ATTR_STOPWORDS
+    ]
+    seen: set[str] = set()
+    toks = [t for t in qtokens if not (t in seen or seen.add(t))]
+    if not toks:
+        return [], []
+    tokset = set(toks)
+    display: list[str] = []
+    for folded_ph, disp in ctx["attr_display"].items():
+        phtoks = set(folded_ph.split()) - _ATTR_STOPWORDS
+        if phtoks and (phtoks & tokset) and phtoks <= (set(text.split()) | tokset):
+            if disp not in display:
+                display.append(disp)
+    return display, toks
+
+
+# Numeric needs — proxied onto ordinal price_level / review rating (the corpus has
+# no VND price or hotel-star fields; results are always labelled approximate).
+_PRICE_CHEAP_RE = re.compile(
+    r"\b(?:re|gia re|binh dan|gia mem)\b|(?:duoi|khong qua)\s+\d+")
+_PRICE_NUM_RE = re.compile(r"(?:duoi|khong qua)\s+(\d+)\s*(k|nghin|ngan)?")
+_STARS_RE = re.compile(r"\b(\d)\s*sao\b")
+# "khong (qua|co) <phrase>" — a negated preference (e.g. "khong qua dong").
+_NEG_CUE_RE = re.compile(r"\bkhong(?:\s+qua|\s+co)?\s+([a-z0-9 -]{2,20})")
+
+
+def _parse_numeric_needs(folded: str) -> list[dict]:
+    """Price/stars constraints, proxied onto price_level / rating."""
+    out: list[dict] = []
+    if _PRICE_CHEAP_RE.search(folded):
+        m = _PRICE_NUM_RE.search(folded)
+        val = None
+        if m:
+            n = int(m.group(1))
+            val = n * 1000 if (m.group(2) or n < 1000) else n
+        out.append({"key": "price_max", "op": "<=", "value": val,
+                    "proxy": "price_level<=2", "approx": True,
+                    "source_text": (m.group(0) if m else "re")})
+    ms = _STARS_RE.search(folded)
+    if ms:
+        out.append({"key": "stars", "op": ">=", "value": int(ms.group(1)),
+                    "proxy": f"rating>={ms.group(1)}", "approx": True,
+                    "source_text": ms.group(0)})
+    return out
+
+
+def _parse_needs(folded_query: str, ctx: dict) -> dict:
+    """Structured needs: hard must_have / soft should_have (from the need taxonomy),
+    numeric (price/stars proxy), and negative constraints. Bench-safe (runs for the
+    deterministic eval — no interactive/prior gating)."""
+    idx = ctx.get("need_index") or {}
+    hits = need_taxonomy.detect_needs(folded_query, idx)
+    negated = [m.group(1) for m in _NEG_CUE_RE.finditer(folded_query)]
+
+    def _is_negated(phrase: str) -> bool:
+        return any(phrase in span for span in negated)
+
+    must_have, should_have, negative = [], [], []
+    for h in hits:
+        item = {"key": h["key"], "source_text": h["phrase"],
+                "label_vi": h["label_vi"], "label_en": h["label_en"]}
+        if _is_negated(h["phrase"]):
+            negative.append(item)
+        elif h["class"] == "hard":
+            must_have.append(item)
+        else:
+            should_have.append(item)
+    return {
+        "must_have": must_have,
+        "should_have": should_have,
+        "numeric": _parse_numeric_needs(folded_query),
+        "negative": negative,
+    }
+
+
 def _detect_address(text: str, ctx: dict) -> dict | None:
     """House-number + street shape, street validated against the data streets."""
     m = ADDR_RE.match(text)
@@ -375,6 +610,9 @@ def parse(query: str, ctx: dict, detect_category=None, cat_idx=None) -> dict:
         "normalized_query": "",
         "target_text": "",
         "name_query": "",
+        # pre-expansion POI name from a "tọa độ của <POI>" lookup — the engines
+        # score this clean name instead of the wrapper-laden raw query.
+        "coord_lookup_name": None,
         "category": None,
         "brands": [],
         "remainder": "",
@@ -388,6 +626,10 @@ def parse(query: str, ctx: dict, detect_category=None, cat_idx=None) -> dict:
         "nearby": False,
         "destination_text": None,
         "origin_text": None,
+        "attributes": [],
+        "attr_tokens": [],
+        # structured needs (hard must_have / soft should_have / numeric / negative)
+        "needs": {"must_have": [], "should_have": [], "numeric": [], "negative": []},
         "entities": entities,
         "ambiguous_hint": False,
     }
@@ -418,6 +660,9 @@ def parse(query: str, ctx: dict, detect_category=None, cat_idx=None) -> dict:
         if mlk and mlk.group(1).strip():
             folded = mlk.group(1).strip()
             entities["action"] = "coordinate_lookup"
+            # Expose the wrapper-free name so cmd_search can score it directly;
+            # scoring the full "toa do cua ... la gi" dilutes the POI below thresh.
+            parsed["coord_lookup_name"] = folded
 
     # 2. Sentinel detect + strip PRE-expansion.
     work, nav_hit = _strip_phrases(folded, ctx["nav_terms"])
@@ -507,6 +752,24 @@ def parse(query: str, ctx: dict, detect_category=None, cat_idx=None) -> dict:
     parsed["remainder"] = (after_brand if brands else remainder).strip()
     # name_query keeps brand + street tokens for POI name matching.
     parsed["name_query"] = target.strip() or norm
+
+    # 7b. Amenity/attribute intent — the semantic ranking signal (wifi, yên tĩnh,
+    #     phù hợp làm việc, ...). Data-derived vocab; expanded like a POI's q.attrs
+    #     so "wifi" aligns with the stored "wi-fi". Empty when the query names no
+    #     amenity, so attribute ranking is inert for the existing eval.
+    folded_expanded = expand_abbrev(fold(query), terms, max_ngram)
+    attr_display, attr_toks = _detect_attributes(folded_expanded, ctx)
+    parsed["attributes"] = attr_display
+    parsed["attr_tokens"] = attr_toks
+    if attr_display:
+        entities["attributes"] = attr_display
+
+    # 7c. Structured needs — hard must_have / soft should_have / numeric / negative.
+    #     Classified via the need taxonomy; drives the hard/soft filter in search.py.
+    needs = _parse_needs(folded_expanded, ctx)
+    parsed["needs"] = needs
+    if any(needs.values()):
+        entities["needs"] = needs
 
     # 8. Address shape (only meaningful without a category on the target).
     addr = _detect_address(target, ctx)

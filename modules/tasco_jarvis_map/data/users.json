@@ -1,0 +1,85 @@
+{
+ "users": [
+  {
+   "user_id": "U01",
+   "name": "Anh Minh",
+   "initial": "M",
+   "color": "#5d8bc4",
+   "vehicle_pref": "Car",
+   "privacy_pref": "all",
+   "voice_enabled": true,
+   "source_member_id": "M001"
+  },
+  {
+   "user_id": "U02",
+   "name": "Chị Lan",
+   "initial": "L",
+   "color": "#d86f9c",
+   "vehicle_pref": "Car",
+   "privacy_pref": "all",
+   "voice_enabled": true,
+   "source_member_id": "M002"
+  },
+  {
+   "user_id": "U03",
+   "name": "Anh Huy",
+   "initial": "H",
+   "color": "#c9862e",
+   "vehicle_pref": "Car",
+   "privacy_pref": "leader_only",
+   "voice_enabled": true,
+   "source_member_id": "M003"
+  },
+  {
+   "user_id": "U04",
+   "name": "Chú Sơn",
+   "initial": "S",
+   "color": "#5f9e6e",
+   "vehicle_pref": "Car",
+   "privacy_pref": "all",
+   "voice_enabled": false,
+   "source_member_id": "M004"
+  },
+  {
+   "user_id": "U05",
+   "name": "Rider A",
+   "initial": "A",
+   "color": "#8b6fd8",
+   "vehicle_pref": "Motorbike",
+   "privacy_pref": "all",
+   "voice_enabled": true,
+   "source_member_id": "M005"
+  },
+  {
+   "user_id": "U06",
+   "name": "Fleet Lead",
+   "initial": "L",
+   "color": "#c4574a",
+   "vehicle_pref": "Van",
+   "privacy_pref": "leader_only",
+   "voice_enabled": true,
+   "source_member_id": "M010"
+  },
+  {
+   "user_id": "U07",
+   "name": "Guide",
+   "initial": "G",
+   "color": "#4f8f8b",
+   "vehicle_pref": "Car",
+   "privacy_pref": "all",
+   "voice_enabled": true,
+   "source_member_id": "M013"
+  },
+  {
+   "user_id": "U08",
+   "name": "EV Lead",
+   "initial": "L",
+   "color": "#a0729c",
+   "vehicle_pref": "EV",
+   "privacy_pref": "all",
+   "voice_enabled": true,
+   "source_member_id": "M017"
+  }
+ ],
+ "count": 8
+}
