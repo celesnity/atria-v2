@@ -40,4 +40,12 @@ describe('ModuleTabs', () => {
     const { container } = render(<ModuleTabs />);
     expect(container.firstChild).toBeNull();
   });
+
+  it('renders nothing when the selected module has zero tabs', () => {
+    useModulesStore.setState({
+      modulesWithDashboards: [{ ...mod, tabs: [] }], activeModuleDashboard: 'plan', activeModuleTab: null,
+    });
+    const { container } = render(<ModuleTabs />);
+    expect(container.firstChild).toBeNull();
+  });
 });
