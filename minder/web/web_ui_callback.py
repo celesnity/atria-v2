@@ -474,26 +474,24 @@ class WebUICallback(BaseUICallback):
         )
 
     def on_thinking(self, content: str) -> None:
-        """Stream thinking content token-by-token then signal completion."""
+        """Stream a thinking trace to the UI as one block, then signal completion.
+
+        Fallback path only: with native_reasoning on, the prompted thinking phase
+        does not run. When it does run (non-reasoning models), the full trace is
+        sent as a single token — no synthetic word-chunking.
+        """
         if not content or not content.strip():
             return
         content = content.strip()
-        # Split into ~8-word chunks for smooth streaming
-        words = content.split(" ")
-        chunk_size = 8
-        for i in range(0, len(words), chunk_size):
-            token = " ".join(words[i : i + chunk_size])
-            if i > 0:
-                token = " " + token
-            self._broadcast(
-                {
-                    "type": WSMessageType.THINKING_TOKEN,
-                    "data": {
-                        "token": token,
-                        "session_id": self.session_id,
-                    },
-                }
-            )
+        self._broadcast(
+            {
+                "type": WSMessageType.THINKING_TOKEN,
+                "data": {
+                    "token": content,
+                    "session_id": self.session_id,
+                },
+            }
+        )
         self._broadcast(
             {
                 "type": WSMessageType.THINKING_DONE,
