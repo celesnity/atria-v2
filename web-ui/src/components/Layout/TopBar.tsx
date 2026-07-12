@@ -2,12 +2,14 @@ import { Command, Settings, LogOut, Menu, Moon, Sun, User as UserIcon } from "lu
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useThemeStore } from "../../stores/theme";
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { signOut } from "../../lib/auth";
 import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
-import { ViewSwitcher } from "./ViewSwitcher";
+import { ModuleBreadcrumb } from "./ModuleBreadcrumb";
+import { ModuleTabs } from "./ModuleTabs";
+import { BlackboardEntry } from "./BlackboardEntry";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -40,8 +42,6 @@ interface MeInfo {
  */
 export function TopBar() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isChatSurface = location.pathname === "/chat";
   const status = useChatStore((state) => state.status);
   const isConnected = useChatStore((state) => state.isConnected);
   const toggleSidebar = useChatStore((state) => state.toggleSidebar);
@@ -157,17 +157,15 @@ export function TopBar() {
 
   return (
     <header className="h-14 flex-shrink-0 z-40 flex items-center gap-3 px-4 bg-canvas/90 backdrop-blur-md border-b border-hairline-soft">
-      {/* ── Mobile: hamburger toggles the project drawer (chat surface only) ── */}
-      {isChatSurface && (
-        <button
-          onClick={openMobileSidebar}
-          className={`${iconBtn} md:hidden -ml-1`}
-          title="Open menu"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-      )}
+      {/* ── Mobile: hamburger toggles the chat rail / project drawer ── */}
+      <button
+        onClick={openMobileSidebar}
+        className={`${iconBtn} md:hidden -ml-1`}
+        title="Open menu"
+        aria-label="Open navigation menu"
+      >
+        <Menu className="w-5 h-5" strokeWidth={1.5} />
+      </button>
 
       {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-4 flex-shrink-0">
@@ -188,8 +186,13 @@ export function TopBar() {
           </div>
         </div>
 
-        {/* Primary navigation: Chat ⇄ Dispatch */}
-        <ViewSwitcher />
+        {/* Primary navigation: module picker */}
+        <ModuleBreadcrumb />
+      </div>
+
+      {/* ── Active module's sub-view tabs (injected per module) ── */}
+      <div className="hidden md:flex min-w-0 items-center overflow-x-auto">
+        <ModuleTabs />
       </div>
 
       {/* ── Spacer ── */}
@@ -273,6 +276,7 @@ export function TopBar() {
 
       {/* ── Persistent controls: tenant, settings, account (every surface) ── */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        <BlackboardEntry />
         <TenantSwitcher />
 
         <button

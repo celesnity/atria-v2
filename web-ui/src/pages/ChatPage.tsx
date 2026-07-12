@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 import { ProjectSidebar } from '../components/Layout/ProjectSidebar';
+import { ChatRail } from '../components/Layout/ChatRail';
 import { ChatInterface } from '../components/Chat/ChatInterface';
 import { ApprovalDialog } from '../components/ApprovalDialog';
 import { AskUserDialog } from '../components/Chat/AskUserDialog';
@@ -53,10 +54,18 @@ export function ChatPage() {
     </>
   );
 
+  // The center column shows the active module's UI, or an empty-state prompt.
+  // Chat is no longer a center fallback — it lives permanently in the left rail.
   const centerContent = activeModuleDashboard ? (
     <ModuleDashboardView moduleName={activeModuleDashboard} />
   ) : (
-    <ChatInterface />
+    <div className="flex flex-1 items-center justify-center p-8 text-center">
+      <div className="max-w-sm">
+        <p className="text-sm text-text-secondary">
+          Pick a module from the breadcrumb above, or keep chatting in the left rail.
+        </p>
+      </div>
+    </div>
   );
 
   // ── Phone layout: drawer sidebar + single panel + bottom tab bar ──
@@ -69,7 +78,8 @@ export function ChatPage() {
         <ProjectSidebar />
 
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
-          {panel === 'chat' && centerContent}
+          {panel === 'chat' && <ChatInterface />}
+          {panel === 'module' && centerContent}
           {panel === 'files' && <ExplorerPane />}
           {panel === 'editor' && <EditorPane />}
         </main>
@@ -80,11 +90,11 @@ export function ChatPage() {
     );
   }
 
-  // ── Desktop / tablet: three coexisting columns ──
+  // ── Desktop / tablet: chat rail + module center + artifact panel ──
   return (
     <div className="flex-1 min-h-0 flex overflow-hidden bg-bg-000">
-      <ProjectSidebar />
-      <main className="flex-1 flex flex-col overflow-hidden bg-bg-000">
+      <ChatRail />
+      <main className="flex-1 flex flex-col overflow-hidden bg-bg-000 min-w-0">
         {centerContent}
       </main>
       <ArtifactViewer />
