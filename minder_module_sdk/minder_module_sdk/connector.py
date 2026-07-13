@@ -182,6 +182,9 @@ class Connector:
         # the module frontend drains over SSE.
         self._ui = UiSurface()
         self._ui_bus: "dict[str, list[Any]]" = {}
+        # Per-session declarative UI snapshot cache (page/data/actions) the agent
+        # reads via /connector/context to see what's currently on screen.
+        self._ui_snapshots: dict[str, dict] = {}
 
     def expose_block(self, component_key: str) -> None:
         """Declare an extra Module-Federation exposed component (a chat block),
@@ -929,6 +932,7 @@ class Connector:
             and each action's risk — so it can plan without probing by trial."""
             principal = _principal_from_headers(request)
             autonomy = _autonomy_from_headers(request) or self.default_autonomy
+            session = _session_from_headers(request) or "default"
             return {
                 "module": self.name,
                 "autonomy": autonomy,
@@ -949,6 +953,7 @@ class Connector:
                     }
                     for t in self._tools.values()
                 ],
+                "ui_snapshot": self._ui_snapshots.get(session),
             }
 
         @app.get("/connector/manifest")
@@ -1048,6 +1053,15 @@ class Connector:
                 return self.push_ui_intent(session, intent, actor=actor)
             except ValueError as exc:
                 return self._fail(str(exc))
+
+        @app.post("/connector/ui/snapshot")
+        async def ui_snapshot(request: Request) -> dict:
+            """Cache the frontend's declarative UI snapshot for one session so the
+            agent can read what's currently on screen via ``/connector/context``."""
+            body = await _json_body(request)
+            session = body.get("session_id") or "default"
+            self._ui_snapshots[session] = body.get("snapshot") or {}
+            return {"ok": True}
 
         @app.post("/connector/decision")
         async def decision(request: Request) -> dict:

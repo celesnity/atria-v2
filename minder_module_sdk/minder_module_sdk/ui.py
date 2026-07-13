@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-INTENT_TYPES = ("navigate", "fill", "focus", "highlight", "request_confirm", "submit")
+INTENT_TYPES = ("navigate", "fill", "focus", "highlight", "request_confirm", "submit", "act")
 
 
 # --- declared surface --------------------------------------------------------
@@ -142,6 +142,12 @@ def submit(form: str) -> dict:
     """Submit a form (runs its gated ``submit_tool``). Prefer request_confirm
     first for anything above trivial risk."""
     return {"intent": "submit", "form": form}
+
+
+def act(name: str) -> dict:
+    """Trigger a declarative ``Agent.Button`` by its scoped name (e.g.
+    ``"products.add"``). Runs the button's ``onAct`` immediately on the client."""
+    return {"intent": "act", "name": name}
 
 
 def is_intent(obj: Any) -> bool:
