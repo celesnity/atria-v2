@@ -262,6 +262,24 @@ class RemoteConnector:
         except (httpx.HTTPError, ValueError):
             return None
 
+    def fetch_context(
+        self, timeout: float = 5.0, principal: Optional[dict] = None,
+        session_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Fetch the live ``/connector/context`` (autonomy, actions, live
+        ``state`` and the current ``ui_snapshot``), or None if unreachable."""
+        try:
+            r = self._client.get(
+                "/connector/context",
+                headers=_auth_headers(self.name, principal, session_id),
+                timeout=timeout,
+            )
+            r.raise_for_status()
+            data = r.json()
+            return data if isinstance(data, dict) else None
+        except (httpx.HTTPError, ValueError):
+            return None
+
 
 if TYPE_CHECKING:  # avoid import cycles / heavy imports at module load
     from minder.core.modules.store import Module
@@ -420,6 +438,76 @@ def reconcile_manifest(module: "Module", conn: "RemoteConnector") -> None:
         )
 
 
+def _enrich_description(tool: dict) -> str:
+    """Fold a tool's ``when_to_use`` + ``examples`` into the description the LLM
+    sees, so the agent picks and understands the tool better."""
+    desc = (tool.get("description") or "").strip()
+    parts = [desc] if desc else []
+    when = (tool.get("when_to_use") or "").strip()
+    if when:
+        parts.append(f"When to use: {when}")
+    examples = tool.get("examples") or []
+    if examples:
+        try:
+            rendered = "; ".join(json.dumps(e, separators=(",", ":")) for e in examples)
+        except (TypeError, ValueError):
+            rendered = ""
+        if rendered:
+            parts.append(f"Examples: {rendered}")
+    return "\n\n".join(parts)
+
+
+def build_module_context_spec(ctx: "SkillToolContext") -> "ToolSpec":
+    """A single agent tool that reads a module's LIVE state + on-screen snapshot
+    (from /connector/context) merged with its static knowledge/notes (from the
+    connector record). The agent calls this when asked what a module shows."""
+    from minder.core.skill_tools import ToolSpec  # local import: avoid cycle
+
+    def handler(**kwargs: Any) -> dict:
+        name = str(kwargs.get("module_name") or "").strip()
+        if not name:
+            return {"success": False, "output": "module_name is required"}
+        from minder.core.modules.registry import ConnectorState, get_registry
+
+        rec = get_registry().connector(name)
+        if rec is None or rec.state is not ConnectorState.READY:
+            return {"success": False, "output": f"module {name!r} is not reachable"}
+        conn = RemoteConnector(rec.name, rec.connector_url)
+        data = conn.fetch_context(principal=ctx.principal, session_id=ctx.session_id)
+        if data is None:
+            return {"success": False, "output": f"module {name!r} is not reachable"}
+        static = rec.context or {}
+        return {
+            "success": True,
+            "output": {
+                "state": data.get("state", []),
+                "ui_snapshot": data.get("ui_snapshot"),
+                "knowledge": static.get("knowledge", []),
+                "notes": static.get("notes", []),
+            },
+        }
+
+    return ToolSpec(
+        name="read_module_context",
+        description=(
+            "Read a module's live state, current on-screen snapshot, domain "
+            "knowledge, and area notes. Call this when the user asks what a module "
+            "currently shows or contains."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "module_name": {
+                    "type": "string",
+                    "description": "The module to inspect, e.g. 'module_template'.",
+                }
+            },
+            "required": ["module_name"],
+        },
+        handler=handler,
+    )
+
+
 def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -> "list[ToolSpec]":
     """Build proxy ToolSpecs for every READY service-module connector, from its
     live ``/connector/manifest`` tool schemas (not the committed manifest).
@@ -441,9 +529,13 @@ def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -
             specs.append(
                 ToolSpec(
                     name=name,
-                    description=tool.get("description", ""),
+                    description=_enrich_description(tool),
                     parameters=tool.get("parameters", {"type": "object", "properties": {}}),
                     handler=_make_handler(ctx, conn, name, bool(tool.get("streaming"))),
                 )
             )
+    # Offer the module-context reader only when there is at least one live
+    # module to inspect — it is useless with no connectors.
+    if specs:
+        specs.append(build_module_context_spec(ctx))
     return specs
