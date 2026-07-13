@@ -349,26 +349,11 @@ class AgentExecutor:
                 hook_manager = HookManager(
                     hooks_config, session_id=session_id, cwd=str(working_dir)
                 )
-                # 1. Tool registry
+                # Tool registry
                 runtime_suite.tool_registry.set_hook_manager(hook_manager)
-                # 2. Subagent manager
-                subagent_mgr = runtime_suite.tool_registry.get_subagent_manager()
-                if subagent_mgr and hasattr(subagent_mgr, "set_hook_manager"):
-                    subagent_mgr.set_hook_manager(hook_manager)
         except Exception as e:
             logger.warning(f"Failed to wire hooks: {e}")
         _ck("hooks:load+wire")
-
-        # Wire the background task client so spawn_subagent(run_in_background=True) works.
-        # The subagent manager is built per-run here; attach the server's client to it.
-        try:
-            from minder.core.tasks.lifecycle import attach_task_client
-
-            attach_task_client(
-                runtime_suite.tool_registry, getattr(self.state, "task_client", None)
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Failed to wire task client: {e}")
 
         # Set thinking level from web state
         from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingLevel
@@ -427,27 +412,6 @@ class AgentExecutor:
         agent.tool_registry = wrapped_registry
         agent._cost_tracker = cost_tracker
 
-        # Blackboard: provision a per-run handle (flag-gated; None when disabled).
-        # Set on the agent BEFORE the system prompt is consumed below so the
-        # Shared Lessons section can be injected; also set on the react_executor
-        # (created later) so tool execution sees it.
-        from minder.core.blackboard.provision import (
-            make_run_blackboard,
-            teardown_run_blackboard,
-        )
-
-        bb_handle = make_run_blackboard(
-            config=config,
-            task_id=session_id or "",
-            owner_id=getattr(session, "owner_id", "") or "",
-        )
-        if bb_handle is not None:
-            agent._blackboard_handle = bb_handle
-            # Append lessons to the dynamic tail instead of a full prompt rebuild —
-            # the stable prefix stays cacheable and no templates are re-read.
-            agent.apply_blackboard_lessons()
-        _ck("blackboard:provision")
-
         # Point session manager at the right session for this execution.
         # Protected by lock to avoid race conditions with concurrent requests.
         with self._session_lock:
@@ -483,12 +447,8 @@ class AgentExecutor:
         # the registry version bumps (i.e. when files change on disk).
         #
         # Skip entirely for assistant deployments: AssistantAgent.build_system_prompt
-        # already embeds its own SKILL block (built with
-        # include_subagent_delegation=False) directly into system_content above. The
-        # block built here always defaults to include_subagent_delegation=True, so it
-        # is a *different* string (once any module manifest sets
-        # subagent.enabled: true, the two no longer coincidentally match) and must
-        # never be appended on top of the assistant's prompt.
+        # already embeds its own SKILL block directly into system_content above, so
+        # appending another copy here would duplicate it.
         if not assistant_selected:
             try:
                 from minder.core.modules.prompt import build_skill_block
@@ -539,11 +499,6 @@ class AgentExecutor:
 
         # Wire injection queue for mid-execution user messages
         react_executor._injection_queue = self.state.get_injection_queue(session_id)
-
-        # Blackboard: expose the per-run handle to tool execution (tool_processing
-        # reads self._blackboard_handle on the react_executor).
-        if bb_handle is not None:
-            react_executor._blackboard_handle = bb_handle
 
         # Store for interrupt bridging
         self._current_react_executors[session_id] = react_executor
@@ -604,9 +559,6 @@ class AgentExecutor:
                 _release_suite()
             except Exception:
                 pass
-
-            # Blackboard: archive (best-effort) + shut down the per-run handle.
-            teardown_run_blackboard(bb_handle)
 
             # Fire SESSION_END hook (matches TUI's repl.py:690)
             if hook_manager:

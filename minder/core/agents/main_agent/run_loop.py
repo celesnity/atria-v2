@@ -206,7 +206,6 @@ class RunLoopMixin:
                     task_monitor=task_monitor,
                     is_subagent=is_subagent,
                     ui_callback=ui_callback,
-                    blackboard=deps.blackboard,
                 )
             except Exception as e:
                 result = {"success": False, "error": str(e)}
@@ -573,12 +572,6 @@ class RunLoopMixin:
                     continue  # Next iteration of outer while loop
 
                 # Sequential path (original logic)
-                # NOTE: The broadcast paradigm removed caller-chosen subagent types,
-                # so the old explore-first gate (which keyed on request_help's
-                # subagent_type == "Code-Explorer") no longer applies — a request_help
-                # is an un-addressed broadcast and is never blocked on a specific
-                # helper having run first.
-
                 for tool_call in tool_calls:
                     tool_name = tool_call["function"]["name"]
                     tool_args = json.loads(tool_call["function"]["arguments"])
@@ -635,7 +628,6 @@ class RunLoopMixin:
                         task_monitor=task_monitor,
                         is_subagent=is_subagent,
                         ui_callback=ui_callback,
-                        blackboard=deps.blackboard,
                     )
 
                     # Notify UI callback after tool execution

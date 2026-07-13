@@ -96,9 +96,6 @@ class WebState:
         # Agent executor (lazily created by websocket handler)
         self._agent_executor: Optional[Any] = None
 
-        # TaskIQ client for background subagents (set at server startup; None when disabled)
-        self.task_client: Optional[Any] = None
-
     def add_ws_client(self, client: Any) -> None:
         """Add a WebSocket client."""
         with self._lock:

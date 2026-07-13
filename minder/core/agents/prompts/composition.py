@@ -203,13 +203,6 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
         priority=75,
     )
 
-    composer.register_section(
-        "subagent_guide",
-        "system/main/main-subagent-guide.md",
-        condition=lambda ctx: ctx.get("has_subagents", False),
-        priority=65,
-    )
-
     # Context awareness - Priority 85-95
     # NOTE: Scratchpad and reminders are dynamic (change per session/turn),
     # so they're marked cacheable=False for Anthropic prompt caching.
@@ -253,10 +246,6 @@ def create_thinking_composer(templates_dir: Path) -> PromptComposer:
 
     composer.register_section(
         "available_tools", "system/thinking/thinking-available-tools.md", priority=45
-    )
-
-    composer.register_section(
-        "subagent_guide", "system/thinking/thinking-subagent-guide.md", priority=50
     )
 
     composer.register_section(

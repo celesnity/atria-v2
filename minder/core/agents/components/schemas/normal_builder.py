@@ -29,27 +29,22 @@ class ToolSchemaBuilder:
         allowed_tools: Union[list[str], None] = None,
         provider: Union[str, None] = None,
         extra_schemas: Union[list[dict[str, Any]], None] = None,
-        blackboard_enabled: bool = False,
     ) -> None:
         """Initialize the tool schema builder.
 
         Args:
             tool_registry: The tool registry for MCP and task tool schemas
             allowed_tools: Optional list of allowed tool names for filtering.
-                          If None, all tools are allowed. Used by subagents
-                          to restrict available tools.
+                          If None, all tools are allowed. Used to restrict the
+                          available tool surface (e.g. plan mode).
             provider: LLM provider name for schema adaptation (e.g., "gemini", "xai").
             extra_schemas: Additional tool schemas appended to the builtin list
                           (used by skill-owned tools).
-            blackboard_enabled: When True, the NOTE tool schema is included in the
-                          built schema list. When False (default), NOTE is omitted
-                          so the feature is a true no-op even at the token level.
         """
         self._tool_registry = tool_registry
         self._allowed_tools = allowed_tools
         self._provider = provider
         self._extra_schemas = extra_schemas or []
-        self._blackboard_enabled = blackboard_enabled
         # Assembled-schema cache. Keyed by inputs that vary at runtime so a
         # repeat call with an unchanged tool surface skips the deepcopy+assembly.
         self._cache_key: tuple | None = None
@@ -89,13 +84,6 @@ class ToolSchemaBuilder:
                 schema for schema in schemas if schema["function"]["name"] in self._allowed_tools
             ]
 
-        # Add task tool schema if subagent manager is configured
-        # Only add if spawn_subagent is in allowed_tools or no filter
-        if self._allowed_tools is None or "request_help" in self._allowed_tools:
-            task_schema = self._build_task_schema()
-            if task_schema:
-                schemas.append(task_schema)
-
         # Add MCP tool schemas (only those matching allowed_tools)
         mcp_schemas = self._build_mcp_schemas()
         if mcp_schemas:
@@ -125,19 +113,6 @@ class ToolSchemaBuilder:
         self._cache_key = key
         self._cached_schemas = schemas
         return schemas
-
-    def _build_task_schema(self) -> dict[str, Any] | None:
-        """Build the ``request_help`` tool schema from available helper profiles."""
-        if not self._tool_registry:
-            return None
-
-        subagent_manager = getattr(self._tool_registry, "_subagent_manager", None)
-        if not subagent_manager:
-            return None
-
-        from minder.core.agents.subagents.task_tool import create_request_help_schema
-
-        return create_request_help_schema(subagent_manager)
 
     def _build_mcp_schemas(self) -> Sequence[dict[str, Any]]:
         """Build MCP tool schemas - only returns discovered tools for token efficiency.
