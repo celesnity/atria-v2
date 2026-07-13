@@ -242,12 +242,18 @@ def template_db_overview():
 #   • restock_product — low risk
 #   • list_products   — a typed read (never gated)
 #   • assist_add_product — co-pilot: drives the REAL Add Product form via UI intents
-conn.page(
-    "products",
-    path="/products",
-    label="Products",
-    description="Product catalog — add, restock, delete.",
-)
+# Declare every dashboard screen so the auto ``<module>_navigate`` tool can move
+# the user between them (ids match the frontend TABS in dashboard.tabs.ts).
+conn.page("products", path="/products", label="Products",
+          description="Product catalog — add, restock, delete.")
+conn.page("jobs", path="/jobs", label="Jobs",
+          description="Background jobs and their status.")
+conn.page("media", path="/media", label="Media",
+          description="Uploaded media assets.")
+conn.page("data", path="/data", label="Data",
+          description="Raw data tables and records.")
+conn.page("metrics", path="/metrics", label="Metrics",
+          description="Dashboard metrics and charts.")
 conn.form(
     "add_product",
     route="products",

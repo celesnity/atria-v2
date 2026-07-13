@@ -140,7 +140,7 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
     const filled = agentFilled.includes(key);
     const focused = focusField === key;
     return (
-      <div style={{ flex: 1, minWidth: 130 }}>
+      <div data-agent-field={key} style={{ flex: 1, minWidth: 130 }}>
         <label style={{ fontSize: 11, color: tokens.textMuted, display: "flex", gap: 6, marginBottom: 4 }}>
           {label}
           {filled && (
@@ -188,13 +188,14 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
       </div>
 
       {/* Add Product form — agent-drivable */}
-      <div style={{ background: tokens.surface, border: `1px solid ${tokens.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <div data-agent-form="add_product" style={{ background: tokens.surface, border: `1px solid ${tokens.border}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           {field("sku", "SKU", "SKU-003")}
           {field("name", "Name", "Cirrus Mug")}
           {field("price", "Price", "19.90", "number")}
           {field("category", "Category", "A / B / C")}
           <motion.button
+            data-agent-control="submit"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
             onClick={submit}

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useMinderTheme, useAgentActivity } from "minder-ui-sdk";
+import { useMinderTheme, useAgentActivity, type UiIntent } from "minder-ui-sdk";
 
 /**
  * Pilo — the module_template mascot. It reacts to the agent driving the UI:
@@ -8,9 +8,76 @@ import { useMinderTheme, useAgentActivity } from "minder-ui-sdk";
  * confirm/submit), and a `mt-mascot` window CustomEvent lets panels nudge its
  * mood on local actions (create/delete/restock). Pure eye-candy — it never
  * touches state.
+ *
+ * Beyond changing mood, Pilo physically WALKS to the on-screen element an intent
+ * targets: `focus` → the `[data-agent-field]`, `fill`/`request_confirm` → the
+ * `[data-agent-form]`, `submit` → the `[data-agent-control="submit"]`,
+ * `highlight` → the `[data-agent-control]`. It springs beside the element,
+ * points at it, then strolls back to its home corner when idle.
  */
 
 type Mood = "idle" | "walk" | "type" | "point" | "ask" | "celebrate" | "nervous" | "happy";
+
+/** Mascot bounding box (px) — body sits at the bottom, speech bubble above it. */
+const BOX_W = 130;
+const BOX_H = 210;
+const GAP = 8;
+
+interface Pos {
+  x: number;
+  y: number;
+  /** Which way the body faces so it points TOWARD the target. */
+  facing: "left" | "right";
+}
+
+/** Home corner (bottom-left), recomputed from the current viewport. */
+function homePos(): Pos {
+  const vh = typeof window === "undefined" ? 800 : window.innerHeight;
+  return { x: 20, y: vh - BOX_H - 20, facing: "right" };
+}
+
+/** The DOM element an intent points at, via the `data-agent-*` marker convention. */
+function targetFor(intent: UiIntent): Element | null {
+  const q = (sel: string) => document.querySelector(sel);
+  switch (intent.intent) {
+    case "focus":
+      return q(`[data-agent-field="${CSS.escape(intent.field)}"]`);
+    case "fill":
+      return q(`[data-agent-form="${CSS.escape(intent.form)}"]`);
+    case "request_confirm":
+      return (
+        q(`[data-agent-form="${CSS.escape(intent.target)}"]`) ??
+        q(`[data-agent-control="${CSS.escape(intent.target)}"]`)
+      );
+    case "highlight":
+      return q(`[data-agent-control="${CSS.escape(intent.control)}"]`);
+    case "submit":
+      return q(`[data-agent-control="submit"]`) ?? q(`[data-agent-form="${CSS.escape(intent.form)}"]`);
+    default: // navigate → no specific element
+      return null;
+  }
+}
+
+/** Place the mascot beside an element: prefer its left, fall back to its right. */
+function poseBeside(el: Element): Pos {
+  const r = el.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let facing: "left" | "right" = "right";
+  let x = r.left - BOX_W - GAP; // stand to the LEFT, point right at it
+  if (x < GAP) {
+    x = r.right + GAP; // no room → stand to the RIGHT, point left
+    facing = "left";
+  }
+  x = Math.max(GAP, Math.min(x, vw - BOX_W - GAP));
+
+  // Anchor the body (bottom of the box) roughly at the element's vertical center.
+  let y = r.top + r.height / 2 - BOX_H + 44;
+  y = Math.max(GAP, Math.min(y, vh - BOX_H - GAP));
+
+  return { x, y, facing };
+}
 
 /** Fire a mascot mood from anywhere in the module frontend. */
 export function mascotSay(mood: Mood, text?: string | null, hold = 2600) {
@@ -45,7 +112,10 @@ export default function Mascot() {
   const [mood, setMood] = useState<Mood>("idle");
   const [text, setText] = useState<string | null>(null);
   const [blink, setBlink] = useState(false);
+  const [pos, setPos] = useState<Pos>(homePos);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  /** Element the mascot is currently escorting (for scroll/resize re-anchoring). */
+  const tracked = useRef<Element | null>(null);
 
   const say = (m: Mood, t: string | null, hold = 3000) => {
     setMood(m);
@@ -55,11 +125,31 @@ export default function Mascot() {
       timer.current = setTimeout(() => {
         setMood("idle");
         setText(null);
+        tracked.current = null; // stop escorting → stroll home
+        setPos(homePos());
       }, hold);
     }
   };
 
-  // React to agent UI intents.
+  /** Walk to whatever element an intent points at (retrying once for late DOM). */
+  const walkTo = useCallback((intent: UiIntent) => {
+    const settle = (attempt: number) => {
+      const el = targetFor(intent);
+      if (el) {
+        tracked.current = el;
+        setPos(poseBeside(el));
+      } else if (attempt < 1) {
+        // Tab may have just switched (navigate→fill); let it mount, then retry.
+        setTimeout(() => settle(attempt + 1), 140);
+      } else {
+        tracked.current = null;
+        setPos(homePos());
+      }
+    };
+    settle(0);
+  }, []);
+
+  // React to agent UI intents: change mood AND travel to the targeted element.
   useEffect(() => {
     if (!activity) return;
     const i = activity.intent;
@@ -68,8 +158,24 @@ export default function Mascot() {
     else if (i.intent === "focus") say("point", `Tới lượt bạn: ${i.field} 👉`, 5000);
     else if (i.intent === "request_confirm") say("ask", i.summary || "Xác nhận nhé? 🤔", 8000);
     else if (i.intent === "submit") say("celebrate", "Xong! 🎉");
+    else if (i.intent === "highlight") say("point", "Nhìn đây nè 👀", 5000);
+    walkTo(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.tick]);
+
+  // Keep the mascot pinned beside its target as the page scrolls / resizes.
+  useEffect(() => {
+    const reanchor = () => {
+      const el = tracked.current;
+      setPos(el && el.isConnected ? poseBeside(el) : homePos());
+    };
+    window.addEventListener("scroll", reanchor, true);
+    window.addEventListener("resize", reanchor);
+    return () => {
+      window.removeEventListener("scroll", reanchor, true);
+      window.removeEventListener("resize", reanchor);
+    };
+  }, []);
 
   // React to panel-level nudges.
   useEffect(() => {
@@ -96,7 +202,24 @@ export default function Mascot() {
   const eyeLook = mood === "point" ? 3 : mood === "ask" ? -2 : 0;
 
   return (
-    <div style={{ position: "fixed", left: 20, bottom: 20, zIndex: 9998, pointerEvents: "none", width: 120 }}>
+    <motion.div
+      initial={false}
+      animate={{ x: pos.x, y: pos.y }}
+      transition={{ type: "spring", stiffness: 130, damping: 18, mass: 0.7 }}
+      style={{
+        position: "fixed",
+        left: 0,
+        top: 0,
+        zIndex: 9998,
+        pointerEvents: "none",
+        width: BOX_W,
+        height: BOX_H,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        alignItems: "flex-start",
+      }}
+    >
       <AnimatePresence>
         {text && (
           <motion.div
@@ -122,7 +245,7 @@ export default function Mascot() {
         )}
       </AnimatePresence>
 
-      <motion.div animate={mood} variants={{}} style={{ width: 90, height: 96, position: "relative" }}>
+      <motion.div animate={mood} variants={{}} style={{ width: 90, height: 96, position: "relative", transform: pos.facing === "left" ? "scaleX(-1)" : undefined }}>
         <motion.div animate={BODY[mood]} style={{ width: "100%", height: "100%" }}>
           {/* confetti on celebrate */}
           <AnimatePresence>
@@ -178,6 +301,6 @@ export default function Mascot() {
           </svg>
         </motion.div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }

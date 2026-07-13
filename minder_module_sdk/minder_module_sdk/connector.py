@@ -59,7 +59,7 @@ from .envelope import (
     make_envelope,
     normalize_risk,
 )
-from .ui import Control, Form, Page, UiSurface, is_intent
+from .ui import Control, Form, Page, UiSurface, is_intent, navigate
 
 logger = logging.getLogger("minder_module_sdk")
 
@@ -290,10 +290,69 @@ class Connector:
 
     def page(self, id: str, *, path: str, label: Optional[str] = None,
              description: str = "") -> Page:
-        """Declare a navigable page so the agent can `navigate` to it by id."""
+        """Declare a navigable page so the agent can `navigate` to it by id.
+
+        Declaring the first page auto-exposes a ``<module>_navigate`` tool so the
+        agent can move the user between the module's screens without any custom
+        wiring — the tool pushes a ``navigate`` UI intent to the session's bus,
+        which the ``minder-ui-sdk`` ``AgentDriverProvider`` applies to the real
+        router. Re-declaring pages refreshes the tool's page enum.
+        """
         p = Page(id, path, label or id.replace("_", " ").title(), description)
         self._ui.pages[id] = p
+        self._ensure_navigate_tool()
         return p
+
+    def _navigate_tool_name(self) -> str:
+        """Module-scoped name so two ui-driving modules don't collide on one
+        generic ``navigate`` tool when core merges every module's proxy tools."""
+        safe = "".join(c if (c.isalnum() or c == "_") else "_" for c in self.name)
+        return f"{safe}_navigate"
+
+    def _ensure_navigate_tool(self) -> None:
+        """Register (or refresh) the built-in navigation tool from declared pages."""
+        pages = list(self._ui.pages.values())
+        if not pages:
+            return
+        ids = [p.id for p in pages]
+        listing = "; ".join(f"{p.id} ({p.label})" for p in pages)
+
+        def _handler(page: str, session_id: Optional[str] = None, **_kw: Any) -> dict:
+            if page not in self._ui.pages:
+                raise ToolError(
+                    "unknown_page",
+                    f"no page {page!r}; declared pages: {ids}",
+                    retryable=False,
+                )
+            # Mirror push_ui_intent's demo convention: the mounted dashboard
+            # subscribes to "default"; a chat turn also carries its session id.
+            for sid in {"default", session_id} - {None}:
+                self.push_ui_intent(sid, navigate(page), actor={"kind": "agent"})
+            target = self._ui.pages[page]
+            return {"output": f"Opened the {target.label} screen."}
+
+        self.tool(
+            self._navigate_tool_name(),
+            description=(
+                "Move the user to one of this module's screens. Pages: "
+                f"{listing}. Navigation only — it changes the visible screen and "
+                "does not modify any data."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "page": {
+                        "type": "string",
+                        "enum": ids,
+                        "description": "Id of the declared page to open.",
+                    }
+                },
+                "required": ["page"],
+            },
+            risk="low",
+            reversible=True,
+            idempotent=True,
+        )(_handler)
 
     def form(
         self,
