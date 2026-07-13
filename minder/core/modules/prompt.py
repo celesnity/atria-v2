@@ -74,6 +74,29 @@ def _format_files(files: list[str]) -> str:
     return f"Files: {', '.join(shown)}{suffix}"
 
 
+def _render_context_block(name: str, ctx: dict) -> list[str]:
+    """Prompt lines for a module's declarative context: static domain knowledge +
+    area notes, and a hint to fetch live state via the read_module_context tool.
+    Empty when the module declares no context."""
+    knowledge = ctx.get("knowledge") or []
+    notes = ctx.get("notes") or []
+    if not knowledge and not notes:
+        return []
+    out: list[str] = []
+    if knowledge:
+        out += ["", "**Domain knowledge:**"]
+        out += [f"- {k}" for k in knowledge]
+    if notes:
+        out += ["", "**Areas:**"]
+        out += [f"- {n.get('name')}: {n.get('text')}" for n in notes if n.get("name")]
+    out += [
+        "",
+        f"Call `read_module_context('{name}')` for live state and the current "
+        "on-screen snapshot.",
+    ]
+    return out
+
+
 def render_module_section(m: Module) -> list[str]:
     """Render one module's catalog lines (heading, summary, sub-skill index)."""
     _, body = parse_frontmatter(m.skill_md)
@@ -87,6 +110,11 @@ def render_module_section(m: Module) -> list[str]:
         section += ["", "**Sub-skills**:"]
         for s in m.subskills:
             section.append(f'- `{m.name}:{s.name}` — {s.description}')
+
+    from minder.core.modules.registry import get_registry
+
+    rec = get_registry().connector(m.name)
+    section += _render_context_block(m.name, (rec.context if rec else None) or {})
 
     listing = _format_files(list(m.files))
     if listing:
