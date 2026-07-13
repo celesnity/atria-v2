@@ -60,10 +60,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     # Pub/sub bus for cross-process push_block routing
     "redis>=5.0",
-    # Distributed task queue for background subagents
-    "taskiq>=0.11",
-    "taskiq-redis>=1.0",
-    # PDF extraction for Paper2Code subagent
+    # PDF extraction (read_pdf tool)
     "pypdf>=4.0.0",
     # Excel / CSV parsing
     "openpyxl>=3.1.0",
