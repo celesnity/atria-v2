@@ -24,7 +24,8 @@ export type UiIntent =
   | { intent: 'focus'; form?: string | null; field: string }
   | { intent: 'highlight'; control: string }
   | { intent: 'request_confirm'; target: string; summary?: string | null }
-  | { intent: 'submit'; form: string };
+  | { intent: 'submit'; form: string }
+  | { intent: 'act'; name: string };
 
 /** Internal per-form handler the provider dispatches intents to. */
 interface FormController {

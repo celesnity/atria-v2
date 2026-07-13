@@ -51,3 +51,7 @@ export type {
   AgentPresenceProps,
   UseAgentPresenceOptions,
 } from './presence';
+export { Agent, AgentRegistryProvider } from './agentSurface/AgentSurface';
+export type { AgentRegistryProviderProps } from './agentSurface/AgentSurface';
+export { createRegistry, MAX_VALUE_CHARS } from './agentSurface/registry';
+export type { UiSnapshot, DataEntry, ActionEntry, Registry } from './agentSurface/registry';
