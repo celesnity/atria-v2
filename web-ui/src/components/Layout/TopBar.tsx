@@ -9,7 +9,6 @@ import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
 import { ModuleBreadcrumb } from "./ModuleBreadcrumb";
 import { ModuleTabs } from "./ModuleTabs";
-import { BlackboardEntry } from "./BlackboardEntry";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -282,7 +281,6 @@ export function TopBar() {
 
       {/* ── Persistent controls: tenant, settings, account (every surface) ── */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        <BlackboardEntry />
         <TenantSwitcher />
 
         <button

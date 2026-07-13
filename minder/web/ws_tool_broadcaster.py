@@ -93,7 +93,12 @@ class WebSocketToolBroadcaster:
         Returns:
             Tool execution result
         """
-        call_id = uuid.uuid4().hex
+        # Reuse the LLM's tool_call_id (passed through by the executor) so the
+        # broadcast tool_call/tool_result land on the SAME activity row the
+        # streaming `on_tool_call_pending` event already created. Falling back to
+        # a fresh uuid would spawn a second row that never resolves ("Working…"
+        # forever) while a duplicate "Done" row appears beside it.
+        call_id = kwargs.get("tool_call_id") or uuid.uuid4().hex
         arguments = arguments or {}
         normalized_args = self._normalize_arguments(arguments) or {}
         display = format_tool_call(tool_name, normalized_args)

@@ -8,9 +8,7 @@ import type { Message } from '../../types';
 import { useChatStore } from '../../stores/chat';
 import { ToolCallMessage } from './ToolCallMessage';
 import { ModuleActivityLine } from './ModuleActivityLine';
-import { SolveDispatchCard } from './SolveDispatchCard';
 import { TodoListCard } from './TodoListCard';
-import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
@@ -281,14 +279,6 @@ function MessageBody({
   if (message.role === 'todos') return <TodoListCard message={message} />;
   if (message.role === 'tool_call') {
     const hasResult = message.tool_result != null && Object.keys(message.tool_result).length > 0;
-    if (message.tool_name === 'solve') {
-      // Dispatch card: request text + strategy + live job progress.
-      return <SolveDispatchCard message={message} />;
-    }
-    if (message.tool_name === 'spawn_subagent') {
-      // Always show subagents as a distinct card, even in Simple Mode.
-      return <SubagentCard message={message} hasResult={hasResult} />;
-    }
     return simpleMode
       ? <ModuleActivityLine message={message} hasResult={hasResult} />
       : <ToolCallMessage message={message} hasResult={hasResult} />;

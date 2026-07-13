@@ -735,6 +735,16 @@ wsClient.on('message_complete', (message) => {
   useChatStore.setState(state => ({
     ...patchSession(state, sid, prev => {
       let messages = prev.messages;
+      // Safety net: the turn is over, so any tool_call still without a result
+      // lost its tool_result event (e.g. an id mismatch). Resolve it instead of
+      // leaving a perpetual "Working…" spinner beside the completed work.
+      if (messages.some(m => m.role === 'tool_call' && !m.tool_result)) {
+        messages = messages.map(m =>
+          m.role === 'tool_call' && !m.tool_result
+            ? { ...m, tool_result: { success: true }, tool_success: true }
+            : m
+        );
+      }
       // Attach the turn's latency metrics to its assistant bubble.
       if (timing && closedTurnId) {
         for (let i = messages.length - 1; i >= 0; i--) {
@@ -1019,58 +1029,6 @@ wsClient.on('plan_approval_resolved', (message) => {
   }));
 });
 
-// ─── Subagent Events ─────────────────────────────────────────────────────────
-
-wsClient.on('subagent_start', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { agent_type, description, tool_call_id } = message.data;
-  console.log('[Frontend] Subagent start:', agent_type, description);
-
-  const subagentMessage: Message = {
-    role: 'tool_call',
-    content: `Spawning ${agent_type} agent`,
-    tool_call_id: tool_call_id,
-    tool_name: 'spawn_subagent',
-    tool_args: { agent_type, description },
-    timestamp: new Date().toISOString(),
-  };
-
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, subagentMessage] });
-  });
-});
-
-wsClient.on('subagent_complete', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { tool_call_id, success } = message.data;
-
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    const msgs = sessionState.messages;
-
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (
-        msgs[i].role === 'tool_call' &&
-        msgs[i].tool_name === 'spawn_subagent' &&
-        msgs[i].tool_call_id === tool_call_id &&
-        !msgs[i].tool_result
-      ) {
-        const updatedMessages = [...msgs];
-        updatedMessages[i] = {
-          ...msgs[i],
-          tool_result: { success, output: success ? 'Agent completed' : 'Agent failed' },
-          tool_summary: success ? 'Agent completed successfully' : 'Agent failed',
-          tool_success: success,
-        };
-        return patchSession(state, sid, { messages: updatedMessages });
-      }
-    }
-    return {};
-  });
-});
 
 wsClient.on('task_completed', (message) => {
   const sid = resolveSessionId(message.data);
