@@ -261,10 +261,6 @@ class InlineToolsMixin:
             "skill_namespace": skill.metadata.namespace,
         }
 
-    def _handle_list_agents(self, arguments: dict[str, Any], context: Any = None) -> dict[str, Any]:
-        """List available subagent types."""
-        return self._agents_tool.list_agents(subagent_manager=self._subagent_manager)
-
     def _handle_apply_patch(self, arguments: dict[str, Any], context: Any = None) -> dict[str, Any]:
         """Apply a unified diff patch."""
         return self._patch_tool.apply_patch(

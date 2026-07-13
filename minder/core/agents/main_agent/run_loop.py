@@ -21,7 +21,6 @@ PARALLELIZABLE_TOOLS = frozenset(
         "list_processes",
         "get_process_output",
         "list_todos",
-        "search_tools",
     }
 )
 
