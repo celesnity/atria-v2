@@ -48,6 +48,12 @@ class SkillToolContext:
     # so a tool can gate on identity and reverse-push into the right session.
     session_id: str | None = None
     principal: dict[str, Any] | None = None
+    # Reads the session's current autonomy mode ("Manual"/"Semi-Auto"/"Auto") at
+    # call time (it can change mid-session via /mode). The module-connector proxy
+    # maps it onto the risk ladder and forwards it as X-Minder-Autonomy, so a
+    # module gates by the caller's real authority, not its own default. None ⇒ the
+    # host wired no provider and the module uses its own default_autonomy.
+    autonomy_provider: Callable[[], str] | None = None
     # Federated chat-block sink: (descriptor, module) -> None. The web session
     # layer wires this to ui_bridge.push_remote_block so a module's tool response
     # can render a native federated block. No-op when unset (e.g. headless/TUI).

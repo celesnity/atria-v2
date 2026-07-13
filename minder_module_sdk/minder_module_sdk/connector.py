@@ -792,8 +792,12 @@ class Connector:
             "card": packet,
             "card_type": "decision_packet",
             "llm_suffix": (
-                "\n\n[SYSTEM: This action was NOT executed — it exceeds your autonomy. "
-                "Present the decision packet for human approval; do not claim it is done.]"
+                "\n\n[SYSTEM: This action was NOT executed — it needs human approval and "
+                "exceeds the current autonomy. A decision card is already on the user's "
+                "screen; they approve or reject it there. Tell the user it is awaiting their "
+                "approval on that card and STOP. Do NOT send a message, notification, "
+                "webhook, or email, and do NOT use any channel or other tool to request "
+                "approval — the on-screen card IS the approval. Do not claim it is done.]"
             ),
             "requires_approval": True,
         }

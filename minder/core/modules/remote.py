@@ -59,6 +59,18 @@ _UNAVAILABLE_ANSWER = (
     "request cannot be completed right now. Please retry once the service is restored."
 )
 
+# A gated action needs human approval, shown as an on-screen decision card. The
+# agent must present it and stop — approval happens on the card in the web UI, not
+# through any message/notification channel.
+APPROVAL_SUFFIX = (
+    "\n\n[SYSTEM: This action was NOT executed — it needs human approval and exceeds "
+    "the current autonomy. A decision card is already on the user's screen; they "
+    "approve or reject it there. Tell the user it is awaiting their approval on that "
+    "card and STOP. Do NOT send a message, notification, webhook, or email, and do NOT "
+    "use any channel or other tool to request approval — the on-screen card IS the "
+    "approval. Do not claim it is done.]"
+)
+
 
 def unavailable_card(query: str, connector_name: str) -> dict:
     """A deps-free, fail-closed card. Generic across modules."""
@@ -91,8 +103,25 @@ def _module_token(name: str) -> Optional[str]:
     )
 
 
-def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str] = None) -> dict:
-    """Best-effort identity + secret headers for a connector call (v2)."""
+# Map the core session's autonomy mode onto the connector contract's risk ladder
+# (none|low|medium|high|critical). The module gates any action whose risk exceeds
+# this, so the caller's real authority — not the module's own default — decides
+# what auto-runs. Manual confirms everything (only reads auto-run); Semi-Auto runs
+# the routine and gates the risky; Auto runs it all.
+_AUTONOMY_LADDER = {"Manual": "none", "Semi-Auto": "medium", "Auto": "critical"}
+
+
+def _ladder_autonomy(level: Optional[str]) -> Optional[str]:
+    """Core autonomy mode → connector risk-ladder autonomy (None if unknown, so the
+    module falls back to its own default)."""
+    return _AUTONOMY_LADDER.get(level or "") if level else None
+
+
+def _auth_headers(
+    name: str, principal: Optional[dict], session_id: Optional[str] = None,
+    autonomy: Optional[str] = None,
+) -> dict:
+    """Best-effort identity + secret headers for a connector call (v2 + v3 autonomy)."""
     headers: dict[str, str] = {}
     token = _module_token(name)
     if token:
@@ -104,6 +133,9 @@ def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str
             pass
     if session_id:
         headers["X-Minder-Session"] = session_id
+    ladder = _ladder_autonomy(autonomy)
+    if ladder:
+        headers["X-Minder-Autonomy"] = ladder
     return headers
 
 
@@ -142,13 +174,14 @@ class RemoteConnector:
 
     def call_tool(
         self, tool: str, arguments: dict, timeout: float = 110.0,
-        principal: Optional[dict] = None, session_id: Optional[str] = None
+        principal: Optional[dict] = None, session_id: Optional[str] = None,
+        autonomy: Optional[str] = None,
     ) -> dict:
         try:
             r = self._client.post(
                 f"/connector/tools/{tool}",
                 json={"arguments": arguments},
-                headers=_auth_headers(self.name, principal, session_id),
+                headers=_auth_headers(self.name, principal, session_id, autonomy),
                 timeout=timeout,
             )
             r.raise_for_status()
@@ -160,7 +193,8 @@ class RemoteConnector:
     # ponytail: no Minder-side stream client — the ReAct tool loop is sync
     def stream_tool(self, tool: str, arguments: dict,
                     timeout: float = 300.0, principal: Optional[dict] = None,
-                    session_id: Optional[str] = None) -> "Iterator[dict]":
+                    session_id: Optional[str] = None,
+                    autonomy: Optional[str] = None) -> "Iterator[dict]":
         """Yield decoded SSE events from ``/connector/tools/{tool}/stream``.
 
         The tool handler consumes these synchronously (pumping progress/card
@@ -171,7 +205,8 @@ class RemoteConnector:
         try:
             with self._client.stream("POST", f"/connector/tools/{tool}/stream",
                                      json={"arguments": arguments},
-                                     headers={**_auth_headers(self.name, principal, session_id),
+                                     headers={**_auth_headers(self.name, principal, session_id,
+                                                              autonomy),
                                               "Accept": "text/event-stream"},
                                      timeout=timeout) as r:
                 r.raise_for_status()
@@ -271,6 +306,14 @@ def _emit_response(ctx: "SkillToolContext", conn: "RemoteConnector", resp: dict)
     out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
     if resp.get("llm_suffix"):
         out["_llm_suffix"] = resp["llm_suffix"]
+    # A gated action returns a decision packet, not a result. The human approves
+    # it on the on-screen card (web UI DecisionPacket → /connector/decision), so
+    # the agent must present it and stop — never route approval through a channel
+    # (send_message/webhook/email). Flag it and enforce that even for modules
+    # built against an older SDK whose own suffix is weaker or absent.
+    if resp.get("requires_approval"):
+        out["requires_approval"] = True
+        out["_llm_suffix"] = APPROVAL_SUFFIX
     return out
 
 
@@ -281,6 +324,18 @@ def _unavailable_result(ctx: "SkillToolContext", conn: "RemoteConnector", query:
             "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
 
 
+def _ctx_autonomy(ctx: "SkillToolContext") -> Optional[str]:
+    """The session's current autonomy mode (read at call time — it can change
+    mid-session via /mode). None when the host wired no provider."""
+    provider = getattr(ctx, "autonomy_provider", None)
+    if provider is None:
+        return None
+    try:
+        return provider()
+    except Exception:  # noqa: BLE001 — never fail a tool call over autonomy read
+        return None
+
+
 def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
                 tool_name: str, kwargs: dict, query: str) -> dict:
     """Consume the tool's SSE stream: pump progress/card events to the UI live,
@@ -289,7 +344,8 @@ def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
     final: Optional[dict] = None
     try:
         for evt in conn.stream_tool(tool_name, kwargs,
-                                    principal=ctx.principal, session_id=ctx.session_id):
+                                    principal=ctx.principal, session_id=ctx.session_id,
+                                    autonomy=_ctx_autonomy(ctx)):
             etype = evt.get("event")
             if etype == "card":
                 _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
@@ -326,7 +382,8 @@ def _make_handler(
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
             resp = conn.call_tool(tool_name, kwargs,
-                                  principal=ctx.principal, session_id=ctx.session_id)
+                                  principal=ctx.principal, session_id=ctx.session_id,
+                                  autonomy=_ctx_autonomy(ctx))
         except ConnectorUnreachable:
             return _unavailable_result(ctx, conn, query)
         return _emit_response(ctx, conn, resp)
