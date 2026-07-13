@@ -11,5 +11,5 @@ WEB_GENERATOR_SUBAGENT = SubAgentSpec(
         "Builds responsive web UIs (React, TypeScript, Tailwind): components, "
         "pages, and frontend wiring."
     ),
-    tools=["write_file", "edit_file", "run_command", "list_files", "read_file"],
+    tools=["run_command"],
 )

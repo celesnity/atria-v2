@@ -62,6 +62,51 @@ def block(
     }
 
 
+def assumption(text: str, confidence: Optional[float] = None) -> dict:
+    """One entry in a decision packet's assumption ledger: what the agent is
+    taking as given, and how sure it is (0..1)."""
+    band = None
+    if confidence is not None:
+        band = "low" if confidence < 0.4 else "medium" if confidence < 0.6 else "high"
+    return {"text": text, "confidence": confidence, "confidence_band": band}
+
+
+def decision_packet(
+    action: str,
+    arguments: Optional[dict] = None,
+    *,
+    title: Optional[str] = None,
+    summary: Optional[str] = None,
+    assumptions: Optional[list[dict]] = None,
+    risk: str = "low",
+    reversible: Optional[bool] = None,
+    undo: Optional[str] = None,
+    preview: Any = None,
+    card_type: str = "decision_packet",
+) -> dict:
+    """A proposed action packaged for a human to approve / modify / reject.
+
+    Carries the action name + arguments the agent wants to run, an assumption
+    ledger (see :func:`assumption`), the action's risk band, and whether it is
+    reversible (and how). The UI SDK's ``DecisionPacket`` renders this and posts
+    the human's decision back.
+    """
+    return {
+        "card_type": card_type,
+        "kind": "decision",
+        "action": action,
+        "arguments": arguments or {},
+        "title": title or action.replace("_", " ").title(),
+        "summary": summary,
+        "assumptions": assumptions or [],
+        "risk": risk,
+        "reversible": reversible,
+        "undo": undo,
+        "preview": preview,
+        "review_required": True,
+    }
+
+
 def unavailable_card(reason: str, *, service: str = "service") -> dict:
     """A fail-closed card for a downstream sidecar/service being unreachable."""
     return {

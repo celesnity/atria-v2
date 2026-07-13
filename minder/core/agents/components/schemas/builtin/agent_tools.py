@@ -11,29 +11,7 @@ from typing import Any
 from minder.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
-    # ===== Apply Patch Tool =====
-    {
-        "type": "function",
-        "function": {
-            "name": "apply_patch",
-            "description": load_tool_description("apply_patch"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "patch": {
-                        "type": "string",
-                        "description": "Unified diff patch content",
-                    },
-                    "dry_run": {
-                        "type": "boolean",
-                        "description": "Validate patch without applying (default: false)",
-                        "default": False,
-                    },
-                },
-                "required": ["patch"],
-            },
-        },
-    },
+    # apply_patch was removed — this agent does not modify files.
     # ===== Task Completion Tool =====
     {
         "type": "function",

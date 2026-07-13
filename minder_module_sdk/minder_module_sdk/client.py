@@ -13,6 +13,7 @@ from typing import Any, Optional
 import httpx
 
 from .announce import AnnounceConfig, _auth_headers
+from .envelope import EventEnvelope, make_envelope
 
 logger = logging.getLogger("minder_module_sdk.client")
 
@@ -72,6 +73,63 @@ class MinderClient:
 
     def remove_block(self, session_id: str, block_id: str) -> None:
         self._post("/api/blocks/remote/remove", {"session_id": session_id, "block_id": block_id})
+
+    def emit_event(
+        self,
+        event: "EventEnvelope | str",
+        payload: Optional[dict] = None,
+        *,
+        session_id: Optional[str] = None,
+        actor: Optional[dict] = None,
+        source: str = "module",
+    ) -> str:
+        """Write an event envelope to Minder's event log so the Operational Graph
+        records it as ground truth. Accepts a prebuilt :class:`EventEnvelope` or a
+        (type, payload) pair. Returns the stored event id."""
+        env = (
+            event
+            if isinstance(event, EventEnvelope)
+            else make_envelope(
+                self.module,
+                event,
+                payload,
+                source=source,
+                actor=actor,
+                session_id=session_id,
+            )
+        )
+        self._post("/api/events", env.to_dict())
+        return env.event_id
+
+    def push_ui_intent(
+        self, session_id: str, intent: dict, *, actor: Optional[dict] = None
+    ) -> None:
+        """Send a UI intent (navigate/fill/focus/…) to a session's frontend via
+        Minder core, which forwards it to the module dashboard mounted in that
+        session — the reverse-push path for driving the real UI."""
+        self._post(
+            "/api/ui/intent",
+            {"session_id": session_id, "module": self.module, "intent": intent, "actor": actor},
+        )
+
+    def query_graph(
+        self,
+        query: Optional[str] = None,
+        *,
+        node: Optional[str] = None,
+        depth: int = 1,
+        limit: int = 50,
+    ) -> dict:
+        """Query Minder's Operational Graph for linked context (neighbors of a
+        node, or a free-text lookup) so the agent reasons on connected data rather
+        than a single row. Returns the host's graph response payload."""
+        payload = {"query": query, "node": node, "depth": depth, "limit": limit}
+        return self._post("/api/graph/query", payload).json()
+
+    def get_context(self, session_id: str) -> dict:
+        """Fetch the agent's current context for a session (autonomy level, scope)
+        from the host."""
+        return self._post("/api/agent/context", {"session_id": session_id}).json()
 
     def push_artifact(self, session_id: str, filename: str, content: bytes) -> int:
         import base64

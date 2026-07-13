@@ -115,4 +115,4 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
     mani = TestClient(conn.asgi()).get("/connector/manifest").json()
     assert mani["remote"]["exposed"] == {"dashboard": "./Dashboard", "./MyAnswer": "./MyAnswer"}
     assert mani["card_types"] == ["m_answer"]
-    assert mani["contract_version"] == "2" and mani["min_core_version"] == "2"
+    assert mani["contract_version"] == "3" and mani["min_core_version"] == "2"

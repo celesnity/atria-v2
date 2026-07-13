@@ -122,15 +122,8 @@ class SubAgentManager(RegistrationMixin, DockerMixin, ExecutionMixin, Background
         excluded. Only the main agent manages task tracking - subagents
         focus purely on execution.
         """
+        # File/code + process-management tools were removed from the product.
         return [
-            "read_file",
-            "write_file",
-            "edit_file",
-            "list_files",
-            "search",
             "run_command",
-            "list_processes",
-            "get_process_output",
-            "kill_process",
             "read_pdf",
         ]
