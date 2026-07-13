@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Package, Plus, RefreshCw, Trash2, PackagePlus, Sparkles, Check, X } from "lucide-react";
+import { Package, Plus, RefreshCw, Trash2, PackagePlus, Sparkles, Check, X, Search, Copy, ArrowUpDown } from "lucide-react";
 import { useMinderTheme, useAgentForm } from "minder-ui-sdk";
 import { useToast } from "../ui/Toast";
+import { mascotSay } from "../ui/Mascot";
 import { variants } from "../theme";
 
 interface Product {
@@ -23,8 +24,22 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [value, setValue] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [cat, setCat] = useState<string>("all");
+  const [sortDesc, setSortDesc] = useState(false);
 
   const base = apiBase.replace(/\/$/, "");
+
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = products.filter(
+      (p) =>
+        (cat === "all" || p.category === cat) &&
+        (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)),
+    );
+    list = [...list].sort((a, b) => (sortDesc ? b.price - a.price : a.price - b.price));
+    return list;
+  }, [products, search, cat, sortDesc]);
 
   const fetchProducts = () =>
     fetch(`${base}/connector/products`)
@@ -57,8 +72,13 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
     })
       .then((r) => r.json())
       .then((res) => {
-        if (res.requires_approval) push("Needs approval — see the decision packet", "info");
-        else push(`Created ${value.name}`, "success");
+        if (res.requires_approval) {
+          push("Needs approval — see the decision packet", "info");
+          mascotSay("ask", "Cái này cần duyệt 🔒", 3200);
+        } else {
+          push(`Created ${value.name}`, "success");
+          mascotSay("celebrate", `Đã tạo ${value.name}! 🎉`);
+        }
         setValue(EMPTY);
         return fetchProducts();
       })
@@ -81,9 +101,24 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
       .then((r) => r.json())
       .then(() => {
         push("Restocked +10", "success");
+        mascotSay("happy", "Nhập thêm 10 📦", 1800);
         return fetchProducts();
       })
       .catch(() => push("Restock failed", "error"));
+
+  const duplicate = (id: number) =>
+    fetch(`${base}/connector/tools/duplicate_product`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ arguments: { product_id: id } }),
+    })
+      .then((r) => r.json())
+      .then(() => {
+        push("Duplicated", "success");
+        mascotSay("happy", "Nhân bản xong 🧬", 1800);
+        return fetchProducts();
+      })
+      .catch(() => push("Duplicate failed", "error"));
 
   // Delete is HIGH risk → gated. Clicking is a human approval, so we post a
   // decision (approve) which re-runs the action past the gate.
@@ -96,6 +131,7 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
       .then((r) => r.json())
       .then(() => {
         push(`Deleted ${name}`, "success");
+        mascotSay("nervous", `Đã xoá ${name} 😬`, 2000);
         return fetchProducts();
       })
       .catch(() => push("Delete failed", "error"));
@@ -200,15 +236,53 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
         </AnimatePresence>
       </div>
 
+      {/* Toolbar: search + category chips + sort */}
+      {products.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 160 }}>
+            <Search size={14} style={{ position: "absolute", left: 10, top: 9, color: tokens.textMuted }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name or SKU…"
+              style={{ width: "100%", boxSizing: "border-box", background: tokens.surfaceAlt, border: `1px solid ${tokens.border}`, borderRadius: 8, padding: "7px 10px 7px 30px", color: tokens.text, fontSize: 13, outline: "none" }}
+            />
+          </div>
+          {["all", "A", "B", "C"].map((c) => (
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              style={{
+                border: `1px solid ${cat === c ? tokens.primary : tokens.border}`,
+                background: cat === c ? `${tokens.primary}1e` : "transparent",
+                color: cat === c ? tokens.primary : tokens.textMuted,
+                borderRadius: 999, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 500,
+              }}
+            >
+              {c === "all" ? "All" : c}
+            </button>
+          ))}
+          <button
+            onClick={() => setSortDesc((s) => !s)}
+            title="Sort by price"
+            style={{ display: "flex", alignItems: "center", gap: 5, border: `1px solid ${tokens.border}`, background: "transparent", color: tokens.textMuted, borderRadius: 8, padding: "6px 10px", fontSize: 12, cursor: "pointer" }}
+          >
+            <ArrowUpDown size={13} /> {sortDesc ? "Price ↓" : "Price ↑"}
+          </button>
+        </div>
+      )}
+
       {/* Catalog list */}
-      {products.length === 0 ? (
+      {shown.length === 0 ? (
         <div style={{ color: tokens.textMuted, textAlign: "center", padding: "40px 0", fontSize: 14 }}>
-          No products yet — add one above, or ask the agent to "add product …"
+          {products.length === 0
+            ? 'No products yet — add one above, or ask the agent to "add product …"'
+            : "No products match your filter."}
         </div>
       ) : (
         <motion.div variants={variants.listContainer} initial="hidden" animate="visible" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <AnimatePresence>
-            {products.map((p) => (
+            {shown.map((p) => (
               <motion.div
                 key={p.id}
                 layout
@@ -229,6 +303,9 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
                 </div>
                 <button onClick={() => restock(p.id)} title="Restock +10" style={iconBtn(tokens.border, tokens.textMuted)}>
                   <PackagePlus size={15} />
+                </button>
+                <button onClick={() => duplicate(p.id)} title="Duplicate" style={iconBtn(tokens.border, tokens.textMuted)}>
+                  <Copy size={15} />
                 </button>
                 <button onClick={() => del(p.id, p.name)} title="Delete (high risk — approval)" style={iconBtn(`${tokens.error}55`, tokens.error)}>
                   <Trash2 size={15} />

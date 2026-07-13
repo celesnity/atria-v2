@@ -10,7 +10,7 @@ def _tc(cid: str, name: str) -> dict:
 
 
 def test_seals_unanswered_tool_call():
-    tool_calls = [_tc("call_a", "request_help"), _tc("call_b", "task_complete")]
+    tool_calls = [_tc("call_a", "run_command"), _tc("call_b", "task_complete")]
     # Only call_a got a result (e.g. task_complete was rejected via a continue).
     messages = [
         {"role": "assistant", "tool_calls": tool_calls},

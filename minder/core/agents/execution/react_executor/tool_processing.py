@@ -168,21 +168,14 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
             ctx.skip_next_thinking = True
             return LoopAction.CONTINUE
 
-        # NOTE: The broadcast paradigm removed caller-chosen subagent types, so the
-        # old "explore first via Code-Explorer" / "Planner auto-plan" gates (which
-        # keyed on request_help's subagent_type) no longer apply — a request_help is
-        # an un-addressed broadcast, never blocked on a specific helper having run.
-
-        # Execute tools (parallel for spawn_subagent batches or read-only batches)
-        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "request_help"]
-        is_all_spawn_agents = len(spawn_calls) == len(tool_calls) and len(spawn_calls) > 1
+        # Execute tools (parallel for read-only batches)
         is_all_parallelizable = len(tool_calls) > 1 and all(
             tc["function"]["name"] in self.PARALLELIZABLE_TOOLS for tc in tool_calls
         )
 
         tool_denied = False
-        if is_all_spawn_agents or is_all_parallelizable:
-            # Parallel execution: subagent batches or read-only tool batches
+        if is_all_parallelizable:
+            # Parallel execution: read-only tool batches
             tool_results_by_id, operation_cancelled = self._execute_tools_parallel(tool_calls, ctx)
         else:
             # Sequential execution for all other tool calls
@@ -225,16 +218,12 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
             if has_writes:
                 self._snapshot_manager.track()
 
-        # Check if agent has subagent capability (for dynamic truncation hints)
-        _has_subagent = "request_help" in getattr(ctx.tool_registry, "_handlers", {})
-
         # Batch add all results after completion (maintains message order)
         for tool_call in tool_calls:
             self._add_tool_result_to_history(
                 ctx.messages,
                 tool_call,
                 tool_results_by_id[tool_call["id"]],
-                has_subagent_tool=_has_subagent,
             )
 
         # Inject plan execution signal after plan approval

@@ -69,13 +69,7 @@ class SessionPersistenceMixin:
                 f"[PERSIST] result_summary: {result_summary[:100] if result_summary else None}"
             )
 
-            nested_calls = []
-            if (
-                tool_name == "request_help"
-                and ctx.ui_callback
-                and hasattr(ctx.ui_callback, "get_and_clear_nested_calls")
-            ):
-                nested_calls = ctx.ui_callback.get_and_clear_nested_calls()
+            nested_calls: list = []
 
             _debug_log("[PERSIST] Creating ToolCallModel")
             tool_call_objects.append(

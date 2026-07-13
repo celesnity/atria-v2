@@ -29,9 +29,7 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "get_process_output",
         "kill_process",
     },
-    "group:session": {
-        "request_help",
-    },
+    "group:session": set(),
     "group:meta": {
         "task_complete",
         "ask_user",

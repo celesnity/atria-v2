@@ -24,7 +24,6 @@ from minder.core.context_engineering.tools.handlers.todo_handler import TodoHand
 from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingHandler
 from minder.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
 from minder.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
-from minder.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
 from minder.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from minder.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
 
@@ -44,12 +43,11 @@ from minder.core.context_engineering.tools.implementations.present_plan_tool imp
 
 from minder.core.context_engineering.tools.registry_mixins import (
     InlineToolsMixin,
-    OrchestrationOpsMixin,
 )
 from minder.core.context_engineering.tools.registry_mixins.llm_wiring import _wire_llm_into_ctx
 
 
-class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
+class ToolRegistry(InlineToolsMixin):
     """Dispatches tool invocations to dedicated handlers."""
 
     def __init__(
@@ -165,8 +163,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         self._patch_tool = PatchTool()
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
-        self._subagent_manager: Union[Any, None] = None
-        self._subagent_orchestrator: Union[Any, None] = None  # built lazily per run
         self._hook_manager: Union["HookManager", None] = None
         self._skill_loader: Union["SkillLoader", None] = None
 
@@ -185,7 +181,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         )
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
-        self._session_handler = SessionToolHandler()
         self._batch_handler: Union[BatchToolHandler, None] = None  # Lazy init after registry ready
 
         self.set_mcp_manager(mcp_manager)
@@ -198,8 +193,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "complete_todo": self._complete_todo,
             "list_todos": lambda args, ctx=None: self.todo_handler.list_todos(),
             "clear_todos": self._clear_todos,
-            # Broadcast blackboard: un-addressed request + voluntary response
-            "request_help": self._execute_request_help,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
             # Task completion tool
@@ -244,23 +237,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         """Return all skill-provided ToolSpecs by name."""
         return dict(self._skill_specs)
 
-    def set_subagent_manager(self, manager: Any) -> None:
-        """Set the subagent manager for task tool execution.
-
-        Args:
-            manager: SubAgentManager instance
-        """
-        self._subagent_manager = manager
-        self._session_handler.set_subagent_manager(manager)
-
-    def get_subagent_manager(self) -> Union[Any, None]:
-        """Get the subagent manager.
-
-        Returns:
-            SubAgentManager instance or None
-        """
-        return self._subagent_manager
-
     def set_hook_manager(self, manager: "HookManager") -> None:
         """Set the hook manager for lifecycle hooks.
 
@@ -273,13 +249,11 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         """Clear session-scoped mutable state so a cached registry can be safely
         reused for a fresh run without state bleeding between web sessions.
 
-        Rebuildable/re-wired-per-run objects (subagent orchestrator, hook
-        manager) are dropped; the subagent manager and per-run task client are
+        Rebuildable/re-wired-per-run objects (hook manager) are dropped and
         re-attached by the caller (web executor) after reset.
         """
         self._invoked_skills = set()
         self._discovered_mcp_tools = set()
-        self._subagent_orchestrator = None
         self._hook_manager = None
         # Fresh todo store for the new run.
         self.todo_handler = TodoHandler()
@@ -353,7 +327,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         ui_callback: Union[Any, None] = None,
         is_subagent: bool = False,
         tool_call_id: Union[str, None] = None,
-        blackboard: Union[Any, None] = None,
     ) -> dict[str, Any]:
         """Execute a tool by delegating to registered handlers."""
         if tool_name.startswith("mcp__"):
@@ -412,7 +385,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             ui_callback=ui_callback,
             is_subagent=is_subagent,
             file_time_tracker=self._file_time_tracker,
-            blackboard=blackboard,
         )
 
         handler = self._handlers[tool_name]
@@ -422,7 +394,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 "batch_tool",
                 "present_plan",
                 "send_image",
-                "request_help",
                 "write_todos",
                 "update_todo",
                 "complete_todo",

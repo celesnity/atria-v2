@@ -15,13 +15,11 @@ PLANNING_TOOLS = {
     # Symbol tools (read-only)
     # MCP tool discovery (read-only)
     "search_tools",
-    # Subagent spawning (subagents handle their own restrictions)
-    "request_help",
     # Ask user for clarifying questions
     "ask_user",
     # Task completion (always allowed - agents must signal completion)
     "task_complete",
 }
-# NOTE: PLANNING_TOOLS corresponds to ToolPolicy.resolve("minimal") + "request_help".
+# NOTE: PLANNING_TOOLS corresponds to ToolPolicy.resolve("minimal").
 # The profile system in tool_policy.py provides a more flexible way to define
 # tool access levels. This set is kept for backward compatibility.

@@ -8,6 +8,7 @@ import {
 } from "minder-ui-sdk";
 import { ToastProvider } from "./ui/Toast";
 import StatHeader from "./ui/StatHeader";
+import Mascot from "./ui/Mascot";
 import ProductsPanel from "./panels/ProductsPanel";
 import JobsPanel from "./panels/JobsPanel";
 import MediaPanel from "./panels/MediaPanel";
@@ -61,6 +62,7 @@ function Dashboard({ apiBase, activeTab, theme }: DashboardProps) {
             <StatHeader apiBase={apiBase} />
             <Panel apiBase={apiBase} />
           </Surface>
+          <Mascot />
         </ToastProvider>
       </AgentDriverProvider>
     </MinderThemeProvider>

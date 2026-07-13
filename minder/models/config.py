@@ -151,7 +151,7 @@ def _default_redis_url() -> str:
 
     Honors ``MINDER_REDIS_URL`` so a single env var points the whole stack at the
     same Redis (e.g. ``redis://redis:6379/0`` in Docker). Falls back to localhost
-    for local/dev. Matches the broker singleton in ``minder.core.tasks.broker``.
+    for local/dev.
     """
     return os.environ.get("MINDER_REDIS_URL", "redis://localhost:6379/0")
 
@@ -161,56 +161,6 @@ class BusConfig(BaseModel):
     WS owner and the publisher are different worker processes."""
 
     kind: str = "in_memory"  # "in_memory" | "redis"
-    redis_url: str = Field(default_factory=_default_redis_url)
-
-
-class TasksConfig(BaseModel):
-    """Distributed task queue (TaskIQ) settings for background subagents."""
-
-    redis_url: str = Field(default_factory=_default_redis_url)
-    result_ttl: int = 3600  # seconds a task result lives in Redis
-    orphan_after: int = 1800  # seconds before an unfinished task is deemed orphaned
-
-
-class BlackboardConfig(BaseModel):
-    """Shared verified blackboard (DeLM) settings."""
-
-    enabled: bool = False  # opt-in; the blackboard is an accelerant, off by default
-    redis_url: str = Field(default_factory=_default_redis_url)
-    ttl: int = 3600  # seconds a task's blackboard lives in Redis
-    window_tokens: int = 2000  # digest token budget injected into context
-    # Admission-time LLM verification (DeLM §A.3) — the paper's largest single accuracy
-    # contributor. Notes are checked for grounding before entering shared state.
-    verify: bool = True
-    # Cheap model for verification; None resolves model_critique -> model_compact -> model.
-    # Fig 4c: a cheap model matches a frontier model for this check.
-    verify_model: Optional[str] = None
-
-
-class ParallelConfig(BaseModel):
-    """Parallel multi-solver (DeLM Phase 2b) settings."""
-
-    max_solvers: int = 5
-    default_solvers: int = 3
-    solver_start_stagger_seconds: float = 0.0
-    # DeLM W2: split the N solvers into this many sequential waves so later waves read
-    # earlier waves' verified blackboard notes (shared progress) instead of running fully
-    # isolated (pass@k). 1 = original single simultaneous fan-out.
-    waves: int = 2
-    pjob_ttl: int = 3600
-    redis_url: str = Field(default_factory=_default_redis_url)
-
-
-class DivideConfig(BaseModel):
-    """Work-division multi-agent (DeLM Phase 2c) settings."""
-
-    max_tasks: int = 8  # cap on decomposed subtasks
-    max_parallel: int = 3  # max workers running at once
-    # DeLM stage 4: when the queue drains, the orchestrator inspects the shared context
-    # and may enqueue more subtasks. Bounds the number of such follow-up rounds (0 = off).
-    max_redecompose_rounds: int = 1
-    pjob_ttl: int = 3600  # seconds a divide job lives in Redis
-    job_timeout_s: int = 600  # coordinator total/no-progress timeout
     redis_url: str = Field(default_factory=_default_redis_url)
 
 
@@ -350,18 +300,6 @@ class AppConfig(BaseModel):
 
     # Web UI nested settings (iframe RPC, etc.)
     web: WebConfig = Field(default_factory=WebConfig)
-
-    # Distributed task queue settings
-    tasks: TasksConfig = Field(default_factory=TasksConfig)
-
-    # Shared verified blackboard settings
-    blackboard: BlackboardConfig = Field(default_factory=BlackboardConfig)
-
-    # Parallel multi-solver settings
-    parallel: ParallelConfig = Field(default_factory=ParallelConfig)
-
-    # Work-division multi-agent settings
-    divide: DivideConfig = Field(default_factory=DivideConfig)
 
     # Paths - resolved via minder_dir() so they honor the MINDER_DIR override
     # (default ~/.minder). Factories run at instantiation, after env is loaded.

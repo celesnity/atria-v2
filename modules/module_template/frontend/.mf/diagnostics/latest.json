@@ -1,10 +1,10 @@
 {
   "latestErrorEvent": {
     "code": "TYPE-001",
-    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"npx tsc --project /Users/anlnm/Desktop/Project/opendev-py/modules/module_template/frontend/node_modules/.federation/tsconfig.ed9c1476f3ce42aa0e531e31dedd6802.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
+    "message": "Failed to generate type declaration. Execute the below cmd to reproduce and fix the error. #TYPE-001\nargs: {\"cmd\":\"npx tsc --project /Users/anlnm/Desktop/Project/opendev-py/modules/module_template/frontend/node_modules/.federation/tsconfig.d304293f8d8afa1005f1ea7709fc0687.json\"}\nView the docs to see how to solve: https://module-federation.io/guide/troubleshooting/type#type-001",
     "args": {
-      "cmd": "npx tsc --project /Users/anlnm/Desktop/Project/opendev-py/modules/module_template/frontend/node_modules/.federation/tsconfig.ed9c1476f3ce42aa0e531e31dedd6802.json"
+      "cmd": "npx tsc --project /Users/anlnm/Desktop/Project/opendev-py/modules/module_template/frontend/node_modules/.federation/tsconfig.d304293f8d8afa1005f1ea7709fc0687.json"
     },
-    "timestamp": 1783924450348
+    "timestamp": 1783927281009
   }
 }

@@ -39,7 +39,6 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
     "complete_todo": ("Complete_Todos", "todo"),
     "list_todos": ("List_Todos", "todos"),
     "clear_todos": ("Clear_Todos", "todos"),
-    "request_help": ("Request help", "helpers"),
     "docker_start": ("Starting", "Docker container"),
     "docker_stop": ("Stopping", "Docker container"),
     "docker_copy": ("Copying", "file to Docker"),
@@ -276,11 +275,6 @@ def format_tool_call(tool_name: str, tool_args: Mapping[str, Any]) -> str:
 
         if params:
             return f"Search({', '.join(params)})"
-
-    # Enhanced formatting for the request_help tool (broadcast blackboard)
-    elif tool_name == "request_help" and tool_args:
-        prompt = tool_args.get("prompt", "")
-        return f"Request help({prompt})" if prompt else "Request help"
 
     # Docker container startup
     elif tool_name == "docker_start" and tool_args:

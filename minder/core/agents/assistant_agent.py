@@ -50,9 +50,6 @@ class AssistantAgent(MainAgent):
             allowed_tools=assistant_allowed_tools(tool_registry),
             env_context=env_context,
         )
-        # allowed_tools makes MainAgent flag itself as a subagent; this is a
-        # top-level deployment agent.
-        self.is_subagent = False
 
     def build_system_prompt(self, thinking_visible: bool = False) -> str:
         """Assistant-first prompt: identity template + module SKILL block."""
@@ -63,7 +60,7 @@ class AssistantAgent(MainAgent):
             from minder.core.modules.prompt import build_skill_block
             from minder.core.modules.registry import get_registry
 
-            block = build_skill_block(get_registry(), include_subagent_delegation=False)
+            block = build_skill_block(get_registry())
         except Exception as exc:  # modules must never break agent construction
             logger.warning("Failed to build module SKILL block for assistant prompt: %s", exc)
             block = ""

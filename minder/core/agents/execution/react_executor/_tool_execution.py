@@ -135,7 +135,6 @@ class ToolExecutionMixin:
                 session_manager=self.session_manager,
                 ui_callback=ctx.ui_callback,
                 tool_call_id=tool_call_id,
-                blackboard=getattr(self, "_blackboard_handle", None),
             )
         except Exception as exc:
             if isinstance(exc, InterruptedError):
@@ -181,40 +180,6 @@ class ToolExecutionMixin:
         operation_cancelled = False
         ui_callback = ctx.ui_callback
 
-        # Check if ALL tools are spawn_subagent (parallel agent scenario)
-        spawn_calls = [tc for tc in tool_calls if tc["function"]["name"] == "request_help"]
-        is_parallel_agents = len(spawn_calls) == len(tool_calls) and len(spawn_calls) > 1
-
-        # Build agent info mapping (tool_call_id -> agent info)
-        # Pass full agent info to UI for individual agent tracking
-        agent_name_map: Dict[str, str] = {}
-        if is_parallel_agents and ui_callback:
-            # Collect full agent info for each parallel agent
-            agent_infos: list[dict] = []
-            for tc in spawn_calls:
-                args = json.loads(tc["function"]["arguments"])
-                agent_type = args.get("subagent_type", "Agent")
-                description = args.get("description", "")
-                tool_call_id = tc["id"]
-                # Map tool_call_id to base type (for completion tracking)
-                agent_name_map[tool_call_id] = agent_type
-                # Collect full info for UI display
-                agent_infos.append(
-                    {
-                        "agent_type": agent_type,
-                        "description": description,
-                        "tool_call_id": tool_call_id,
-                    }
-                )
-            if hasattr(ui_callback, "on_parallel_agents_start"):
-                import sys
-
-                print(
-                    f"[DEBUG] on_parallel_agents_start with agent_infos={agent_infos}",
-                    file=sys.stderr,
-                )
-                ui_callback.on_parallel_agents_start(agent_infos)
-
         # Check interrupt before launching parallel execution
         if self._active_interrupt_token and self._active_interrupt_token.is_requested():
             for tc in tool_calls:
@@ -228,70 +193,31 @@ class ToolExecutionMixin:
 
         executor = self._parallel_executor
 
-        if is_parallel_agents:
-            # --- Existing subagent path (with per-agent UI tracking) ---
-            future_to_call = {
-                executor.submit(
-                    self._execute_single_tool,
-                    tc,
-                    ctx,
-                    suppress_separate_response=True,
-                ): tc
-                for tc in tool_calls
-            }
+        # Silent parallel: execute concurrently, display sequentially.
+        future_to_call = {
+            executor.submit(self._execute_tool_quietly, tc, ctx): tc for tc in tool_calls
+        }
+        for future in as_completed(future_to_call):
+            tool_call = future_to_call[future]
+            try:
+                result = future.result()
+            except InterruptedError:
+                result = {"success": False, "error": "Interrupted by user", "interrupted": True}
+            except Exception as e:
+                result = {"success": False, "error": str(e)}
+            tool_results_by_id[tool_call["id"]] = result
+            if result.get("interrupted"):
+                operation_cancelled = True
 
-            for future in as_completed(future_to_call):
-                tool_call = future_to_call[future]
-                try:
-                    result = future.result()
-                except InterruptedError:
-                    result = {"success": False, "error": "Interrupted by user", "interrupted": True}
-                except Exception as e:
-                    result = {"success": False, "error": str(e)}
-
-                tool_results_by_id[tool_call["id"]] = result
-                if result.get("interrupted"):
-                    operation_cancelled = True
-
-                # Track individual agent completion
-                if ui_callback:
-                    tool_name = tool_call["function"]["name"]
-                    if tool_name == "request_help":
-                        tool_call_id = tool_call["id"]
-                        success = result.get("success", True) if isinstance(result, dict) else True
-                        if hasattr(ui_callback, "on_parallel_agent_complete"):
-                            ui_callback.on_parallel_agent_complete(tool_call_id, success)
-
-            # Notify UI that all parallel agents are done
-            if ui_callback and hasattr(ui_callback, "on_parallel_agents_done"):
-                ui_callback.on_parallel_agents_done()
-
-        else:
-            # --- Silent parallel: execute concurrently, display sequentially ---
-            future_to_call = {
-                executor.submit(self._execute_tool_quietly, tc, ctx): tc for tc in tool_calls
-            }
-            for future in as_completed(future_to_call):
-                tool_call = future_to_call[future]
-                try:
-                    result = future.result()
-                except InterruptedError:
-                    result = {"success": False, "error": "Interrupted by user", "interrupted": True}
-                except Exception as e:
-                    result = {"success": False, "error": str(e)}
-                tool_results_by_id[tool_call["id"]] = result
-                if result.get("interrupted"):
-                    operation_cancelled = True
-
-            # Replay display in original order (looks sequential to user)
-            for tc in tool_calls:
-                result = tool_results_by_id.get(tc["id"], {})
-                tool_name = tc["function"]["name"]
-                args_str = tc["function"]["arguments"]
-                self._last_operation_summary = format_tool_call(tool_name, json.loads(args_str))
-                if ui_callback and hasattr(ui_callback, "on_tool_call"):
-                    ui_callback.on_tool_call(tool_name, args_str)
-                if ui_callback and hasattr(ui_callback, "on_tool_result"):
-                    ui_callback.on_tool_result(tool_name, args_str, result)
+        # Replay display in original order (looks sequential to user)
+        for tc in tool_calls:
+            result = tool_results_by_id.get(tc["id"], {})
+            tool_name = tc["function"]["name"]
+            args_str = tc["function"]["arguments"]
+            self._last_operation_summary = format_tool_call(tool_name, json.loads(args_str))
+            if ui_callback and hasattr(ui_callback, "on_tool_call"):
+                ui_callback.on_tool_call(tool_name, args_str)
+            if ui_callback and hasattr(ui_callback, "on_tool_result"):
+                ui_callback.on_tool_result(tool_name, args_str, result)
 
         return tool_results_by_id, operation_cancelled
