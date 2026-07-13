@@ -105,10 +105,11 @@ def _module_token(name: str) -> Optional[str]:
 
 # Map the core session's autonomy mode onto the connector contract's risk ladder
 # (none|low|medium|high|critical). The module gates any action whose risk exceeds
-# this, so the caller's real authority — not the module's own default — decides
-# what auto-runs. Manual confirms everything (only reads auto-run); Semi-Auto runs
-# the routine and gates the risky; Auto runs it all.
-_AUTONOMY_LADDER = {"Manual": "none", "Semi-Auto": "medium", "Auto": "critical"}
+# this. Tuned to only prompt for genuinely risky/irreversible actions, so routine
+# low/medium work (create, restock, edit) doesn't nag the user: Manual auto-runs
+# up to medium and gates high+critical (e.g. delete); Semi-Auto gates only
+# critical; Auto runs everything. Reads (risk none) are never gated in any mode.
+_AUTONOMY_LADDER = {"Manual": "medium", "Semi-Auto": "high", "Auto": "critical"}
 
 
 def _ladder_autonomy(level: Optional[str]) -> Optional[str]:

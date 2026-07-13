@@ -27,11 +27,21 @@ def test_call_tool_returns_connector_payload():
 
 
 def test_autonomy_maps_to_ladder_and_rides_the_header():
-    # core mode → connector risk ladder
-    assert remote._ladder_autonomy("Manual") == "none"
-    assert remote._ladder_autonomy("Semi-Auto") == "medium"
-    assert remote._ladder_autonomy("Auto") == "critical"
-    assert remote._ladder_autonomy("weird") is None  # unknown ⇒ module default
+    # core mode → connector risk ladder (only risky actions gate; routine work runs)
+    assert remote._ladder_autonomy("Manual") == "medium"    # gates high/critical (e.g. delete)
+    assert remote._ladder_autonomy("Semi-Auto") == "high"   # gates critical only
+    assert remote._ladder_autonomy("Auto") == "critical"    # gates nothing
+    assert remote._ladder_autonomy("weird") is None         # unknown ⇒ module default
+
+    # the header carries the mapped value
+    seen2 = {}
+
+    def h2(request):
+        seen2["a"] = request.headers.get("X-Minder-Autonomy")
+        return httpx.Response(200, json={"success": True, "output": "ok"})
+
+    _connector(h2).call_tool("t", {}, autonomy="Manual")
+    assert seen2["a"] == "medium"
 
     seen = {}
 
@@ -41,7 +51,7 @@ def test_autonomy_maps_to_ladder_and_rides_the_header():
 
     conn = _connector(handler)
     conn.call_tool("t", {}, autonomy="Semi-Auto")
-    assert seen["autonomy"] == "medium"
+    assert seen["autonomy"] == "high"
     # no autonomy ⇒ no header (module uses its own default_autonomy)
     conn.call_tool("t", {})
     assert seen["autonomy"] is None

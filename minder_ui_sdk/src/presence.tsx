@@ -7,7 +7,7 @@ import {
 } from 'react';
 import { useMinderTheme } from './theme';
 import { useModuleEvents, type EventActor } from './agentContext';
-import { useAgentActivity } from './agentDriver';
+import { useAgentActivity, type UiIntent } from './agentDriver';
 
 /**
  * The Agent Presence Layer (stage, not steering wheel). This is the *animation*
@@ -35,8 +35,13 @@ export interface AgentPresenceInfo {
   risk: string | null;
   /** One-line narration to render beside the cursor. */
   caption: string;
-  /** CSS selector the ghost cursor should point at (proposing → Approve). */
+  /** CSS selector the ghost cursor should point at (the field/control/button the
+   * agent is touching — proposing → Approve). Null → the cursor rests in the
+   * corner (e.g. a committed action with no on-screen anchor). */
   target: string | null;
+  /** Bumped on every new signal so the cursor re-measures its target even when
+   * the selector is unchanged (the element may have just mounted after a nav). */
+  nonce: number;
   /** Operator interrupt — clears the presence immediately (UI-SDK-09). */
   dismiss: () => void;
 }
@@ -47,7 +52,50 @@ const IDLE: Omit<AgentPresenceInfo, 'dismiss'> = {
   risk: null,
   caption: '',
   target: null,
+  nonce: 0,
 };
+
+/** The on-screen element an intent points at, using the data-attributes a module
+ * frontend already sets on agent-drivable fields/forms/controls. */
+function targetForIntent(intent: UiIntent, approveSelector: string): string | null {
+  switch (intent.intent) {
+    case 'focus':
+      return intent.field ? `[data-agent-field="${intent.field}"]` : null;
+    case 'fill': {
+      const keys = Object.keys(intent.values ?? {});
+      return keys.length
+        ? `[data-agent-field="${keys[keys.length - 1]}"]`
+        : `[data-agent-form="${intent.form}"]`;
+    }
+    case 'highlight':
+      return `[data-agent-control="${intent.control}"],[data-agent-field="${intent.control}"]`;
+    case 'request_confirm':
+      return approveSelector;
+    case 'submit':
+      return `[data-agent-control="submit"],${approveSelector}`;
+    case 'navigate':
+    default:
+      return null;
+  }
+}
+
+/** One-line narration for an intent. */
+function captionForIntent(intent: UiIntent): string {
+  switch (intent.intent) {
+    case 'navigate':
+      return 'Minder opened this screen';
+    case 'fill':
+      return 'Minder filled the form';
+    case 'focus':
+      return 'Fill this next';
+    case 'highlight':
+      return 'Minder points here';
+    case 'submit':
+      return 'Submitting…';
+    default:
+      return 'Minder is here';
+  }
+}
 
 export interface UseAgentPresenceOptions {
   /** How long a "done" animation lingers before fading, ms. Default 3500. */
@@ -71,6 +119,11 @@ export function useAgentPresence(
   const [info, setInfo] = useState<Omit<AgentPresenceInfo, 'dismiss'>>(IDLE);
   // Ticks the operator dismissed, so a dismissed proposal doesn't re-appear.
   const dismissedTick = useRef<number>(-1);
+  const seq = useRef<number>(0);
+  const set = useCallback((next: Omit<AgentPresenceInfo, 'dismiss' | 'nonce'>) => {
+    seq.current += 1;
+    setInfo({ ...next, nonce: seq.current });
+  }, []);
 
   // Committed actions → "Minder did X" (only animate what actually happened).
   useModuleEvents(apiBase, {
@@ -78,7 +131,7 @@ export function useAgentPresence(
     onEvent: (env) => {
       const tool = (env.payload as { tool?: string })?.tool ?? 'an action';
       const failed = env.type === 'action.failed';
-      setInfo({
+      set({
         state: 'acting',
         actor: env.actor ?? { kind: 'agent' },
         risk: (env.payload as { risk?: string })?.risk ?? null,
@@ -88,26 +141,39 @@ export function useAgentPresence(
     },
   });
 
-  // A "done" narration lingers, then fades back to idle.
+  // Live intents drive the cursor to the actual component the agent is touching:
+  // fill/focus/highlight/submit → point at that field/control; request_confirm →
+  // park at Approve and wait (proposal). navigate carries no anchor.
+  useEffect(() => {
+    if (!activity || dismissedTick.current === activity.tick) return;
+    const it = activity.intent;
+    if (it.intent === 'request_confirm') {
+      set({
+        state: 'proposing',
+        actor: { kind: 'agent' },
+        risk: 'high',
+        caption: it.summary || 'Minder proposes an action — your approval',
+        target: approveSelector,
+      });
+    } else {
+      set({
+        state: 'acting',
+        actor: { kind: 'agent' },
+        risk: 'low',
+        caption: captionForIntent(it),
+        target: targetForIntent(it, approveSelector),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity, approveSelector]);
+
+  // An 'acting' narration lingers then fades; a 'proposing' one stays until the
+  // human acts on it or the operator dismisses it.
   useEffect(() => {
     if (info.state !== 'acting') return;
     const t = setTimeout(() => setInfo(IDLE), holdMs);
     return () => clearTimeout(t);
   }, [info, holdMs]);
-
-  // A proposal (high-risk) → park the ghost cursor at Approve and wait.
-  useEffect(() => {
-    if (!activity || dismissedTick.current === activity.tick) return;
-    if (activity.intent.intent === 'request_confirm') {
-      setInfo({
-        state: 'proposing',
-        actor: { kind: 'agent' },
-        risk: 'high',
-        caption: activity.intent.summary || 'Minder proposes an action — your approval',
-        target: approveSelector,
-      });
-    }
-  }, [activity, approveSelector]);
 
   const dismiss = useCallback(() => {
     if (activity) dismissedTick.current = activity.tick;
@@ -148,36 +214,65 @@ export function AgentBadge({ actor }: { actor?: EventActor | null }): ReactEleme
   );
 }
 
-/** Locate a target element's viewport centre (null when absent). */
-function useTargetPosition(selector: string | null): { x: number; y: number } | null {
+/** Track a target element's viewport position, re-measuring as it appears/moves.
+ *
+ * Robust to the element not existing yet (it polls briefly after a nav mounts the
+ * panel) and to the page scrolling/resizing while the cursor is parked. `nonce`
+ * forces a fresh measure even when `selector` is unchanged. */
+function useTrackedPosition(
+  selector: string | null,
+  nonce: number,
+): { x: number; y: number } | null {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => {
     if (!selector || typeof document === 'undefined') {
       setPos(null);
       return;
     }
-    const el = document.querySelector(selector) as HTMLElement | null;
-    if (!el) {
-      setPos(null);
-      return;
-    }
-    const r = el.getBoundingClientRect();
-    setPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
-  }, [selector]);
+    let raf = 0;
+    let tries = 0;
+    let cancelled = false;
+    const measure = (): boolean => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      // Point just inside the element's leading edge (feels like the cursor
+      // landed on it), vertically centred.
+      setPos({ x: r.left + Math.min(20, r.width / 2), y: r.top + r.height / 2 });
+      return true;
+    };
+    const poll = () => {
+      if (cancelled || measure()) return;
+      tries += 1;
+      if (tries < 45) raf = requestAnimationFrame(poll); // ~0.7s to let it mount
+    };
+    poll();
+    const onView = () => measure();
+    window.addEventListener('resize', onView);
+    window.addEventListener('scroll', onView, true);
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onView);
+      window.removeEventListener('scroll', onView, true);
+    };
+  }, [selector, nonce]);
   return pos;
 }
 
-/** The ghost cursor itself — an absolutely-positioned pointer that glides to a
- * target (proposal) or sits in the corner (done). Presentational only. */
+/** The ghost cursor itself — an absolutely-positioned pointer that glides to the
+ * component the agent is touching, or rests in the corner. Presentational only. */
 export function GhostCursor({
   state,
   target,
+  nonce = 0,
 }: {
   state: AgentPresenceState;
   target: string | null;
+  nonce?: number;
 }): ReactElement | null {
   const { tokens } = useMinderTheme();
-  const pos = useTargetPosition(state === 'proposing' ? target : null);
+  const pos = useTrackedPosition(state === 'idle' ? null : target, nonce);
   if (state === 'idle') return null;
   const color = state === 'proposing' ? tokens.warning : tokens.primary;
   const style: React.CSSProperties = pos
@@ -222,7 +317,7 @@ export function AgentPresence(props: AgentPresenceProps): ReactElement | null {
   return (
     <>
       <style>{'@keyframes minder-ghost-pulse{0%,100%{opacity:1}50%{opacity:.45}}'}</style>
-      <GhostCursor state={info.state} target={info.target} />
+      <GhostCursor state={info.state} target={info.target} nonce={info.nonce} />
       <div
         data-minder-presence={info.state}
         style={{
