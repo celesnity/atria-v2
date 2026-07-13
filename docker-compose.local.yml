@@ -41,6 +41,9 @@ services:
 
   minder:
     environment:
+      # TEMP: per-phase TTFT profiler — logs elapsed-since-query at each setup
+      # boundary + the action-LLM dispatch offset. Remove when done.
+      MINDER_TTFT_PROFILE: "1"
       DATABASE_URL: postgresql://minder:minder@db:5432/minder
       AUTH_MODE: keycloak
       KEYCLOAK_URL: http://keycloak:8080

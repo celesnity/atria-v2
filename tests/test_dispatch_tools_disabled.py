@@ -23,8 +23,46 @@ def test_dispatch_tools_not_advertised() -> None:
 
 
 def test_core_answering_tools_still_present() -> None:
-    # Guard against over-broad disabling: the tools EK actually answers with
-    # (bash for knowledge.py, file search/read) must remain.
+    # The agent is no longer a code/file agent: it orchestrates and answers via
+    # shell. run_command must remain.
     names = _tool_names()
-    for kept in ("run_command", "search", "read_file"):
-        assert kept in names, f"{kept} must remain available"
+    assert "run_command" in names, "run_command must remain available"
+
+
+# File/code tools, background-process management, apply_patch, and the blackboard
+# NOTE tool were deleted from the builtin schema set entirely — they must not
+# appear for ANY agent (main or subagent) nor in the settings page.
+_DELETED_TOOLS = frozenset(
+    {
+        "write_file",
+        "edit_file",
+        "read_file",
+        "list_files",
+        "search",
+        "apply_patch",
+        "list_processes",
+        "get_process_output",
+        "kill_process",
+        "NOTE",
+    }
+)
+
+
+def test_deleted_tools_gone_for_all_agents() -> None:
+    # allowed_tools=None (main) and an explicit list (subagent) both resolve
+    # against _BUILTIN_TOOL_SCHEMAS — deletion removes them everywhere.
+    main_names = _tool_names()
+    assert not (_DELETED_TOOLS & main_names), "deleted tools leaked into main agent"
+
+    sub_schemas = ToolSchemaBuilder(
+        tool_registry=None, allowed_tools=list(_DELETED_TOOLS) + ["run_command"]
+    ).build()
+    sub_names = {s["function"]["name"] for s in sub_schemas}
+    assert not (_DELETED_TOOLS & sub_names), "deleted tools resurfaced via allowed_tools"
+
+
+def test_deleted_tools_absent_from_settings() -> None:
+    from minder.core.agents.components.schemas.disabled_tools import all_builtin_tool_meta
+
+    settings_names = {m["name"] for m in all_builtin_tool_meta()}
+    assert not (_DELETED_TOOLS & settings_names), "deleted tools still shown in settings page"

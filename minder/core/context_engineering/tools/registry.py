@@ -24,7 +24,6 @@ from minder.core.context_engineering.tools.handlers.todo_handler import TodoHand
 from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingHandler
 from minder.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
 from minder.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
-from minder.core.context_engineering.tools.implementations.note_tool import execute_note
 from minder.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
 from minder.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from minder.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
@@ -192,15 +191,7 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         self.set_mcp_manager(mcp_manager)
 
         self._handlers: dict[str, Any] = {
-            "write_file": self._file_handler.write_file,
-            "edit_file": self._file_handler.edit_file,
-            "read_file": self._file_handler.read_file,
-            "list_files": self._file_handler.list_files,
-            "search": self._file_handler.search,  # Unified: type="text" (default) or "ast"
             "run_command": self._process_handler.run_command,
-            "list_processes": lambda args, ctx: self._process_handler.list_processes(),
-            "get_process_output": self._process_handler.get_process_output,
-            "kill_process": self._process_handler.kill_process,
             "ask_user": self._ask_user_handler.ask_questions,
             "write_todos": self._write_todos,
             "update_todo": self._update_todo,
@@ -219,15 +210,8 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
-            # Session inspection tools (dormant — list_subagents removed from schema)
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
-            # Apply patch
-            "apply_patch": self._handle_apply_patch,
-            # Blackboard note tool
-            "NOTE": lambda args, ctx=None: execute_note(
-                args, blackboard=getattr(ctx, "blackboard", None)
-            ),
         }
 
         # Merge skill-owned tool handlers. Each skill's tools.py returned a
@@ -434,14 +418,10 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         handler = self._handlers[tool_name]
         try:
             if tool_name in {
-                "write_file",
-                "edit_file",
-                "read_file",
                 "run_command",
                 "batch_tool",
                 "present_plan",
                 "send_image",
-                "NOTE",
                 "request_help",
                 "write_todos",
                 "update_todo",
@@ -450,10 +430,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             }:
                 # Handlers requiring context
                 result = handler(arguments, context)
-            elif tool_name == "list_processes":
-                result = handler(arguments, context)
-            elif tool_name in {"get_process_output", "kill_process"}:
-                result = handler(arguments)
             else:
                 # Remaining handlers ignore execution context
                 result = handler(arguments)

@@ -11,3 +11,30 @@ export {
   tokensFor,
 } from './theme';
 export type { MinderTheme, MinderTokens } from './theme';
+export { useModuleEvents, useAgentContext } from './agentContext';
+export type {
+  EventEnvelope,
+  EventActor,
+  AgentContext,
+  UseModuleEventsOptions,
+} from './agentContext';
+export { DecisionPacket, useDecision } from './decision';
+export type {
+  DecisionPacketData,
+  Decision,
+  DecisionVerdict,
+  Assumption,
+} from './decision';
+export {
+  AgentDriverProvider,
+  useAgentForm,
+  useAgentHighlight,
+  useAgentActivity,
+} from './agentDriver';
+export type {
+  UiIntent,
+  AgentDriverProviderProps,
+  UseAgentFormArgs,
+  AgentFormState,
+  AgentActivity,
+} from './agentDriver';

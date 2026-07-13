@@ -7,15 +7,34 @@
     "default_height": 760,
     "badge_color": "info",
     "tabs": [
-      {"id": "jobs", "label": "Jobs"},
-      {"id": "media", "label": "Media"},
-      {"id": "data", "label": "Data"},
-      {"id": "metrics", "label": "Metrics"}
+      {
+        "id": "products",
+        "label": "Products"
+      },
+      {
+        "id": "jobs",
+        "label": "Jobs"
+      },
+      {
+        "id": "media",
+        "label": "Media"
+      },
+      {
+        "id": "data",
+        "label": "Data"
+      },
+      {
+        "id": "metrics",
+        "label": "Metrics"
+      }
     ]
   },
   "remote": {
     "name": "module_template",
     "remoteEntry": "http://localhost:9300/dashboard/remoteEntry.js",
-    "exposed": { "dashboard": "./Dashboard", "./ShowcaseBlock": "./ShowcaseBlock" }
+    "exposed": {
+      "dashboard": "./Dashboard",
+      "./ShowcaseBlock": "./ShowcaseBlock"
+    }
   }
 }

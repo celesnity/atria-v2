@@ -11,13 +11,22 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from minder_module_sdk import Connector, card
+from minder_module_sdk import (
+    Connector,
+    ToolError,
+    card,
+    fill,
+    focus,
+    navigate,
+    request_confirm,
+)
 from minder_module_sdk.client import MinderClientError
 
 import service
 import db
 import media
 import tasks
+import products
 
 logger = logging.getLogger("module_template")
 
@@ -28,6 +37,9 @@ conn = Connector(
     public_base_env="MT_PUBLIC_BASE",
     dashboard_dist_env="MT_DASHBOARD_DIST",
     min_core_version="2",
+    # Demo the safety gate out of the box: high/critical actions need approval
+    # unless Minder core raises the caller's autonomy above "medium".
+    default_autonomy="medium",
 )
 
 conn.expose_block("./ShowcaseBlock")
@@ -221,6 +233,197 @@ def template_db_overview():
             "minder_artifacts_count": db.count_artifacts(),
         }
     }
+
+
+# --- 9. AGENT SURFACE DEMO: products catalog (risk gate + events + UI driving) --
+# The Products tab is a small CRUD surface wired to the v3 agent-facing SDK:
+#   • create_product  — medium risk, runs; emits a product.created event
+#   • delete_product  — high risk, GATED below "high" autonomy → decision packet
+#   • restock_product — low risk
+#   • list_products   — a typed read (never gated)
+#   • assist_add_product — co-pilot: drives the REAL Add Product form via UI intents
+conn.page(
+    "products",
+    path="/products",
+    label="Products",
+    description="Product catalog — add, restock, delete.",
+)
+conn.form(
+    "add_product",
+    route="products",
+    fields=[
+        {"name": "sku", "type": "string", "label": "SKU", "required": True},
+        {"name": "name", "type": "string", "label": "Name", "required": True},
+        {"name": "price", "type": "number", "label": "Price", "required": True},
+        {"name": "category", "type": "enum", "label": "Category",
+         "options": ["A", "B", "C"], "required": False},
+    ],
+    submit_tool="create_product",
+    risk="medium",
+    reversible=True,
+    instructions="Fill sku, name, price. Category is optional. Ask the user to "
+    "confirm before submitting.",
+)
+conn.event(
+    "product.created",
+    description="Emitted when a product is added to the catalog.",
+    schema={"type": "object", "properties": {"product": {"type": "object"}}},
+)
+
+
+@conn.read("list_products", description="List every product in the catalog (typed read).")
+def list_products():
+    return {"output": {"products": products.list_products()}}
+
+
+@conn.tool(
+    "create_product",
+    risk="medium",
+    reversible=True,
+    description="Create a product. This is the Add Product form's submit action.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "price": {"type": "number"},
+            "category": {"type": "string"},
+        },
+        "required": ["sku", "name", "price"],
+    },
+    card_type="template_card",
+)
+def create_product(sku: str, name: str, price: float, category: str = "", session_id=None, **kw):
+    if not sku or not name:
+        raise ToolError("missing_fields", "sku and name are required", retryable=False)
+    p = products.create(sku, name, price, category)
+    conn.emit_event("product.created", {"product": p}, session_id=session_id)
+    return {
+        "output": f"created product #{p['id']} ({sku})",
+        "card": card(
+            f"Created {name} ({sku}) at ${p['price']:.2f}.",
+            card_type="template_card",
+            confidence=0.95,
+        ),
+    }
+
+
+@conn.tool(
+    "restock_product",
+    risk="low",
+    description="Add stock to a product.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}, "qty": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+)
+def restock_product(product_id: int, qty: int = 10, **kw):
+    p = products.restock(int(product_id), int(qty))
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"restocked #{product_id} → {p['stock']} in stock"}
+
+
+@conn.tool(
+    "delete_product",
+    risk="high",
+    reversible=False,
+    idempotent=True,
+    description="Delete a product. HIGH risk — gated below 'high' autonomy, so it "
+    "returns a decision packet for approval instead of deleting.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+)
+def delete_product(product_id: int, **kw):
+    p = products.delete(int(product_id))
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"deleted product #{product_id} ({p['sku']})"}
+
+
+@conn.tool(
+    "assist_add_product",
+    risk="low",
+    description="Co-pilot: open the Add Product form in the UI, prefill what you "
+    "know, leave blanks for the user, and ask them to confirm. Does NOT create the "
+    "product itself — the human confirms in the form.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "price": {"type": "number"},
+            "category": {"type": "string"},
+        },
+        "required": ["sku", "name"],
+    },
+)
+def assist_add_product(sku, name, price=None, category=None, session_id=None, **kw):
+    values: dict = {"sku": sku, "name": name}
+    if price is not None:
+        values["price"] = price
+    if category:
+        values["category"] = category
+    # Push to the demo session "default" (the mounted dashboard subscribes there)
+    # and to the chat session if one was provided.
+    for sid in {"default", session_id} - {None}:
+        conn.push_ui_intent(sid, navigate("products"))
+        conn.push_ui_intent(sid, fill("add_product", values, partial=True))
+        if not category:
+            conn.push_ui_intent(sid, focus("category", form="add_product"))
+        conn.push_ui_intent(
+            sid, request_confirm("add_product", summary=f"Create product {name} ({sku})?")
+        )
+    return {
+        "output": f"Opened the Add Product form and prefilled {sku!r}; asked the user "
+        "to review the blanks and confirm."
+    }
+
+
+@conn.tool(
+    "duplicate_product",
+    risk="low",
+    description="Duplicate a product (new SKU suffixed -COPY).",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+)
+def duplicate_product(product_id: int, session_id=None, **kw):
+    src = products.get(int(product_id))
+    if src is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    p = products.create(f"{src['sku']}-COPY", src["name"], src["price"], src["category"], src["stock"])
+    conn.emit_event("product.created", {"product": p}, session_id=session_id)
+    return {"output": f"duplicated #{product_id} → #{p['id']} ({p['sku']})"}
+
+
+@conn.tool(
+    "update_price",
+    risk="medium",
+    reversible=True,
+    description="Change a product's price.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}, "price": {"type": "number"}},
+        "required": ["product_id", "price"],
+    },
+)
+def update_price(product_id: int, price: float, **kw):
+    p = products.set_price(int(product_id), price)
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"set #{product_id} price → ${p['price']:.2f}"}
+
+
+@conn.route("/products", methods=["GET"])
+def route_products():
+    return {"products": products.list_products()}
 
 
 # --- lifecycle & extra endpoints -----------------------------------------------

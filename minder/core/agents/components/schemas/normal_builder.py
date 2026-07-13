@@ -9,7 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any, Sequence, Union
 
-from .definitions import NOTE_SCHEMA, _BUILTIN_TOOL_SCHEMAS
+from .definitions import _BUILTIN_TOOL_SCHEMAS
 from .disabled_tools import DEFAULT_DISABLED_TOOLS, load_disabled_tools
 from minder.core.agents.components.schemas.schema_adapter import adapt_for_provider
 
@@ -82,10 +82,6 @@ class ToolSchemaBuilder:
         schemas: list[dict[str, Any]] = deepcopy(_BUILTIN_TOOL_SCHEMAS)
         if self._extra_schemas:
             schemas.extend(deepcopy(self._extra_schemas))
-        # Gate the NOTE tool on the blackboard feature flag.  When disabled
-        # the schema must never appear in the list (true no-op — no tokens wasted).
-        if self._blackboard_enabled:
-            schemas.append(deepcopy(NOTE_SCHEMA))
 
         # Filter to allowed tools if specified
         if self._allowed_tools is not None:

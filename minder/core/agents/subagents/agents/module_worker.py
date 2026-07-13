@@ -29,5 +29,5 @@ MODULE_WORKER_SUBAGENT: SubAgentSpec = {
         "Implements a focused change or task within a single module using that "
         "module's documented commands (run scripts, invoke skills, edit files)."
     ),
-    "tools": ["run_command", "read_file", "write_file"],
+    "tools": ["run_command"],
 }

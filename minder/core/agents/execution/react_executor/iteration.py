@@ -389,6 +389,20 @@ class IterationMixin:
         ):
             on_tool_call_start = _cb.on_tool_call_pending
 
+        import os as _os
+
+        if _os.environ.get("MINDER_TTFT_PROFILE"):
+            _q0 = getattr(ctx.ui_callback, "query_started_at", None)
+            if _q0 is not None:
+                import time as _t
+
+                logging.getLogger("minder.web").info(
+                    "TTFT-PROFILE %-28s (total %7.1fms) msgs=%d",
+                    "action_llm:dispatch",
+                    (_t.monotonic() - _q0) * 1000,
+                    len(ctx.messages),
+                )
+
         response, latency_ms = self._call_action_llm(
             ctx.agent,
             ctx.messages,

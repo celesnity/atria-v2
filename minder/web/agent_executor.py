@@ -289,6 +289,26 @@ class AgentExecutor:
         web_ui_callback = WebUICallback(ws_manager, loop, session_id, self.state)
         web_ui_callback.query_started_at = query_started_at
 
+        # TTFT phase profiler (opt-in via MINDER_TTFT_PROFILE). Logs elapsed-since-
+        # query-arrival at each setup boundary so we can see where pre-action time
+        # goes. Zero cost when the env var is unset.
+        import os as _os
+
+        _ttft_profile = _os.environ.get("MINDER_TTFT_PROFILE")
+        _ttft_base = query_started_at if query_started_at is not None else time.monotonic()
+        _ck_prev = [_ttft_base]
+
+        def _ck(label: str) -> None:
+            if not _ttft_profile:
+                return
+            now = time.monotonic()
+            step = (now - _ck_prev[0]) * 1000
+            total = (now - _ttft_base) * 1000
+            _ck_prev[0] = now
+            logger.info("TTFT-PROFILE %-28s +%7.1fms  (total %7.1fms)", label, step, total)
+
+        _ck("setup:tools+managers")
+
         # Register the callback so module code (push_block, etc.) can reach it
         # via session_id or the contextvar. Cleared in the run-cleanup path.
         from minder.web.ui_bridge import set_current_ui_callback
@@ -316,6 +336,7 @@ class AgentExecutor:
         runtime_suite, _release_suite = self._suite_cache.acquire(_suite_key, _build_suite)
         # Reset session-scoped mutable state before this run reuses the suite.
         runtime_suite.tool_registry.reset_per_run_state()
+        _ck("suite:acquire+reset")
 
         # Wire hooks system (4-point wiring, matching TUI's repl.py)
         hook_manager = None
@@ -336,6 +357,7 @@ class AgentExecutor:
                     subagent_mgr.set_hook_manager(hook_manager)
         except Exception as e:
             logger.warning(f"Failed to wire hooks: {e}")
+        _ck("hooks:load+wire")
 
         # Wire the background task client so spawn_subagent(run_in_background=True) works.
         # The subagent manager is built per-run here; attach the server's client to it.
@@ -424,6 +446,7 @@ class AgentExecutor:
             # Append lessons to the dynamic tail instead of a full prompt rebuild —
             # the stable prefix stays cacheable and no templates are re-read.
             agent.apply_blackboard_lessons()
+        _ck("blackboard:provision")
 
         # Point session manager at the right session for this execution.
         # Protected by lock to avoid race conditions with concurrent requests.
@@ -432,6 +455,7 @@ class AgentExecutor:
 
         # Prepare messages for the ReAct loop
         message_history = session.to_api_messages()
+        _ck("history:to_api_messages")
 
         # Inject system prompt (TUI path does this via query_enhancer.prepare_messages)
         # Append working directory context so the agent knows where to write files.
@@ -480,6 +504,7 @@ class AgentExecutor:
                 system_content += skill_block
                 if hasattr(agent, "_system_stable") and agent._system_stable:
                     agent._system_stable += skill_block
+        _ck("modules:build_skill_block")
 
         if not message_history or message_history[0].get("role") != "system":
             message_history.insert(0, {"role": "system", "content": system_content})
@@ -535,6 +560,7 @@ class AgentExecutor:
             import re as _re
             from minder.core.agents.execution.file_content_injector import FileContentInjector
 
+            _ck("react_executor:constructed")
             _injector = FileContentInjector(file_ops, config, working_dir)
             _injection = _injector.inject_content(message)
             if _injection.text_content:
@@ -548,6 +574,7 @@ class AgentExecutor:
                 query = _clean_msg + "\n\n" + _injection.text_content
             else:
                 query = message
+            _ck("file_injection:done -> execute()")
 
             summary, error, latency_ms = react_executor.execute(
                 query=query,

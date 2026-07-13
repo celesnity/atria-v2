@@ -21,6 +21,6 @@ PLANNER_SUBAGENT = SubAgentSpec(
         "Explores and maps the codebase: locates definitions, traces callers, "
         "finds patterns, and reports where/how things are implemented."
     ),
-    tools=list(PLANNING_TOOLS) + ["write_file", "edit_file"],
+    tools=list(PLANNING_TOOLS),
     model=None,  # Use default model from config
 )

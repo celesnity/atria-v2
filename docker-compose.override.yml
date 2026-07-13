@@ -14,6 +14,8 @@ services:
       # Real token budget for the deployed model's 30000-token window.
       - MINDER_MAX_CONTEXT_TOKENS=${MINDER_MAX_CONTEXT_TOKENS:-24000}
       - MINDER_MAX_TOKENS=${MINDER_MAX_TOKENS:-4096}
+      # TEMP: per-phase TTFT profiler (remove when done).
+      - MINDER_TTFT_PROFILE=1
     entrypoint:
       - /bin/sh
       - -c
