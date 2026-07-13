@@ -1,0 +1,22 @@
+{
+  "display_name": "Optimize",
+  "tooltip": "Real-time manufacturing decision engine · detect miss, explain, forecast, evaluate recovery actions, dispatch a versioned recommendation (demo)",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Optimize · Decision Engine",
+    "default_height": 900,
+    "badge_color": "danger"
+  },
+  "activity": {
+    "default": { "running": "Working…", "done": "Done" },
+    "actions": {
+      "save":     { "running": "Saving decision…",   "done": "Saved" },
+      "get":      { "running": "Loading decision…",   "done": "Loaded" },
+      "list":     { "running": "Loading history…",    "done": "Loaded" },
+      "approve":  { "running": "Approving…",          "done": "Approved" },
+      "reject":   { "running": "Rejecting…",          "done": "Rejected" },
+      "dispatch": { "running": "Dispatching…",        "done": "Dispatched" }
+    }
+  },
+  "subagent": { "enabled": false, "model": null, "tools": null }
+}
