@@ -38,3 +38,16 @@ export type {
   AgentFormState,
   AgentActivity,
 } from './agentDriver';
+export {
+  AgentPresence,
+  GhostCursor,
+  AgentBadge,
+  useAgentPresence,
+  attributionLabel,
+} from './presence';
+export type {
+  AgentPresenceState,
+  AgentPresenceInfo,
+  AgentPresenceProps,
+  UseAgentPresenceOptions,
+} from './presence';
