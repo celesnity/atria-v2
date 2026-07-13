@@ -275,6 +275,19 @@ conn.form(
 )
 
 
+# --- Declarative agent context (mirror of the frontend Agent.* layer) ---
+@conn.context.state("inventory", "Live catalog summary: total products and low stock")
+def inventory_state(principal=None):
+    items = products.list_products()
+    return {"total": len(items), "skus": [p["sku"] for p in items][:20]}
+
+
+conn.context.knowledge(
+    "Confirm SKU and price with the user before creating a product; SKUs are unique."
+)
+conn.context.note("products", "Product catalog area — add, restock, and delete products.")
+
+
 # --- BE-SDK-10: Operational Graph — linked context around a node ---------------
 @conn.graph
 def product_graph(node=None, depth: int = 1):
@@ -313,6 +326,8 @@ def list_products():
         "required": ["sku", "name", "price"],
     },
     card_type="template_card",
+    when_to_use="When the user asks to add a new product and has provided SKU and price.",
+    examples=[{"sku": "A-1", "name": "Pump", "price": 9.9, "category": "A"}],
 )
 def create_product(sku: str, name: str, price: float, category: str = "", session_id=None, **kw):
     if not sku or not name:
