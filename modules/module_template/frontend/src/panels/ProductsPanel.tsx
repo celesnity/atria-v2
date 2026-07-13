@@ -226,7 +226,7 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
               <span style={{ flex: 1, color: tokens.text, fontSize: 13 }}>
                 {pendingConfirm.summary || "The agent prefilled this — confirm to submit."}
               </span>
-              <button onClick={confirm} style={confirmBtn(tokens.success)}>
+              <button onClick={confirm} data-minder-approve="" style={confirmBtn(tokens.success)}>
                 <Check size={13} /> Confirm
               </button>
               <button onClick={reject} style={confirmBtn(tokens.textMuted)}>

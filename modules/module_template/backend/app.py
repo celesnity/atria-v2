@@ -254,6 +254,8 @@ conn.page("data", path="/data", label="Data",
           description="Raw data tables and records.")
 conn.page("metrics", path="/metrics", label="Metrics",
           description="Dashboard metrics and charts.")
+conn.page("graph", path="/graph", label="Graph",
+          description="Operational Graph — products linked to their categories.")
 conn.form(
     "add_product",
     route="products",
@@ -267,9 +269,21 @@ conn.form(
     submit_tool="create_product",
     risk="medium",
     reversible=True,
+    undo="delete_product(product_id) removes the product this form created",
     instructions="Fill sku, name, price. Category is optional. Ask the user to "
     "confirm before submitting.",
 )
+
+
+# --- BE-SDK-10: Operational Graph — linked context around a node ---------------
+@conn.graph
+def product_graph(node=None, depth: int = 1):
+    """Answer a linked-context query over the catalog. Ask for a product or
+    category node (e.g. ``product:1`` / ``category:A``) to get its neighbourhood,
+    or omit ``node`` for the whole graph."""
+    return products.graph(node, depth)
+
+
 conn.event(
     "product.created",
     description="Emitted when a product is added to the catalog.",
@@ -286,6 +300,7 @@ def list_products():
     "create_product",
     risk="medium",
     reversible=True,
+    undo="delete_product(product_id) — removes the product just created",
     description="Create a product. This is the Add Product form's submit action.",
     parameters={
         "type": "object",
@@ -413,6 +428,7 @@ def duplicate_product(product_id: int, session_id=None, **kw):
     "update_price",
     risk="medium",
     reversible=True,
+    undo="update_price(product_id, <previous price>) — set the price back",
     description="Change a product's price.",
     parameters={
         "type": "object",

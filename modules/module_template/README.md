@@ -18,7 +18,17 @@ A runnable module that exercises every SDK capability. Copy it to bootstrap a ne
 - **Celery background jobs** — `template_start_job` / `template_list_jobs` → `worker/tasks.py`.
 - **S3/MinIO media storage** — `template_export` (multi-part) → `backend/media.py`.
 - **DB read overlay** — `template_db_overview` → `backend/db.py` (read-only Minder tables + mt_* writes).
-- **Dashboard panels** — Jobs / Media / Data / Metrics in `frontend/src/Dashboard.tsx`.
+- **Agent surface v3 (risk gate + events + UI driving)** — the Products tab:
+  `create_product` / `delete_product` (gated) / `restock_product` / `list_products`
+  (typed read) / `assist_add_product` (drives the real form via UI intents).
+- **Reversibility escape route (`undo`)** — `create_product` / `update_price` /
+  the `add_product` form declare *how* to reverse; it rides every decision packet.
+- **Operational Graph (`@conn.graph`)** — `product_graph` in `app.py` +
+  `products.graph()`; served at `/connector/graph`, shown in the **Graph** tab.
+- **Agent Presence Layer (ghost cursor)** — `<AgentPresence>` in
+  `frontend/src/dashboard.tsx`: narrates committed actions and parks at the
+  Add-Product **Confirm** button (`data-minder-approve`) for high-risk proposals.
+- **Dashboard panels** — Products / Jobs / Media / Data / Metrics / Graph in `frontend/src/dashboard.tsx`.
 
 ## Full-stack architecture
 

@@ -6,4 +6,5 @@ export const TABS: TabMeta[] = [
   { id: 'media', label: 'Media', icon: 'image' },
   { id: 'data', label: 'Data', icon: 'database' },
   { id: 'metrics', label: 'Metrics', icon: 'bar-chart' },
+  { id: 'graph', label: 'Graph', icon: 'share-2' },
 ];

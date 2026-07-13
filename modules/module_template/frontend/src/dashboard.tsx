@@ -3,6 +3,7 @@ import {
   MinderThemeProvider,
   useMinderTheme,
   AgentDriverProvider,
+  AgentPresence,
   type DashboardProps,
   type DashboardComponent,
 } from "minder-ui-sdk";
@@ -14,6 +15,7 @@ import JobsPanel from "./panels/JobsPanel";
 import MediaPanel from "./panels/MediaPanel";
 import DataPanel from "./panels/DataPanel";
 import MetricsPanel from "./panels/MetricsPanel";
+import GraphPanel from "./panels/GraphPanel";
 import { TABS } from "./dashboard.tabs";
 
 const PANELS: Record<string, React.ComponentType<{ apiBase: string }>> = {
@@ -22,10 +24,11 @@ const PANELS: Record<string, React.ComponentType<{ apiBase: string }>> = {
   media: MediaPanel,
   data: DataPanel,
   metrics: MetricsPanel,
+  graph: GraphPanel,
 };
 
 /** Map an agent `navigate(route)` intent to a dashboard tab id. */
-const ROUTE_TO_TAB: Record<string, string> = { products: "products" };
+const ROUTE_TO_TAB: Record<string, string> = { products: "products", graph: "graph" };
 
 function Surface({ children }: { children: ReactNode }) {
   const { tokens } = useMinderTheme();
@@ -63,6 +66,10 @@ function Dashboard({ apiBase, activeTab, theme }: DashboardProps) {
             <Panel apiBase={apiBase} />
           </Surface>
           <Mascot />
+          {/* Agent Presence Layer: ghost cursor narrates committed actions and
+              parks at Approve for proposals. Read-only stage — remove this line
+              and the agent still works entirely through the backend SDK. */}
+          <AgentPresence apiBase={apiBase} />
         </ToastProvider>
       </AgentDriverProvider>
     </MinderThemeProvider>

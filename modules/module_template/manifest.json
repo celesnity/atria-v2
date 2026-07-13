@@ -26,6 +26,10 @@
       {
         "id": "metrics",
         "label": "Metrics"
+      },
+      {
+        "id": "graph",
+        "label": "Graph"
       }
     ]
   },
