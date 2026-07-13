@@ -19,6 +19,18 @@ from minder.core.utils.tool_display import (
 )
 
 
+def _session_autonomy() -> Optional[str]:
+    """Current session autonomy mode ("Manual"/"Semi-Auto"/"Auto") for module
+    connectors. Best-effort: returns None if state isn't available so the module
+    falls back to its own default."""
+    try:
+        from minder.web.state import get_state
+
+        return get_state().get_autonomy_level()
+    except Exception:  # noqa: BLE001 — autonomy read must never break tool wiring
+        return None
+
+
 class WebSocketToolBroadcaster:
     """Wraps tool registry to broadcast tool execution events via WebSocket."""
 
@@ -79,6 +91,10 @@ class WebSocketToolBroadcaster:
             skill_ctx.push_block = self._push_remote_block
             skill_ctx.session_id = self.session_id
             skill_ctx.principal = self.principal
+            # Forward the session's live autonomy mode to module connectors so they
+            # gate by the caller's real authority (read at call time — /mode can
+            # change it mid-session).
+            skill_ctx.autonomy_provider = _session_autonomy
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Execute tool with WebSocket broadcasting.

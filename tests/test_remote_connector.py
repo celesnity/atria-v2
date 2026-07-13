@@ -26,6 +26,40 @@ def test_call_tool_returns_connector_payload():
     assert out["card"]["answer"] == "42"
 
 
+def test_autonomy_maps_to_ladder_and_rides_the_header():
+    # core mode → connector risk ladder
+    assert remote._ladder_autonomy("Manual") == "none"
+    assert remote._ladder_autonomy("Semi-Auto") == "medium"
+    assert remote._ladder_autonomy("Auto") == "critical"
+    assert remote._ladder_autonomy("weird") is None  # unknown ⇒ module default
+
+    seen = {}
+
+    def handler(request):
+        seen["autonomy"] = request.headers.get("X-Minder-Autonomy")
+        return httpx.Response(200, json={"success": True, "output": "ok"})
+
+    conn = _connector(handler)
+    conn.call_tool("t", {}, autonomy="Semi-Auto")
+    assert seen["autonomy"] == "medium"
+    # no autonomy ⇒ no header (module uses its own default_autonomy)
+    conn.call_tool("t", {})
+    assert seen["autonomy"] is None
+
+
+def test_requires_approval_forces_stop_suffix_and_flag():
+    # A gated packet must be flagged and carry the firm "approve on the card" suffix
+    # so the agent never routes approval through a channel — even if the module's
+    # own suffix was weak/absent.
+    ctx = type("Ctx", (), {"push_block": None, "broadcaster": None, "logger": remote.logger})()
+    out = remote._emit_response(ctx, _connector(lambda r: None),
+                                {"success": True, "output": "proposing…",
+                                 "requires_approval": True, "card": {"kind": "decision"}})
+    assert out["requires_approval"] is True
+    assert "on-screen card IS the approval" in out["_llm_suffix"]
+    assert "Do NOT send a message" in out["_llm_suffix"]
+
+
 def test_call_tool_network_error_raises_unreachable():
     def handler(request):
         raise httpx.ConnectError("refused")
@@ -85,7 +119,7 @@ def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok", "review_required": False}, "llm_suffix": None}
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
@@ -110,7 +144,7 @@ def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok"}, "card_type": "maintenance_answer",
                 "llm_suffix": None}
@@ -128,7 +162,7 @@ def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         raise remote.ConnectorUnreachable("refused")
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", boom)
 
