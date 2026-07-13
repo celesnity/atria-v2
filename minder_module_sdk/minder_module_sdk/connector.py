@@ -51,6 +51,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .cards import decision_packet, unavailable_card, unavailable_suffix
+from .context import Note, _ContextRegistrar, _StateProvider, build_state_entries
 from .envelope import (
     EventEnvelope,
     ToolError,
@@ -98,6 +99,8 @@ class _Tool:
     undo: Optional[str] = None
     idempotent: bool = False
     read_only: bool = False
+    when_to_use: str = ""
+    examples: list = field(default_factory=list)
 
 
 @dataclass
@@ -185,6 +188,12 @@ class Connector:
         # Per-session declarative UI snapshot cache (page/data/actions) the agent
         # reads via /connector/context to see what's currently on screen.
         self._ui_snapshots: dict[str, dict] = {}
+        # Declarative agent-facing context: live state providers + static
+        # knowledge/notes, surfaced via /connector/context and the manifest.
+        self._ctx_state: dict[str, _StateProvider] = {}
+        self._ctx_knowledge: list[str] = []
+        self._ctx_notes: list[Note] = []
+        self.context = _ContextRegistrar(self)
 
     def expose_block(self, component_key: str) -> None:
         """Declare an extra Module-Federation exposed component (a chat block),
@@ -209,6 +218,8 @@ class Connector:
         undo: Optional[str] = None,
         idempotent: bool = False,
         read_only: bool = False,
+        when_to_use: str = "",
+        examples: Optional[list] = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register an agent tool. The decorated function's return becomes the
         tool result (see module docstring).
@@ -246,6 +257,8 @@ class Connector:
                 undo=undo,
                 idempotent=idempotent,
                 read_only=read_only,
+                when_to_use=when_to_use,
+                examples=examples or [],
             )
             return fn
 
@@ -260,6 +273,8 @@ class Connector:
         card_type: Optional[str] = None,
         streaming: bool = False,
         params_model: Optional[type] = None,
+        when_to_use: str = "",
+        examples: Optional[list] = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Register a typed *read* — a pure state query (queue, WIP, OEE, …). Same
         as :meth:`tool` but ``read_only`` (risk "none", never gated)."""
@@ -271,6 +286,8 @@ class Connector:
             streaming=streaming,
             params_model=params_model,
             read_only=True,
+            when_to_use=when_to_use,
+            examples=examples,
         )
 
     def event(
@@ -954,6 +971,7 @@ class Connector:
                     for t in self._tools.values()
                 ],
                 "ui_snapshot": self._ui_snapshots.get(session),
+                "state": build_state_entries(self._ctx_state, principal, session),
             }
 
         @app.get("/connector/manifest")
@@ -977,6 +995,7 @@ class Connector:
                 "remote": remote,
                 "card_types": sorted({t.card_type for t in self._tools.values() if t.card_type}),
                 "ui": self._ui.to_dict(),
+                "context": self._context_spec(),
                 "contract_version": CONTRACT_VERSION,
                 "min_core_version": self.min_core_version,
                 "default_autonomy": self.default_autonomy,
@@ -1138,6 +1157,13 @@ class Connector:
 
         return app
 
+    def _context_spec(self) -> dict:
+        """Static agent context for the manifest: domain knowledge + area notes."""
+        return {
+            "knowledge": list(self._ctx_knowledge),
+            "notes": [{"name": n.name, "text": n.text} for n in self._ctx_notes],
+        }
+
     def _tool_specs(self) -> list[dict]:
         return [
             {
@@ -1150,6 +1176,8 @@ class Connector:
                 "reversible": t.reversible,
                 "undo": t.undo,
                 "idempotent": t.idempotent,
+                "when_to_use": t.when_to_use,
+                "examples": t.examples,
             }
             for t in self._tools.values()
         ]
