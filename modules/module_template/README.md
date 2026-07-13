@@ -28,7 +28,67 @@ A runnable module that exercises every SDK capability. Copy it to bootstrap a ne
 - **Agent Presence Layer (ghost cursor)** — `<AgentPresence>` in
   `frontend/src/dashboard.tsx`: narrates committed actions and parks at the
   Add-Product **Confirm** button (`data-minder-approve`) for high-risk proposals.
-- **Dashboard panels** — Products / Jobs / Media / Data / Metrics / Graph in `frontend/src/dashboard.tsx`.
+- **Declarative agent UI (`Agent.*`)** — every panel in `frontend/src/panels/*`
+  (ProductsPanel, JobsPanel, MediaPanel, DataPanel, MetricsPanel, GraphPanel) is
+  wrapped so the agent can read on-screen data and trigger actions; mounted via
+  `<AgentRegistryProvider>` in `frontend/src/dashboard.tsx`.
+- **Declarative agent context (`@conn.context.*`)** — the context block in
+  `backend/app.py`: live `context.state("inventory")` / `context.state("jobs")`,
+  `context.knowledge(...)` guardrails, and `context.note(...)` per page.
+
+## Declarative agent layers
+
+Two mirrored SDK layers let the agent understand and drive this module without
+bespoke glue. The frontend layer reads/acts on the live UI; the backend layer
+declares state, knowledge, and notes. Together they give the agent a coherent
+picture of what's on screen *and* what the module knows.
+
+### Frontend — `Agent.*` (from `minder-ui-sdk`)
+
+Transparent wrapper components that expose on-screen data and actions:
+
+- `<Agent.Page name description>` — declares which page/area the agent is looking
+  at; child names are scoped by it (e.g. `products.add`).
+- `<Agent.Data name description value>` — exposes a component's live data for the
+  agent to **read** (value capped at 32768 chars, with a `truncated` flag).
+- `<Agent.Button name description onAct>` — exposes an action; when the agent
+  invokes it, `onAct` runs **immediately** (no approval gate).
+
+Everything mounts under `<AgentRegistryProvider>` (already in `dashboard.tsx`,
+inside `AgentDriverProvider`). A debounced snapshot is pushed to
+`POST /connector/ui/snapshot` and surfaced to the agent in `GET /connector/context`
+under `ui_snapshot`. The agent acts by emitting a `{intent:'act', name}` UI intent
+on the existing bus. Every panel in `frontend/src/panels/` is wrapped — ProductsPanel
+carries Page + Data + Button; the rest declare Page + Data. See
+`docs/superpowers/specs/2026-07-13-agent-declarative-ui-wrapper-design.md`.
+
+### Backend — `@conn.context.*` (from `minder_module_sdk`)
+
+A decorator family to declare agent-facing context in `backend/app.py`:
+
+- `@conn.context.state(name, description)` — decorate a fn returning **live**
+  module state; evaluated on every `GET /connector/context`; may receive
+  `principal` / `session_id`; fail-closed per entry; value capped at 32768 chars.
+- `conn.context.knowledge(text)` — static domain knowledge / guardrail strings.
+- `conn.context.note(name, text)` — static labeled area/page descriptions.
+- `@conn.tool` / `@conn.read` gained `when_to_use` + `examples` kwargs for richer
+  action semantics.
+
+Static parts (knowledge, notes, tool `when_to_use` / `examples`) surface in
+`GET /connector/manifest` under `context` and per-tool fields; live `state`
+surfaces in `GET /connector/context` under `state[]`. This module declares
+`context.state("inventory")` + `context.state("jobs")`, several
+`context.knowledge(...)` guardrails, and a `context.note(...)` per page, and most
+tools now carry `when_to_use` / `examples`. See
+`docs/superpowers/specs/2026-07-13-agent-declarative-backend-context-design.md`.
+
+### How the two mirror each other
+
+The frontend declares what the agent can **see and do on the UI** (Page / Data /
+Button); the backend declares what the module **is and knows** (state / knowledge /
+notes). Both feed the agent through the same connector surface — `ui_snapshot` and
+`state[]` on `GET /connector/context`, static context on `GET /connector/manifest` —
+so the agent reasons over a single, consistent view.
 
 ## Full-stack architecture
 

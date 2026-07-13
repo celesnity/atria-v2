@@ -43,6 +43,26 @@ The Products panel also has manual controls: search, category filter, price sort
 
 Try: *"list the products"*, *"add product ABC, a Widget, priced 12"* (→ co-pilot fills the form, Pilo points, you confirm), *"delete product 2"* (→ returns a decision packet needing approval).
 
+## Declarative agent context
+
+This module tells you about itself declaratively, so you don't have to guess. On
+every `GET /connector/context` it exposes **live state** via `@conn.context.state`:
+`inventory` (catalog size and low-stock summary) and `jobs` (background job status).
+Read these before acting to know the current situation instead of calling a tool
+just to look.
+
+It also declares static context in the manifest: **guardrails** via
+`conn.context.knowledge(...)` (follow these — they constrain what's safe to do), and
+**area notes** via `conn.context.note(...)` describing each page. Most tools carry
+`when_to_use` and `examples`, so lean on those to pick the right tool.
+
+Every dashboard panel is wrapped with `Agent.*` (from `minder-ui-sdk`): `Agent.Page`
+marks the area you're looking at, `Agent.Data` exposes each panel's live on-screen
+data for you to **read**, and `Agent.Button` exposes actions you can **trigger**
+(these run immediately, with no approval gate). The current UI snapshot arrives under
+`ui_snapshot` in `GET /connector/context`. Prefer reading `ui_snapshot` and `state`
+over blind tool calls, and use the wrapped buttons to act directly on what's shown.
+
 ## Dashboard panels
 
 The module's dashboard (`http://localhost:9300/dashboard/`) exposes five panels:
