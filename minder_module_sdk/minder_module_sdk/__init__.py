@@ -10,6 +10,7 @@ from __future__ import annotations
 from .cards import assumption, block, card, decision_packet, unavailable_card, unavailable_suffix
 from .client import MinderClient, MinderClientError
 from .connector import Connector, Principal, ServiceUnavailable
+from .context import Note  # noqa: F401
 from .envelope import (
     RISK_LADDER,
     EventEnvelope,
@@ -27,6 +28,7 @@ __all__ = [
     "Connector",
     "Principal",
     "ServiceUnavailable",
+    "Note",
     "ToolError",
     "EventEnvelope",
     "make_envelope",
