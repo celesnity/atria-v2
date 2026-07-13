@@ -26,8 +26,6 @@ def suite():
     from minder.core.runtime import ModeManager
     from minder.core.runtime.services.runtime_service import RuntimeService
     from minder.core.context_engineering.tools.implementations.file_ops import FileOperations
-    from minder.core.context_engineering.tools.implementations.write_tool import WriteTool
-    from minder.core.context_engineering.tools.implementations.edit_tool.tool import EditTool
     from minder.core.context_engineering.tools.implementations.bash_tool.tool import BashTool
     from minder.core.context_engineering.tools.implementations.notebook_edit_tool import (
         NotebookEditTool,
@@ -38,8 +36,6 @@ def suite():
     service = RuntimeService(config_manager, ModeManager())
     return service.build_suite(
         file_ops=FileOperations(config, REPO_ROOT),
-        write_tool=WriteTool(config, REPO_ROOT),
-        edit_tool=EditTool(config, REPO_ROOT),
         bash_tool=BashTool(config, REPO_ROOT),
         notebook_edit_tool=NotebookEditTool(REPO_ROOT),
         ask_user_tool=None,

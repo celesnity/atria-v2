@@ -112,12 +112,7 @@ class IterationMixin:
     # Tools that don't change state — no need to re-plan after these
     _READONLY_TOOLS = frozenset(
         {
-            "read_file",
-            "list_files",
-            "search",
             "list_todos",
-            "list_processes",
-            "get_process_output",
             "read_pdf",
         }
     )

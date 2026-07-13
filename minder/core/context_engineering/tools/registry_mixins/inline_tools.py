@@ -260,10 +260,3 @@ class InlineToolsMixin:
             "skill_name": skill.metadata.name,
             "skill_namespace": skill.metadata.namespace,
         }
-
-    def _handle_apply_patch(self, arguments: dict[str, Any], context: Any = None) -> dict[str, Any]:
-        """Apply a unified diff patch."""
-        return self._patch_tool.apply_patch(
-            patch=arguments.get("patch", ""),
-            dry_run=arguments.get("dry_run", False),
-        )

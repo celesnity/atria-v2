@@ -30,7 +30,6 @@ class WebSocketToolBroadcaster:
             "edit_file",
             "read_file",
             "list_files",
-            "search",
         }
     )
 
@@ -43,7 +42,6 @@ class WebSocketToolBroadcaster:
         "edit_file": "file_path",
         "read_file": "file_path",
         "list_files": "path",
-        "search": "path",
     }
 
     def __init__(

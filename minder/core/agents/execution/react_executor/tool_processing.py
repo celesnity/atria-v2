@@ -213,7 +213,7 @@ class ToolProcessingMixin(ToolExecutionMixin, ToolResultsMixin):
 
         # Snapshot tracking: capture state after write operations
         if self._snapshot_manager and not operation_cancelled:
-            _write_tools = {"write_file", "edit_file", "run_command"}
+            _write_tools = {"run_command"}
             has_writes = any(tc["function"]["name"] in _write_tools for tc in tool_calls)
             if has_writes:
                 self._snapshot_manager.track()

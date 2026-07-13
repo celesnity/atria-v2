@@ -247,8 +247,6 @@ class AgentExecutor:
         from minder.core.runtime.services import RuntimeService
         from minder.core.context_engineering.tools.implementations import (
             FileOperations,
-            WriteTool,
-            EditTool,
             BashTool,
         )
         from minder.core.context_engineering.tools.implementations.notebook_edit_tool import (
@@ -274,8 +272,6 @@ class AgentExecutor:
 
         # Initialize tools
         file_ops = FileOperations(config, working_dir)
-        write_tool = WriteTool(config, working_dir)
-        edit_tool = EditTool(config, working_dir)
         bash_tool = BashTool(config, working_dir)
         notebook_edit_tool = NotebookEditTool(working_dir)
         # Create web-based ask-user manager with session_id
@@ -324,8 +320,6 @@ class AgentExecutor:
         def _build_suite():
             return runtime_service.build_suite(
                 file_ops=file_ops,
-                write_tool=write_tool,
-                edit_tool=edit_tool,
                 bash_tool=bash_tool,
                 notebook_edit_tool=notebook_edit_tool,
                 ask_user_tool=ask_user_tool,

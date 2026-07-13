@@ -111,70 +111,8 @@ class ProcessToolHandler:
             "interrupted": interrupted,
         }
 
-    def list_processes(self) -> dict[str, Any]:
-        if not self._bash_tool:
-            return {"success": False, "error": "BashTool not available"}
-
-        try:
-            processes = self._bash_tool.list_processes()
-            if not processes:
-                output = "No background processes running"
-            else:
-                lines = []
-                for proc in processes:
-                    line = (
-                        f"PID {proc['pid']}: {proc['command'][:60]} "
-                        f"({proc['status']}, {proc['runtime']:.1f}s)"
-                    )
-                    if proc["exit_code"] is not None:
-                        line += f" [exit code: {proc['exit_code']}]"
-                    lines.append(line)
-                output = "\n".join(lines)
-
-            return {"success": True, "output": output, "error": None}
-        except Exception as exc:  # noqa: BLE001
-            return {"success": False, "error": str(exc), "output": None}
-
-    def get_process_output(self, args: dict[str, Any]) -> dict[str, Any]:
-        if not self._bash_tool:
-            return {"success": False, "error": "BashTool not available"}
-
-        pid = args["pid"]
-        try:
-            result = self._bash_tool.get_process_output(pid)
-            if not result["success"]:
-                return {"success": False, "error": result["error"], "output": None}
-
-            lines = [
-                f"Process {pid}: {result['command'][:60]}",
-                f"Status: {result['status']}",
-                f"Runtime: {result['runtime']:.1f}s",
-            ]
-            if result["exit_code"] is not None:
-                lines.append(f"Exit code: {result['exit_code']}")
-            if result["stdout"]:
-                lines.append(f"\nStdout:\n{result['stdout']}")
-            if result["stderr"]:
-                lines.append(f"\nStderr:\n{result['stderr']}")
-
-            return {"success": True, "output": "\n".join(lines), "error": None}
-        except Exception as exc:  # noqa: BLE001
-            return {"success": False, "error": str(exc), "output": None}
-
-    def kill_process(self, args: dict[str, Any]) -> dict[str, Any]:
-        if not self._bash_tool:
-            return {"success": False, "error": "BashTool not available"}
-
-        pid = args["pid"]
-        signal = args.get("signal", 15)
-
-        try:
-            result = self._bash_tool.kill_process(pid, signal)
-            if not result["success"]:
-                return {"success": False, "error": result["error"], "output": None}
-            return {"success": True, "output": result["message"], "error": None}
-        except Exception as exc:  # noqa: BLE001
-            return {"success": False, "error": str(exc), "output": None}
+    # list_processes / get_process_output / kill_process were removed along with
+    # their tools — only run_command remains.
 
     # ------------------------------------------------------------------
     # Internal helpers

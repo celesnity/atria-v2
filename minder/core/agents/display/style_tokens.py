@@ -103,9 +103,6 @@ RAIL_BOX_BR = "╯"
 
 # Tool icons
 TOOL_ICONS = {
-    "write_file": "+",
-    "edit_file": "~",
-    "read_file": ">",
     "list_directory": "/",
     "delete_file": "-",
     "run_command": "$",

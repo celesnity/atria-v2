@@ -13,7 +13,6 @@ import logging
 if TYPE_CHECKING:
     from minder.core.hooks.manager import HookManager
 
-from minder.core.context_engineering.tools.handlers.file_handlers import FileToolHandler
 from minder.core.context_engineering.mcp.handler import McpToolHandler
 from minder.core.context_engineering.tools.handlers.process_handlers import ProcessToolHandler
 from minder.core.context_engineering.tools.handlers.notebook_edit_handler import (
@@ -32,7 +31,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-from minder.core.context_engineering.tools.implementations.patch_tool import PatchTool
 from minder.core.context_engineering.tools.implementations.pdf_tool import PDFTool
 from minder.core.context_engineering.tools.implementations.task_complete_tool import (
     TaskCompleteTool,
@@ -53,8 +51,6 @@ class ToolRegistry(InlineToolsMixin):
     def __init__(
         self,
         file_ops: Union[Any, None] = None,
-        write_tool: Union[Any, None] = None,
-        edit_tool: Union[Any, None] = None,
         bash_tool: Union[Any, None] = None,
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
@@ -64,14 +60,11 @@ class ToolRegistry(InlineToolsMixin):
     ) -> None:
         self.file_ops = file_ops
         self._app_config = app_config  # for per-run parallel orchestrator wiring
-        self.write_tool = write_tool
-        self.edit_tool = edit_tool
         self.bash_tool = bash_tool
         self.notebook_edit_tool = notebook_edit_tool
         self.ask_user_tool = ask_user_tool
         self.vlm_tool = vlm_tool
 
-        self._file_handler = FileToolHandler(file_ops, write_tool, edit_tool)
         self._process_handler = ProcessToolHandler(bash_tool)
         _skill_working_dir = (
             str(file_ops.working_dir)
@@ -160,7 +153,6 @@ class ToolRegistry(InlineToolsMixin):
         self.todo_handler = TodoHandler()
         self.thinking_handler = ThinkingHandler()
         self._pdf_tool = PDFTool()
-        self._patch_tool = PatchTool()
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
         self._hook_manager: Union["HookManager", None] = None
