@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Optimize · Decision Engine</title>
+<!-- Optimize Console — a self-contained manufacturing decision-engine demo.
+     Ported from the "Optimize Console" Claude Design (modernist system). Runs
+     standalone (all decision math is client-side) and inside Atria via the
+     AtriaDash bridge, which persists decision history + audit events by calling
+     scripts/optimize.py. The bridge is OPTIONAL: with it absent the demo still
+     runs fully from in-memory state. -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap');
+
+  :root {
+    --color-bg:#f3f2f2; --color-surface:#eae9e9; --color-text:#201e1d;
+    --color-accent:#ec3013; --color-accent-2:#e15b47;
+    --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+    --color-neutral-100:#f8f4f4; --color-neutral-200:#eae7e7; --color-neutral-300:#d7d3d3;
+    --color-neutral-400:#bab6b6; --color-neutral-500:#9b9797; --color-neutral-600:#7d7979;
+    --color-neutral-700:#605d5d; --color-neutral-800:#444141; --color-neutral-900:#2d2b2b;
+    --color-accent-100:#fff2ef; --color-accent-200:#ffe0d9; --color-accent-300:#ffc4b8;
+    --color-accent-400:#ff9783; --color-accent-500:#ff563c; --color-accent-600:#dd2b0f;
+    --color-accent-700:#ae1800; --color-accent-800:#7c1405; --color-accent-900:#4d170e;
+    --font-heading:"Archivo", system-ui, sans-serif; --font-body:"Archivo", system-ui, sans-serif;
+    --font-heading-weight:800;
+    --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+    --radius-sm:0px; --radius-md:0px; --radius-lg:0px;
+    --shadow-sm:0 1px 2px color-mix(in srgb,#2d2b2b 14%,transparent);
+    --shadow-md:0 3px 10px color-mix(in srgb,#2d2b2b 16%,transparent);
+    --shadow-lg:0 12px 32px color-mix(in srgb,#2d2b2b 22%,transparent);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin:0; }
+  body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body);
+    font-size:15px; line-height:1.55; font-weight:400; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4,h5,h6 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+    line-height:1.12; letter-spacing:-0.015em; margin:0; }
+  p { margin:0 0 var(--space-3); }
+  a { color: var(--color-accent); text-underline-offset:3px; }
+  :focus { outline:none; }
+  :focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+  ::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+
+  /* buttons */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;
+    text-decoration:none; font-family:var(--font-heading); font-weight:var(--font-heading-weight);
+    font-size:13px; line-height:1.2; color:var(--color-text); background:transparent;
+    border:1px solid transparent; padding:calc(var(--space-2)*0.85) var(--space-3); border-radius:var(--radius-md); }
+  .btn svg { display:block; }
+  .btn:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn-primary { background:var(--color-accent); color:var(--color-bg); }
+  .btn-primary:hover:not(:disabled) { background:var(--color-accent-600); }
+  .btn-primary:active:not(:disabled) { background:var(--color-accent-700); }
+  .btn-secondary { border-color:var(--color-divider); }
+  .btn-secondary:hover:not(:disabled) { background:color-mix(in srgb,var(--color-text) 7%,transparent); }
+  .btn-ghost { color:var(--color-accent); padding-inline:var(--space-1); }
+  .btn-ghost:hover:not(:disabled) { background:color-mix(in srgb,var(--color-accent) 10%,transparent); }
+  .btn-icon { width:34px; height:34px; padding:0; }
+
+  /* inputs */
+  .input { width:100%; min-height:36px; padding:6px 10px; font:inherit; font-size:14px;
+    color:var(--color-text); caret-color:var(--color-accent); background:var(--color-surface);
+    border:1px solid var(--color-divider); border-radius:var(--radius-md); }
+  .input:focus-visible { border-color:var(--color-accent); outline-offset:0; }
+
+  /* tags */
+  .tag { display:inline-flex; align-items:center; font-size:11px; letter-spacing:0.02em;
+    padding:3px 10px; border-radius:0; }
+  .tag-accent { background:var(--color-accent-100); color:var(--color-accent-800); }
+  .tag-neutral { background:var(--color-neutral-100); color:var(--color-neutral-800); }
+  .tag-outline { border:1px solid var(--color-accent); color:var(--color-accent); }
+
+  /* tables */
+  .table { width:100%; border-collapse:collapse; font-size:14px; }
+  .table th { text-align:left; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:color-mix(in srgb,var(--color-text) 60%,transparent); padding:var(--space-2);
+    border-bottom:2px solid var(--color-divider); }
+  .table td { padding:var(--space-2); border-bottom:1px solid var(--color-divider); }
+  .table tbody tr:hover { background:color-mix(in srgb,var(--color-text) 4%,transparent); }
+
+  /* design helpers */
+  .oc-tab { font:700 12px/1 var(--font-heading); letter-spacing:.02em; padding:8px 12px; cursor:pointer;
+    color:color-mix(in srgb,var(--color-text) 55%,transparent); border:0; background:transparent; }
+  .oc-tab:hover { color:var(--color-text); }
+  .oc-tab[data-on="1"] { color:var(--color-bg); background:var(--color-text); }
+  [data-danger="1"] { background:var(--color-accent); color:var(--color-bg); }
+  [data-danger="0"] { border:1px solid var(--color-divider); color:var(--color-text); }
+  .p-hd { display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    padding:12px 16px; border-bottom:2px solid var(--color-divider); }
+  .p-hd h4 { margin:0; font:800 13px/1 var(--font-heading); letter-spacing:.045em; text-transform:uppercase; }
+  .p-hd .meta, .meta { font:600 10px/1 var(--font-body); letter-spacing:.09em; text-transform:uppercase;
+    color:color-mix(in srgb,var(--color-text) 48%,transparent); }
+  .lbl { font:700 10px/1 var(--font-body); letter-spacing:.1em; text-transform:uppercase;
+    color:color-mix(in srgb,var(--color-text) 52%,transparent); }
+  .num { font-family:var(--font-heading); font-weight:800; letter-spacing:-.01em; font-variant-numeric:tabular-nums; }
+  .altrow { cursor:pointer; }
+  pre { margin:0; font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace; white-space:pre; }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:color-mix(in srgb,var(--color-text) 22%,transparent); }
+
+  /* ── responsive layer (design mockup is fixed-width; this makes it fluid) ── */
+  .oc-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    border-bottom:2px solid var(--color-divider); }
+  .oc-2col { display:grid; grid-template-columns:var(--cols, 1.5fr 1fr); }
+  .oc-ncol { display:grid; grid-template-columns:repeat(var(--n,3),1fr); }
+  /* grid items default to min-width:auto (=min-content); that stops a wide
+     table's track from shrinking so .oc-tablewrap's overflow-x never engages.
+     min-width:0 lets tracks shrink and the table scroll inside its own box. */
+  .oc-2col > *, .oc-ncol > * { min-width:0; }
+  .oc-tablewrap { width:100%; overflow-x:auto; }
+  .oc-nav { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
+  .oc-nav::-webkit-scrollbar { display:none; }
+
+  @media (max-width: 880px) {
+    .oc-2col { grid-template-columns:1fr !important; }
+    .oc-2col > * { border-right:0 !important; }
+    .oc-2col > *:not(:last-child) { border-bottom:2px solid var(--color-divider) !important; }
+    .oc-ncol { grid-template-columns:1fr 1fr !important; }
+  }
+  @media (max-width: 560px) {
+    .oc-ncol { grid-template-columns:1fr !important; }
+    .oc-ncol > * { border-right:0 !important; border-bottom:1px solid var(--color-divider) !important; }
+    .oc-drawer { width:100vw !important; }
+    .oc-headmeta { width:100%; margin-left:0 !important; }
+  }
+  @media (pointer: coarse) {
+    .btn, .oc-tab { min-height:44px; }
+    .btn-icon { width:44px; height:44px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  "use strict";
+
+  // ── props (overridable via URL for standalone preview) ────────────────────
+  var qs = new URLSearchParams(location.search);
+  var props = {
+    startScenario: qs.get('scenario') || 's1',
+    showDecisionLoop: qs.get('loop') !== '0',
+    riskAppetite: qs.get('appetite') || 'Balanced'
+  };
+
+  var state = {
+    view: 'overview', scenarioId: props.startScenario, phase: 0, recStatus: 'proposed',
+    recVersion: 1, selectedAltId: null, jsonOpen: false, jsonTab: 'decision', log: [], toast: null
+  };
+  var chartW = {};
+
+  // ── DATA ──────────────────────────────────────────────────────────────────
+  function con(n, r, note) { return { n: n, r: r, note: note || '' }; }
+  function allScenarios() {
+    return {
+      s1: {
+        code:'SCN-1', name:'Scenario 1 · Material starvation', plant:'Plant-1', line:'Line-2', wo:'WO-4521', shift:'Shift A',
+        clock0:'09:40', clock1:'11:04', nowT0:580, nowT1:664, target:1000,
+        healthy:{ current:390, forecast:1010, att:0.88, risk:'Low', cycle:12.4, expCycle:12.0, health:0.86, yield:0.98, material:'On hand' },
+        disrupted:{ current:530, forecast:820, att:0.18, risk:'High', cycle:14.8, expCycle:12.0, health:0.82, yield:0.97, material:'At risk' },
+        inject:{ short:'Pallet P-104 delayed +45m', label:'Material delivery delayed — pallet P-104 (+45 min)', module:'move' },
+        losses:[ { label:'Material starvation', short:'Material', sub:'32 min', min:32, units:96 }, { label:'Micro-stops', short:'Micro-stops', sub:'18 min', min:18, units:54 }, { label:'Reduced speed', short:'Speed', sub:'12 min-eq', min:12, units:36 }, { label:'Quality hold', short:'Quality', sub:'8 min', min:8, units:24 } ],
+        primaryLoss:'material_starvation', nextShortage:'11:16',
+        alts:[
+          { id:'ACT-001', type:'prioritize_material_delivery', label:'Prioritize pallet P-104', detail:'Dispatch Forklift F07 to bring pallet P-104 to Line-2 ahead of the queue.', recovered:75, cost:'Low', risk:'Low', feasible:true, approval:'None', confidence:0.84, attGain:0.34, evidence:'Pallet P-104 is the critical material constraint. Forklift F07 is available and can reduce the predicted material delay by 25 minutes.', assumptions:'F07 free for 18 min; safety route B open the whole window.', side:'Temporary reduced forklift availability for Warehouse Zone B.', rejection:null, constraints:[con('Material status','passed'),con('Forklift availability','passed'),con('Operator authorization','passed'),con('Safety route','passed')] },
+          { id:'ACT-004', type:'change_job_sequence', label:'Change Job B / Job C', detail:'Run Job C before Job B while P-104 is in transit.', recovered:62, cost:'Low', risk:'Medium', feasible:true, approval:'Planner', confidence:0.77, attGain:0.28, evidence:'Job C material is already line-side; job precedence permits the swap.', assumptions:'Adds one 6-minute changeover.', side:'Later changeover shifts +6 min into the next shift.', rejection:null, constraints:[con('Material status','passed'),con('Job precedence','passed'),con('Customer priority','passed')] },
+          { id:'ACT-002', type:'reassign_operator', label:'Move operator from Line 1', detail:'Borrow a certified operator from Line 1 to clear micro-stops.', recovered:48, cost:'Medium', risk:'Medium', feasible:true, approval:'Supervisor', confidence:0.72, attGain:0.20, evidence:'Line 1 is running below plan with temporary spare labour.', assumptions:'Transfer takes 10 min; operator certified for Line-2.', side:'Line 1 output dips ~15 units.', rejection:null, constraints:[con('Operator authorization','passed'),con('Resource availability','passed')] },
+          { id:'ACT-003', type:'increase_machine_speed', label:'Increase machine speed', detail:'Raise line speed +10% to close the gap.', recovered:90, cost:'Low', risk:'High', feasible:false, approval:'Not allowed', confidence:0.55, attGain:0.40, evidence:'Highest raw output, but machine health is 0.82.', assumptions:'—', side:'Accelerated wear and quality-escape risk.', rejection:'Asset-health limit exceeded — +10% speed requires machine health ≥ 0.90 (current 0.82).', constraints:[con('Machine operating limit','failed','health 0.82 < 0.90'),con('Quality state','passed'),con('Safety route','passed')] },
+          { id:'ACT-005', type:'no_action', label:'No action', detail:'Continue without intervention.', recovered:0, cost:'None', risk:'High', feasible:true, approval:'None', confidence:0.90, attGain:0.0, evidence:'Baseline — forecast 820, gap −180.', assumptions:'Conditions unchanged.', side:'Target missed by ~180 units.', rejection:null, constraints:[con('Baseline','passed')] }
+        ],
+        recAlt:'ACT-001', recId:'REC-2026-00452', evidenceIds:'EV-8113 · EV-8114 · EV-8138', stateId:'STATE-L2-110400',
+        effect:{ before:820, after:895, recovered:75, attBefore:0.18, attAfter:0.52 },
+        dispatch:'move', command:{ id:'CMD-2026-00881', type:'prioritize_delivery', payload:{ pallet_id:'P-104', resource_id:'Forklift-F07', destination:'Line-2', priority:'urgent' }, task:'MOVE-TASK-7012' },
+        outcome:{ expRecovered:75, actRecovered:71, expTime:'11:16', actTime:'11:18', forecast:891, att:0.49, status:'Successful' },
+        risks:[ { label:'Material shortage', level:'High', tagClass:'tag-accent', detail:'Pallet P-104 arriving 65 min late blocks the feeder at 11:20.' }, { label:'Machine interruption', level:'Low', tagClass:'tag-neutral', detail:'Health 0.82 — within limits; no maintenance flag.' }, { label:'Quality hold', level:'Low', tagClass:'tag-neutral', detail:'Yield 0.97; one open minor NCR.' }, { label:'Target attainment', level:'High', tagClass:'tag-accent', detail:'Probability of hitting 1,000 is 18% without action.' } ],
+        events:[ { t:'08:00', label:'Shift started', module:'plan' }, { t:'08:10', label:'Work order WO-4521 started', module:'plan' }, { t:'09:12', label:'Machine speed reduced', module:'monitor' }, { t:'09:48', label:'Material request MR-104 created', module:'move' }, { t:'10:03', label:'Material starvation started', module:'produce' }, { t:'10:21', label:'Material delivery delayed', module:'move', key:true }, { t:'10:32', label:'Machine resumed', module:'monitor' }, { t:'10:45', label:'Forecast dropped below 850 units', module:'optimize' }, { t:'10:46', label:'Optimize generated REC-2026-00452', module:'optimize', rec:true } ]
+      },
+      s2: {
+        code:'SCN-2', name:'Scenario 2 · Resource reassignment', plant:'Plant-1', line:'Line-2', wo:'WO-4531', shift:'Shift A',
+        clock0:'09:20', clock1:'10:50', nowT0:560, nowT1:650, target:1000,
+        healthy:{ current:360, forecast:990, att:0.82, risk:'Low', cycle:12.6, expCycle:12.0, health:0.90, yield:0.98, material:'On hand' },
+        disrupted:{ current:500, forecast:860, att:0.24, risk:'High', cycle:15.6, expCycle:12.0, health:0.90, yield:0.97, material:'On hand' },
+        inject:{ short:'Operator OP-32 clocked out', label:'Operator OP-32 unavailable — Line-2 station 3', module:'produce' },
+        losses:[ { label:'Reduced manning', short:'Manning', sub:'28 min', min:28, units:84 }, { label:'Micro-stops', short:'Micro-stops', sub:'16 min', min:16, units:48 }, { label:'Reduced speed', short:'Speed', sub:'10 min-eq', min:10, units:30 } ],
+        primaryLoss:'reduced_manning', nextShortage:'none',
+        alts:[
+          { id:'ACT-011', type:'reassign_operator', label:'Move operator from Line 4', detail:'Transfer an authorized operator from Line 4 to Line-2 station 3.', recovered:66, cost:'Medium', risk:'Medium', feasible:true, approval:'Supervisor', confidence:0.79, attGain:0.30, evidence:'Line 4 is ahead of plan with a certified spare operator (OP-77).', assumptions:'Transfer 8 min; OP-77 certified station 3.', side:'Line 4 loses ~10 units of buffer.', rejection:null, constraints:[con('Operator authorization','passed'),con('Resource availability','passed'),con('Safety route','passed')] },
+          { id:'ACT-012', type:'change_job_sequence', label:'Resequence to low-manning jobs', detail:'Reorder to jobs that need fewer operators until manning recovers.', recovered:40, cost:'Low', risk:'Medium', feasible:true, approval:'Planner', confidence:0.70, attGain:0.18, evidence:'Two queued jobs run single-operator.', assumptions:'No extra changeover.', side:'Defers a high-priority job by 25 min.', rejection:null, constraints:[con('Job precedence','passed'),con('Customer priority','passed')] },
+          { id:'ACT-013', type:'increase_machine_speed', label:'Increase machine speed', detail:'Raise speed to offset lost manning.', recovered:70, cost:'Low', risk:'High', feasible:false, approval:'Not allowed', confidence:0.52, attGain:0.34, evidence:'Station 3 is unmanned.', assumptions:'—', side:'Interlock trip risk.', rejection:'Safety interlock — line speed cannot be raised while station 3 is unmanned.', constraints:[con('Safety route','failed','station 3 unmanned'),con('Machine operating limit','passed')] },
+          { id:'ACT-014', type:'no_action', label:'No action', detail:'Continue short-manned.', recovered:0, cost:'None', risk:'High', feasible:true, approval:'None', confidence:0.90, attGain:0.0, evidence:'Baseline — forecast 860.', assumptions:'Manning unchanged.', side:'Target missed by ~140 units.', rejection:null, constraints:[con('Baseline','passed')] }
+        ],
+        recAlt:'ACT-011', recId:'REC-2026-00461', evidenceIds:'EV-8210 · EV-8211', stateId:'STATE-L2-105000',
+        effect:{ before:860, after:926, recovered:66, attBefore:0.24, attAfter:0.58 },
+        dispatch:'plan', command:{ id:'CMD-2026-00891', type:'reassign_operator', payload:{ from_line:'Line-4', operator_id:'OP-77', to_line:'Line-2', station:3 }, task:'PLAN-TASK-3320' },
+        outcome:{ expRecovered:66, actRecovered:60, expTime:'11:05', actTime:'11:12', forecast:920, att:0.55, status:'Successful' },
+        risks:[ { label:'Manning shortfall', level:'High', tagClass:'tag-accent', detail:'Station 3 unmanned raises cycle time to 15.6s.' }, { label:'Material shortage', level:'Low', tagClass:'tag-neutral', detail:'All materials on hand.' }, { label:'Machine interruption', level:'Low', tagClass:'tag-neutral', detail:'Health 0.90 — nominal.' }, { label:'Target attainment', level:'High', tagClass:'tag-accent', detail:'Probability 24% without action.' } ],
+        events:[ { t:'08:00', label:'Shift started', module:'plan' }, { t:'08:05', label:'Work order WO-4531 started', module:'plan' }, { t:'10:12', label:'Cycle time rising above 15s', module:'monitor' }, { t:'10:34', label:'Operator OP-32 clocked out', module:'produce', key:true }, { t:'10:41', label:'Micro-stops increasing at station 3', module:'produce' }, { t:'10:49', label:'Forecast dropped below 900 units', module:'optimize' }, { t:'10:50', label:'Optimize generated REC-2026-00461', module:'optimize', rec:true } ]
+      },
+      s3: {
+        code:'SCN-3', name:'Scenario 3 · Sequence change', plant:'Plant-1', line:'Line-2', wo:'WO-4540', shift:'Shift A',
+        clock0:'10:00', clock1:'11:15', nowT0:600, nowT1:675, target:1000,
+        healthy:{ current:470, forecast:1005, att:0.85, risk:'Low', cycle:12.2, expCycle:12.0, health:0.88, yield:0.98, material:'On hand' },
+        disrupted:{ current:560, forecast:835, att:0.22, risk:'High', cycle:13.2, expCycle:12.0, health:0.88, yield:0.98, material:'Job B blocked' },
+        inject:{ short:'Job B material unavailable', label:'Job B components not line-side — MAT-330 missing', module:'move' },
+        losses:[ { label:'Awaiting Job B material', short:'Awaiting', sub:'30 min', min:30, units:90 }, { label:'Micro-stops', short:'Micro-stops', sub:'14 min', min:14, units:42 }, { label:'Reduced speed', short:'Speed', sub:'8 min-eq', min:8, units:24 } ],
+        primaryLoss:'awaiting_material', nextShortage:'11:40',
+        alts:[
+          { id:'ACT-021', type:'change_job_sequence', label:'Move Job C ahead of Job B', detail:'Run Job C now (material staged) and defer Job B until MAT-330 arrives.', recovered:62, cost:'Low', risk:'Medium', feasible:true, approval:'Planner', confidence:0.80, attGain:0.30, evidence:'Job C material is line-side; job precedence permits Job C before Job B.', assumptions:'One changeover, 5 min.', side:'Job B start shifts ~35 min.', rejection:null, constraints:[con('Job precedence','passed'),con('Material status','passed'),con('Customer priority','passed')] },
+          { id:'ACT-022', type:'prioritize_material_delivery', label:'Expedite MAT-330 for Job B', detail:'Rush the missing Job B components from the warehouse.', recovered:40, cost:'Medium', risk:'Medium', feasible:true, approval:'None', confidence:0.68, attGain:0.18, evidence:'MAT-330 is in stock but not picked.', assumptions:'Pick + move 22 min.', side:'Occupies the only free forklift.', rejection:null, constraints:[con('Material status','passed'),con('Forklift availability','passed')] },
+          { id:'ACT-023', type:'increase_machine_speed', label:'Increase machine speed', detail:'Raise speed on the current job.', recovered:75, cost:'Low', risk:'High', feasible:false, approval:'Not allowed', confidence:0.54, attGain:0.36, evidence:'Would not address the missing-material root cause.', assumptions:'—', side:'Wear + quality risk.', rejection:'Asset-health limit exceeded — health 0.79 below the 0.90 floor for a speed increase.', constraints:[con('Machine operating limit','failed','health 0.79 < 0.90'),con('Quality state','passed')] },
+          { id:'ACT-024', type:'no_action', label:'No action', detail:'Wait for Job B material.', recovered:0, cost:'None', risk:'High', feasible:true, approval:'None', confidence:0.90, attGain:0.0, evidence:'Baseline — forecast 835.', assumptions:'MAT-330 arrives on current ETA.', side:'Target missed by ~165 units.', rejection:null, constraints:[con('Baseline','passed')] }
+        ],
+        recAlt:'ACT-021', recId:'REC-2026-00453', evidenceIds:'EV-8320 · EV-8321', stateId:'STATE-L2-111500',
+        effect:{ before:835, after:897, recovered:62, attBefore:0.22, attAfter:0.55 },
+        dispatch:'plan', command:{ id:'CMD-2026-00882', type:'change_job_sequence', payload:{ line:'Line-2', new_sequence:['JOB-A','JOB-C','JOB-B'] }, task:'PLAN-TASK-4102' },
+        outcome:{ expRecovered:62, actRecovered:58, expTime:'11:30', actTime:'11:35', forecast:893, att:0.53, status:'Successful' },
+        risks:[ { label:'Material shortage', level:'High', tagClass:'tag-accent', detail:'Job B blocked until MAT-330 is line-side.' }, { label:'Changeover impact', level:'Medium', tagClass:'tag-neutral', detail:'Resequencing adds one 5-min changeover.' }, { label:'Machine interruption', level:'Low', tagClass:'tag-neutral', detail:'Health 0.88 — nominal.' }, { label:'Target attainment', level:'High', tagClass:'tag-accent', detail:'Probability 22% without action.' } ],
+        events:[ { t:'08:00', label:'Shift started', module:'plan' }, { t:'08:08', label:'Work order WO-4540 started', module:'plan' }, { t:'10:40', label:'Job B queued', module:'plan' }, { t:'11:02', label:'MAT-330 not found line-side', module:'move', key:true }, { t:'11:08', label:'Job C material confirmed staged', module:'move' }, { t:'11:14', label:'Forecast dropped below 850 units', module:'optimize' }, { t:'11:15', label:'Optimize generated REC-2026-00453', module:'optimize', rec:true } ]
+      },
+      s4: {
+        code:'SCN-4', name:'Scenario 4 · Unsafe high-speed option', plant:'Plant-1', line:'Line-2', wo:'WO-4552', shift:'Shift A',
+        clock0:'10:10', clock1:'11:30', nowT0:610, nowT1:690, target:1000,
+        healthy:{ current:460, forecast:1000, att:0.80, risk:'Low', cycle:12.3, expCycle:12.0, health:0.70, yield:0.97, material:'On hand' },
+        disrupted:{ current:545, forecast:800, att:0.15, risk:'High', cycle:15.0, expCycle:12.0, health:0.62, yield:0.96, material:'At risk' },
+        inject:{ short:'Combined slowdown detected', label:'Cycle-time drift + micro-stops push forecast to 800', module:'monitor' },
+        losses:[ { label:'Reduced speed', short:'Speed', sub:'34 min-eq', min:34, units:102 }, { label:'Micro-stops', short:'Micro-stops', sub:'20 min', min:20, units:60 }, { label:'Material starvation', short:'Material', sub:'10 min', min:10, units:30 } ],
+        primaryLoss:'reduced_speed', nextShortage:'12:05',
+        alts:[
+          { id:'ACT-031', type:'increase_machine_speed', label:'Increase line speed +12%', detail:'Raise speed to recover the most units — mathematically optimal.', recovered:110, cost:'Low', risk:'High', feasible:false, approval:'Not allowed', confidence:0.50, attGain:0.50, evidence:'Highest raw output of all options.', assumptions:'—', side:'Bearing failure risk; quality escapes.', rejection:'Machine health 0.62 is far below the 0.90 floor and a maintenance restriction is active — the asset-health and safety limits block this even though it recovers the most units.', constraints:[con('Machine operating limit','failed','health 0.62 < 0.90'),con('Maintenance lock','failed','restriction active'),con('Quality state','passed')] },
+          { id:'ACT-032', type:'prioritize_material_delivery', label:'Prioritize pallet P-118', detail:'Bring the next feeder pallet early with Forklift F07 and hold speed.', recovered:70, cost:'Low', risk:'Low', feasible:true, approval:'None', confidence:0.82, attGain:0.32, evidence:'Feeder starvation is the safe lever; F07 is idle and route is clear.', assumptions:'F07 free 15 min.', side:'Minor Zone B forklift impact.', rejection:null, constraints:[con('Material status','passed'),con('Forklift availability','passed'),con('Machine operating limit','passed'),con('Safety route','passed')] },
+          { id:'ACT-033', type:'reduce_changeover', label:'Defer planned changeover 40 min', detail:'Postpone the scheduled changeover to keep the line running.', recovered:45, cost:'Low', risk:'Medium', feasible:true, approval:'Supervisor', confidence:0.70, attGain:0.20, evidence:'Next changeover is discretionary this shift.', assumptions:'Deferral within maintenance window.', side:'Compresses the next shift schedule.', rejection:null, constraints:[con('Maintenance state','passed'),con('Job precedence','passed')] },
+          { id:'ACT-034', type:'no_action', label:'No action', detail:'Continue at current speed.', recovered:0, cost:'None', risk:'High', feasible:true, approval:'None', confidence:0.90, attGain:0.0, evidence:'Baseline — forecast 800.', assumptions:'Conditions unchanged.', side:'Target missed by ~200 units.', rejection:null, constraints:[con('Baseline','passed')] }
+        ],
+        recAlt:'ACT-032', recId:'REC-2026-00470', evidenceIds:'EV-8410 · EV-8411', stateId:'STATE-L2-113000',
+        effect:{ before:800, after:870, recovered:70, attBefore:0.15, attAfter:0.46 },
+        dispatch:'move', command:{ id:'CMD-2026-00902', type:'prioritize_delivery', payload:{ pallet_id:'P-118', resource_id:'Forklift-F07', destination:'Line-2', priority:'urgent' }, task:'MOVE-TASK-7040' },
+        outcome:{ expRecovered:70, actRecovered:66, expTime:'11:52', actTime:'11:58', forecast:866, att:0.43, status:'Successful' },
+        risks:[ { label:'Machine health', level:'High', tagClass:'tag-accent', detail:'Health 0.62 — below the speed-increase floor; maintenance restriction active.' }, { label:'Material shortage', level:'Medium', tagClass:'tag-neutral', detail:'Feeder pallet P-118 due at 12:05.' }, { label:'Quality risk', level:'Medium', tagClass:'tag-neutral', detail:'Yield 0.96, trending down under speed stress.' }, { label:'Target attainment', level:'High', tagClass:'tag-accent', detail:'Probability 15% without action.' } ],
+        events:[ { t:'08:00', label:'Shift started', module:'plan' }, { t:'08:06', label:'Work order WO-4552 started', module:'plan' }, { t:'10:20', label:'Cycle time drift detected', module:'monitor' }, { t:'10:58', label:'Machine health fell to 0.62', module:'maintain', key:true }, { t:'11:18', label:'Operator requested speed increase', module:'produce' }, { t:'11:29', label:'Forecast dropped below 820 units', module:'optimize' }, { t:'11:30', label:'Optimize generated REC-2026-00470', module:'optimize', rec:true } ]
+      },
+      s5: {
+        code:'SCN-5', name:'Scenario 5 · Recommendation invalidated', plant:'Plant-1', line:'Line-2', wo:'WO-4560', shift:'Shift A',
+        clock0:'09:50', clock1:'11:08', nowT0:590, nowT1:668, target:1000,
+        healthy:{ current:405, forecast:1008, att:0.87, risk:'Low', cycle:12.4, expCycle:12.0, health:0.85, yield:0.98, material:'On hand' },
+        disrupted:{ current:525, forecast:815, att:0.19, risk:'High', cycle:14.6, expCycle:12.0, health:0.80, yield:0.97, material:'At risk' },
+        inject:{ short:'Pallet P-142 delayed +40m', label:'Material delivery delayed — pallet P-142 (+40 min)', module:'move' },
+        losses:[ { label:'Material starvation', short:'Material', sub:'30 min', min:30, units:90 }, { label:'Micro-stops', short:'Micro-stops', sub:'17 min', min:17, units:51 }, { label:'Reduced speed', short:'Speed', sub:'11 min-eq', min:11, units:33 } ],
+        primaryLoss:'material_starvation', nextShortage:'11:00',
+        alts:[
+          { id:'ACT-041', type:'prioritize_material_delivery', label:'Prioritize P-142 with Forklift F07', detail:'Dispatch Forklift F07 to expedite pallet P-142 to Line-2.', recovered:74, cost:'Low', risk:'Low', feasible:true, approval:'None', confidence:0.83, attGain:0.33, evidence:'P-142 is the critical constraint; F07 is the nearest available forklift.', assumptions:'F07 free for 16 min.', side:'Zone B forklift briefly reduced.', rejection:null, constraints:[con('Material status','passed'),con('Forklift availability','passed'),con('Safety route','passed')] },
+          { id:'ACT-042', type:'prioritize_material_delivery', label:'Prioritize P-142 with Forklift F11', detail:'Re-plan onto Forklift F11 after F07 is taken out of service.', recovered:68, cost:'Low', risk:'Low', feasible:true, approval:'None', confidence:0.80, attGain:0.30, evidence:'F11 is the next-nearest forklift; adds 4 min vs F07 but is available.', assumptions:'F11 free for 20 min.', side:'Slightly longer travel path from Zone C.', rejection:null, constraints:[con('Material status','passed'),con('Forklift availability','passed'),con('Safety route','passed')] },
+          { id:'ACT-043', type:'change_job_sequence', label:'Swap Job D / Job E', detail:'Run Job E while P-142 is in transit.', recovered:55, cost:'Low', risk:'Medium', feasible:true, approval:'Planner', confidence:0.72, attGain:0.24, evidence:'Job E material is staged.', assumptions:'One changeover.', side:'Defers Job D by 30 min.', rejection:null, constraints:[con('Job precedence','passed'),con('Material status','passed')] },
+          { id:'ACT-044', type:'increase_machine_speed', label:'Increase machine speed', detail:'Raise speed to close the gap.', recovered:88, cost:'Low', risk:'High', feasible:false, approval:'Not allowed', confidence:0.53, attGain:0.38, evidence:'High output but health-limited.', assumptions:'—', side:'Wear + quality risk.', rejection:'Asset-health limit exceeded — health 0.80 below the 0.90 floor for a speed increase.', constraints:[con('Machine operating limit','failed','health 0.80 < 0.90'),con('Quality state','passed')] }
+        ],
+        recAlt:'ACT-041', recAltV2:'ACT-042', recId:'REC-2026-00480', evidenceIds:'EV-8510 · EV-8538', stateId:'STATE-L2-110800',
+        effect:{ before:815, after:889, recovered:74, attBefore:0.19, attAfter:0.53 },
+        effectV2:{ before:815, after:883, recovered:68, attBefore:0.19, attAfter:0.50 },
+        superEv:{ time:'11:12', label:'Forklift F07 removed from service (unplanned maintenance)', module:'maintain' },
+        dispatch:'move', command:{ id:'CMD-2026-00915', type:'prioritize_delivery', payload:{ pallet_id:'P-142', resource_id:'Forklift-F11', destination:'Line-2', priority:'urgent' }, task:'MOVE-TASK-7061' },
+        outcome:{ expRecovered:68, actRecovered:65, expTime:'11:36', actTime:'11:41', forecast:880, att:0.49, status:'Successful' },
+        risks:[ { label:'Material shortage', level:'High', tagClass:'tag-accent', detail:'Pallet P-142 delayed 40 min starves the feeder.' }, { label:'Resource availability', level:'High', tagClass:'tag-accent', detail:'Forklift F07 may be pulled for unplanned maintenance.' }, { label:'Machine interruption', level:'Low', tagClass:'tag-neutral', detail:'Health 0.80 — within limits.' }, { label:'Target attainment', level:'High', tagClass:'tag-accent', detail:'Probability 19% without action.' } ],
+        events:[ { t:'08:00', label:'Shift started', module:'plan' }, { t:'08:09', label:'Work order WO-4560 started', module:'plan' }, { t:'10:26', label:'Material request MR-142 created', module:'move' }, { t:'10:48', label:'Material delivery delayed', module:'move', key:true }, { t:'11:02', label:'Material starvation started', module:'produce' }, { t:'11:07', label:'Forecast dropped below 850 units', module:'optimize' }, { t:'11:08', label:'Optimize generated REC-2026-00480 (v1, Forklift F07)', module:'optimize', rec:true } ]
+      }
+    };
+  }
+  var SCENARIOS = allScenarios();
+  function S() { return SCENARIOS[state.scenarioId]; }
+
+  // ── METRICS / RANKING ───────────────────────────────────────────────────
+  function metrics() {
+    var s = S(), p = state.phase;
+    if (p === 0) { var h = s.healthy; return Object.assign({}, h, { target:s.target, clock:s.clock0, nowT:s.nowT0, gap:h.forecast - s.target }); }
+    var d = s.disrupted;
+    if (p >= 3) { var o = s.outcome; return Object.assign({}, d, { forecast:o.forecast, att:o.att, risk:'On track', clock:o.actTime, nowT:s.nowT1, target:s.target, gap:o.forecast - s.target }); }
+    return Object.assign({}, d, { target:s.target, clock:s.clock1, nowT:s.nowT1, gap:d.forecast - s.target });
+  }
+  function effect() { var s = S(); return (s.code === 'SCN-5' && state.recVersion === 2) ? s.effectV2 : s.effect; }
+  function recAltObj() { var s = S(); var id = s.recAlt; if (s.code === 'SCN-5' && state.recVersion === 2) id = s.recAltV2; return s.alts.find(function (a) { return a.id === id; }); }
+  function weights() { var a = props.riskAppetite || 'Balanced'; if (a === 'Conservative') return { out:.30, att:.20, conf:.20, cost:.10, risk:.20 }; if (a === 'Aggressive') return { out:.60, att:.18, conf:.10, cost:.06, risk:.06 }; return { out:.45, att:.20, conf:.15, cost:.10, risk:.10 }; }
+  function score(a, w, maxRec) { if (!a.feasible) return 0; var L = { None:0, Low:.25, Medium:.6, High:1 }; return Math.max(0, w.out * (a.recovered / maxRec) + w.att * a.attGain + w.conf * a.confidence - w.cost * (L[a.cost] != null ? L[a.cost] : .5) - w.risk * (L[a.risk] != null ? L[a.risk] : .5)); }
+  function rankedAlts() { var s = S(), w = weights(); var maxRec = Math.max.apply(null, s.alts.map(function (a) { return a.recovered; })) || 1; var scored = s.alts.map(function (a) { return Object.assign({}, a, { sc: score(a, w, maxRec) }); }); scored.sort(function (a, b) { return (b.feasible - a.feasible) || (b.sc - a.sc); }); return scored; }
+
+  // ── HANDLERS ─────────────────────────────────────────────────────────────
+  var _toastTimer = null;
+  function setState(patch) { Object.assign(state, patch); render(); }
+  function setView(v) { setState({ view: v }); }
+  function priorLog() { return [ { id:'REC-2026-00441', ver:1, action:'Expedite pallet P-090', status:'completed', time:'09:05', active:false }, { id:'REC-2026-00447', ver:1, action:'Resequence Job A / Job B', status:'rejected', time:'10:12', active:false } ]; }
+  function loadScenario(id) { var s = SCENARIOS[id]; Object.assign(state, { scenarioId:id, phase:0, recStatus:'proposed', recVersion:1, selectedAltId:s.recAlt, log:priorLog(), toast:null, jsonOpen:false, view:state.view }); render(); }
+  function flash(m) { state.toast = m; render(); clearTimeout(_toastTimer); _toastTimer = setTimeout(function () { state.toast = null; render(); }, 3600); }
+  function atSec(sec) { var s = S(); return '2026-07-10T' + s.clock1 + ':' + (sec || '00') + '+07:00'; }
+
+  function inject() {
+    var s = S(), r = recAltObj();
+    var entry = { id:s.recId, ver:1, action:r.label, status:'proposed', time:s.clock1, active:true };
+    state.phase = 1; state.recStatus = 'proposed'; state.recVersion = 1; state.log = [entry].concat(state.log);
+    persist('save', decisionPayload());
+    flash('Optimize generated ' + s.recId + ' — ' + s.alts.length + ' alternatives evaluated');
+  }
+  function markLog(status) { var s = S(); state.log = state.log.map(function (x) { return (x.id === s.recId && x.ver === state.recVersion && x.active) ? Object.assign({}, x, { status: status }) : x; }); }
+  function approve() {
+    if (state.recStatus !== 'proposed') return; var r = recAltObj();
+    state.recStatus = 'approved'; markLog('approved');
+    persist('approve', { recommendation_id: S().recId, version: state.recVersion, at: atSec('31') });
+    flash('Approved by USR-104 · ' + (r.approval && r.approval !== 'None' ? r.approval.toLowerCase() : 'shift supervisor'));
+    render();
+  }
+  function reject() {
+    state.recStatus = 'rejected'; state.phase = 1; markLog('rejected');
+    persist('reject', { recommendation_id: S().recId, version: state.recVersion });
+    flash('Recommendation rejected — no dispatch'); render();
+  }
+  function doDispatch() {
+    var s = S(); if (state.phase >= 2) return;
+    state.phase = 2; state.recStatus = 'dispatched'; markLog('dispatched');
+    persist('dispatch', { recommendation_id: s.recId, version: state.recVersion, target_module: s.dispatch, command: s.command });
+    flash((s.dispatch === 'move' ? 'Move' : 'Plan') + ' accepted · task ' + s.command.task); render();
+  }
+  function approveDispatch() {
+    var s = S();
+    state.recStatus = 'dispatched'; state.phase = 2; markLog('dispatched');
+    persist('approve', { recommendation_id: s.recId, version: state.recVersion, at: atSec('31') });
+    persist('dispatch', { recommendation_id: s.recId, version: state.recVersion, target_module: s.dispatch, command: s.command });
+    flash((s.dispatch === 'move' ? 'Move' : 'Plan') + ' accepted · task ' + s.command.task); render();
+  }
+  function execute() {
+    var s = S();
+    state.phase = 3; state.recStatus = 'completed'; markLog('completed');
+    persist('outcome', { recommendation_id: s.recId, version: state.recVersion, recovered_units: s.outcome.actRecovered, status: s.outcome.status.toLowerCase() });
+    flash('Outcome recorded · +' + s.outcome.actRecovered + ' units · ' + s.outcome.status); render();
+  }
+  function recalc() {
+    var s = S();
+    if (s.code === 'SCN-5' && state.recVersion === 1 && state.phase >= 1) { supersede(); }
+    else { flash('Re-evaluated at ' + metrics().clock + ' — recommendation unchanged'); }
+  }
+  function supersede() {
+    var s = S(); var v2 = s.alts.find(function (a) { return a.id === s.recAltV2; });
+    state.recVersion = 2; state.recStatus = 'proposed'; state.selectedAltId = s.recAltV2;
+    state.log = [{ id:s.recId, ver:2, action:v2.label, status:'proposed', time:'11:14', active:true }].concat(
+      state.log.map(function (x) { return (x.id === s.recId && x.ver === 1) ? Object.assign({}, x, { status:'superseded', active:false }) : x; }));
+    persist('save', Object.assign({}, decisionPayload(), { supersedes_version: 1 }));
+    flash(s.recId + ' superseded — v2 issued (Forklift F11)'); render();
+  }
+  function reset() { loadScenario(state.scenarioId); }
+  function action() {
+    var p = state.phase;
+    if (p === 0) return { label:'Inject: ' + S().inject.short, kind:'primary', fn: inject };
+    if (p === 1) { if (state.recStatus === 'rejected') return { label:'Reset scenario', kind:'secondary', fn: reset }; return { label:'Approve & dispatch', kind:'primary', fn: approveDispatch }; }
+    if (p === 2) return { label:'Simulate execution', kind:'primary', fn: execute };
+    return { label:'Scenario complete — reset', kind:'secondary', fn: reset };
+  }
+
+  // ── CHARTS (inline SVG strings) ──────────────────────────────────────────
+  function attr(o) { var s = ''; for (var k in o) { if (o[k] == null) continue; s += ' ' + k + '="' + o[k] + '"'; } return s; }
+  function ramp(cur, nowT) { var t0 = 480, sp = nowT - t0; return [[t0,0],[t0 + sp*0.34, cur*0.26],[t0 + sp*0.68, cur*0.62],[nowT, cur]]; }
+  function series() {
+    var s = S(), p = state.phase;
+    var cur = p === 0 ? s.healthy.current : s.disrupted.current;
+    var nowT = p === 0 ? s.nowT0 : s.nowT1;
+    var actual = ramp(cur, nowT), target = s.target, plan = [[480,0],[960,target]];
+    if (p === 0) return { actual:actual, forecast:[[nowT,cur],[960,s.healthy.forecast]], withAction:null, plan:plan, target:target, nowT:nowT };
+    if (p >= 3) { var o = s.outcome; return { actual: actual.concat([[(nowT+960)/2, cur + (o.forecast-cur)*0.55],[960,o.forecast]]), forecast:null, withAction:null, plan:plan, target:target, nowT:nowT }; }
+    return { actual:actual, forecast:[[nowT,cur],[960,s.disrupted.forecast]], withAction:[[nowT,cur],[960,effect().after]], solidWithAction: p===2, plan:plan, target:target, nowT:nowT };
+  }
+  function svgLine(W, H, o) {
+    var T = 'var(--color-text)', A = 'var(--color-accent)';
+    var padL = 52, padR = 26, padT = 18, padB = 32, x0 = padL, x1 = W - padR, y0 = H - padB, y1 = padT;
+    var tMin = 480, tMax = 960, vMax = 1050;
+    var X = function (t) { return x0 + (t - tMin) / (tMax - tMin) * (x1 - x0); };
+    var Y = function (v) { return y0 - (v / vMax) * (y0 - y1); };
+    var path = function (pts) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' '); };
+    var k = '';
+    k += '<line' + attr({ x1:x0, y1:y0, x2:x1, y2:y0, stroke:T, 'stroke-opacity':.4 }) + '/>';
+    k += '<line' + attr({ x1:x0, y1:Y(500), x2:x1, y2:Y(500), stroke:T, 'stroke-opacity':.1 }) + '/>';
+    k += '<line' + attr({ x1:x0, y1:Y(o.target), x2:x1, y2:Y(o.target), stroke:T, 'stroke-width':1.3, 'stroke-dasharray':'2 4' }) + '/>';
+    k += '<text' + attr({ x:x0-6, y:y0+3, 'text-anchor':'end', 'font-size':10, fill:T, 'fill-opacity':.5 }) + '>0</text>';
+    k += '<text' + attr({ x:x0-6, y:Y(500)+3, 'text-anchor':'end', 'font-size':10, fill:T, 'fill-opacity':.5 }) + '>500</text>';
+    k += '<text' + attr({ x:x0-6, y:Y(o.target)+3, 'text-anchor':'end', 'font-size':10, 'font-weight':700, fill:T }) + '>' + o.target.toLocaleString() + '</text>';
+    k += '<text' + attr({ x:x0, y:H-8, 'font-size':10, fill:T, 'fill-opacity':.5 }) + '>08:00</text>';
+    k += '<text' + attr({ x:(x0+x1)/2, y:H-8, 'text-anchor':'middle', 'font-size':10, fill:T, 'fill-opacity':.5 }) + '>12:00</text>';
+    k += '<text' + attr({ x:x1, y:H-8, 'text-anchor':'end', 'font-size':10, fill:T, 'fill-opacity':.5 }) + '>16:00</text>';
+    if (o.plan) k += '<path' + attr({ d:path(o.plan), fill:'none', stroke:T, 'stroke-opacity':.3, 'stroke-width':1.3, 'stroke-dasharray':'1 3' }) + '/>';
+    k += '<line' + attr({ x1:X(o.nowT), y1:y1+2, x2:X(o.nowT), y2:y0, stroke:T, 'stroke-opacity':.4, 'stroke-dasharray':'3 3' }) + '/>';
+    k += '<text' + attr({ x:X(o.nowT)+5, y:y1+10, 'font-size':9, 'font-weight':700, fill:T, 'fill-opacity':.55 }) + '>NOW</text>';
+    if (o.forecast) { var lf = o.forecast[o.forecast.length-1]; k += '<path' + attr({ d:path(o.forecast), fill:'none', stroke:T, 'stroke-width':2, 'stroke-dasharray':'6 4' }) + '/>'; k += '<circle' + attr({ cx:X(lf[0]), cy:Y(lf[1]), r:3.5, fill:T }) + '/>'; k += '<text' + attr({ x:X(lf[0])-8, y:Y(lf[1])-5, 'text-anchor':'end', 'font-size':11, 'font-weight':800, fill:T }) + '>' + lf[1] + '</text>'; }
+    if (o.withAction) { var lw = o.withAction[o.withAction.length-1]; k += '<path' + attr({ d:path(o.withAction), fill:'none', stroke:A, 'stroke-width':2, 'stroke-dasharray': o.solidWithAction ? null : '6 4' }) + '/>'; k += '<circle' + attr({ cx:X(lw[0]), cy:Y(lw[1]), r:4, fill:A }) + '/>'; k += '<text' + attr({ x:X(lw[0])-8, y:Y(lw[1])-5, 'text-anchor':'end', 'font-size':11, 'font-weight':800, fill:A }) + '>' + lw[1] + '</text>'; }
+    k += '<path' + attr({ d:path(o.actual), fill:'none', stroke:T, 'stroke-width':2.6 }) + '/>';
+    var an = o.actual[o.actual.length-1]; k += '<circle' + attr({ cx:X(an[0]), cy:Y(an[1]), r:4, fill:T }) + '/>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:' + H + 'px;display:block">' + k + '</svg>';
+  }
+  function svgPareto(W, H, bars) {
+    var T = 'var(--color-text)', A = 'var(--color-accent)';
+    var padL = 40, padR = 16, padT = 22, padB = 46, x0 = padL, x1 = W - padR, y0 = H - padB, y1 = padT;
+    var vMax = Math.max.apply(null, [100].concat(bars.map(function (b) { return b.value; })));
+    var Y = function (v) { return y0 - (v / vMax) * (y0 - y1); };
+    var n = bars.length, slot = (x1 - x0) / n, bw = Math.min(74, slot * 0.6), total = bars.reduce(function (s, b) { return s + b.value; }, 0) || 1;
+    var k = '<line' + attr({ x1:x0, y1:y0, x2:x1, y2:y0, stroke:T, 'stroke-opacity':.4 }) + '/>';
+    k += '<text' + attr({ x:x0-5, y:y0+3, 'text-anchor':'end', 'font-size':9, fill:T, 'fill-opacity':.5 }) + '>0</text>';
+    k += '<text' + attr({ x:x0-5, y:y1+3, 'text-anchor':'end', 'font-size':9, fill:T, 'fill-opacity':.5 }) + '>' + Math.round(vMax) + '</text>';
+    var cum = 0, cp = [];
+    bars.forEach(function (b, i) {
+      var cx = x0 + slot * i + slot / 2, bx = cx - bw / 2, by = Y(b.value);
+      k += '<rect' + attr({ x:bx, y:by, width:bw, height:y0-by, fill: i===0 ? A : T, 'fill-opacity': i===0 ? 1 : Math.max(.32, .72 - i*0.16) }) + '/>';
+      k += '<text' + attr({ x:cx, y:by-6, 'text-anchor':'middle', 'font-size':12, 'font-weight':800, fill: i===0 ? A : T }) + '>' + b.value + '</text>';
+      k += '<text' + attr({ x:cx, y:H-20, 'text-anchor':'middle', 'font-size':9.5, 'font-weight':700, fill:T }) + '>' + b.label + '</text>';
+      if (b.sub) k += '<text' + attr({ x:cx, y:H-8, 'text-anchor':'middle', 'font-size':8.5, fill:T, 'fill-opacity':.55 }) + '>' + b.sub + '</text>';
+      cum += b.value; cp.push([cx, y1 + (y0 - y1) * (1 - cum / total)]);
+    });
+    k += '<polyline' + attr({ points: cp.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '), fill:'none', stroke:T, 'stroke-width':1.5, 'stroke-dasharray':'4 3' }) + '/>';
+    cp.forEach(function (p) { k += '<circle' + attr({ cx:p[0], cy:p[1], r:2.6, fill:T }) + '/>'; });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:' + H + 'px;display:block">' + k + '</svg>';
+  }
+  function checkIcon(r) {
+    var A = 'var(--color-accent)', ok = r === 'passed';
+    var inner = ok ? '<path d="M4 12l6 6L20 6"/>' : '<path d="M6 6l12 12M18 6L6 18"/>';
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="' + A + '" stroke-width="3" stroke-linecap="square">' + inner + '</svg>';
+  }
+
+  // ── DECISION JSON ────────────────────────────────────────────────────────
+  function validUntil() { var add = { s1:'11:20', s2:'11:06', s3:'11:35', s4:'11:50', s5:'11:24' }; return add[state.scenarioId]; }
+  function decisionPayload() {
+    var s = S(), r = recAltObj(), e = effect();
+    var status = state.phase === 0 ? 'draft' : state.recStatus;
+    var approvedish = (state.recStatus === 'approved' || state.recStatus === 'dispatched' || state.recStatus === 'completed');
+    return {
+      schema_version:'1.0', recommendation_id:s.recId, recommendation_version:state.recVersion,
+      created_at:'2026-07-10T' + s.clock1 + ':00+07:00', valid_until:'2026-07-10T' + validUntil() + ':00+07:00', status:status,
+      scope:{ plant:s.plant, line:s.line, work_order:s.wo, shift:'SHIFT-A' },
+      objective:{ primary:'maximize_good_output', secondary:['minimize_operational_risk','avoid_additional_changeover'], weights:weights() },
+      current_state:{ current_good_output:s.disrupted.current, target_output:s.target, forecast_output:s.disrupted.forecast, forecast_gap:s.disrupted.forecast - s.target, target_attainment_probability:s.disrupted.att },
+      explanation:{ primary_loss:s.primaryLoss, losses:s.losses.map(function (l) { return { type:l.label.toLowerCase().replace(/ /g,'_'), lost_minutes:l.min, estimated_lost_units:l.units }; }) },
+      recommended_action:{ action_id:r.id, type:r.type, parameters:s.command.payload },
+      expected_effect:{ forecast_output_before_action:e.before, forecast_output_after_action:e.after, recovered_units:e.recovered, target_attainment_probability_before:e.attBefore, target_attainment_probability_after:e.attAfter },
+      alternatives: rankedAlts().map(function (a) { var o = { action_id:a.id, type:a.type, score:+a.sc.toFixed(2), feasibility:a.feasible ? 'feasible' : 'prohibited', expected_recovered_units:a.recovered, risk_level:a.risk.toLowerCase() }; if (a.rejection) o.rejection_reason = a.rejection; return o; }),
+      confidence:{ overall:r.confidence, forecast:+(r.confidence - 0.03).toFixed(2), impact_estimate:+(r.confidence + 0.02).toFixed(2) },
+      risk:{ level:r.risk.toLowerCase(), identified_risks:[r.side] },
+      constraints:{ result:r.feasible ? 'passed' : 'failed', checks:r.constraints.map(function (c) { return { constraint:c.n.toLowerCase().replace(/ /g,'_'), result:c.r }; }) },
+      evidence:{ event_ids:s.evidenceIds.split(' · '), state_snapshot_id:s.stateId, explanation:r.evidence },
+      approval:{ required: r.approval !== 'None' && r.approval !== 'Not allowed', required_role:(r.approval === 'None' || r.approval === 'Not allowed') ? null : r.approval.toLowerCase(), approved_by: approvedish ? 'USR-104' : null, approved_at: approvedish ? '2026-07-10T' + s.clock1 + ':31+07:00' : null },
+      dispatch:{ target_module:s.dispatch, status: state.phase >= 2 ? 'dispatched' : 'not_dispatched', task_id: state.phase >= 2 ? s.command.task : null },
+      versions:{ forecast_model:'production-forecast-0.1', impact_model:'material-recovery-0.1', ruleset:'operational-constraints-0.1', optimizer:'weighted-ranking-0.1' }
+    };
+  }
+  function buildCommand() { var s = S(); return { command_id:s.command.id, source_recommendation_id:s.recId, target_module:s.dispatch, command_type:s.command.type, issued: state.phase >= 2, payload:s.command.payload }; }
+  function buildApi() { var s = S(); return { request:'GET /api/recommendations/' + s.recId, response:{ recommendation_id:s.recId, recommendation_version:state.recVersion, status: state.phase === 0 ? 'draft' : state.recStatus, recommended_action:{ type: recAltObj().type }, valid_until:'2026-07-10T' + validUntil() + ':00+07:00' }, dispatch:{ request:'POST /api/recommendations/' + s.recId + '/dispatch', response: state.phase >= 2 ? { status:'accepted', target_module:s.dispatch, task_id:s.command.task } : { status:'pending', task_id:null } } }; }
+  function buildAudit() {
+    var s = S(); var ev = [{ event_type:'recommendation_created', recommendation_id:s.recId, version:1, timestamp:'2026-07-10T' + s.clock1 + ':00+07:00', actor:{ type:'system', id:'optimizer-0.1' } }];
+    var rs = state.recStatus;
+    if (['approved','dispatched','completed'].indexOf(rs) >= 0) ev.push({ event_type:'recommendation_approved', recommendation_id:s.recId, timestamp:'2026-07-10T' + s.clock1 + ':31+07:00', actor:{ type:'user', id:'USR-104', role:'shift_supervisor' } });
+    if (rs === 'rejected') ev.push({ event_type:'recommendation_rejected', recommendation_id:s.recId, actor:{ type:'user', id:'USR-104', role:'shift_supervisor' } });
+    if (state.phase >= 2) ev.push({ event_type:'command_dispatched', recommendation_id:s.recId, target_module:s.dispatch, task_id:s.command.task });
+    if (state.phase >= 3) ev.push({ event_type:'outcome_recorded', recommendation_id:s.recId, recovered_units:s.outcome.actRecovered, status:s.outcome.status.toLowerCase() });
+    return ev;
+  }
+  function jsonText() { var t = state.jsonTab, o; if (t === 'command') o = buildCommand(); else if (t === 'api') o = buildApi(); else if (t === 'audit') o = buildAudit(); else o = decisionPayload(); return JSON.stringify(o, null, 2); }
+
+  // ── BRIDGE (optional persistence) ────────────────────────────────────────
+  var bridge = window.AtriaDash || null;
+  function persist(cmd, payload) {
+    if (!bridge || !bridge.json) return;
+    try { bridge.json('optimize.py', [cmd], { stdin: JSON.stringify(payload) }).catch(function () {}); }
+    catch (e) { /* demo runs from client state regardless */ }
+  }
+
+  // ── VIEW MODEL ───────────────────────────────────────────────────────────
+  function renderVals() {
+    var s = S(), m = metrics(), v = state.view, p = state.phase;
+    var hasRec = p >= 1 && state.recStatus !== 'rejected';
+    var r = recAltObj(), e = effect(), ranked = rankedAlts();
+    var act = action();
+    var fmt = function (n) { return Number(n).toLocaleString('en-US'); };
+    var T = 'var(--color-text)', A = 'var(--color-accent)';
+    var statusMap = { draft:['tag-neutral','Draft'], proposed:['tag-outline','Proposed'], approved:['tag-accent','Approved'], dispatched:['tag-accent','Dispatched'], executing:['tag-accent','Executing'], completed:['tag-neutral','Completed'], rejected:['tag-neutral','Rejected'], superseded:['tag-neutral','Superseded'], expired:['tag-neutral','Expired'] };
+    var st = statusMap[state.recStatus] || ['tag-neutral', state.recStatus];
+    var riskClassFor = function (lv) { return lv === 'High' ? 'tag-accent' : 'tag-neutral'; };
+
+    var views = [['overview','Overview'],['timeline','Timeline'],['loss','Loss'],['forecast','Forecast & Risk'],['alternatives','Alternatives'],['recommendation','Recommendation'],['history','History']];
+    var navItems = views.map(function (pair) { return { key:pair[0], label:pair[1], on: v === pair[0] ? '1' : '0' }; });
+
+    var tev = s.events.map(function (x) { return Object.assign({}, x); });
+    if (s.code === 'SCN-5' && state.recVersion === 2) { tev.push({ t:s.superEv.time, label:s.superEv.label, module:'maintain', key:true }); tev.push({ t:'11:14', label:s.recId + ' superseded → v2 issued (Forklift F11)', module:'optimize', rec:true }); }
+    if (state.recStatus === 'approved' || p >= 2) tev.push({ t:m.clock, label:'Recommendation approved · USR-104', module:'optimize', actor:true });
+    if (state.recStatus === 'rejected') tev.push({ t:m.clock, label:'Recommendation rejected · USR-104', module:'optimize', actor:true });
+    if (p >= 2) tev.push({ t:'+2m', label:'Dispatched to ' + (s.dispatch === 'move' ? 'Move' : 'Plan') + ' · ' + s.command.task, module:s.dispatch });
+    if (p >= 3) { tev.push({ t:s.outcome.actTime, label:'Action executed · +' + s.outcome.actRecovered + ' units recovered', module:'produce', rec:true }); tev.push({ t:'EOS', label:'Outcome ' + s.outcome.status + ' · forecast ' + s.outcome.forecast, module:'optimize' }); }
+    var timelineEvents = tev.map(function (x) { return { t:x.t, label:x.label, module:x.module.toUpperCase(), tagClass:(x.rec || x.module === 'optimize') ? 'tag-accent' : (x.key || x.actor ? 'tag-outline' : 'tag-neutral'), dot:(x.rec || x.key) ? A : (x.actor ? T : 'color-mix(in srgb,var(--color-text) 35%,transparent)'), timeColor:(x.rec || x.key) ? A : T, textColor:x.rec ? A : T }; });
+
+    var lossTotalU = s.losses.reduce(function (a, l) { return a + l.units; }, 0), lossMin = s.losses.reduce(function (a, l) { return a + l.min; }, 0);
+    var lossColors = [A, 'color-mix(in srgb,var(--color-text) 72%,transparent)', 'color-mix(in srgb,var(--color-text) 54%,transparent)', 'color-mix(in srgb,var(--color-text) 40%,transparent)'];
+    var lossRows = s.losses.map(function (l, i) { return { label:l.label, time:l.sub, units:l.units, share:Math.round(l.units / lossTotalU * 100), color:lossColors[i] || lossColors[3] }; });
+    var paretoBars = s.losses.map(function (l) { return { label:l.short, sub:l.sub, value:l.units }; });
+
+    var selId = state.selectedAltId || s.recAlt;
+    var sel = s.alts.find(function (a) { return a.id === selId; }) || r;
+    var recAltActive = (s.code === 'SCN-5' && state.recVersion === 2) ? s.recAltV2 : s.recAlt;
+    var altRow = function (a) { return { id:a.id, label:a.label, recommended:a.id === recAltActive, recoverText:a.recovered > 0 ? '+' + a.recovered : '0', risk:a.risk, riskClass:riskClassFor(a.risk), feasText:a.feasible ? 'Yes' : 'Blocked', feasStyle:a.feasible ? '' : 'color:var(--color-accent);font-weight:700', scoreText:a.feasible ? a.sc.toFixed(2) : '0.00', rowStyle:(a.id === selId ? 'background:color-mix(in srgb,var(--color-text) 6%,transparent);' : '') + (!a.feasible ? 'opacity:.6;' : ''), nameStyle:(a.id === selId ? 'border-left:3px solid var(--color-accent);font-weight:800;' : 'border-left:3px solid transparent;') + (!a.feasible ? 'text-decoration:line-through;' : '') }; };
+    var altRows = ranked.map(altRow);
+    var altRowsCompact = ranked.map(function (a) { return { label:a.label, recoverText:a.recovered > 0 ? '+' + a.recovered : '0', risk:a.risk, riskClass:riskClassFor(a.risk), scoreText:a.feasible ? a.sc.toFixed(2) : '—', nameStyle:(a.id === recAltActive) ? 'font-weight:800;border-left:3px solid var(--color-accent)' : 'border-left:3px solid transparent' + (a.feasible ? '' : ';text-decoration:line-through;opacity:.6') }; });
+    var blocked = s.alts.find(function (a) { return !a.feasible; });
+    var blockedNote = blocked ? (blocked.label + ' recovers ' + blocked.recovered + ' units — the highest raw output — but is blocked: ' + blocked.rejection) : 'All generated alternatives passed constraint checks.';
+
+    var consView = function (arr) { return arr.map(function (c) { return { name:c.n + (c.note ? ' · ' + c.note : ''), result:c.r === 'passed' ? 'Passed' : (c.r === 'failed' ? 'Failed' : c.r), color:c.r === 'passed' ? A : T, icon:checkIcon(c.r) }; }); };
+
+    var labels = [['01','Measure'],['02','Explain'],['03','Predict'],['04','Evaluate'],['05','Recommend'],['06','Approve'],['07','Re-plan']];
+    var activeIdx = p === 0 ? 0 : (p === 1 ? 5 : (p === 2 ? 6 : 7));
+    var loopSteps = labels.map(function (pair, i) { var done = i < activeIdx, active = i === activeIdx; return { n:pair[0], label:pair[1], bg: done ? 'var(--color-text)' : (active ? 'var(--color-accent)' : 'transparent'), fg:(done || active) ? 'var(--color-bg)' : 'color-mix(in srgb,var(--color-text) 55%,transparent)' }; });
+
+    var historyRows = state.log.map(function (x) { var sm = statusMap[x.status] || ['tag-neutral', x.status]; return { id:x.id, ver:x.ver, action:x.action, statusClass:sm[0], statusText:sm[1], time:x.time, rowStyle:x.active ? 'background:color-mix(in srgb,var(--color-text) 5%,transparent)' : '' }; });
+
+    var effRate = (m.current / ((m.nowT - 480))).toFixed(2);
+    var reqRate = ((s.target - s.disrupted.current) / (960 - s.nowT1)).toFixed(2);
+    var primaryLossObj = s.losses[0];
+    var recalcInBar = s.code === 'SCN-5' && p >= 1 && state.recVersion === 1 && state.recStatus === 'proposed';
+
+    return {
+      plant:s.plant, line:s.line, wo:s.wo, shift:s.shift, clock:m.clock,
+      riskBadge: m.risk === 'High' ? 'RISK HIGH' : (m.risk === 'On track' ? 'ON TRACK' : 'RISK ' + m.risk.toUpperCase()),
+      riskDanger: m.risk === 'High' ? '1' : '0',
+      navItems: navItems,
+      scenarioId: state.scenarioId,
+      scenarioOptions: Object.keys(SCENARIOS).map(function (id) { return { id:id, name:SCENARIOS[id].name }; }),
+      phase:String(p), phaseLabel: p === 0 ? 'Healthy · on plan' : (p === 1 ? (state.recStatus === 'rejected' ? 'At risk · rejected' : 'At risk · REC proposed') : (p === 2 ? 'Dispatched · executing' : 'Complete · outcome tracked')),
+      actionLabel:act.label, actionKind: act.kind === 'primary' ? 'btn-primary' : 'btn-secondary',
+      showRecalc:recalcInBar, recalcLabel:'Simulate: F07 unavailable',
+      isOverview:v==='overview', isTimeline:v==='timeline', isLoss:v==='loss', isForecast:v==='forecast', isAlternatives:v==='alternatives', isRecommendation:v==='recommendation', isHistory:v==='history',
+      kTarget:fmt(s.target), kCurrent:fmt(m.current), kCurrentPct:Math.round(m.current / s.target * 100), kForecast:fmt(m.forecast), kGap:(m.gap >= 0 ? '+' : '−') + fmt(Math.abs(m.gap)), gapColor: m.gap < 0 ? A : T, kCycle:m.cycle, kExpCycle:m.expCycle, kAtt:Math.round(m.att * 100),
+      attHot: m.att < 0.5 ? '1' : '0',
+      chartForecast: svgLine(chartW.forecast || 600, 300, series()),
+      chartPareto: svgPareto(chartW.pareto || 600, 220, paretoBars),
+      chartForecastBig: svgLine(chartW.forecastBig || 760, 340, series()),
+      chartParetoBig: svgPareto(chartW.paretoBig || 700, 300, paretoBars),
+      lossTotal:lossTotalU, lossMin:lossMin,
+      hasRec:hasRec, noRec:!hasRec,
+      recId:s.recId, recStatusText:st[1], recStatusClass:st[0], recVersion:state.recVersion,
+      recTitle:r.label, recDetail:r.detail, recReason:r.evidence, recRecovered:e.recovered, recRisk:r.risk, recConf:Math.round(r.confidence * 100),
+      attBefore:Math.round(e.attBefore * 100), attAfter:Math.round(e.attAfter * 100),
+      attNow:Math.round((hasRec ? e.attBefore : m.att) * 100), attMark:Math.round(e.attAfter * 100),
+      riskCards:s.risks.slice(0,3).map(function (x) { return { label:x.label, level:x.level, tagClass:x.tagClass }; }),
+      riskDetail:s.risks, stateId:s.stateId,
+      lossRows:lossRows, cycleDelta:(m.cycle - m.expCycle).toFixed(1), effRate:effRate, reqRate:reqRate, primaryLossLabel:primaryLossObj.label, primaryLossShare:Math.round(primaryLossObj.units / lossTotalU * 100),
+      forecastAfter:fmt(e.after), forecastBefore:fmt(e.before), nextShortage: s.nextShortage === 'none' ? 'none' : s.nextShortage,
+      altCount:s.alts.length, appetite:(props.riskAppetite || 'Balanced') + ' weights', altRows:altRows, altRowsCompact:altRowsCompact, blockedNote:blockedNote,
+      selType:sel.type, selLabel:sel.label, selDetail:sel.detail, selRecover:(sel.recovered > 0 ? '+' : '') + sel.recovered, selCost:sel.cost, selConf:Math.round(sel.confidence * 100),
+      selEvidence:sel.evidence, selAssume:sel.assumptions, selSide:sel.side, selConstraints:consView(sel.constraints),
+      selRejected:!!sel.rejection, selRejection:sel.rejection || '', selApprovalNeeded:sel.approval !== 'None', selApproval:sel.approval,
+      showLoop:(props.showDecisionLoop !== false), loopSteps:loopSteps,
+      approvalTag:r.approval === 'None' ? 'Approval · not required' : (r.approval === 'Not allowed' ? 'Not allowed' : 'Approval · ' + r.approval),
+      recConstraints:consView(r.constraints), constraintSummary:r.constraints.filter(function (c) { return c.r === 'passed'; }).length + ' / ' + r.constraints.length + ' passed', evidenceIds:s.evidenceIds,
+      validUntil:validUntil(),
+      approveLabel:(r.approval && r.approval !== 'None' && r.approval !== 'Not allowed') ? ('Approve as ' + r.approval) : 'Approve', approveDisabled:state.recStatus !== 'proposed',
+      rejectDisabled:state.recStatus !== 'proposed',
+      dispatchDisabled: state.recStatus === 'proposed' || state.recStatus === 'rejected' || p >= 3, dispatchLabel:'Send to ' + (s.dispatch === 'move' ? 'Move' : 'Plan') + ' →',
+      historyRows:historyRows,
+      jsonOpen:state.jsonOpen,
+      jsonTabs:[['decision','Decision object'],['command', s.dispatch === 'move' ? 'Move command' : 'Plan command'],['api','API response'],['audit','Audit events']].map(function (pair) { return { key:pair[0], label:pair[1], on: state.jsonTab === pair[0] ? '1' : '0' }; }),
+      jsonText:jsonText(),
+      toast:state.toast,
+      timelineEvents:timelineEvents
+    };
+  }
+
+  // ── TEMPLATES ────────────────────────────────────────────────────────────
+  var mixT = function (pct) { return 'color-mix(in srgb,var(--color-text) ' + pct + '%,transparent)'; };
+  function tHeader(V) {
+    return '<header class="oc-header" style="display:flex;align-items:center;gap:16px;padding:12px 22px;border-bottom:2px solid var(--color-divider);position:sticky;top:0;z-index:20;background:var(--color-bg);flex-wrap:wrap">'
+      + '<div style="display:flex;align-items:center;gap:10px"><span style="width:13px;height:13px;background:var(--color-accent);display:block"></span><span style="font:800 18px/1 var(--font-heading);letter-spacing:-.01em">OPTIMIZE</span></div>'
+      + '<span style="width:2px;height:22px;background:var(--color-divider)"></span>'
+      + '<nav class="oc-nav" role="tablist">' + V.navItems.map(function (t) { return '<button type="button" class="oc-tab" data-on="' + t.on + '" data-act="view" data-view="' + t.key + '">' + t.label + '</button>'; }).join('') + '</nav>'
+      + '<div class="oc-headmeta" style="margin-left:auto;display:flex;align-items:center;gap:14px;font:600 12px/1 var(--font-body);flex-wrap:wrap">'
+      + '<span>' + V.plant + ' · <strong style="font-weight:800">' + V.line + '</strong></span>'
+      + '<span style="color:' + mixT(55) + '">' + V.wo + '</span><span style="color:' + mixT(55) + '">' + V.shift + '</span>'
+      + '<span style="font-variant-numeric:tabular-nums">' + V.clock + '</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;font:800 11px/1 var(--font-heading);letter-spacing:.05em" data-danger="' + V.riskDanger + '">' + V.riskBadge + '</span>'
+      + '</div></header>';
+  }
+  function tControlBar(V) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 22px;border-bottom:2px solid var(--color-divider);background:color-mix(in srgb,var(--color-text) 5%,var(--color-bg));flex-wrap:wrap;position:sticky;top:49px;z-index:19">'
+      + '<span style="font:800 10px/1 var(--font-heading);letter-spacing:.13em;text-transform:uppercase;color:var(--color-accent)">Demo</span>'
+      + '<select class="input" data-act="scenario" style="max-width:290px;min-height:32px;font-weight:600">' + V.scenarioOptions.map(function (o) { return '<option value="' + o.id + '"' + (o.id === V.scenarioId ? ' selected' : '') + '>' + o.name + '</option>'; }).join('') + '</select>'
+      + '<span style="display:inline-flex;align-items:center;gap:7px;font:600 11.5px/1 var(--font-body);color:' + mixT(62) + '"><span style="width:8px;height:8px;background:var(--color-accent);display:inline-block"></span>' + V.phaseLabel + '</span>'
+      + '<div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      + (V.showRecalc ? '<button type="button" class="btn btn-secondary" data-act="recalc" style="padding:6px 12px">' + V.recalcLabel + '</button>' : '')
+      + '<button type="button" class="btn ' + V.actionKind + '" data-act="main" style="padding:7px 14px">' + V.actionLabel + '</button>'
+      + '<button type="button" class="btn btn-ghost" data-act="reset" style="padding:6px 8px">Reset</button>'
+      + '</div></div>';
+  }
+  function kpiCell(label, num, sub, extra) {
+    return '<div style="padding:15px 18px;border-right:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider)">'
+      + '<div class="lbl">' + label + '</div><div class="num" style="font-size:30px;margin-top:7px' + (extra && extra.color ? ';color:' + extra.color : '') + '">' + num + '</div>'
+      + '<div style="font:400 11px/1.3 var(--font-body);margin-top:5px;color:' + mixT(55) + '">' + sub + '</div></div>';
+  }
+  function tOverview(V) {
+    var kpi = '<div class="oc-kpi">'
+      + kpiCell('Target', V.kTarget, 'good units · shift')
+      + kpiCell('Current output', V.kCurrent, V.kCurrentPct + '% · ' + V.clock)
+      + kpiCell('Forecast', V.kForecast, 'end of shift')
+      + kpiCell('Forecast gap', V.kGap, 'vs target', { color:V.gapColor })
+      + kpiCell('Cycle time', V.kCycle + '<span style="font-size:15px">s</span>', 'expected ' + V.kExpCycle + 's')
+      + kpiCell('Attainment', V.kAtt + '%', 'probability')
+      + '</div>';
+    var recCard = V.hasRec
+      ? '<div style="border-bottom:2px solid var(--color-divider)">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;background:var(--color-accent);color:var(--color-bg)"><span style="font:800 11px/1 var(--font-heading);letter-spacing:.09em;text-transform:uppercase">Active recommendation</span><span style="font:600 10px/1 var(--font-body);font-variant-numeric:tabular-nums;opacity:.9">' + V.recId + ' · ' + V.recStatusText + '</span></div>'
+        + '<div style="padding:16px 18px"><h3 style="margin:0;font:800 21px/1.13 var(--font-heading);letter-spacing:-.015em">' + V.recTitle + '</h3>'
+        + '<p style="margin:8px 0 0;font:400 13px/1.5 var(--font-body);color:' + mixT(78) + '">' + V.recDetail + '</p>'
+        + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:14px;background:var(--color-divider);border:1px solid var(--color-divider)">'
+        + '<div style="background:var(--color-bg);padding:10px 12px"><div class="lbl" style="font-size:9px">Recovered</div><div class="num" style="font-size:21px;color:var(--color-accent);margin-top:4px">+' + V.recRecovered + '</div></div>'
+        + '<div style="background:var(--color-bg);padding:10px 12px"><div class="lbl" style="font-size:9px">Risk</div><div class="num" style="font-size:21px;margin-top:4px">' + V.recRisk + '</div></div>'
+        + '<div style="background:var(--color-bg);padding:10px 12px"><div class="lbl" style="font-size:9px">Confidence</div><div class="num" style="font-size:21px;margin-top:4px">' + V.recConf + '%</div></div>'
+        + '<div style="background:var(--color-bg);padding:10px 12px"><div class="lbl" style="font-size:9px">Attainment</div><div class="num" style="font-size:21px;margin-top:4px">' + V.attBefore + '<span style="opacity:.4">→</span>' + V.attAfter + '%</div></div>'
+        + '</div><div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn btn-primary" data-act="view" data-view="recommendation" style="flex:1;justify-content:center">Review &amp; approve</button><button type="button" class="btn btn-secondary btn-icon" data-act="open-json" data-tab="decision" title="View decision JSON">{ }</button></div></div></div>'
+      : '<div style="border-bottom:2px solid var(--color-divider);padding:22px 18px"><div class="lbl" style="color:var(--color-accent)">No active recommendation</div><p style="margin:10px 0 0;font:400 13.5px/1.5 var(--font-body);color:' + mixT(75) + '">Line is tracking to plan. Optimize evaluates every 60s and on critical events. Inject the scenario event to trigger the decision loop.</p></div>';
+    var gauge = '<div style="border-bottom:2px solid var(--color-divider);padding:15px 18px"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:800 12px/1 var(--font-heading);letter-spacing:.045em;text-transform:uppercase">Target attainment</span><span class="meta">forecast-model 0.1</span></div>'
+      + '<div style="position:relative;height:16px;margin-top:14px;background:color-mix(in srgb,var(--color-text) 12%,transparent)"><div style="position:absolute;top:0;left:0;bottom:0;background:var(--color-accent);width:' + V.attNow + '%"></div>'
+      + (V.hasRec ? '<div style="position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--color-text);left:' + V.attMark + '%"></div>' : '') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;margin-top:8px;font:600 10.5px/1 var(--font-body);color:' + mixT(60) + '"><span><strong style="color:var(--color-accent);font-weight:800">' + V.attNow + '%</strong> now</span>' + (V.hasRec ? '<span>▲ ' + V.attMark + '% with action</span>' : '') + '<span>100%</span></div></div>';
+    var disruptions = '<div style="padding:4px 18px 10px"><div class="p-hd" style="padding-left:0;padding-right:0"><h4>Predicted disruptions</h4><span class="meta">next 90 min</span></div>'
+      + V.riskCards.map(function (rr) { return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--color-divider)"><span style="font:600 12.5px/1.35 var(--font-body)">' + rr.label + '</span><span class="tag ' + rr.tagClass + '">' + rr.level + '</span></div>'; }).join('') + '</div>';
+    var left = '<div style="border-right:2px solid var(--color-divider)">'
+      + '<div style="border-bottom:2px solid var(--color-divider)"><div class="p-hd"><h4>End-of-shift forecast</h4><span class="meta">' + V.line + ' · ' + V.clock + '</span></div>'
+      + '<div style="padding:14px 18px"><div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px;font:600 10px/1 var(--font-body);letter-spacing:.04em;text-transform:uppercase;color:' + mixT(58) + '">'
+      + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;height:3px;background:var(--color-text)"></span>Actual</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;border-top:2px dashed var(--color-text)"></span>Forecast</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;border-top:2px dashed var(--color-accent)"></span>With action</span>'
+      + '<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:18px;border-top:2px dotted color-mix(in srgb,var(--color-text) 40%,transparent)"></span>Plan</span></div>'
+      + '<div data-chartw="forecast" style="width:100%">' + V.chartForecast + '</div></div></div>'
+      + '<div><div class="p-hd"><h4>Loss analysis — Pareto</h4><span class="meta">' + V.lossTotal + ' units lost</span></div><div style="padding:14px 18px"><div data-chartw="pareto" style="width:100%">' + V.chartPareto + '</div></div></div></div>';
+    var right = '<div>' + recCard + gauge + disruptions + '</div>';
+    var footer = '<div style="display:flex;gap:18px;flex-wrap:wrap;padding:9px 22px;border-top:2px solid var(--color-divider);background:color-mix(in srgb,var(--color-text) 4%,transparent);font:500 10px/1.4 var(--font-body);letter-spacing:.04em;text-transform:uppercase;color:' + mixT(45) + '"><span>state ' + V.stateId + '</span><span>forecast 0.1</span><span>impact material-recovery-0.1</span><span>ruleset op-constraints-0.1</span><span>optimizer weighted-ranking-0.1</span></div>';
+    return '<div>' + kpi + '<div class="oc-2col" style="--cols:1.5fr 1fr">' + left + right + '</div>' + footer + '</div>';
+  }
+  function tTimeline(V) {
+    return '<div style="max-width:900px;padding:26px 26px 40px"><div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font:800 26px/1.1 var(--font-heading);letter-spacing:-.02em">Production timeline</h2><span class="meta">' + V.line + ' · ' + V.shift + ' · events from all modules</span></div>'
+      + '<p style="margin:8px 0 22px;font:400 14px/1.55 var(--font-body);max-width:60ch;color:' + mixT(72) + '">Every recommendation is traceable to the events below. Module of origin is tagged on each entry.</p>'
+      + '<div style="position:relative;padding-left:2px">' + V.timelineEvents.map(function (e) { return '<div style="display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;padding:12px 0;border-top:1px solid var(--color-divider)"><div style="font:800 13px/1.3 var(--font-heading);font-variant-numeric:tabular-nums;color:' + e.timeColor + '">' + e.t + '</div><div style="display:flex;align-items:center;gap:12px"><span style="width:9px;height:9px;flex:none;background:' + e.dot + '"></span><span style="font:600 13.5px/1.4 var(--font-body);flex:1;color:' + e.textColor + '">' + e.label + '</span><span class="tag ' + e.tagClass + '" style="text-transform:uppercase;letter-spacing:.06em">' + e.module + '</span></div></div>'; }).join('') + '</div></div>';
+  }
+  function tLoss(V) {
+    var lrows = V.lossRows.map(function (l) { return '<tr><td style="font-weight:600"><span style="display:inline-block;width:9px;height:9px;margin-right:8px;background:' + l.color + '"></span>' + l.label + '</td><td style="text-align:right;font-variant-numeric:tabular-nums">' + l.time + '</td><td style="text-align:right;font-weight:800;font-variant-numeric:tabular-nums">' + l.units + '</td><td style="text-align:right;font-variant-numeric:tabular-nums;color:' + mixT(60) + '">' + l.share + '%</td></tr>'; }).join('');
+    return '<div style="padding:24px 26px 40px"><div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font:800 26px/1.1 var(--font-heading);letter-spacing:-.02em">Loss analysis</h2><span class="meta">Why are we behind — ' + V.lossTotal + ' units · ' + V.lossMin + ' min</span></div>'
+      + '<div class="oc-2col" style="--cols:1.35fr 1fr;border:2px solid var(--color-divider)">'
+      + '<div style="border-right:2px solid var(--color-divider)"><div class="p-hd"><h4>Lost units by cause</h4><span class="meta">Pareto · cumulative</span></div><div style="padding:16px 18px"><div data-chartw="paretoBig" style="width:100%">' + V.chartParetoBig + '</div></div></div>'
+      + '<div><div class="p-hd"><h4>Breakdown</h4><span class="meta">units = downtime × rate</span></div><div class="oc-tablewrap"><table class="table" style="font-size:13px"><thead><tr><th>Loss reason</th><th style="text-align:right">Lost time</th><th style="text-align:right">Units</th><th style="text-align:right">Share</th></tr></thead><tbody>' + lrows + '</tbody></table></div></div></div>'
+      + '<div class="oc-ncol" style="--n:3;border:2px solid var(--color-divider);border-top:0">'
+      + '<div style="padding:16px 18px;border-right:2px solid var(--color-divider)"><div class="lbl">Cycle time</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><span class="num" style="font-size:28px;color:var(--color-accent)">' + V.kCycle + 's</span><span style="font:600 12px/1 var(--font-body);color:' + mixT(55) + '">actual</span></div><div style="font:400 12px/1.4 var(--font-body);margin-top:5px;color:' + mixT(60) + '">expected ' + V.kExpCycle + 's · +' + V.cycleDelta + 's drift</div></div>'
+      + '<div style="padding:16px 18px;border-right:2px solid var(--color-divider)"><div class="lbl">Effective rate</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><span class="num" style="font-size:28px">' + V.effRate + '</span><span style="font:600 12px/1 var(--font-body);color:' + mixT(55) + '">u/min</span></div><div style="font:400 12px/1.4 var(--font-body);margin-top:5px;color:' + mixT(60) + '">required ' + V.reqRate + ' u/min to hit target</div></div>'
+      + '<div style="padding:16px 18px"><div class="lbl">Primary loss</div><div class="num" style="font-size:20px;margin-top:8px;color:var(--color-accent)">' + V.primaryLossLabel + '</div><div style="font:400 12px/1.4 var(--font-body);margin-top:5px;color:' + mixT(60) + '">' + V.primaryLossShare + '% of the gap</div></div></div></div>';
+  }
+  function tForecast(V) {
+    var risks = V.riskDetail.map(function (rr) { return '<div style="padding:13px 0;border-bottom:1px solid var(--color-divider)"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font:700 13.5px/1.3 var(--font-heading)">' + rr.label + '</span><span class="tag ' + rr.tagClass + '">' + rr.level + '</span></div><div style="font:400 12px/1.4 var(--font-body);margin-top:5px;color:' + mixT(65) + '">' + rr.detail + '</div></div>'; }).join('');
+    return '<div style="padding:24px 26px 40px"><div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font:800 26px/1.1 var(--font-heading);letter-spacing:-.02em">Forecast &amp; risk</h2><span class="meta">What happens if nothing changes</span></div>'
+      + '<div class="oc-2col" style="--cols:1.5fr 1fr;border:2px solid var(--color-divider)">'
+      + '<div style="border-right:2px solid var(--color-divider)"><div class="p-hd"><h4>End-of-shift forecast</h4><span class="meta">confidence ' + V.recConf + '%</span></div><div style="padding:16px 18px"><div data-chartw="forecastBig" style="width:100%">' + V.chartForecastBig + '</div></div></div>'
+      + '<div><div class="p-hd"><h4>Risk register</h4><span class="meta">next disruptions</span></div><div style="padding:6px 18px 14px">' + risks + '</div></div></div>'
+      + '<div class="oc-ncol" style="--n:4;border:2px solid var(--color-divider);border-top:0">'
+      + '<div style="padding:16px 18px;border-right:2px solid var(--color-divider)"><div class="lbl">Forecast (no action)</div><div class="num" style="font-size:26px;margin-top:8px">' + V.kForecast + '</div></div>'
+      + '<div style="padding:16px 18px;border-right:2px solid var(--color-divider)"><div class="lbl">With recommendation</div><div class="num" style="font-size:26px;margin-top:8px;color:var(--color-accent)">' + V.forecastAfter + '</div></div>'
+      + '<div style="padding:16px 18px;border-right:2px solid var(--color-divider)"><div class="lbl">Attainment prob.</div><div class="num" style="font-size:26px;margin-top:8px">' + V.attNow + '<span style="opacity:.4">→</span>' + V.attMark + '%</div></div>'
+      + '<div style="padding:16px 18px"><div class="lbl">Next shortage ETA</div><div class="num" style="font-size:26px;margin-top:8px">' + V.nextShortage + '</div></div></div></div>';
+  }
+  function tAlternatives(V) {
+    var rows = V.altRows.map(function (a) { return '<tr class="altrow" data-act="sel-alt" data-id="' + a.id + '" style="' + a.rowStyle + '"><td style="' + a.nameStyle + '">' + a.label + (a.recommended ? ' <span class="tag tag-accent" style="margin-left:6px">REC</span>' : '') + '</td><td style="text-align:right;font-weight:800;font-variant-numeric:tabular-nums">' + a.recoverText + '</td><td><span class="tag ' + a.riskClass + '">' + a.risk + '</span></td><td style="' + a.feasStyle + '">' + a.feasText + '</td><td style="text-align:right;font-weight:800;font-variant-numeric:tabular-nums">' + a.scoreText + '</td></tr>'; }).join('');
+    var cons = V.selConstraints.map(function (c) { return '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--color-divider)"><span style="flex:none;display:inline-flex">' + c.icon + '</span><span style="font:600 12.5px/1.3 var(--font-body);flex:1">' + c.name + '</span><span style="font:700 11px/1 var(--font-body);text-transform:uppercase;letter-spacing:.05em;color:' + c.color + '">' + c.result + '</span></div>'; }).join('');
+    var left = '<div style="border-right:2px solid var(--color-divider)"><div class="oc-tablewrap"><table class="table" style="font-size:13.5px"><thead><tr><th>Alternative</th><th style="text-align:right">Recover</th><th>Risk</th><th>Feasible</th><th style="text-align:right">Score</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div style="display:flex;align-items:flex-start;gap:9px;padding:12px 16px;border-top:2px solid var(--color-divider);font:500 11.5px/1.45 var(--font-body);color:' + mixT(62) + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.5" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg><span>' + V.blockedNote + '</span></div></div>';
+    var detail = '<div><div style="padding:14px 18px;border-bottom:2px solid var(--color-divider)"><div class="lbl" style="color:var(--color-accent)">' + V.selType + '</div><h3 style="margin:8px 0 0;font:800 19px/1.15 var(--font-heading)">' + V.selLabel + '</h3><p style="margin:8px 0 0;font:400 13px/1.5 var(--font-body);color:' + mixT(78) + '">' + V.selDetail + '</p></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:2px solid var(--color-divider)"><div style="padding:11px 14px;border-right:1px solid var(--color-divider)"><div class="lbl" style="font-size:9px">Recovered</div><div class="num" style="font-size:19px;margin-top:4px;color:var(--color-accent)">' + V.selRecover + '</div></div><div style="padding:11px 14px;border-right:1px solid var(--color-divider)"><div class="lbl" style="font-size:9px">Cost</div><div class="num" style="font-size:19px;margin-top:4px">' + V.selCost + '</div></div><div style="padding:11px 14px"><div class="lbl" style="font-size:9px">Confidence</div><div class="num" style="font-size:19px;margin-top:4px">' + V.selConf + '%</div></div></div>'
+      + '<div style="padding:14px 18px;display:flex;flex-direction:column;gap:12px"><div><div class="lbl" style="font-size:9px;margin-bottom:5px">Evidence</div><div style="font:400 12.5px/1.5 var(--font-body)">' + V.selEvidence + '</div></div>'
+      + '<div><div class="lbl" style="font-size:9px;margin-bottom:5px">Assumptions</div><div style="font:400 12.5px/1.5 var(--font-body);color:' + mixT(75) + '">' + V.selAssume + '</div></div>'
+      + '<div><div class="lbl" style="font-size:9px;margin-bottom:5px">Side effects</div><div style="font:400 12.5px/1.5 var(--font-body);color:' + mixT(75) + '">' + V.selSide + '</div></div>'
+      + '<div><div class="lbl" style="font-size:9px;margin-bottom:7px">Constraints checked</div>' + cons + '</div>'
+      + (V.selRejected ? '<div style="padding:11px 13px;background:var(--color-accent-100);border-left:3px solid var(--color-accent)"><div class="lbl" style="font-size:9px;color:var(--color-accent-800)">Rejection reason</div><div style="font:600 12.5px/1.45 var(--font-body);margin-top:4px;color:var(--color-accent-900)">' + V.selRejection + '</div></div>' : '')
+      + (V.selApprovalNeeded ? '<div style="display:flex;align-items:center;justify-content:space-between"><span class="lbl" style="font-size:9px">Approval required</span><span class="tag tag-outline">' + V.selApproval + '</span></div>' : '')
+      + '</div></div>';
+    return '<div style="padding:24px 26px 40px"><div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font:800 26px/1.1 var(--font-heading);letter-spacing:-.02em">Alternatives workspace</h2><span class="meta">' + V.altCount + ' evaluated · weighted-ranking-0.1 · ' + V.appetite + '</span></div>'
+      + '<p style="margin:8px 0 20px;font:400 13.5px/1.5 var(--font-body);max-width:70ch;color:' + mixT(72) + '">Every action is scored on recovered output, attainment gain, confidence, cost and risk — then checked against operational constraints. Select a row to inspect its evidence and constraint results.</p>'
+      + '<div class="oc-2col" style="--cols:1.35fr 1fr;border:2px solid var(--color-divider)">' + left + detail + '</div></div>';
+  }
+  function tRecommendation(V) {
+    var loop = V.showLoop ? '<div style="display:flex;gap:2px;margin-bottom:20px;border:2px solid var(--color-divider);overflow:hidden">' + V.loopSteps.map(function (s) { return '<div style="flex:1;padding:10px 8px;text-align:center;background:' + s.bg + ';color:' + s.fg + ';border-left:1px solid var(--color-divider)"><div style="font:700 9px/1 var(--font-body);letter-spacing:.06em;opacity:.7">' + s.n + '</div><div style="font:800 12px/1 var(--font-heading);margin-top:5px">' + s.label + '</div></div>'; }).join('') + '</div>' : '';
+    if (!V.hasRec) {
+      return '<div style="padding:24px 26px 40px">' + loop + '<div style="border:2px solid var(--color-divider);padding:40px"><div class="lbl" style="color:var(--color-accent)">No active recommendation</div><p style="margin:10px 0 16px;font:400 14px/1.55 var(--font-body);max-width:60ch;color:' + mixT(75) + '">The line is on plan. Inject the scenario event from the demo bar to run the decision loop and generate a recommendation.</p><button type="button" class="btn btn-primary" data-act="main">' + V.actionLabel + '</button></div></div>';
+    }
+    var cons = V.recConstraints.map(function (c) { return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--color-divider)"><span style="flex:none;display:inline-flex">' + c.icon + '</span><span style="font:600 12.5px/1.3 var(--font-body);flex:1">' + c.name + '</span><span style="font:700 11px/1 var(--font-body);text-transform:uppercase;letter-spacing:.05em;color:' + c.color + '">' + c.result + '</span></div>'; }).join('');
+    var comp = V.altRowsCompact.map(function (a) { return '<tr><td style="' + a.nameStyle + '">' + a.label + '</td><td style="text-align:right;font-variant-numeric:tabular-nums">' + a.recoverText + '</td><td><span class="tag ' + a.riskClass + '">' + a.risk + '</span></td><td style="text-align:right;font-weight:800;font-variant-numeric:tabular-nums">' + a.scoreText + '</td></tr>'; }).join('');
+    var hero = '<div class="oc-2col" style="--cols:1.55fr 1fr;border-bottom:2px solid var(--color-divider)">'
+      + '<div style="padding:22px 24px;border-right:2px solid var(--color-divider)"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font:800 11px/1 var(--font-heading);letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent)">Recommended action</span><span style="font:600 10px/1 var(--font-body);font-variant-numeric:tabular-nums;color:' + mixT(50) + '">' + V.recId + ' · v' + V.recVersion + ' · ' + V.recStatusText + '</span></div>'
+      + '<h2 style="margin:12px 0 0;font:800 32px/1.06 var(--font-heading);letter-spacing:-.02em">' + V.recTitle + '</h2><p style="margin:12px 0 0;font:400 15px/1.55 var(--font-body);max-width:48ch;color:' + mixT(80) + '">' + V.recReason + '</p>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><span class="tag tag-neutral">+' + V.recRecovered + ' units</span><span class="tag tag-neutral">Risk · ' + V.recRisk + '</span><span class="tag tag-neutral">Confidence · ' + V.recConf + '%</span><span class="tag tag-outline">' + V.approvalTag + '</span></div></div>'
+      + '<div style="background:var(--color-accent);color:var(--color-bg);padding:22px 24px;display:flex;flex-direction:column;justify-content:center"><div style="font:700 11px/1 var(--font-heading);letter-spacing:.1em;text-transform:uppercase;opacity:.9">Expected recovery</div><div style="font:800 76px/1 var(--font-heading);letter-spacing:-.03em;margin-top:8px">+' + V.recRecovered + '</div><div style="font:600 13px/1.4 var(--font-body);margin-top:6px;opacity:.92">good units before end of shift</div><div style="height:2px;background:color-mix(in srgb,#f3f2f2 45%,transparent);margin:16px 0"></div><div style="display:flex;justify-content:space-between;font:800 20px/1 var(--font-heading);font-variant-numeric:tabular-nums"><span>' + V.forecastBefore + '</span><span style="opacity:.7">→</span><span>' + V.forecastAfter + '</span></div><div style="font:600 11px/1.3 var(--font-body);margin-top:6px;opacity:.9">forecast output, after action</div></div></div>';
+    var grid = '<div class="oc-2col" style="--cols:1fr 1fr">'
+      + '<div style="border-right:2px solid var(--color-divider)"><div class="p-hd"><h4>Constraints checked</h4><span class="meta">' + V.constraintSummary + '</span></div><div style="padding:8px 18px 14px">' + cons + '</div><div class="p-hd" style="border-top:2px solid var(--color-divider)"><h4>Evidence</h4><span class="meta">' + V.evidenceIds + '</span></div><div style="padding:12px 18px;font:400 13px/1.55 var(--font-body);color:' + mixT(80) + '">' + V.recReason + '</div></div>'
+      + '<div><div class="p-hd"><h4>Alternatives considered</h4><span class="meta">ranked</span></div><div class="oc-tablewrap"><table class="table" style="font-size:13px"><tbody>' + comp + '</tbody></table></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--color-divider)"><div style="padding:12px 16px;border-right:1px solid var(--color-divider)"><div class="lbl" style="font-size:9px">Lifecycle status</div><div style="margin-top:6px"><span class="tag ' + V.recStatusClass + '">' + V.recStatusText + '</span></div></div><div style="padding:12px 16px"><div class="lbl" style="font-size:9px">Valid until</div><div class="num" style="font-size:15px;margin-top:6px">' + V.validUntil + '</div></div></div>'
+      + '<div style="display:flex;gap:14px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--color-divider);font:500 10px/1.4 var(--font-body);letter-spacing:.04em;text-transform:uppercase;color:' + mixT(45) + '"><span>forecast 0.1</span><span>impact 0.1</span><span>ruleset 0.1</span><span>optimizer 0.1</span></div></div></div>';
+    var actions = '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;border-top:2px solid var(--color-divider);align-items:center">'
+      + '<button type="button" class="btn btn-primary" data-act="approve"' + (V.approveDisabled ? ' disabled' : '') + '>' + V.approveLabel + '</button>'
+      + '<button type="button" class="btn btn-secondary" data-act="reject"' + (V.rejectDisabled ? ' disabled' : '') + '>Reject</button>'
+      + '<button type="button" class="btn btn-secondary" data-act="recalc">Request recalculation</button>'
+      + '<span style="flex:1"></span>'
+      + '<button type="button" class="btn btn-secondary" data-act="dispatch"' + (V.dispatchDisabled ? ' disabled' : '') + '>' + V.dispatchLabel + '</button>'
+      + '<button type="button" class="btn btn-ghost" data-act="open-json" data-tab="decision">View decision JSON</button></div>';
+    return '<div style="padding:24px 26px 40px">' + loop + '<div style="border:2px solid var(--color-divider)">' + hero + grid + actions + '</div></div>';
+  }
+  function tHistory(V) {
+    var rows = V.historyRows.map(function (h) { return '<tr style="' + h.rowStyle + '"><td style="font-weight:700;font-variant-numeric:tabular-nums">' + h.id + '</td><td style="font-variant-numeric:tabular-nums;color:' + mixT(60) + '">v' + h.ver + '</td><td>' + h.action + '</td><td><span class="tag ' + h.statusClass + '">' + h.statusText + '</span></td><td style="text-align:right;font-variant-numeric:tabular-nums;color:' + mixT(60) + '">' + h.time + '</td></tr>'; }).join('');
+    return '<div style="padding:24px 26px 40px;max-width:1000px"><div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px"><h2 style="margin:0;font:800 26px/1.1 var(--font-heading);letter-spacing:-.02em">Decision history</h2><span class="meta">Versioned · auditable</span></div>'
+      + '<p style="margin:8px 0 20px;font:400 13.5px/1.5 var(--font-body);max-width:66ch;color:' + mixT(72) + '">Every recommendation and lifecycle change is recorded. Statuses move Draft → Proposed → Approved → Dispatched → Executing → Completed, or Rejected / Superseded / Expired.</p>'
+      + '<div style="border:2px solid var(--color-divider)"><div class="oc-tablewrap"><table class="table" style="font-size:13.5px"><thead><tr><th>Recommendation</th><th>Ver</th><th>Action</th><th>Status</th><th style="text-align:right">Time</th></tr></thead><tbody>' + rows + '</tbody></table></div></div></div>';
+  }
+  function tDrawer(V) {
+    if (!V.jsonOpen) return '';
+    return '<div class="oc-backdrop" style="position:fixed;inset:0;z-index:40;display:flex;justify-content:flex-end;background:color-mix(in srgb,var(--color-neutral-900) 42%,transparent)">'
+      + '<div class="oc-drawer" style="width:min(560px,94vw);height:100%;background:var(--color-bg);border-left:2px solid var(--color-text);display:flex;flex-direction:column">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:2px solid var(--color-divider)"><div><div class="lbl" style="color:var(--color-accent)">Decision API</div><div style="font:800 16px/1.1 var(--font-heading);margin-top:4px">' + V.recId + ' · v' + V.recVersion + '</div></div><button type="button" class="btn btn-secondary btn-icon" data-act="close-json" title="Close">✕</button></div>'
+      + '<div style="display:flex;gap:2px;padding:8px 18px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">' + V.jsonTabs.map(function (t) { return '<button type="button" class="oc-tab" data-on="' + t.on + '" data-act="json-tab" data-tab="' + t.key + '">' + t.label + '</button>'; }).join('') + '</div>'
+      + '<div style="flex:1;overflow:auto;padding:16px 18px;background:color-mix(in srgb,var(--color-text) 3%,transparent)"><pre>' + escapeHtml(V.jsonText) + '</pre></div></div></div>';
+  }
+  function tToast(V) {
+    if (!V.toast) return '';
+    return '<div style="position:fixed;left:22px;bottom:22px;z-index:50;display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--color-text);color:var(--color-bg);box-shadow:var(--shadow-lg);max-width:440px"><span style="width:8px;height:8px;background:var(--color-accent);flex:none"></span><span style="font:600 13px/1.4 var(--font-body)">' + escapeHtml(V.toast) + '</span></div>';
+  }
+  function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function screen(V) {
+    if (V.isOverview) return tOverview(V);
+    if (V.isTimeline) return tTimeline(V);
+    if (V.isLoss) return tLoss(V);
+    if (V.isForecast) return tForecast(V);
+    if (V.isAlternatives) return tAlternatives(V);
+    if (V.isRecommendation) return tRecommendation(V);
+    if (V.isHistory) return tHistory(V);
+    return '';
+  }
+
+  // ── RENDER LOOP ──────────────────────────────────────────────────────────
+  var app = document.getElementById('app');
+  var _measuring = false;
+  function render() {
+    var V = renderVals();
+    app.innerHTML = '<div style="min-height:100vh;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text)">'
+      + tHeader(V) + tControlBar(V) + '<main style="flex:1">' + screen(V) + '</main></div>' + tDrawer(V) + tToast(V);
+    measureCharts();
+  }
+  function measureCharts() {
+    if (_measuring) return;
+    var changed = false;
+    var nodes = app.querySelectorAll('[data-chartw]');
+    for (var i = 0; i < nodes.length; i++) {
+      var key = nodes[i].getAttribute('data-chartw');
+      var w = Math.round(nodes[i].clientWidth);
+      if (w > 0 && chartW[key] !== w) { chartW[key] = w; changed = true; }
+    }
+    if (changed) { _measuring = true; render(); _measuring = false; }
+  }
+
+  // ── EVENTS ───────────────────────────────────────────────────────────────
+  function onClick(e) {
+    var t = e.target;
+    if (t.classList && t.classList.contains('oc-backdrop')) { setState({ jsonOpen: false }); return; }
+    var el = t.closest ? t.closest('[data-act]') : null;
+    if (!el) return;
+    var a = el.getAttribute('data-act');
+    if (a === 'view') setView(el.getAttribute('data-view'));
+    else if (a === 'main') action().fn();
+    else if (a === 'reset') reset();
+    else if (a === 'recalc') recalc();
+    else if (a === 'open-json') setState({ jsonOpen: true, jsonTab: el.getAttribute('data-tab') || 'decision' });
+    else if (a === 'close-json') setState({ jsonOpen: false });
+    else if (a === 'sel-alt') setState({ selectedAltId: el.getAttribute('data-id') });
+    else if (a === 'approve') approve();
+    else if (a === 'reject') reject();
+    else if (a === 'dispatch') doDispatch();
+    else if (a === 'json-tab') setState({ jsonTab: el.getAttribute('data-tab') });
+  }
+  function onChange(e) {
+    var el = e.target.closest ? e.target.closest('[data-act="scenario"]') : null;
+    if (el) loadScenario(el.value);
+  }
+  app.addEventListener('click', onClick);
+  app.addEventListener('change', onChange);
+
+  var _rz = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(_rz);
+    _rz = setTimeout(function () { for (var k in chartW) delete chartW[k]; render(); }, 120);
+  });
+
+  // ── BRIDGE INIT + MOUNT ──────────────────────────────────────────────────
+  if (bridge) {
+    try { bridge.ready(); } catch (e) {}
+    if (bridge.onTheme) bridge.onTheme(function () {});
+    if (bridge.resize) { try { bridge.resize(900); } catch (e) {} }
+  }
+  loadScenario(props.startScenario);
+})();
+</script>
+</body>
+</html>
