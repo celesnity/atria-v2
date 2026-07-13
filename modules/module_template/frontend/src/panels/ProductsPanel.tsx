@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Package, Plus, RefreshCw, Trash2, PackagePlus, Sparkles, Check, X, Search, Copy, ArrowUpDown } from "lucide-react";
-import { useMinderTheme, useAgentForm } from "minder-ui-sdk";
+import { useMinderTheme, useAgentForm, Agent } from "minder-ui-sdk";
 import { useToast } from "../ui/Toast";
 import { mascotSay } from "../ui/Mascot";
 import { variants } from "../theme";
@@ -172,6 +172,7 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
   };
 
   return (
+    <Agent.Page name="products" description="Quản lý sản phẩm trong kho">
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
@@ -194,20 +195,22 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
           {field("name", "Name", "Cirrus Mug")}
           {field("price", "Price", "19.90", "number")}
           {field("category", "Category", "A / B / C")}
-          <motion.button
-            data-agent-control="submit"
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={submit}
-            disabled={busy}
-            style={{
-              display: "flex", alignItems: "center", gap: 6, background: tokens.primary,
-              border: "none", borderRadius: 8, padding: "9px 14px", color: "#fff",
-              fontSize: 13, fontWeight: 500, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1,
-            }}
-          >
-            <Plus size={14} /> Add
-          </motion.button>
+          <Agent.Button name="add" description="Thêm sản phẩm mới vào kho" onAct={submit}>
+            <motion.button
+              data-agent-control="submit"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={submit}
+              disabled={busy}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, background: tokens.primary,
+                border: "none", borderRadius: 8, padding: "9px 14px", color: "#fff",
+                fontSize: 13, fontWeight: 500, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1,
+              }}
+            >
+              <Plus size={14} /> Add
+            </motion.button>
+          </Agent.Button>
         </div>
 
         <AnimatePresence>
@@ -274,6 +277,7 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
       )}
 
       {/* Catalog list */}
+      <Agent.Data name="list" description="Sản phẩm đang hiển thị" value={shown}>
       {shown.length === 0 ? (
         <div style={{ color: tokens.textMuted, textAlign: "center", padding: "40px 0", fontSize: 14 }}>
           {products.length === 0
@@ -316,7 +320,9 @@ export default function ProductsPanel({ apiBase }: { apiBase: string }) {
           </AnimatePresence>
         </motion.div>
       )}
+      </Agent.Data>
     </div>
+    </Agent.Page>
   );
 }
 

@@ -3,13 +3,13 @@ import {
   MinderThemeProvider,
   useMinderTheme,
   AgentDriverProvider,
+  AgentRegistryProvider,
   AgentPresence,
   type DashboardProps,
   type DashboardComponent,
 } from "minder-ui-sdk";
 import { ToastProvider } from "./ui/Toast";
 import StatHeader from "./ui/StatHeader";
-import Mascot from "./ui/Mascot";
 import ProductsPanel from "./panels/ProductsPanel";
 import JobsPanel from "./panels/JobsPanel";
 import MediaPanel from "./panels/MediaPanel";
@@ -60,17 +60,18 @@ function Dashboard({ apiBase, activeTab, theme }: DashboardProps) {
   return (
     <MinderThemeProvider theme={theme}>
       <AgentDriverProvider apiBase={apiBase} onNavigate={(route) => setTab(ROUTE_TO_TAB[route] ?? route)}>
-        <ToastProvider>
-          <Surface>
-            <StatHeader apiBase={apiBase} />
-            <Panel apiBase={apiBase} />
-          </Surface>
-          <Mascot />
-          {/* Agent Presence Layer: ghost cursor narrates committed actions and
-              parks at Approve for proposals. Read-only stage — remove this line
-              and the agent still works entirely through the backend SDK. */}
-          <AgentPresence apiBase={apiBase} />
-        </ToastProvider>
+        <AgentRegistryProvider apiBase={apiBase} sessionId="default">
+          <ToastProvider>
+            <Surface>
+              <StatHeader apiBase={apiBase} />
+              <Panel apiBase={apiBase} />
+            </Surface>
+            {/* Agent Presence Layer: ghost cursor narrates committed actions and
+                parks at Approve for proposals. Read-only stage — remove this line
+                and the agent still works entirely through the backend SDK. */}
+            <AgentPresence apiBase={apiBase} />
+          </ToastProvider>
+        </AgentRegistryProvider>
       </AgentDriverProvider>
     </MinderThemeProvider>
   );
