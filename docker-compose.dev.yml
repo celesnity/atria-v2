@@ -103,49 +103,6 @@ services:
   #     start_period: 60s
   #   restart: unless-stopped
 
-  # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool).
-  minder-worker:
-    build: .
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SERPER_API_KEY=${SERPER_API_KEY}
-      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
-      - MINDER_MODEL=${MINDER_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
-      - MINDER_REDIS_URL=redis://redis:6379/0
-      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
-      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_QDRANT_URL=http://qdrant:6333
-      # - MC_NEO4J_URI=bolt://neo4j:7687
-      # - MC_NEO4J_USER=neo4j
-      # - MC_NEO4J_PASSWORD=minder-neo4j
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - minder_data:/home/minder/.minder
-      - ./minder:/app/minder
-      - ./modules:/app/modules
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        mkdir -p /home/minder/.minder &&
-        : "$${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}" &&
-        : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}" &&
-        printf '{"model":"%s","api_base_url":"%s"}\n'
-          "$${MINDER_MODEL}"
-          "$${MINDER_API_BASE_URL}"
-          > /home/minder/.minder/settings.json &&
-        exec taskiq worker minder.core.tasks.broker:broker minder.core.tasks.tasks
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   # Opt-in only (profile "embed-tei"). Embeddings default to an external
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
   # this local embedder explicitly with `--profile embed-tei` when wanted. Note

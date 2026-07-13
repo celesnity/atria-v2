@@ -13,7 +13,6 @@
 #   over the in-compose backchannel (keycloak:8080) still validates against
 #   Minder's KEYCLOAK_PUBLIC_URL. Minder reaches Keycloak internally at keycloak:8080
 #   for JWKS/token; the browser reaches it at localhost:8082.
-# - minder-worker stays AUTH_MODE=none (it's a TaskIQ worker, does no token auth).
 # - nginx is parked behind an unused profile: it's the broken "move kc to cloud"
 #   block (nginx image running Keycloak's start-dev command) and would crash; we
 #   don't need it because Minder publishes host :8080 directly.
@@ -54,11 +53,6 @@ services:
     depends_on:
       keycloak:
         condition: service_started
-
-  minder-worker:
-    environment:
-      DATABASE_URL: postgresql://minder:minder@db:5432/minder
-      AUTH_MODE: none
 
   nginx:
     profiles: ["donotstart"]
