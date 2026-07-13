@@ -61,6 +61,9 @@ class TemplateQuery(BaseModel):
     description="Demo: pydantic params_model — typed, schema-validated input.",
     params_model=TemplateQuery,
     card_type="template_card",
+    when_to_use="When you need to search the demo corpus with typed, validated params "
+    "(topic string + bounded limit).",
+    examples=[{"topic": "pumps", "limit": 3}, {"topic": "valves", "limit": 1}],
 )
 def template_typed_query(topic: str, limit: int = 3):
     res = service.search(topic, limit)
@@ -79,6 +82,9 @@ def template_typed_query(topic: str, limit: int = 3):
     "template_card",
     description="Demo: return a generic card().",
     parameters={"type": "object", "properties": {"note": {"type": "string"}}},
+    when_to_use="When you want to surface a short freeform message to the user as a "
+    "rendered card rather than plain text.",
+    examples=[{"note": "inventory looks healthy"}, {}],
 )
 def template_card(note: str = "hello from module_template"):
     return {
@@ -97,6 +103,9 @@ def template_card(note: str = "hello from module_template"):
     "template_block",
     description="Demo: render the module's own federated React block.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When results are best shown in the module's rich federated React "
+    "block instead of as text or a card.",
+    examples=[{"topic": "demo"}, {"topic": "gaskets"}],
 )
 def template_block(topic: str = "demo"):
     res = service.search(topic, 3)
@@ -112,6 +121,9 @@ def template_block(topic: str = "demo"):
     streaming=True,
     description="Demo: a streaming tool — progress events, a mid-stream block, a final.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When a search takes noticeable time and you want to stream progress "
+    "and a mid-stream block to the user before the final result.",
+    examples=[{"topic": "demo"}, {"topic": "bearings"}],
 )
 def template_stream(topic: str = "demo"):
     yield {"event": "progress", "message": "searching…", "pct": 30}
@@ -129,6 +141,9 @@ def template_stream(topic: str = "demo"):
     "template_secure",
     requires_auth=True,
     description="Demo: requires_auth — only runs for an authenticated user.",
+    when_to_use="When an action must be attributed to a signed-in principal; it fails "
+    "for anonymous callers.",
+    examples=[{}],
 )
 def template_secure(principal=None):
     who = getattr(principal, "username", "unknown")
@@ -143,6 +158,9 @@ def template_secure(principal=None):
     "template_async_job",
     description="Demo: start a background job that reverse-pushes a live progress block.",
     parameters={"type": "object", "properties": {"steps": {"type": "integer"}}},
+    when_to_use="When you want to demo a long-running job that reverse-pushes a live, "
+    "self-updating progress block into the current session.",
+    examples=[{"steps": 3}, {"steps": 5}],
 )
 def template_async_job(steps: int = 3, session_id=None):
     if not session_id:
@@ -177,6 +195,9 @@ def template_async_job(steps: int = 3, session_id=None):
     "template_export",
     description="Demo: push_artifact — attach a generated report to the conversation.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When the user wants a generated report saved as a downloadable "
+    "artifact attached to the conversation, not just shown inline.",
+    examples=[{"topic": "demo"}, {"topic": "quarterly"}],
 )
 def template_export(topic: str = "demo", session_id=None):
     if not session_id:
@@ -196,6 +217,9 @@ def template_export(topic: str = "demo", session_id=None):
     "template_start_job",
     description="Start a background job (Celery). Watch a live progress block update.",
     parameters={"type": "object", "properties": {"steps": {"type": "integer"}}},
+    when_to_use="When the user asks to kick off real background work (a Celery job) and "
+    "track it via a live progress block.",
+    examples=[{"steps": 3}, {"steps": 10}],
 )
 def template_start_job(steps: int = 3, session_id=None):
     with db.db_session() as s:
@@ -210,7 +234,12 @@ def template_start_job(steps: int = 3, session_id=None):
     }
 
 
-@conn.tool("template_list_jobs", description="List recent background jobs.")
+@conn.tool(
+    "template_list_jobs",
+    description="List recent background jobs.",
+    when_to_use="When the user asks what jobs are running, queued, or recently finished.",
+    examples=[{}],
+)
 def template_list_jobs():
     with db.db_session() as s:
         rows = [j.as_dict() for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(10)]
@@ -220,6 +249,9 @@ def template_list_jobs():
 @conn.tool(
     "template_db_overview",
     description="Module DB counts + read-only Minder aggregates (shared database).",
+    when_to_use="When the user wants a high-level snapshot of module data (job/media "
+    "counts) plus read-only Minder aggregates.",
+    examples=[{}],
 )
 def template_db_overview():
     with db.db_session() as s:
@@ -282,10 +314,41 @@ def inventory_state(principal=None):
     return {"total": len(items), "skus": [p["sku"] for p in items][:20]}
 
 
+@conn.context.state("jobs", "Live background-job summary")
+def jobs_state(principal=None):
+    """Summarize recent background jobs for the agent's live context.
+
+    Reads the most recent ``MtJob`` rows via the same accessor ``template_list_jobs``
+    uses. Defensive by design: any DB failure yields an empty, well-formed summary.
+
+    Returns:
+        A dict ``{"recent": [...], "count": N}`` where ``recent`` holds up to five
+        recent job dicts and ``count`` is how many were read.
+    """
+    try:
+        with db.db_session() as s:
+            rows = [
+                j.as_dict()
+                for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(5)
+            ]
+        return {"recent": rows, "count": len(rows)}
+    except Exception:  # noqa: BLE001 — showcase fallback; SDK is already fail-closed
+        return {"recent": [], "count": 0}
+
+
 conn.context.knowledge(
     "Confirm SKU and price with the user before creating a product; SKUs are unique."
 )
+conn.context.knowledge(
+    "Deleting a product is irreversible and high-risk; it is gated below 'high' "
+    "autonomy and requires explicit human approval before it runs."
+)
 conn.context.note("products", "Product catalog area — add, restock, and delete products.")
+conn.context.note("jobs", "Background jobs and their status.")
+conn.context.note("media", "Uploaded media assets.")
+conn.context.note("data", "Raw data tables and records.")
+conn.context.note("metrics", "Dashboard metrics and charts.")
+conn.context.note("graph", "Operational Graph — products linked to their categories.")
 
 
 # --- BE-SDK-10: Operational Graph — linked context around a node ---------------
@@ -353,6 +416,8 @@ def create_product(sku: str, name: str, price: float, category: str = "", sessio
         "properties": {"product_id": {"type": "integer"}, "qty": {"type": "integer"}},
         "required": ["product_id"],
     },
+    when_to_use="When the user wants to add units to an existing product's stock.",
+    examples=[{"product_id": 1, "qty": 10}, {"product_id": 2}],
 )
 def restock_product(product_id: int, qty: int = 10, **kw):
     p = products.restock(int(product_id), int(qty))
@@ -373,6 +438,10 @@ def restock_product(product_id: int, qty: int = 10, **kw):
         "properties": {"product_id": {"type": "integer"}},
         "required": ["product_id"],
     },
+    when_to_use="Only when the user explicitly asks to permanently remove a product — "
+    "HIGH risk and irreversible, so it is gated below 'high' autonomy and returns a "
+    "decision packet for human approval instead of deleting outright.",
+    examples=[{"product_id": 1}],
 )
 def delete_product(product_id: int, **kw):
     p = products.delete(int(product_id))
@@ -397,6 +466,12 @@ def delete_product(product_id: int, **kw):
         },
         "required": ["sku", "name"],
     },
+    when_to_use="When the user wants help filling in the Add Product form — prefill what "
+    "you know and let the human confirm; use create_product only for direct creation.",
+    examples=[
+        {"sku": "A-1", "name": "Pump"},
+        {"sku": "B-2", "name": "Valve", "price": 12.5, "category": "B"},
+    ],
 )
 def assist_add_product(sku, name, price=None, category=None, session_id=None, **kw):
     values: dict = {"sku": sku, "name": name}
@@ -429,6 +504,9 @@ def assist_add_product(sku, name, price=None, category=None, session_id=None, **
         "properties": {"product_id": {"type": "integer"}},
         "required": ["product_id"],
     },
+    when_to_use="When the user wants a copy of an existing product as a starting point "
+    "for a variant (the copy gets a '-COPY' SKU suffix).",
+    examples=[{"product_id": 1}],
 )
 def duplicate_product(product_id: int, session_id=None, **kw):
     src = products.get(int(product_id))
@@ -450,6 +528,9 @@ def duplicate_product(product_id: int, session_id=None, **kw):
         "properties": {"product_id": {"type": "integer"}, "price": {"type": "number"}},
         "required": ["product_id", "price"],
     },
+    when_to_use="When the user wants to change an existing product's price; reversible "
+    "by setting the price back.",
+    examples=[{"product_id": 1, "price": 19.99}],
 )
 def update_price(product_id: int, price: float, **kw):
     p = products.set_price(int(product_id), price)
