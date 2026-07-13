@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, useDragControls } from "motion/react";
-import { useMinderTheme, useAgentActivity, type UiIntent } from "minder-ui-sdk";
+import { useMinderTheme, useAgentActivity, useQuickChat, type UiIntent } from "minder-ui-sdk";
+import logoUrl from "./logo.png";
 
 /**
  * Pilo — the module_template mascot. It reacts to the agent driving the UI:
@@ -84,6 +85,31 @@ export function mascotSay(mood: Mood, text?: string | null, hold = 2600) {
   window.dispatchEvent(new CustomEvent("mt-mascot", { detail: { mood, text, hold } }));
 }
 
+/**
+ * Break an agent reply into a few short speech-bubble-sized chunks so Pilo can
+ * "pop" them one at a time on an interval instead of dumping a wall of text.
+ * Splits on sentence enders, regroups to ~120 chars, and caps the count.
+ */
+function chunkReply(s: string): string[] {
+  const clean = (s || "").replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const parts = clean.match(/[^.!?…]+[.!?…]*/g) ?? [clean];
+  const chunks: string[] = [];
+  let cur = "";
+  for (const p of parts) {
+    const seg = p.trim();
+    if (!seg) continue;
+    if (cur && (cur + " " + seg).length > 120) {
+      chunks.push(cur);
+      cur = seg;
+    } else {
+      cur = cur ? `${cur} ${seg}` : seg;
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks.slice(0, 6);
+}
+
 const BODY: Record<Mood, object> = {
   idle: { y: [0, -6, 0], rotate: 0, transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } },
   walk: { x: [0, 7, -7, 0], rotate: [0, 5, -5, 0], transition: { duration: 0.6, repeat: Infinity } },
@@ -127,6 +153,15 @@ export default function Mascot() {
   // Drag is started manually from the robot body (not the whole 130×210 box) so
   // the transparent speech-bubble area above it never intercepts clicks.
   const dragControls = useDragControls();
+
+  // Quick-chat: tap Pilo → a little input opens; on send the question goes to the
+  // host's real Minder agent (via the SDK bridge) and the answer pops back as
+  // speech bubbles. `downAt` lets us tell a tap (open chat) from a drag (move).
+  const chat = useQuickChat();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const downAt = useRef<{ x: number; y: number } | null>(null);
 
   // Whenever the commanded position changes (intent walk / home / wander), spring
   // the live values toward it — unless the user is currently dragging.
@@ -213,7 +248,7 @@ export default function Mascot() {
   // being dragged, it strolls to a random spot every few seconds. Pauses the
   // moment an intent arrives (mood leaves "idle") or the user grabs it.
   useEffect(() => {
-    if (mood !== "idle" || dragging) return;
+    if (mood !== "idle" || dragging || chatOpen) return;
     let alive = true;
     let hop: ReturnType<typeof setTimeout>;
     const roam = () => {
@@ -231,7 +266,7 @@ export default function Mascot() {
       alive = false;
       clearTimeout(hop);
     };
-  }, [mood, dragging]);
+  }, [mood, dragging, chatOpen]);
 
   // React to panel-level nudges.
   useEffect(() => {
@@ -252,6 +287,67 @@ export default function Mascot() {
     }, 3600);
     return () => clearInterval(t);
   }, []);
+
+  // Autofocus the quick-chat input as it opens.
+  useEffect(() => {
+    if (chatOpen) inputRef.current?.focus();
+  }, [chatOpen]);
+
+  // Show a live "thinking / typing" bubble while the agent works, and an error
+  // bubble if the ask fails. The finished answer is handled separately below.
+  useEffect(() => {
+    clearTimeout(timer.current);
+    if (chat.phase === "thinking") {
+      setMood("ask");
+      setText("Đang suy nghĩ… 💭");
+    } else if (chat.phase === "streaming") {
+      setMood("type");
+      setText("Đang trả lời…");
+    } else if (chat.phase === "error") {
+      setMood("nervous");
+      setText(chat.text || "Ối, có lỗi rồi 😖");
+      timer.current = setTimeout(() => {
+        setText(null);
+        setMood("idle");
+        chat.reset();
+      }, 3200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.phase]);
+
+  // When the answer is ready, reveal it one bubble at a time on an interval —
+  // Pilo "chats back" instead of dumping the whole reply at once.
+  useEffect(() => {
+    if (chat.phase !== "done") return;
+    const chunks = chunkReply(chat.text);
+    if (chunks.length === 0) {
+      setText(null);
+      setMood("idle");
+      chat.reset();
+      return;
+    }
+    clearTimeout(timer.current);
+    let i = 0;
+    let t: ReturnType<typeof setTimeout>;
+    const pop = () => {
+      const last = i === chunks.length - 1;
+      setText(chunks[i]);
+      setMood(last ? "happy" : "type");
+      i += 1;
+      if (!last) {
+        t = setTimeout(pop, 1700);
+      } else {
+        t = setTimeout(() => {
+          setText(null);
+          setMood("idle");
+          chat.reset(); // back to idle → wandering resumes
+        }, 3600);
+      }
+    };
+    t = setTimeout(pop, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.phase]);
 
   const c1 = tokens.primary;
   const c2 = tokens.info;
@@ -296,6 +392,82 @@ export default function Mascot() {
         alignItems: "flex-start",
       }}
     >
+      {/* Quick-chat input — reuses the composer feel (surface + border + focus
+          ring) in a compact bubble anchored above Pilo. */}
+      <AnimatePresence>
+        {chatOpen && (
+          <motion.form
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.95 }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = draft.trim();
+              if (!q) return;
+              chat.ask(q);
+              setDraft("");
+              setChatOpen(false);
+            }}
+            // Don't let a pointerdown inside the input start a mascot drag.
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              pointerEvents: "auto",
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              width: 232,
+              background: tokens.surface,
+              border: `1px solid ${tokens.border}`,
+              boxShadow: tokens.cardShadow,
+              borderRadius: 14,
+              padding: "6px 6px 6px 12px",
+            }}
+          >
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setChatOpen(false);
+              }}
+              placeholder="Hỏi Pilo bất cứ điều gì…"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                color: tokens.text,
+                fontSize: 12.5,
+              }}
+            />
+            <button
+              type="submit"
+              aria-label="Gửi"
+              disabled={!draft.trim()}
+              style={{
+                flex: "0 0 auto",
+                width: 26,
+                height: 26,
+                display: "grid",
+                placeItems: "center",
+                borderRadius: 999,
+                border: "none",
+                cursor: draft.trim() ? "pointer" : "default",
+                opacity: draft.trim() ? 1 : 0.5,
+                background: `linear-gradient(135deg, ${tokens.primary}, ${tokens.info})`,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {text && (
           <motion.div
@@ -324,8 +496,19 @@ export default function Mascot() {
       <motion.div
         animate={mood}
         variants={{}}
-        onPointerDown={(e) => dragControls.start(e)}
-        title="Kéo tôi đi chơi! 🖐️"
+        onPointerDown={(e) => {
+          downAt.current = { x: e.clientX, y: e.clientY };
+          dragControls.start(e);
+        }}
+        onPointerUp={(e) => {
+          // A tap (barely moved) toggles quick-chat; a real drag just moves Pilo.
+          const d = downAt.current;
+          downAt.current = null;
+          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) {
+            setChatOpen((v) => !v);
+          }
+        }}
+        title="Bấm để chat • kéo để di chuyển"
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 1.12 }}
         style={{
@@ -335,7 +518,6 @@ export default function Mascot() {
           pointerEvents: "auto",
           cursor: dragging ? "grabbing" : "grab",
           touchAction: "none",
-          scaleX: pos.facing === "left" ? -1 : 1,
         }}
       >
         <motion.div animate={BODY[mood]} style={{ width: "100%", height: "100%" }}>
@@ -354,43 +536,22 @@ export default function Mascot() {
               ))}
           </AnimatePresence>
 
-          <svg viewBox="0 0 90 96" width="90" height="96">
-            <defs>
-              <linearGradient id="pilo-body" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor={c1} />
-                <stop offset="1" stopColor={c2} />
-              </linearGradient>
-            </defs>
-            {/* antenna */}
-            <line x1="45" y1="16" x2="45" y2="4" stroke={c2} strokeWidth="3" strokeLinecap="round" />
-            <circle cx="45" cy="4" r="4" fill={c2} />
-            {/* shadow */}
-            <ellipse cx="45" cy="90" rx="24" ry="5" fill="#000" opacity="0.18" />
-            {/* left arm */}
-            <motion.rect animate={ARM[mood]} x="12" y="46" width="9" height="24" rx="4.5" fill={c1} style={{ transformBox: "fill-box", transformOrigin: "center top" }} />
-            {/* right arm (the pointer) */}
-            <motion.rect animate={ARM[mood]} x="69" y="46" width="9" height="24" rx="4.5" fill={c1} style={{ transformBox: "fill-box", transformOrigin: "center top" }} />
-            {/* body */}
-            <rect x="18" y="18" width="54" height="60" rx="20" fill="url(#pilo-body)" />
-            {/* face plate */}
-            <rect x="26" y="30" width="38" height="26" rx="13" fill={tokens.surfaceAlt} />
-            {/* eyes */}
-            <g>
-              <ellipse cx={38 + eyeLook} cy="43" rx="4.2" ry={blink ? 0.8 : 4.6} fill={tokens.text} />
-              <ellipse cx={52 + eyeLook} cy="43" rx="4.2" ry={blink ? 0.8 : 4.6} fill={tokens.text} />
-            </g>
-            {/* mouth */}
-            {mood === "celebrate" || mood === "happy" ? (
-              <path d="M40 62 Q45 68 50 62" stroke={tokens.text} strokeWidth="2.4" fill="none" strokeLinecap="round" />
-            ) : mood === "nervous" ? (
-              <path d="M40 65 Q45 60 50 65" stroke={tokens.text} strokeWidth="2.4" fill="none" strokeLinecap="round" />
-            ) : (
-              <line x1="41" y1="63" x2="49" y2="63" stroke={tokens.text} strokeWidth="2.4" strokeLinecap="round" />
-            )}
-            {/* feet */}
-            <rect x="30" y="78" width="12" height="8" rx="4" fill={c1} />
-            <rect x="48" y="78" width="12" height="8" rx="4" fill={c1} />
-          </svg>
+          <img
+            src={logoUrl}
+            alt="mascot"
+            draggable={false}
+            style={{
+              width: 84,
+              height: 84,
+              margin: "6px 3px",
+              borderRadius: "50%",
+              objectFit: "cover",
+              boxShadow: `0 6px 18px rgba(0,0,0,0.28)`,
+              border: `2px solid ${tokens.surface}`,
+              userSelect: "none",
+              display: "block",
+            }}
+          />
         </motion.div>
       </motion.div>
     </motion.div>

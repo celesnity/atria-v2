@@ -55,3 +55,15 @@ export { Agent, AgentRegistryProvider } from './agentSurface/AgentSurface';
 export type { AgentRegistryProviderProps } from './agentSurface/AgentSurface';
 export { createRegistry, MAX_VALUE_CHARS } from './agentSurface/registry';
 export type { UiSnapshot, DataEntry, ActionEntry, Registry } from './agentSurface/registry';
+export {
+  useQuickChat,
+  emitQuickChatReply,
+  QUICK_CHAT_SEND,
+  QUICK_CHAT_REPLY,
+} from './quickChat';
+export type {
+  QuickChatPhase,
+  QuickChatSendDetail,
+  QuickChatReplyDetail,
+  UseQuickChatResult,
+} from './quickChat';
