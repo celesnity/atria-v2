@@ -1,0 +1,10 @@
+{
+  "_comment": "Optional seed: alias phrases for a brand that exists in the data under a different (e.g. current) name. Same role for brands that data/place_aliases.json plays for place exonyms. An alias is honoured ONLY when its `brand` matches a real brand value present in pois.json, so this never invents a chain. Justification lives with each entry.",
+  "aliases": [
+    {
+      "brand": "GO!",
+      "alias": "Big C",
+      "note": "Central Retail rebranded its Big C hypermarkets to GO! in Vietnam; the data stores them as brand 'GO!'. The PUB030 gold itself pairs the two as 'GO! / Big C supermarket', so mapping the legacy name 'Big C' to the GO! brand is corroborated by the eval data, not external recall."
+    }
+  ]
+}

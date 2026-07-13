@@ -209,6 +209,19 @@ def _scope_prefix(res: dict, vi: bool) -> str:
             if vi else f"No exact match in '{where}' in the data — here are the nearest options:\n")
 
 
+def _name_has_brand(name: str, brand_canon: str) -> bool:
+    """Does a result NAME belong to the detected brand? Matches on the brand's
+    distinctive FIRST token, tolerant of punctuation ('go!' vs 'GO! Phường 2').
+    First-token (not all-token) so a multi-word brand head the router derived
+    ('galaxy cinema' from bare 'galaxy') still keeps every 'Galaxy …' branch —
+    the filter only sheds clearly-unrelated fills (a 'CGV' for 'big c'), never a
+    same-family branch."""
+    def _toks(s: str) -> list[str]:
+        return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", fold(s))).strip().split()
+    ntoks, btoks = set(_toks(name)), _toks(brand_canon)
+    return bool(btoks) and btoks[0] in ntoks
+
+
 def _should_ask_city(res: dict) -> bool:
     """A category/brand turn with no resolved city whose candidates span more than
     one city — the interactive agent should ask which city rather than guess."""
@@ -276,6 +289,18 @@ def _try_fast_path(res: dict, message: str, folded: str, viewport: dict | None,
     want_hours = _want_hours(res)
     origin = (res.get("entities") or {}).get("origin")
     action = (res.get("entities") or {}).get("action")
+    # Ambiguous bare-brand ("big c", "vinmec"): the router flags Ambiguous and
+    # resolves the brand, but the plain scorer can pad the list with an unrelated
+    # low-score filler (a lone "CGV" cinema for "big c"). A brand disambiguation's
+    # candidate set must be branches of THAT brand only, so drop non-brand fills —
+    # the reply then presents a clean branch set (the shape "vinmec" already passes
+    # with). No-op when every result already matches (vinmec/galaxy), so it can
+    # never shrink an already-clean ambiguous set.
+    _brand_canon = (res.get("entities") or {}).get("brand")
+    if intent == "Ambiguous" and _brand_canon and results:
+        _branded = [r for r in results if _name_has_brand(r.get("name", ""), _brand_canon)]
+        if _branded and len(_branded) < len(results):
+            results = _branded
     # GPS beats the map view: an explicit user_location is a truer origin for
     # distance / "near me" than wherever the map happens to be panned. Falls back
     # to the viewport, so behaviour is unchanged when no location is shared.

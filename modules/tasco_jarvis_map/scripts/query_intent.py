@@ -184,6 +184,16 @@ def _category_words(categories: dict) -> frozenset[str]:
     return frozenset(words)
 
 
+def _load_brand_aliases() -> list[dict]:
+    """Optional data/brand_aliases.json seed: alias phrases for brands stored in
+    the data under a different name. Shaped like data/place_aliases.json; missing
+    file is fine (returns [])."""
+    try:
+        return load_json("brand_aliases.json").get("aliases", [])
+    except Exception:  # noqa: BLE001 - a missing/broken seed must never break the router
+        return []
+
+
 def build_context() -> dict:
     """Load + derive everything the router needs, ONCE. Sentinel term-sets are
     derived from abbreviations.json values; brands and streets from the data."""
@@ -235,6 +245,18 @@ def build_context() -> dict:
         tail = " ".join(toks[i:])
         if 0 < i and len(tail) >= 3 and tail != fb and not _is_category_word(tail):
             brand_family.setdefault(tail, fb)
+
+    # Brand exonyms genuinely absent from the data (e.g. a former chain name):
+    # data/brand_aliases.json maps an alias phrase to a brand that DOES exist in
+    # the data, so the legacy/alternate name resolves to the real chain. Data-
+    # anchored: an alias whose target brand is not in brand_set is ignored, so
+    # this can never invent a brand. Only the full folded alias phrase is added
+    # (no head/tail decomposition), keeping the match specific.
+    for entry in _load_brand_aliases():
+        target = fold(entry.get("brand", ""))
+        alias = fold(entry.get("alias", ""))
+        if len(alias) >= 2 and target in brand_set and not _is_category_word(alias):
+            brand_family.setdefault(alias, target)
 
     streets = {fold(a["street"]) for a in addresses if a.get("street")}
     streets |= {fold(p["district"]) for p in pois if p.get("district")}
