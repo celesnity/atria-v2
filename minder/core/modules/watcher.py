@@ -204,7 +204,8 @@ class ConnectorReconciler:
                 # but do NOT count it a health failure.
                 continue
             tools = manifest.get("tools") or []
-            reg.mark_connector_ready(rec.name, tools)
+            context = manifest.get("context") if isinstance(manifest.get("context"), dict) else {}
+            reg.mark_connector_ready(rec.name, tools, context=context)
         if reg.version != before and self._on_change is not None:
             try:
                 self._on_change()
