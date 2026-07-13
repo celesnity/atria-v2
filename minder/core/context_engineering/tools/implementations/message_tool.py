@@ -61,14 +61,33 @@ class MessageTool:
         # Determine webhook URL
         webhook_url = target or channel_config.get("webhook_url", "")
         if not webhook_url:
+            # No external channel is set up. Do NOT fail the turn — an unconfigured
+            # channel is a usage mistake, not an outage, and hard-failing here kills
+            # the agent's turn ("Couldn't finish") so it can't keep talking to the
+            # user. Return a soft, successful result that redirects the agent to
+            # interact in-conversation: the user is right here, so it should say the
+            # message directly (and for approvals, use the on-screen decision card
+            # or ask the user here) rather than routing to a channel.
+            logger.info(
+                "send_message: no '%s' channel configured; redirecting to in-conversation reply",
+                channel,
+            )
             return {
-                "success": False,
-                "error": (
-                    f"No webhook URL configured for channel '{channel}'. "
-                    f"Set it in ~/.minder/settings.json under channels.{channel}.webhook_url "
-                    f"or pass it as the 'target' parameter."
+                "success": True,
+                "delivered": False,
+                "channel": channel,
+                "output": (
+                    f"No external '{channel}' channel is configured, so nothing was sent "
+                    "outside this conversation — and none is needed. The user is here in the "
+                    "chat: say this to them directly in your reply. If you need their approval "
+                    "for an action, present the on-screen decision card or ask the user here; "
+                    "do NOT retry send_message or try another channel."
                 ),
-                "output": None,
+                "_llm_suffix": (
+                    "\n\n[SYSTEM: send_message was not delivered (no channel configured) and "
+                    "must not be retried. Respond to the user directly in this conversation "
+                    "instead — they will see and answer your message here.]"
+                ),
             }
 
         try:
