@@ -136,7 +136,8 @@ def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
 
     reg = _ready_registry(monkeypatch, tmp_path)
     specs = remote.build_remote_tool_specs(ctx, reg.live_service_modules())
-    assert [s.name for s in specs] == ["maintenance_copilot_query"]
+    # A live connector also gets the module-context reader appended.
+    assert [s.name for s in specs] == ["maintenance_copilot_query", "read_module_context"]
 
     out = specs[0].handler(query="torque?")
     assert out["success"] is True
@@ -199,3 +200,24 @@ def test_module_without_service_yields_no_specs():
 
     specs = remote.build_remote_tool_specs(SkillToolContext(), [_Mod("plain", _NoSvc())])
     assert specs == []
+
+
+def test_fetch_context_returns_state_payload():
+    def handler(request):
+        assert request.url.path == "/connector/context"
+        return httpx.Response(200, json={
+            "state": [{"name": "inventory", "value": {"total": 2}}],
+            "ui_snapshot": {"page": "products"},
+            "actions": [],
+        })
+    conn = _connector(handler)
+    out = conn.fetch_context()
+    assert out["state"][0]["name"] == "inventory"
+    assert out["ui_snapshot"]["page"] == "products"
+
+
+def test_fetch_context_returns_none_on_error():
+    def handler(request):
+        return httpx.Response(503, json={"error": "down"})
+    conn = _connector(handler)
+    assert conn.fetch_context() is None
