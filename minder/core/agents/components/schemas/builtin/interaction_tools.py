@@ -11,47 +11,6 @@ from typing import Any
 from minder.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
-    # ===== Notebook Edit Tool =====
-    {
-        "type": "function",
-        "function": {
-            "name": "notebook_edit",
-            "description": load_tool_description("notebook_edit"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "notebook_path": {
-                        "type": "string",
-                        "description": "Absolute path to the Jupyter notebook file (.ipynb)",
-                    },
-                    "new_source": {
-                        "type": "string",
-                        "description": "New source content for the cell. Required for replace and insert modes.",
-                    },
-                    "cell_id": {
-                        "type": "string",
-                        "description": "ID of the cell to edit. For insert mode, new cell is inserted after this cell.",
-                    },
-                    "cell_number": {
-                        "type": "integer",
-                        "description": "0-indexed cell position. Alternative to cell_id. For insert mode, new cell is inserted at this position.",
-                    },
-                    "cell_type": {
-                        "type": "string",
-                        "enum": ["code", "markdown"],
-                        "description": "Cell type. Required for insert mode, optional for replace mode.",
-                    },
-                    "edit_mode": {
-                        "type": "string",
-                        "enum": ["replace", "insert", "delete"],
-                        "default": "replace",
-                        "description": "Operation type: replace (update existing cell), insert (add new cell), or delete (remove cell).",
-                    },
-                },
-                "required": ["notebook_path", "new_source"],
-            },
-        },
-    },
     # ===== Ask User Question Tool =====
     {
         "type": "function",
