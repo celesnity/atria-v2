@@ -47,6 +47,7 @@ class Form:
     submit_tool: Optional[str] = None
     risk: str = "low"
     reversible: Optional[bool] = None
+    undo: Optional[str] = None
     instructions: str = ""
 
     def to_dict(self) -> dict:
@@ -57,6 +58,7 @@ class Form:
             "submit_tool": self.submit_tool,
             "risk": self.risk,
             "reversible": self.reversible,
+            "undo": self.undo,
             "instructions": self.instructions,
         }
 

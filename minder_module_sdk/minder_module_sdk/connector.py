@@ -95,6 +95,7 @@ class _Tool:
     params_model: Optional[type] = None
     risk: str = "low"
     reversible: Optional[bool] = None
+    undo: Optional[str] = None
     idempotent: bool = False
     read_only: bool = False
 
@@ -173,6 +174,10 @@ class Connector:
         self._idem_cache: "dict[tuple[str, str], dict]" = {}
         self._idem_cap = 1024
         self._decision_handler: Optional[Callable[..., Any]] = None
+        # Optional Operational-Graph provider: answers a linked-context query
+        # (node + depth) with {nodes, edges} so the agent reasons over connected
+        # context instead of a single isolated read.
+        self._graph_provider: Optional[Callable[..., Any]] = None
         # Declared UI surface (pages/forms/controls) + a per-session intent bus
         # the module frontend drains over SSE.
         self._ui = UiSurface()
@@ -198,6 +203,7 @@ class Connector:
         params_model: Optional[type] = None,
         risk: str = "low",
         reversible: Optional[bool] = None,
+        undo: Optional[str] = None,
         idempotent: bool = False,
         read_only: bool = False,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -208,8 +214,11 @@ class Connector:
         radius; the SDK gates a call whose risk exceeds the caller's autonomy,
         returning a decision packet instead of running the handler. ``reversible``
         / ``idempotent`` are advertised so the agent can reason about retries and
-        keep an escape hatch. ``read_only`` marks a pure read (implies risk
-        "none")."""
+        keep an escape hatch. ``undo`` says *how* to reverse it (a human-readable
+        note or the name of the compensating tool) — advertised in the manifest,
+        the context endpoint, and every decision packet so the agent (and the
+        approving human) always keeps an escape route. ``read_only`` marks a pure
+        read (implies risk "none")."""
         if params_model is not None and parameters is not None:
             raise ValueError("pass either params_model or parameters, not both")
         params = (
@@ -231,6 +240,7 @@ class Connector:
                 params_model=params_model,
                 risk=eff_risk,
                 reversible=reversible,
+                undo=undo,
                 idempotent=idempotent,
                 read_only=read_only,
             )
@@ -285,6 +295,42 @@ class Connector:
         bypasses the risk gate)."""
         self._decision_handler = fn
         return fn
+
+    # -- operational graph (linked context) -----------------------------------
+
+    def graph(self, fn: Callable[..., Any]) -> Callable[..., Any]:
+        """Register the Operational-Graph provider for this module.
+
+        The provider answers a linked-context query — ``fn(node, depth)`` (it may
+        also accept ``principal``) — and returns ``{"nodes": [...], "edges":
+        [...]}`` describing the context connected to ``node`` out to ``depth``
+        hops. Exposed at ``GET/POST /connector/graph`` so the agent can pull
+        connected context instead of staring at one isolated read. Optional: with
+        no provider the endpoint fail-closes to an empty graph."""
+        self._graph_provider = fn
+        return fn
+
+    def query_graph(
+        self, node: Optional[str] = None, depth: int = 1,
+        principal: Optional[Principal] = None,
+    ) -> dict:
+        """Run the registered graph provider (fail-closed to an empty graph)."""
+        if self._graph_provider is None:
+            return {"nodes": [], "edges": [], "available": False}
+        kwargs: dict = {}
+        if _accepts_arg(self._graph_provider, "node") or _has_var_keyword(self._graph_provider):
+            kwargs["node"] = node
+        if _accepts_arg(self._graph_provider, "depth") or _has_var_keyword(self._graph_provider):
+            kwargs["depth"] = depth
+        if _accepts_principal(self._graph_provider):
+            kwargs["principal"] = principal or Principal()
+        result = self._graph_provider(**kwargs)
+        if not isinstance(result, dict):
+            result = {"nodes": [], "edges": []}
+        result.setdefault("nodes", [])
+        result.setdefault("edges", [])
+        result.setdefault("available", True)
+        return result
 
     # -- UI surface (agent drives the real UI) --------------------------------
 
@@ -363,11 +409,15 @@ class Connector:
         submit_tool: Optional[str] = None,
         risk: str = "low",
         reversible: Optional[bool] = None,
+        undo: Optional[str] = None,
         instructions: str = "",
     ) -> Form:
         """Declare a typed form the agent can prefill. ``submit_tool`` is the
-        gated action run on submit; ``instructions`` is the per-form playbook."""
-        f = Form(id, route, fields, submit_tool, normalize_risk(risk), reversible, instructions)
+        gated action run on submit; ``instructions`` is the per-form playbook;
+        ``undo`` says how the submit is reversed (kept alongside the gate)."""
+        f = Form(
+            id, route, fields, submit_tool, normalize_risk(risk), reversible, undo, instructions
+        )
         self._ui.forms[id] = f
         return f
 
@@ -703,7 +753,13 @@ class Connector:
                 make_envelope(
                     self.name,
                     "action.completed" if ok else "action.failed",
-                    {"tool": tool.name, "success": ok, "error": result.get("error")},
+                    {
+                        "tool": tool.name,
+                        "success": ok,
+                        "risk": tool.risk,
+                        "reversible": tool.reversible,
+                        "error": result.get("error"),
+                    },
                     source="agent" if agent_id else "module",
                     actor=actor,
                     session_id=session_id,
@@ -724,6 +780,7 @@ class Connector:
             ),
             risk=tool.risk,
             reversible=tool.reversible,
+            undo=tool.undo,
             card_type="decision_packet",
         )
         return {
@@ -750,6 +807,7 @@ class Connector:
             summary=f"Preview of '{tool.name}' — not executed (dry run).",
             risk=tool.risk,
             reversible=tool.reversible,
+            undo=tool.undo,
             card_type="decision_packet",
         )
         return {
@@ -797,6 +855,7 @@ class Connector:
             "streaming": any(t.streaming for t in self._tools.values()),
             "cards": any(t.card_type for t in self._tools.values()),
             "ui_driving": not self._ui.is_empty(),
+            "graph": self._graph_provider is not None,
         }
 
     # -- app assembly ---------------------------------------------------------
@@ -880,6 +939,8 @@ class Connector:
                         "name": t.name,
                         "risk": t.risk,
                         "read_only": t.read_only,
+                        "reversible": t.reversible,
+                        "undo": t.undo,
                         "allowed": autonomy_allows(t.risk, autonomy),
                     }
                     for t in self._tools.values()
@@ -996,6 +1057,26 @@ class Connector:
                 logger.exception("decision apply failed")
                 return self._fail(f"decision failed: {exc}")
 
+        @app.api_route("/connector/graph", methods=["GET", "POST"])
+        async def graph(request: Request) -> dict:
+            """Query the module's Operational Graph for linked context around a
+            node (BE-SDK-10). ``node``/``depth`` come from the query string (GET)
+            or the JSON body (POST). Fail-closed to an empty graph when the module
+            declared no provider."""
+            principal = _principal_from_headers(request)
+            body = await _json_body(request) if request.method == "POST" else {}
+            node = body.get("node") or request.query_params.get("node")
+            raw_depth = body.get("depth") or request.query_params.get("depth")
+            try:
+                depth = int(raw_depth) if raw_depth is not None else 1
+            except (TypeError, ValueError):
+                depth = 1
+            try:
+                return self.query_graph(node, depth, principal)
+            except Exception as exc:  # noqa: BLE001 — never 500 the agent
+                logger.exception("graph query failed")
+                return {"nodes": [], "edges": [], "available": True, "error": str(exc)}
+
         @app.post("/connector/tools/{name}")
         async def call_tool(name: str, request: Request) -> dict:
             tool = self._tools.get(name)
@@ -1049,6 +1130,7 @@ class Connector:
                 "risk": t.risk,
                 "read_only": t.read_only,
                 "reversible": t.reversible,
+                "undo": t.undo,
                 "idempotent": t.idempotent,
             }
             for t in self._tools.values()

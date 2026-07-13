@@ -102,7 +102,7 @@ auto-run anything above the caller's autonomy and returns a *decision packet* fo
 approval instead:
 
 ```python
-@conn.tool("scrap_part", risk="high", reversible=False)
+@conn.tool("scrap_part", risk="high", reversible=True, undo="restore_part(part)")
 def scrap_part(part: str):
     ...
 # caller autonomy "low" → not executed, returns a decision_packet card
@@ -111,6 +111,23 @@ def scrap_part(part: str):
 `risk` is `none|low|medium|high|critical`; the caller's autonomy arrives as the
 `X-Minder-Autonomy` header. `@conn.read(...)` marks a pure state query (risk
 `none`, never gated).
+
+**Keep an escape route.** `reversible` says *whether* an action can be undone;
+`undo` says *how* (a note or the compensating tool). Both ride every
+`decision_packet`, the `/connector/manifest` tool spec, and `/connector/context`,
+so the agent and the approving human always see the way back before acting.
+
+**Operational Graph.** Register a provider so the agent can pull *linked* context
+(a node + its neighbours) instead of one isolated read:
+
+```python
+@conn.graph
+def graph(node, depth=1):
+    return {"nodes": [...], "edges": [...]}   # around `node`, out to `depth` hops
+# GET/POST /connector/graph?node=part-7&depth=2  → {nodes, edges, available}
+```
+
+With no provider the endpoint fail-closes to an empty graph (`available: false`).
 
 **Dry-run / idempotency.** `X-Minder-Dry-Run: true` previews without executing
 (passed to the handler if it accepts `dry_run`, else the SDK returns a preview
