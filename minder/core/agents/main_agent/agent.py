@@ -13,6 +13,7 @@ from minder.core.agents.components import (
     ToolSchemaBuilder,
 )
 from minder.core.agents.prompts import get_reminder
+from minder.core.blackboard.injection import render_shared_lessons_section
 from minder.models.config import AppConfig
 from minder.core.agents.main_agent.http_clients import HttpClientMixin
 from minder.core.agents.main_agent.llm_calls import LlmCallsMixin
@@ -244,6 +245,31 @@ class MainAgent(HttpClientMixin, LlmCallsMixin, RunLoopMixin, BaseAgent):
         if dynamic:
             return f"{stable}\n\n{dynamic}"
         return stable
+
+    _LESSONS_MARKER = "## Shared Lessons"
+
+    def apply_blackboard_lessons(self) -> None:
+        """Fold the current blackboard's shared lessons into the dynamic prompt tail.
+
+        Cheaper replacement for a full ``build_system_prompt()`` rebuild: the
+        stable (cacheable) prefix is left byte-identical and only the dynamic
+        tail gains/refreshes the Shared Lessons block. Idempotent — re-running
+        replaces the previous block rather than appending a second one.
+        """
+        handle = getattr(self, "_blackboard_handle", None)
+        lessons = render_shared_lessons_section(handle) if handle is not None else ""
+
+        dynamic = getattr(self, "_system_dynamic", "") or ""
+        # Strip any prior lessons block (marker to end) so repeats don't stack.
+        marker_at = dynamic.find(self._LESSONS_MARKER)
+        if marker_at != -1:
+            dynamic = dynamic[:marker_at].rstrip()
+
+        if lessons:
+            dynamic = f"{dynamic}\n\n{lessons}" if dynamic else lessons
+
+        self._system_dynamic = dynamic
+        self.system_prompt = self._compose_system_content()
 
     def build_tool_schemas(self, thinking_visible: bool = True) -> list[dict[str, Any]]:
         return self._schema_builder.build(thinking_visible=thinking_visible)
