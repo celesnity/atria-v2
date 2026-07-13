@@ -13,21 +13,12 @@ from typing import Optional
 # Tool groups — categorize tools by function
 TOOL_GROUPS: dict[str, set[str]] = {
     "group:read": {
-        "read_file",
-        "list_files",
-        "search",
         "read_pdf",
     },
     "group:write": {
-        "write_file",
-        "edit_file",
-        "apply_patch",
     },
     "group:process": {
         "run_command",
-        "list_processes",
-        "get_process_output",
-        "kill_process",
     },
     "group:session": set(),
     "group:meta": {

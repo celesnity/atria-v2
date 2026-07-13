@@ -15,11 +15,6 @@ from minder.core.utils.sound import play_finish_sound
 
 PARALLELIZABLE_TOOLS = frozenset(
     {
-        "read_file",
-        "list_files",
-        "search",
-        "list_processes",
-        "get_process_output",
         "list_todos",
     }
 )

@@ -13,13 +13,8 @@ from typing import Any
 READ_ONLY_TOOLS: frozenset[str] = frozenset(
     {
         # File reading
-        "read_file",
-        "list_files",
-        "search",
         "read_pdf",
         # Process inspection
-        "list_processes",
-        "get_process_output",
         # Meta (read-only)
         "list_todos",
         "task_complete",
@@ -29,11 +24,7 @@ READ_ONLY_TOOLS: frozenset[str] = frozenset(
 # Tools that modify state and should generally run sequentially
 WRITE_TOOLS: frozenset[str] = frozenset(
     {
-        "write_file",
-        "edit_file",
         "run_command",
-        "apply_patch",
-        "kill_process",
         "write_todos",
         "update_todo",
         "complete_todo",

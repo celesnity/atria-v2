@@ -108,7 +108,7 @@ class IterationContext:
 class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin, IterationMixin):
     """Executes ReAct loop (Reasoning -> Acting -> Observing)."""
 
-    READ_OPERATIONS = {"read_file", "list_files", "search"}
+    READ_OPERATIONS: set[str] = set()
     MAX_NUDGE_ATTEMPTS = 3
     MAX_TODO_NUDGES = 4  # After this many nudges, allow completion anyway
     DOOM_LOOP_THRESHOLD = 3  # Same tool+args N times -> doom loop
@@ -117,11 +117,6 @@ class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin,
     # Tools safe for silent parallel execution (read-only, no approval needed)
     PARALLELIZABLE_TOOLS = frozenset(
         {
-            "read_file",
-            "list_files",
-            "search",
-            "list_processes",
-            "get_process_output",
             "list_todos",
         }
     )

@@ -6,11 +6,6 @@ sub-agent spec for codebase exploration.
 
 # Read-only tools allowed for planning/exploration subagents
 PLANNING_TOOLS = {
-    "read_file",
-    "list_files",
-    "search",  # Unified: type="text" (ripgrep) or "ast" (ast-grep)
-    "list_processes",
-    "get_process_output",
     "read_pdf",  # PDF extraction is read-only
     # Symbol tools (read-only)
     # MCP tool discovery (read-only)
