@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "minder-ui-sdk";
 import { statusColor, variants } from "../theme";
 
 interface Job {
@@ -51,9 +51,11 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
   }, [apiBase]);
 
   return (
+    <Agent.Page name="jobs" description="Background jobs and their status">
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600 }}>Jobs</h3>
+        <Agent.Button name="start" description="Start a demo background job" onAct={startJob}>
         <motion.button
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
@@ -70,10 +72,12 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
           {starting ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
           {starting ? "Starting…" : "Start job"}
         </motion.button>
+        </Agent.Button>
       </div>
 
       <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
 
+      <Agent.Data name="list" description="Jobs queued and running" value={jobs}>
       {jobs.length === 0 ? (
         <div style={{ color: tokens.textMuted, textAlign: "center", padding: "40px 0", fontSize: 14 }}>
           No jobs yet — click "Start job", or ask the agent in chat
@@ -129,6 +133,8 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
           </AnimatePresence>
         </motion.div>
       )}
+      </Agent.Data>
     </div>
+    </Agent.Page>
   );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Share2, Package, Tag, RefreshCw, Crosshair, X } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "minder-ui-sdk";
 
 /**
  * Operational Graph demo (BE-SDK-10). Reads the module's `/connector/graph`
@@ -61,11 +61,14 @@ export default function GraphPanel({ apiBase }: { apiBase: string }) {
   const labelOf = (id: string) => graph.nodes.find((n) => n.id === id)?.label ?? id;
 
   return (
+    <Agent.Page name="graph" description="Operational Graph — products linked to categories">
+    <Agent.Data name="nodes" description="Product/category graph nodes and edges" value={graph}>
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
           <Share2 size={17} /> Operational Graph
         </h3>
+        <Agent.Button name="reload" description="Reload the whole graph" onAct={() => { setFocus(null); load(); }}>
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
@@ -74,6 +77,7 @@ export default function GraphPanel({ apiBase }: { apiBase: string }) {
         >
           <RefreshCw size={15} />
         </motion.button>
+        </Agent.Button>
       </div>
 
       <p style={{ color: tokens.textMuted, fontSize: 13, margin: "0 0 16px" }}>
@@ -139,5 +143,7 @@ export default function GraphPanel({ apiBase }: { apiBase: string }) {
         ))}
       </div>
     </div>
+    </Agent.Data>
+    </Agent.Page>
   );
 }
