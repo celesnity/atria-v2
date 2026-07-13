@@ -1,7 +1,7 @@
 import pytest
 
-from atria.core.blackboard.response_store import ResponseStore
-from atria.core.tasks.tasks import _write_response
+from minder.core.blackboard.response_store import ResponseStore
+from minder.core.tasks.tasks import _write_response
 
 
 class FakeRedis:

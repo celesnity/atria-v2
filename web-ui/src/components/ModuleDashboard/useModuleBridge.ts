@@ -102,7 +102,7 @@ export function useModuleBridge({
         }
         case 'title': {
           window.dispatchEvent(
-            new CustomEvent('atria:module:title', {
+            new CustomEvent('minder:module:title', {
               detail: { module: moduleName, text: msg.text },
             }),
           );

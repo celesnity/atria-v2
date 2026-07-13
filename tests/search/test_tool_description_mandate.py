@@ -4,9 +4,9 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
-from atria.core.context_engineering.search.provider import SearchProvider
-from atria.core.context_engineering.search.registry import SearchProviderRegistry
-from atria.core.context_engineering.search.types import SearchContext, SourceResults
+from minder.core.context_engineering.search.provider import SearchProvider
+from minder.core.context_engineering.search.registry import SearchProviderRegistry
+from minder.core.context_engineering.search.types import SearchContext, SourceResults
 
 _TOOLS_PATH = Path(__file__).resolve().parents[2] / "modules" / "knowledge_search" / "tools.py"
 

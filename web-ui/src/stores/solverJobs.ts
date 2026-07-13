@@ -86,7 +86,7 @@ interface SolverJobsState {
 // In-app navigation already keeps the store (module singleton); only an F5 wiped
 // it. We persist to sessionStorage (per-tab, no cross-user leak — unlike a Redis
 // SCAN of all jobs) so the Dispatch history rehydrates on reload.
-const STORAGE_KEY = 'atria.solverJobs.v1';
+const STORAGE_KEY = 'minder.solverJobs.v1';
 
 function loadPersisted(): Pick<SolverJobsState, 'jobs' | 'order'> {
   try {

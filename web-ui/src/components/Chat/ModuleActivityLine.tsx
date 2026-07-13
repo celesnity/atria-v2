@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { Message } from '../../types';
+import { JsonView } from './JsonView';
 
 interface Props {
   message: Message;
@@ -13,15 +14,38 @@ export type ActivityView = {
   text: string;
   /** Verbose error detail — tool name, raw error, stack hint. Only set on error. */
   detail?: string;
-  /** Machine-readable payload for the debug popover (only on error). */
+  /** Verbose machine-readable payload for the expandable detail. Set on BOTH
+   *  error and done, so successes are as inspectable as failures. */
   debug?: {
     tool?: string;
     args?: Record<string, unknown>;
     error?: string;
+    success?: boolean;
+    summary?: unknown;
     result?: unknown;
     call_id?: string;
   };
 };
+
+/**
+ * Full, verbose debug payload for the expandable detail — everything the backend
+ * attached to this tool call (name, args, success flag, summary, raw result,
+ * call id), so both failures AND successes are fully inspectable from the chat.
+ */
+function buildDebug(
+  message: Message,
+  extra?: Record<string, unknown>,
+): NonNullable<ActivityView['debug']> {
+  return {
+    tool: message.tool_name,
+    args: message.tool_args,
+    success: message.tool_success,
+    summary: message.tool_summary,
+    result: message.tool_result,
+    call_id: message.tool_call_id,
+    ...extra,
+  };
+}
 
 /**
  * Extract a human-readable error string from every place the backend might
@@ -58,19 +82,13 @@ export function activityView(message: Message, hasResult: boolean): ActivityView
       kind: 'error',
       text: `Couldn’t finish — ${tool} failed: ${firstLine}`,
       detail: err,
-      debug: {
-        tool: message.tool_name,
-        args: message.tool_args,
-        error: err,
-        result: message.tool_result,
-        call_id: message.tool_call_id,
-      },
+      debug: buildDebug(message, { error: err }),
     };
   }
 
   const labels = message.activity ?? GENERIC;
   return hasResult
-    ? { kind: 'done', text: labels.done }
+    ? { kind: 'done', text: labels.done, debug: buildDebug(message) }
     : { kind: 'running', text: labels.running };
 }
 
@@ -85,36 +103,7 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
   const view = activityView(message, hasResult);
   const [expanded, setExpanded] = useState(false);
 
-  if (view.kind === 'error') {
-    const debugJson = view.debug
-      ? JSON.stringify(view.debug, null, 2)
-      : '';
-    return (
-      <div className="px-3 py-2 text-[13px] text-block-coral space-y-1">
-        <div className="flex items-start gap-2">
-          <AlertTriangle aria-hidden className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-          <span className="flex-1 break-words">{view.text}</span>
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="text-[11px] font-mono opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
-            aria-label={expanded ? 'Hide error detail' : 'Show error detail'}
-          >
-            {expanded ? '− hide' : '+ details'}
-          </button>
-        </div>
-        {expanded && (
-          <pre
-            className="ml-6 text-[11px] font-mono whitespace-pre-wrap break-words bg-block-coral/10 border border-block-coral/30 rounded-md px-2 py-1.5 max-h-64 overflow-auto"
-            aria-label="Error debug payload"
-          >
-{debugJson || view.detail}
-          </pre>
-        )}
-      </div>
-    );
-  }
-
+  // Running: a spinner only — there is nothing to inspect yet.
   if (view.kind === 'running') {
     return (
       <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-ink/70">
@@ -124,10 +113,57 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
     );
   }
 
+  // Error AND done share the same expandable "+ details / − hide" affordance, so
+  // a successful call is as inspectable as a failed one. The payload is the full
+  // verbose {tool, args, success, summary, result, call_id} dump.
+  const isError = view.kind === 'error';
+  // Structured payload → render as a JSON tree; only fall back to plain text
+  // when there is no debug object to inspect.
+  const debugObj =
+    view.debug && typeof view.debug === 'object' && Object.keys(view.debug).length > 0
+      ? view.debug
+      : null;
+  const detailText = view.detail || '';
+  const hasDetail = !!debugObj || detailText.trim().length > 0;
+
+  const tone = isError
+    ? { text: 'text-block-coral', pre: 'bg-block-coral/10 border-block-coral/30' }
+    : { text: 'text-semantic-success', pre: 'bg-semantic-success/10 border-semantic-success/30' };
+  const Icon = isError ? AlertTriangle : CheckCircle2;
+
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-[13px] text-semantic-success">
-      <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} aria-hidden="true" />
-      <span>{view.text}</span>
+    <div className={`px-3 py-2 text-[13px] ${tone.text} space-y-1`}>
+      <div className="flex items-start gap-2">
+        <Icon
+          aria-hidden
+          className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
+          strokeWidth={isError ? 1.5 : 2}
+        />
+        <span className="flex-1 break-words">{view.text}</span>
+        {hasDetail && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="text-[11px] font-mono opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
+            aria-label={expanded ? 'Hide detail' : 'Show detail'}
+          >
+            {expanded ? '− hide' : '+ details'}
+          </button>
+        )}
+      </div>
+      {hasDetail && expanded && (
+        <div className="ml-6 max-h-80 overflow-auto" aria-label="Activity detail payload">
+          {debugObj ? (
+            <JsonView data={debugObj} />
+          ) : (
+            <pre
+              className={`text-[11px] font-mono whitespace-pre-wrap break-words border rounded-md px-2 py-1.5 ${tone.pre}`}
+            >
+{detailText}
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

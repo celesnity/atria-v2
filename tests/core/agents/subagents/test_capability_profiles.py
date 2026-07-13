@@ -1,4 +1,4 @@
-from atria.core.agents.subagents.agents.module_worker import MODULE_WORKER_SUBAGENT
+from minder.core.agents.subagents.agents.module_worker import MODULE_WORKER_SUBAGENT
 
 
 def test_module_worker_has_profile():

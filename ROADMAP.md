@@ -1,6 +1,6 @@
-# Atria Roadmap
+# Minder Roadmap
 
-This document outlines Atria's development priorities. Features are grouped by maturity and projected timeline. Contributions and feedback are welcome — open an issue to discuss anything here.
+This document outlines Minder's development priorities. Features are grouped by maturity and projected timeline. Contributions and feedback are welcome — open an issue to discuss anything here.
 
 ---
 
@@ -25,7 +25,7 @@ This document outlines Atria's development priorities. Features are grouped by m
 - **Modules System**: Self-contained domain skills under `modules/<name>/` (manifest, SKILL.md, scripts, blocks, dashboard) auto-discovered by the agent — reference impl: `warehouse` (CSV-backed inventory)
 - **File Upload + Artifacts**: User uploads (≤50MB, any type) scoped to conversation or project; agent tools `list_artifact_images` / `read_artifact_image` for discovery + base64 retrieval (PNG/JPG/GIF/WebP/SVG); hard + soft delete, 58 E2E/integration tests
 - **Sandboxed Module UI**: `SandboxedBlock` HTML snippets pushed into chat + full `dashboard.html` iframes (`sandbox="allow-scripts allow-forms"`) with `postMessage` callbacks
-- **Docker Compose Stack**: Prod + dev compose files bundling `atria` + Postgres 16 + Adminer, schema auto-loaded from `schema.sql`
+- **Docker Compose Stack**: Prod + dev compose files bundling `minder` + Postgres 16 + Adminer, schema auto-loaded from `schema.sql`
 
 ---
 
@@ -33,8 +33,8 @@ This document outlines Atria's development priorities. Features are grouped by m
 
 - **Remote Web UI Sessions**: Deploy the Web UI as a remote server, enabling mobile access and async task execution
 - **Proactive Agent Loop**: Background execution where the agent continues working autonomously between user prompts
-- **Telegram Integration**: Chat with your Atria agent via Telegram bot (adapter skeleton in place)
-- **WhatsApp Integration**: Interact with Atria via WhatsApp Business API (adapter skeleton in place)
+- **Telegram Integration**: Chat with your Minder agent via Telegram bot (adapter skeleton in place)
+- **WhatsApp Integration**: Interact with Minder via WhatsApp Business API (adapter skeleton in place)
 - **Enhanced Docker Sandboxing**: Improved isolation for untrusted code execution
 
 ---
@@ -47,7 +47,7 @@ This document outlines Atria's development priorities. Features are grouped by m
 - **CI/CD Awareness**: Read pipeline status, fix failing builds, suggest deployment steps
 
 ### Medium-Term
-- **Slack / Discord Integration**: Bring Atria into team channels, trigger tasks and receive updates
+- **Slack / Discord Integration**: Bring Minder into team channels, trigger tasks and receive updates
 - **Email Channel**: Send coding tasks via email, receive diffs and summaries back
 - **iMessage / Signal Integration**: Personal messaging channels for mobile-first async workflows
 - **Multi-Repo Support**: Work across multiple repositories in a single session
@@ -64,4 +64,4 @@ This document outlines Atria's development priorities. Features are grouped by m
 
 ## 💡 Community Ideas
 
-Have a feature request? [Open an issue](https://github.com/atria-to/atria/issues) and let's discuss.
+Have a feature request? [Open an issue](https://github.com/minder-to/minder/issues) and let's discuss.

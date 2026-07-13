@@ -454,7 +454,7 @@ def build_driver(env: Optional[Mapping[str, str]] = None):
     return GraphDatabase.driver(
         src.get("EK_NEO4J_URI", "bolt://localhost:7687"),
         auth=(src.get("EK_NEO4J_USER", "neo4j"),
-              src.get("EK_NEO4J_PASSWORD", "atria-neo4j")),
+              src.get("EK_NEO4J_PASSWORD", "minder-neo4j")),
     )
 ```
 
@@ -1944,7 +1944,7 @@ git commit -m "feat(enterprise_knowledge): offline Public_Evaluation harness (AC
 
 **Files:**
 - Modify: `modules/enterprise_knowledge/requirements.txt`
-- Modify: `docker-compose.yml` (add `EK_NEO4J_*` to `atria` and `atria-worker`)
+- Modify: `docker-compose.yml` (add `EK_NEO4J_*` to `minder` and `minder-worker`)
 - Modify: `modules/enterprise_knowledge/SKILL.md`
 
 **Interfaces:** none (packaging/ops/docs). Verified by the `neo4j` import resolving and health check reaching the compose Neo4j.
@@ -1959,13 +1959,13 @@ neo4j>=5.24
 
 - [ ] **Step 2: Wire compose env passthrough**
 
-In `docker-compose.yml`, under the `atria` service `environment:` block, after the EK block (the `EK_QDRANT_URL` line), add:
+In `docker-compose.yml`, under the `minder` service `environment:` block, after the EK block (the `EK_QDRANT_URL` line), add:
 
 ```yaml
       # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
       - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
       - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
-      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
+      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-minder-neo4j}
       - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
       - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
       - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
@@ -1974,7 +1974,7 @@ In `docker-compose.yml`, under the `atria` service `environment:` block, after t
       - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
 ```
 
-Add the same block to the `atria-worker` service `environment:` (after its `EK_QDRANT_URL` line). Add `depends_on: neo4j` to both services if not already present (the `neo4j` service already exists in the file).
+Add the same block to the `minder-worker` service `environment:` (after its `EK_QDRANT_URL` line). Add `depends_on: neo4j` to both services if not already present (the `neo4j` service already exists in the file).
 
 - [ ] **Step 3: Document in SKILL.md**
 

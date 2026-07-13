@@ -39,7 +39,7 @@ OVERLAP_SEC = 0.5  # window re-includes this much committed audio (naive join)
 MAX_UTTERANCE_SEC = 60.0  # hard cap per streaming utterance
 MIN_DECODE_SEC = 0.4  # don't decode until at least this much new audio exists
 
-app = FastAPI(title="atria-asr", version="0.1.0")
+app = FastAPI(title="minder-asr", version="0.1.0")
 
 _pipe = None
 _pipe_lock = threading.Lock()

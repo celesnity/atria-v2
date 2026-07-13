@@ -23,7 +23,7 @@ export function CreateProjectModal({ isOpen, onClose }: Props) {
         const slug = name.trim().toLowerCase().replace(/\s+/g, '-') || '<name>';
         return (
           <p className="text-xs text-text-400">
-            Folder: <code className="font-mono text-text-300">~/.atria/workspaces/…/{slug}/</code>
+            Folder: <code className="font-mono text-text-300">~/.minder/workspaces/…/{slug}/</code>
           </p>
         );
       }}

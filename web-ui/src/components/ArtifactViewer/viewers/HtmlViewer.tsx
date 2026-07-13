@@ -16,7 +16,7 @@ interface Props {
   tabId?: string;
 }
 
-const SHIM_TAG = '__atria_html_viewer_shim__';
+const SHIM_TAG = '__minder_html_viewer_shim__';
 
 /** Shim script injected into the iframe. Intercepts fetch + XHR for same-origin
  *  or relative URLs and proxies them through the parent window via postMessage.
@@ -44,17 +44,17 @@ function buildShim(htmlDir: string): string {
     }
     window.addEventListener('message', function(ev){
       var d = ev.data || {};
-      if (!d.__atria_reply) return;
-      var entry = PENDING.get(d.__atria_reply);
+      if (!d.__minder_reply) return;
+      var entry = PENDING.get(d.__minder_reply);
       if (!entry) return;
-      PENDING.delete(d.__atria_reply);
+      PENDING.delete(d.__minder_reply);
       entry(d);
     });
     function request(method, url, body){
       return new Promise(function(resolve){
         var id = nextId();
         PENDING.set(id, resolve);
-        parent.postMessage({ __atria_request: id, method: method, url: url, body: body }, '*');
+        parent.postMessage({ __minder_request: id, method: method, url: url, body: body }, '*');
       });
     }
     var origFetch = window.fetch;
@@ -162,11 +162,11 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
       const d = event.data;
-      if (!d || !d.__atria_request) return;
+      if (!d || !d.__minder_request) return;
       const iframeWin = iframeRef.current?.contentWindow;
       if (!iframeWin || event.source !== iframeWin) return;
       const reply = (payload: Record<string, unknown>) => {
-        iframeWin.postMessage({ __atria_reply: d.__atria_request, ...payload }, '*');
+        iframeWin.postMessage({ __minder_reply: d.__minder_request, ...payload }, '*');
       };
       try {
         const blob = await apiClient.readFsBlob(scope, d.url);

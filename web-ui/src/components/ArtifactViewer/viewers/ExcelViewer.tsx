@@ -25,7 +25,7 @@ const SAVE_DEBOUNCE_MS = 1000;
 const LARGE_WORKBOOK_BYTES = 5 * 1024 * 1024;
 
 function lossyAckKey(scope: FsScope, path: string): string {
-  return `atria.xlsx.lossyAck.${fsScopeKey(scope)}.${path}`;
+  return `minder.xlsx.lossyAck.${fsScopeKey(scope)}.${path}`;
 }
 
 export function ExcelViewer({ scope, path, convId, tabId }: Props) {

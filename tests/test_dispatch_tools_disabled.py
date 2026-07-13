@@ -8,7 +8,7 @@ prompt rules alone did not hold. See normal_builder._DISABLED_TOOL_NAMES.
 """
 from __future__ import annotations
 
-from atria.core.agents.components.schemas.normal_builder import ToolSchemaBuilder
+from minder.core.agents.components.schemas.normal_builder import ToolSchemaBuilder
 
 
 def _tool_names() -> set[str]:

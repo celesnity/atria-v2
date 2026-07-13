@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { ModulesApi, type Module, type ModuleTemplate } from '../api/modules';
+import { ModulesApi, type Module, type ModuleTemplate, type ModuleTab } from '../api/modules';
+export type { ModuleTab } from '../api/modules';
 import { wsClient } from '../api/websocket';
 
 export type BadgeSeverity = 'info' | 'warning' | 'danger';
@@ -22,6 +23,7 @@ export interface ModuleSummary {
   remote_entry: string | null;
   remote_dashboard: string | null;
   api_base: string | null;
+  tabs: ModuleTab[];
 }
 
 interface State {
@@ -31,12 +33,14 @@ interface State {
   // Dashboard / sidebar state for modules that ship a dashboard.html.
   modulesWithDashboards: ModuleSummary[];
   activeModuleDashboard: string | null;
+  activeModuleTab: string | null;
   badges: Record<string, ModuleBadge | null>;
   refresh: () => Promise<void>;
   create: (name: string, template: ModuleTemplate, summary?: string) => Promise<Module>;
   remove: (name: string) => Promise<void>;
   openDashboard: (name: string) => void;
   closeDashboard: () => void;
+  setModuleTab: (id: string) => void;
   setBadge: (module: string, badge: ModuleBadge | null) => void;
 }
 
@@ -53,6 +57,7 @@ function summarize(modules: Module[]): ModuleSummary[] {
       const display = (mf?.display_name && mf.display_name.trim()) || m.name;
       const tooltip = (mf?.tooltip && mf.tooltip.trim()) || display;
       const dash = mf?.dashboard ?? null;
+      const tabs = Array.isArray(dash?.tabs) ? dash!.tabs! : [];
       const remote = mf?.remote ?? null;
       const remoteEntry = remote?.remote_entry ?? null;
       const remoteDashboard =
@@ -73,6 +78,7 @@ function summarize(modules: Module[]): ModuleSummary[] {
         remote_entry: remoteEntry,
         remote_dashboard: remoteDashboard,
         api_base: apiBase,
+        tabs,
       };
     });
 }
@@ -83,6 +89,7 @@ export const useModulesStore = create<State>((set, get) => ({
   error: null,
   modulesWithDashboards: [],
   activeModuleDashboard: null,
+  activeModuleTab: null,
   badges: {},
 
   async refresh() {
@@ -98,6 +105,7 @@ export const useModulesStore = create<State>((set, get) => ({
           modules,
           modulesWithDashboards: withDash,
           activeModuleDashboard: stillThere ? state.activeModuleDashboard : null,
+          activeModuleTab: stillThere ? state.activeModuleTab : null,
           loading: false,
         };
       });
@@ -118,12 +126,14 @@ export const useModulesStore = create<State>((set, get) => ({
   },
 
   openDashboard: (name) => {
-    const exists = get().modulesWithDashboards.some((m) => m.name === name);
-    if (!exists) return;
-    set({ activeModuleDashboard: name });
+    const mod = get().modulesWithDashboards.find((m) => m.name === name);
+    if (!mod) return;
+    set({ activeModuleDashboard: name, activeModuleTab: mod.tabs[0]?.id ?? null });
   },
 
-  closeDashboard: () => set({ activeModuleDashboard: null }),
+  closeDashboard: () => set({ activeModuleDashboard: null, activeModuleTab: null }),
+
+  setModuleTab: (id) => set({ activeModuleTab: id }),
 
   setBadge: (module, badge) =>
     set((state) => ({ badges: { ...state.badges, [module]: badge } })),

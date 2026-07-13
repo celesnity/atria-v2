@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from atria.core.context_engineering.search import pg
-from atria.core.context_engineering.search.types import SearchContext
+from minder.core.context_engineering.search import pg
+from minder.core.context_engineering.search.types import SearchContext
 
 pytestmark = pytest.mark.skipif(
     not (

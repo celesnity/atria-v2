@@ -9,7 +9,7 @@
 ## Summary
 
 Let a **service-module** (an out-of-process, containerized module) push its **own
-React components** into the Atria chat stream, rendered **natively in-host** via
+React components** into the Minder chat stream, rendered **natively in-host** via
 Module Federation — not as an iframe and not as a host-coded card. Blocks are
 **interactive, live-updatable, and can act back** (call their own connector or
 inject a chat message). They arrive two ways: as the result of an agent tool
@@ -22,7 +22,7 @@ one block *variant* rather than a parallel system.
 
 After the service-module extraction, a module's UI is a Module Federation remote
 (the dashboard renders natively in-host). But the chat-block system only knows two
-render models: **iframes** of `modules/<name>/blocks/*.html` from the Atria host's
+render models: **iframes** of `modules/<name>/blocks/*.html` from the Minder host's
 disk, and **host-coded card components** keyed on a `type` string (e.g.
 `maintenance_answer` → `MaintenanceAnswerBlock`). Neither lets a service-module
 render *its own* component natively in the chat. This design closes that gap so a
@@ -43,15 +43,15 @@ module's chat UI is as deeply integrated as its dashboard.
 
 ## Context (as-is)
 
-- `atria/web/ui_bridge.py` — `push_block`/`update_block`/`remove_block` broadcast
+- `minder/web/ui_bridge.py` — `push_block`/`update_block`/`remove_block` broadcast
   `custom_block` / `custom_block_update` / `custom_block_remove` WS events
-  (`atria/web/protocol.py:WSMessageType`) and persist a `custom_block` ChatMessage
+  (`minder/web/protocol.py:WSMessageType`) and persist a `custom_block` ChatMessage
   so blocks survive reload. Today a block is an iframe of
   `modules/<name>/blocks/<block>.html`.
-- `atria/web/routes/blocks.py` — `POST /api/blocks/{push,update,remove}`: an
+- `minder/web/routes/blocks.py` — `POST /api/blocks/{push,update,remove}`: an
   HTTP gateway around `ui_bridge` for **out-of-process** callers (subprocess
   scripts today), targeting a session by `session_id`.
-- The service-module proxy tool (`atria/core/modules/remote.py`
+- The service-module proxy tool (`minder/core/modules/remote.py`
   `build_remote_tool_specs._make_handler`) already re-broadcasts a structured
   `card` to the chat via `ctx.broadcaster` as a WS event.
 - Module Federation is live: `web-ui/src/lib/federation.ts`
@@ -59,11 +59,11 @@ module's chat UI is as deeply integrated as its dashboard.
   `web-ui/src/components/ModuleDashboard/RemoteDashboard.tsx` render a module's
   remote natively in-host. The module's `frontend/vite.config.ts` `exposes`
   components (currently `./Dashboard`).
-- Auth: `atria/web/dependencies/auth.py:require_authenticated_user` resolves a
+- Auth: `minder/web/dependencies/auth.py:require_authenticated_user` resolves a
   user via session cookie, **Keycloak bearer token** (`_resolve_via_bearer` →
   `routes/auth.py:verify_token`), or anonymous fallback. Keycloak runs in compose
   with a realm import (`keycloak/realm-export.json`) and a confidential backend
-  client (`atria-backend`).
+  client (`minder-backend`).
 
 ## Architecture
 
@@ -111,7 +111,7 @@ shape with the descriptor payload. `update_block`/`remove_block` are reused as-i
 Extend the proxy tool handler: if a connector tool response includes
 `blocks: [descriptor, …]`, `_make_handler` calls
 `ui_bridge.push_remote_block(...)` for each, using the **session from the agent's
-context** (broadcast + persist). This rides Atria's in-process broadcaster exactly
+context** (broadcast + persist). This rides Minder's in-process broadcaster exactly
 like today's `card` — no reverse channel, no service auth needed. The existing
 `card` → `maintenance_answer` broadcast stays for back-compat.
 
@@ -128,9 +128,9 @@ For proactive / streaming pushes (background job, live alert):
   <token>`. The dependency validates the token via the existing Keycloak path
   (signature/issuer/expiry) and asserts the expected client + `module-push` role.
   It rejects human-user tokens and wrong-role/expired tokens.
-- **Session targeting:** Atria passes `session_id` (and the block-ingress base
+- **Session targeting:** Minder passes `session_id` (and the block-ingress base
   URL) to the connector on every tool call; the service reuses that `session_id`
-  for later proactive pushes. Atria may verify the session exists/is active before
+  for later proactive pushes. Minder may verify the session exists/is active before
   broadcasting.
 
 ### 5. Frontend rendering (native, reusing federation.ts)
@@ -150,7 +150,7 @@ The host mounts the remote component with:
 - `apiBase` — the block calls **its own connector** directly
   (`fetch(`${apiBase}/connector/run`, …)`), same as the dashboard.
 - `sendMessage(text)` — inject a natural-language user message into the chat
-  (agent-mediated action), reusing existing `AtriaBlock.sendMessage` semantics.
+  (agent-mediated action), reusing existing `MinderBlock.sendMessage` semantics.
 - `blockId` — so the component can address itself (e.g., ask the connector to
   update/remove this block).
 
@@ -170,7 +170,7 @@ fallback (mirrors the connector-down card).
 ### 8. Security model
 
 - Reverse ingress is Keycloak-service-auth only (§4); no anonymous pushes.
-- A service can only push to a `session_id` it was handed via a tool call; Atria
+- A service can only push to a `session_id` it was handed via a tool call; Minder
   may verify the session before broadcasting.
 - Federated remote code runs in the host page (not sandboxed like an iframe).
   Acceptable because **modules are first-party / trusted** (this repo's module
@@ -220,7 +220,7 @@ Per project rules: unit tests **and** real end-to-end simulation with a live
 
 ## Out of scope (YAGNI, for now)
 
-- A persistent service→Atria WS/SSE channel (Approach B) — revisit only if
+- A persistent service→Minder WS/SSE channel (Approach B) — revisit only if
   HTTP-ingress push proves too chatty for sub-second streaming.
 - Iframe-served-by-service blocks (Approach C).
 - Untrusted/third-party module sandboxing (modules are first-party).

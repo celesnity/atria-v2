@@ -18,8 +18,8 @@ __pycache__
 .ruff_cache
 
 # Local artifacts / sessions
-.atria
-**/.atria
+.minder
+**/.minder
 .artifacts
 **/.artifacts
 

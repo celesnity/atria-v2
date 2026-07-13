@@ -1,17 +1,18 @@
-import { MessageSquare, FolderTree, FileText } from 'lucide-react';
+import { MessageSquare, Package, FolderTree, FileText } from 'lucide-react';
 
-export type MobilePanel = 'chat' | 'files' | 'editor';
+export type MobilePanel = 'chat' | 'module' | 'files' | 'editor';
 
 const TABS: { id: MobilePanel; label: string; Icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'Chat', Icon: MessageSquare },
+  { id: 'module', label: 'Module', Icon: Package },
   { id: 'files', label: 'Files', Icon: FolderTree },
   { id: 'editor', label: 'Editor', Icon: FileText },
 ];
 
 /**
  * MobileTabBar — the phone bottom navigation. On small screens the desktop's
- * three columns collapse to one panel at a time; these tabs switch between
- * Chat, Files and Editor. Hidden at md+ where the columns coexist.
+ * columns collapse to one panel at a time; these tabs switch between
+ * Chat, Module, Files and Editor. Hidden at md+ where the columns coexist.
  */
 export function MobileTabBar({
   active,

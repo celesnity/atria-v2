@@ -10,7 +10,9 @@ import { ViewerDispatcher } from './viewers';
 import { LeftPaneTabs, useLeftMode } from './LeftPaneTabs';
 import { ModuleGallery } from './ModuleGallery';
 
-const KEY_COLLAPSED = 'artifact-viewer.collapsed';
+// v2: default to collapsed (hidden) — the panel now only appears when the user
+// opens a file/artifact. Bumped from the v1 key so the new default takes effect.
+const KEY_COLLAPSED = 'artifact-viewer.collapsed.v2';
 const KEY_WIDTH = 'artifact-viewer.width';
 const KEY_TOP_HEIGHT = 'artifact-viewer.top-height';
 
@@ -24,7 +26,7 @@ const MIN_BOTTOM = 140;   // editor min height (keeps the bottom zone from colla
 export function ArtifactViewer() {
   const currentSessionId = useChatStore(s => s.currentSessionId);
 
-  const [collapsed, setCollapsed] = useLocalStorage<boolean>(KEY_COLLAPSED, false);
+  const [collapsed, setCollapsed] = useLocalStorage<boolean>(KEY_COLLAPSED, true);
   const [panelWidth, setPanelWidth] = useLocalStorage<number>(KEY_WIDTH, 560);
   const [topHeight, setTopHeight] = useLocalStorage<number>(KEY_TOP_HEIGHT, 400);
   const [leftMode, setLeftMode] = useLeftMode();
@@ -64,6 +66,12 @@ export function ArtifactViewer() {
   // the file list back to the viewer automatically.
   useEffect(() => {
     if (activeTab) setMobileShowTree(false);
+  }, [activeTab?.id]);
+
+  // The panel is hidden by default; opening a file/artifact slides it back in.
+  useEffect(() => {
+    if (activeTab) setCollapsed(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.id]);
 
   const maxTop = contentH > 0 ? Math.max(MIN_TOP, contentH - MIN_BOTTOM) : MAX_TOP;

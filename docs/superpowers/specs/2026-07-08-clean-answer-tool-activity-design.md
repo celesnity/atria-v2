@@ -14,7 +14,7 @@ reading files, or running scripts, without polluting the final answer.
 
 The current web backend already broadcasts tool execution separately from assistant
 text through `tool_call` and `tool_result` WebSocket events in
-`atria/web/ws_tool_broadcaster.py`. The frontend already models those events as
+`minder/web/ws_tool_broadcaster.py`. The frontend already models those events as
 separate message roles and renders them through the chat activity path in
 `web-ui/src/components/Chat/MessageList.tsx` and
 `web-ui/src/lib/activityGroups.ts`.

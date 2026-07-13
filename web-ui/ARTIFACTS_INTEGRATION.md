@@ -1,6 +1,6 @@
 # Artifacts File Upload & Management Components
 
-This document describes the frontend components for file upload and artifact management in the Atria web UI.
+This document describes the frontend components for file upload and artifact management in the Minder web UI.
 
 ## Overview
 

@@ -250,7 +250,7 @@ class APIClient {
         const redirect = `${window.location.origin}/`;
         const qs = new URLSearchParams({
           post_logout_redirect_uri: redirect,
-          client_id: 'atria-web',
+          client_id: 'minder-web',
         });
         window.location.href = `${resp.end_session_url}?${qs.toString()}`;
       }

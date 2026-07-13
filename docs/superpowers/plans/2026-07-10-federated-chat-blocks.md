@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Execution mode for THIS plan is **code-all-then-verify** (user preference): implement every task in order WITHOUT running tests per-task, then run the whole test suite + verification once in the final **Phase V**. The test code in each task is written alongside the implementation but executed in Phase V. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Let a service-module push its own React components into the Atria chat, rendered natively in-host via Module Federation — both as an agent tool-call response and via a Keycloak-authenticated proactive reverse-push — live-updatable and bidirectional.
+**Goal:** Let a service-module push its own React components into the Minder chat, rendered natively in-host via Module Federation — both as an agent tool-call response and via a Keycloak-authenticated proactive reverse-push — live-updatable and bidirectional.
 
 **Architecture:** Add one block *variant* (`render:"remote"`) that carries a federation descriptor `{remote_name, remote_entry, component, props}` through the existing `custom_block` WS + persistence machinery. Two feeders write it: the proxy tool (in-process, tool response) and a new Keycloak-service-auth reverse ingress (`POST /api/blocks/remote/{push,update,remove}`). The frontend branches on `render` and renders remote blocks with the `loadRemoteComponent` helper already built for the dashboard.
 
@@ -26,15 +26,15 @@
 ## File Structure
 
 **Backend — created:**
-- `atria/web/dependencies/service_auth.py` — `require_service_principal` (Keycloak service-account gate).
-- `atria/web/routes/blocks_remote.py` — `POST /api/blocks/remote/{push,update,remove}`.
+- `minder/web/dependencies/service_auth.py` — `require_service_principal` (Keycloak service-account gate).
+- `minder/web/routes/blocks_remote.py` — `POST /api/blocks/remote/{push,update,remove}`.
 - `tests/test_push_remote_block.py`, `tests/test_service_auth.py`, `tests/test_blocks_remote_route.py`, `tests/test_proxy_tool_blocks.py`.
 
 **Backend — modified:**
-- `atria/web/ui_bridge.py` — add `push_remote_block(...)`.
-- `atria/core/modules/remote.py` — proxy handler honors `blocks:` in tool responses + passes `session_id`/ingress to the connector.
-- `atria/web/server.py` — register the `blocks_remote` router.
-- `keycloak/realm-export.json` — add a confidential `atria-module` client (service accounts) + realm role `module-push`.
+- `minder/web/ui_bridge.py` — add `push_remote_block(...)`.
+- `minder/core/modules/remote.py` — proxy handler honors `blocks:` in tool responses + passes `session_id`/ingress to the connector.
+- `minder/web/server.py` — register the `blocks_remote` router.
+- `keycloak/realm-export.json` — add a confidential `minder-module` client (service accounts) + realm role `module-push`.
 
 **Frontend — created:**
 - `web-ui/src/components/Chat/RemoteBlock.tsx` — native federated block renderer.
@@ -52,13 +52,13 @@
 ### Task 1: `ui_bridge.push_remote_block`
 
 **Files:**
-- Modify: `atria/web/ui_bridge.py`
+- Modify: `minder/web/ui_bridge.py`
 - Test: `tests/test_push_remote_block.py`
 
 **Interfaces:**
 - Produces: `push_remote_block(*, module, remote_name, remote_entry, component, props=None, block_id=None, api_base=None, title=None, height="auto", session_id=None, persist=True) -> str`. Broadcasts a `WSMessageType.CUSTOM_BLOCK` envelope whose `data` carries `render:"remote"` + the descriptor, and persists the same payload as a `custom_block` message (reusing `_persist_block`). Returns `block_id`.
 
-- [ ] **Step 1: Implement `push_remote_block`** (add after `push_block` in `atria/web/ui_bridge.py`):
+- [ ] **Step 1: Implement `push_remote_block`** (add after `push_block` in `minder/web/ui_bridge.py`):
 
 ```python
 def push_remote_block(
@@ -118,8 +118,8 @@ def current_session_id() -> Optional[str]:
 """push_remote_block broadcasts a render:remote descriptor + persists it."""
 from __future__ import annotations
 
-from atria.web import ui_bridge
-from atria.web.protocol import WSMessageType
+from minder.web import ui_bridge
+from minder.web.protocol import WSMessageType
 
 
 def test_push_remote_block_broadcasts_descriptor(monkeypatch):
@@ -158,7 +158,7 @@ def test_push_remote_block_no_session_raises(monkeypatch):
 - [ ] **Step 3: Commit**
 
 ```bash
-git add atria/web/ui_bridge.py tests/test_push_remote_block.py
+git add minder/web/ui_bridge.py tests/test_push_remote_block.py
 git commit -m "feat(ui_bridge): push_remote_block — native federated chat blocks"
 ```
 
@@ -167,14 +167,14 @@ git commit -m "feat(ui_bridge): push_remote_block — native federated chat bloc
 ### Task 2: `require_service_principal` (Keycloak service-account gate)
 
 **Files:**
-- Create: `atria/web/dependencies/service_auth.py`
+- Create: `minder/web/dependencies/service_auth.py`
 - Test: `tests/test_service_auth.py`
 
 **Interfaces:**
-- Consumes: `atria.web.state.get_state().keycloak.validator.validate(token) -> claims: dict` (existing Keycloak JWKS validator).
+- Consumes: `minder.web.state.get_state().keycloak.validator.validate(token) -> claims: dict` (existing Keycloak JWKS validator).
 - Produces: `async require_service_principal(request: Request) -> dict` returning `{"client_id": str|None, "roles": list[str]}`; raises `HTTPException(401)` on missing/invalid token, `403` when the realm role `module-push` is absent, `503` when Keycloak isn't configured. Constant `MODULE_PUSH_ROLE = "module-push"`.
 
-- [ ] **Step 1: Implement** — create `atria/web/dependencies/service_auth.py`:
+- [ ] **Step 1: Implement** — create `minder/web/dependencies/service_auth.py`:
 
 ```python
 """Service-principal auth: a Keycloak service-account token bearing the
@@ -185,7 +185,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, Request, status
 
-from atria.web.state import get_state
+from minder.web.state import get_state
 
 MODULE_PUSH_ROLE = "module-push"
 
@@ -223,7 +223,7 @@ import types
 import pytest
 from fastapi import HTTPException
 
-from atria.web.dependencies import service_auth
+from minder.web.dependencies import service_auth
 
 
 def _request(auth_header: str | None):
@@ -239,10 +239,10 @@ def _patch_state(monkeypatch, validate):
 
 @pytest.mark.asyncio
 async def test_accepts_service_token_with_role(monkeypatch):
-    _patch_state(monkeypatch, lambda t: {"azp": "atria-module",
+    _patch_state(monkeypatch, lambda t: {"azp": "minder-module",
                                          "realm_access": {"roles": ["module-push"]}})
     out = await service_auth.require_service_principal(_request("Bearer good"))
-    assert out["client_id"] == "atria-module"
+    assert out["client_id"] == "minder-module"
     assert "module-push" in out["roles"]
 
 
@@ -278,7 +278,7 @@ async def test_rejects_missing_token(monkeypatch):
 - [ ] **Step 3: Commit**
 
 ```bash
-git add atria/web/dependencies/service_auth.py tests/test_service_auth.py
+git add minder/web/dependencies/service_auth.py tests/test_service_auth.py
 git commit -m "feat(auth): require_service_principal — Keycloak module-push service gate"
 ```
 
@@ -287,15 +287,15 @@ git commit -m "feat(auth): require_service_principal — Keycloak module-push se
 ### Task 3: Reverse ingress `POST /api/blocks/remote/{push,update,remove}`
 
 **Files:**
-- Create: `atria/web/routes/blocks_remote.py`
-- Modify: `atria/web/server.py` (register router)
+- Create: `minder/web/routes/blocks_remote.py`
+- Modify: `minder/web/server.py` (register router)
 - Test: `tests/test_blocks_remote_route.py`
 
 **Interfaces:**
 - Consumes: `ui_bridge.push_remote_block`, `ui_bridge.update_block`, `ui_bridge.remove_block`; `require_service_principal`.
 - Produces: `POST /api/blocks/remote/push` → `{"block_id": str}`; `/update` (204); `/remove` (204). All require a service principal and a `session_id`.
 
-- [ ] **Step 1: Implement** — create `atria/web/routes/blocks_remote.py`:
+- [ ] **Step 1: Implement** — create `minder/web/routes/blocks_remote.py`:
 
 ```python
 """Reverse-push ingress for service-modules: mount a federated component in the
@@ -309,8 +309,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from atria.web import ui_bridge
-from atria.web.dependencies.service_auth import require_service_principal
+from minder.web import ui_bridge
+from minder.web.dependencies.service_auth import require_service_principal
 
 router = APIRouter(prefix="/api/blocks/remote", tags=["blocks"],
                    dependencies=[Depends(require_service_principal)])
@@ -372,10 +372,10 @@ def remove(body: RemoveBody) -> None:
         raise HTTPException(404, str(exc)) from exc
 ```
 
-- [ ] **Step 2: Register the router** in `atria/web/server.py` — next to where the existing `blocks` router is included (grep `include_router` + `blocks`), add:
+- [ ] **Step 2: Register the router** in `minder/web/server.py` — next to where the existing `blocks` router is included (grep `include_router` + `blocks`), add:
 
 ```python
-    from atria.web.routes.blocks_remote import router as blocks_remote_router
+    from minder.web.routes.blocks_remote import router as blocks_remote_router
     app.include_router(blocks_remote_router)
 ```
 (Match the file's existing import/registration style — some routers are imported at top, some inline. Follow whichever the `blocks` router uses.)
@@ -389,14 +389,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atria.web.routes import blocks_remote
-from atria.web.dependencies.service_auth import require_service_principal
+from minder.web.routes import blocks_remote
+from minder.web.dependencies.service_auth import require_service_principal
 
 
 def _client(monkeypatch):
     app = FastAPI()
     # bypass Keycloak in the unit test — auth itself is covered by test_service_auth
-    app.dependency_overrides[require_service_principal] = lambda: {"client_id": "atria-module", "roles": ["module-push"]}
+    app.dependency_overrides[require_service_principal] = lambda: {"client_id": "minder-module", "roles": ["module-push"]}
     app.include_router(blocks_remote.router)
     return TestClient(app)
 
@@ -433,7 +433,7 @@ def test_update_and_remove(monkeypatch):
 - [ ] **Step 4: Commit**
 
 ```bash
-git add atria/web/routes/blocks_remote.py atria/web/server.py tests/test_blocks_remote_route.py
+git add minder/web/routes/blocks_remote.py minder/web/server.py tests/test_blocks_remote_route.py
 git commit -m "feat(blocks): reverse ingress for federated chat blocks (service-auth gated)"
 ```
 
@@ -442,20 +442,20 @@ git commit -m "feat(blocks): reverse ingress for federated chat blocks (service-
 ### Task 4: Feeder 1 — proxy tool honors `blocks:` + hands the service the session context
 
 **Files:**
-- Modify: `atria/core/modules/remote.py`
+- Modify: `minder/core/modules/remote.py`
 - Test: `tests/test_proxy_tool_blocks.py`
 
 **Interfaces:**
 - Consumes: `ui_bridge.push_remote_block`, `ui_bridge.current_session_id` (Task 1); the connector tool response may include `blocks: [descriptor…]`.
-- Produces: the proxy handler, on a tool response containing `blocks`, pushes each as a remote block (broadcast + persist). It also injects an `_atria` context object into the outgoing tool `arguments` so the service can push proactively later:
-  `arguments["_atria"] = {"session_id": <current>, "block_ingress": "<atria_base>/api/blocks/remote"}`. The Atria base comes from `ATRIA_API_BASE` env (default `http://atria:8080`).
+- Produces: the proxy handler, on a tool response containing `blocks`, pushes each as a remote block (broadcast + persist). It also injects an `_minder` context object into the outgoing tool `arguments` so the service can push proactively later:
+  `arguments["_minder"] = {"session_id": <current>, "block_ingress": "<minder_base>/api/blocks/remote"}`. The Minder base comes from `MINDER_API_BASE` env (default `http://minder:8080`).
 
-- [ ] **Step 1: Implement** — in `atria/core/modules/remote.py`, at the top add a module constant and small helper (near the other constants):
+- [ ] **Step 1: Implement** — in `minder/core/modules/remote.py`, at the top add a module constant and small helper (near the other constants):
 
 ```python
 import os  # (if not already imported)
 
-_ATRIA_BASE = os.environ.get("ATRIA_API_BASE", "http://atria:8080").rstrip("/")
+_MINDER_BASE = os.environ.get("MINDER_API_BASE", "http://minder:8080").rstrip("/")
 
 
 def _push_blocks_best_effort(blocks: list) -> None:
@@ -467,7 +467,7 @@ def _push_blocks_best_effort(blocks: list) -> None:
     if not blocks:
         return
     try:
-        from atria.web import ui_bridge  # noqa: PLC0415 — lazy, best-effort
+        from minder.web import ui_bridge  # noqa: PLC0415 — lazy, best-effort
     except Exception:  # noqa: BLE001
         return
     for b in blocks:
@@ -488,19 +488,19 @@ def _push_blocks_best_effort(blocks: list) -> None:
             ctx_logger.warning("push_remote_block failed: %s", exc)
 ```
 
-Then modify `_make_handler` (the closure returned for each proxy tool) so it (a) injects `_atria` context into the call arguments, and (b) pushes any `blocks` in the response. Locate the `def handler(**kwargs)` body; adjust:
+Then modify `_make_handler` (the closure returned for each proxy tool) so it (a) injects `_minder` context into the call arguments, and (b) pushes any `blocks` in the response. Locate the `def handler(**kwargs)` body; adjust:
 
 ```python
     def handler(**kwargs: Any) -> dict:
         query = str(kwargs.get("query") or kwargs.get("text") or "")
         # Hand the service the session + ingress so it can push proactively later.
         try:
-            from atria.web import ui_bridge as _ub  # lazy
+            from minder.web import ui_bridge as _ub  # lazy
             _sid = _ub.current_session_id()
         except Exception:  # noqa: BLE001
             _sid = None
         call_args = dict(kwargs)
-        call_args["_atria"] = {"session_id": _sid, "block_ingress": f"{_ATRIA_BASE}/api/blocks/remote"}
+        call_args["_minder"] = {"session_id": _sid, "block_ingress": f"{_MINDER_BASE}/api/blocks/remote"}
         try:
             resp = conn.call_tool(tool_name, call_args)
         except ConnectorUnreachable:
@@ -532,14 +532,14 @@ Then modify `_make_handler` (the closure returned for each proxy tool) so it (a)
 - [ ] **Step 2: Tests** — create `tests/test_proxy_tool_blocks.py`:
 
 ```python
-"""Proxy handler injects _atria context and pushes federated blocks from a response."""
+"""Proxy handler injects _minder context and pushes federated blocks from a response."""
 from __future__ import annotations
 
 import sys
 import types
 
-from atria.core.modules import remote
-from atria.core.skill_tools import SkillToolContext
+from minder.core.modules import remote
+from minder.core.skill_tools import SkillToolContext
 
 
 class _Svc:
@@ -558,17 +558,17 @@ class _Mod:
     manifest = _Manifest()
 
 
-def test_handler_injects_atria_context_and_pushes_blocks(monkeypatch):
-    # Fake ui_bridge so the lazy `from atria.web import ui_bridge` resolves in-test.
+def test_handler_injects_minder_context_and_pushes_blocks(monkeypatch):
+    # Fake ui_bridge so the lazy `from minder.web import ui_bridge` resolves in-test.
     pushed = []
     fake_ub = types.SimpleNamespace(
         current_session_id=lambda: "sess-42",
         push_remote_block=lambda **k: pushed.append(k) or "bid",
     )
-    fake_web = types.ModuleType("atria.web")
+    fake_web = types.ModuleType("minder.web")
     fake_web.ui_bridge = fake_ub
-    monkeypatch.setitem(sys.modules, "atria.web", fake_web)
-    monkeypatch.setitem(sys.modules, "atria.web.ui_bridge", fake_ub)
+    monkeypatch.setitem(sys.modules, "minder.web", fake_web)
+    monkeypatch.setitem(sys.modules, "minder.web.ui_bridge", fake_ub)
 
     captured = {}
     def fake_call(self, tool, arguments, timeout=110.0):
@@ -582,9 +582,9 @@ def test_handler_injects_atria_context_and_pushes_blocks(monkeypatch):
     specs = remote.build_remote_tool_specs(SkillToolContext(), [_Mod()])
     out = specs[0].handler(query="hi")
     assert out["success"] is True
-    # _atria context handed to the service:
-    assert captured["_atria"]["session_id"] == "sess-42"
-    assert captured["_atria"]["block_ingress"].endswith("/api/blocks/remote")
+    # _minder context handed to the service:
+    assert captured["_minder"]["session_id"] == "sess-42"
+    assert captured["_minder"]["block_ingress"].endswith("/api/blocks/remote")
     # the block was pushed:
     assert pushed and pushed[0]["component"] == "./AlertsBlock"
 ```
@@ -592,19 +592,19 @@ def test_handler_injects_atria_context_and_pushes_blocks(monkeypatch):
 - [ ] **Step 3: Commit**
 
 ```bash
-git add atria/core/modules/remote.py tests/test_proxy_tool_blocks.py
+git add minder/core/modules/remote.py tests/test_proxy_tool_blocks.py
 git commit -m "feat(modules): proxy tool pushes federated blocks + hands service session/ingress"
 ```
 
 ---
 
-### Task 5: Keycloak realm — `atria-module` service client + `module-push` role
+### Task 5: Keycloak realm — `minder-module` service client + `module-push` role
 
 **Files:**
 - Modify: `keycloak/realm-export.json`
 
 **Interfaces:**
-- Produces: a confidential client `atria-module` with service accounts enabled, whose service account holds the realm role `module-push`. A service-module obtains a token via client-credentials with this client's id/secret and calls the reverse ingress.
+- Produces: a confidential client `minder-module` with service accounts enabled, whose service account holds the realm role `module-push`. A service-module obtains a token via client-credentials with this client's id/secret and calls the reverse ingress.
 
 - [ ] **Step 1: Read the realm export** and note the shape (existing `clients: [...]`, `roles.realm: [...]`). Match it exactly.
 
@@ -614,11 +614,11 @@ git commit -m "feat(modules): proxy tool pushes federated blocks + hands service
 { "name": "module-push", "description": "May push federated blocks into a chat session" }
 ```
 
-- [ ] **Step 3: Add the confidential service client** — under `clients`, add (align field names with the existing `atria-backend` client in the same file; this is the canonical Keycloak client shape):
+- [ ] **Step 3: Add the confidential service client** — under `clients`, add (align field names with the existing `minder-backend` client in the same file; this is the canonical Keycloak client shape):
 
 ```json
 {
-  "clientId": "atria-module",
+  "clientId": "minder-module",
   "enabled": true,
   "publicClient": false,
   "serviceAccountsEnabled": true,
@@ -630,18 +630,18 @@ git commit -m "feat(modules): proxy tool pushes federated blocks + hands service
 }
 ```
 
-- [ ] **Step 4: Grant the role to the client's service account.** In `realm-export.json` this is done via the `"users"` array entry for the synthetic service-account user `service-account-atria-module` with `realmRoles: ["module-push"]`. Add that user entry (match the existing service-account user shape if `atria-backend` has one; otherwise add):
+- [ ] **Step 4: Grant the role to the client's service account.** In `realm-export.json` this is done via the `"users"` array entry for the synthetic service-account user `service-account-minder-module` with `realmRoles: ["module-push"]`. Add that user entry (match the existing service-account user shape if `minder-backend` has one; otherwise add):
 
 ```json
 {
-  "username": "service-account-atria-module",
+  "username": "service-account-minder-module",
   "enabled": true,
-  "serviceAccountClientId": "atria-module",
+  "serviceAccountClientId": "minder-module",
   "realmRoles": ["module-push"]
 }
 ```
 
-- [ ] **Step 5: Document the module-side env** — the service-module container needs (add to the `maintenance-copilot` service env in `docker-compose.yml`, and note in the integration guide): `KEYCLOAK_URL=http://keycloak:8080`, `KEYCLOAK_REALM=atria`, `MODULE_CLIENT_ID=atria-module`, `MODULE_CLIENT_SECRET=${MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}`, and `ATRIA_API_BASE=http://atria:8080`. (Wiring the service's own token-fetch + push client is module code; out of scope for this plan's Atria-side changes — the plan delivers the Atria ingress + auth + descriptor; a follow-up adds the reference push client in `maintenance_copilot/backend`.)
+- [ ] **Step 5: Document the module-side env** — the service-module container needs (add to the `maintenance-copilot` service env in `docker-compose.yml`, and note in the integration guide): `KEYCLOAK_URL=http://keycloak:8080`, `KEYCLOAK_REALM=minder`, `MODULE_CLIENT_ID=minder-module`, `MODULE_CLIENT_SECRET=${MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}`, and `MINDER_API_BASE=http://minder:8080`. (Wiring the service's own token-fetch + push client is module code; out of scope for this plan's Minder-side changes — the plan delivers the Minder ingress + auth + descriptor; a follow-up adds the reference push client in `maintenance_copilot/backend`.)
 
 - [ ] **Step 6: Validate JSON**
 
@@ -653,7 +653,7 @@ uv run --no-sync python -c "import json; json.load(open('keycloak/realm-export.j
 
 ```bash
 git add keycloak/realm-export.json docker-compose.yml
-git commit -m "feat(keycloak): atria-module service client + module-push role for block push"
+git commit -m "feat(keycloak): minder-module service client + module-push role for block push"
 ```
 
 ---
@@ -882,7 +882,7 @@ uv run --no-sync python -c "import json; json.load(open('keycloak/realm-export.j
 - [ ] **V4: Real e2e (agent-driven feeder — no browser needed)** — with the stack up and a real `OPENAI_API_KEY`, have the `maintenance_copilot` connector return a `blocks:[…]` descriptor from a tool call; confirm a `custom_block` WS event with `render:"remote"` is broadcast and a `custom_block` message is persisted (check the session store). This exercises Feeder 1 end-to-end without a browser.
 
 - [ ] **V5: Deferred to user (browser + Keycloak service token)** — record the exact commands in a short note:
-  - obtain a token: `curl -s -X POST "$KEYCLOAK_URL/realms/atria/protocol/openid-connect/token" -d grant_type=client_credentials -d client_id=atria-module -d client_secret=$MODULE_CLIENT_SECRET | jq -r .access_token`
+  - obtain a token: `curl -s -X POST "$KEYCLOAK_URL/realms/minder/protocol/openid-connect/token" -d grant_type=client_credentials -d client_id=minder-module -d client_secret=$MODULE_CLIENT_SECRET | jq -r .access_token`
   - proactive push: `curl -X POST localhost:8080/api/blocks/remote/push -H "Authorization: Bearer $TOK" -H 'content-type: application/json' -d '{"session_id":"<sid>","module":"maintenance_copilot","remote_name":"maintenance_copilot","remote_entry":"http://localhost:9200/dashboard/remoteEntry.js","component":"./AlertsBlock","props":{"n":1}}'`
   - open the chat: confirm the block renders natively (React DevTools shows the remote component in the host tree, no iframe), a follow-up `/update` changes it live, and the block's `sendMessage` reaches the agent; reload rehydrates the block.
 
@@ -897,6 +897,6 @@ git add -A && git commit -m "test(federated-blocks): consolidated verification (
 ## Self-Review Notes (author)
 
 - **Spec coverage:** descriptor §1 → Task 1 (+ Task 6 FE mirror); WS/persistence §2 → Task 1 + Task 6; Feeder 1 §3 → Task 4; Feeder 2 + Keycloak §4 → Tasks 2/3/5; FE render §5 → Task 7; bidirectionality §6 → Task 7 (`apiBase`/`sendMessage`/`blockId` props) + reuse of `custom_block_update`; persistence/rehydration §7 → Task 6 loader; security §8 → Task 2 (`require_service_principal`) + first-party-trust note; phasing §Build → task order; testing §Testing → Phase V.
-- **Deferred (matches spec):** the reference module's own token-fetch + push *client code* (in `maintenance_copilot/backend`) is a follow-up — this plan delivers the Atria-side ingress, auth, descriptor, and render path. The grounded/browser e2e is V5 (user-run).
+- **Deferred (matches spec):** the reference module's own token-fetch + push *client code* (in `maintenance_copilot/backend`) is a follow-up — this plan delivers the Minder-side ingress, auth, descriptor, and render path. The grounded/browser e2e is V5 (user-run).
 - **Type consistency:** descriptor keys identical across `push_remote_block`, the ingress body, the proxy `blocks:` handler, the WS `data`, persistence `meta`, and the FE message fields (`render/remote_name/remote_entry/component/api_base/props`). `MODULE_PUSH_ROLE="module-push"` used in Task 2 and Task 5. `custom_block_update`/`_remove` reused unchanged for remote blocks.
 - **Grep-and-match flags (unknowns that depend on real code):** the chat-store message field for block props (`block_props` vs `props`) — Task 6/7 say to match the real name; the chat store's send-message action name — Task 7 says to grep and use the real one; the async test marker (`pytest-asyncio` vs `anyio`) — Task 2 says to match the repo convention; the `server.py` router-registration style — Task 3 says to match the existing `blocks` router.

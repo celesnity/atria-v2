@@ -16,7 +16,7 @@
 - Line length ≤ 100 (verify with `uvx ruff check ...` AND `awk 'length>100{print FILENAME":"NR}'` — Ruff's default select does not flag E501 in this repo). Type hints on public functions; Google-style docstrings; use builtin generics (`list`/`dict`/`X | None`), not `typing.List/Dict/Optional`.
 - Tests run with `uv run pytest`. Module tests live at `tests/test_maintenance_copilot_*.py`, load module files via `importlib`, and register each loaded module in `sys.modules` under a unique sentinel name immediately after `module_from_spec`.
 - Module scripts add `sys.path.insert(0, str(Path(__file__).resolve().parent))` before sibling imports.
-- Module-local only — no imports from `atria/`.
+- Module-local only — no imports from `minder/`.
 - Unit tests must NOT hit the network or a database: inject a fake `run_fn` for the graph store and a fake `chat_fn` for extraction. Do NOT require a live Neo4j.
 - Every extracted node and edge carries `source_doc`, `revision`, `page` (chunk_id), `extracted_by` (model id), `confidence` (0–1), and `status` (`"unverified"` until confirmed). This is non-negotiable — it is what makes an LLM-built graph auditable.
 - Retrieval/graph output is advisory; the `query`/`graph show` output must never present an `unverified` edge as established fact (flag it).
@@ -681,7 +681,7 @@ def _build_graph_store(run_fn=None) -> GraphStore:
 
         driver = GraphDatabase.driver(
             _env("MC_NEO4J_URI", "bolt://localhost:7687"),
-            auth=(_env("MC_NEO4J_USER", "neo4j"), _env("MC_NEO4J_PASSWORD", "atria-neo4j")),
+            auth=(_env("MC_NEO4J_USER", "neo4j"), _env("MC_NEO4J_PASSWORD", "minder-neo4j")),
         )
         run_fn = neo4j_run_fn(driver)
     store = GraphStore(run_fn)
@@ -941,11 +941,11 @@ Record for a Docker host (not run in CI/sandbox):
 ```bash
 docker compose -f docker-compose.dev.yml up -d tei qdrant neo4j
 # (LLM: add --profile gpu + copilot-llm, or set MC_KG_EXTRACT_BASE_URL to a reachable endpoint)
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py graph build
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py graph show 32 --hops 2
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py query "gear fails to retract" --ata 32 --graph
 ```
 

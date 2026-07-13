@@ -1,0 +1,21 @@
+{
+  "display_name": "Module Template",
+  "tooltip": "SDK showcase — every minder-module-sdk capability",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Module Template · SDK showcase",
+    "default_height": 760,
+    "badge_color": "info",
+    "tabs": [
+      {"id": "jobs", "label": "Jobs"},
+      {"id": "media", "label": "Media"},
+      {"id": "data", "label": "Data"},
+      {"id": "metrics", "label": "Metrics"}
+    ]
+  },
+  "remote": {
+    "name": "module_template",
+    "remoteEntry": "http://localhost:9300/dashboard/remoteEntry.js",
+    "exposed": { "dashboard": "./Dashboard", "./ShowcaseBlock": "./ShowcaseBlock" }
+  }
+}

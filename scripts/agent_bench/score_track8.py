@@ -23,8 +23,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.agent_bench.harness import load_env  # noqa: E402
 from scripts.agent_bench.judge import judge  # noqa: E402
-from atria.core.context_engineering.search.normalize import normalize_for_search  # noqa: E402
-from atria.core.context_engineering.search import pg  # noqa: E402
+from minder.core.context_engineering.search.normalize import normalize_for_search  # noqa: E402
+from minder.core.context_engineering.search import pg  # noqa: E402
 
 
 def _poi_names_norm() -> set[str]:
