@@ -1,6 +1,6 @@
-# Atria V2 — run & switch LLM provider (Windows / PowerShell)
+# Minder V2 — run & switch LLM provider (Windows / PowerShell)
 
-Quick cheat-sheet for running Atria locally and flipping the chat LLM between
+Quick cheat-sheet for running Minder locally and flipping the chat LLM between
 **Qwen (DashScope)** and **OpenAI (GPT)**.
 
 ---
@@ -8,22 +8,22 @@ Quick cheat-sheet for running Atria locally and flipping the chat LLM between
 ## Go to the project (run this first in every terminal)
 
 The project path contains `[` `]`, which PowerShell treats as wildcards — use
-`-LiteralPath` (a plain `cd 'D:\[Project]_atriaV2'` fails):
+`-LiteralPath` (a plain `cd 'D:\[Project]_minderV2'` fails):
 
 ```powershell
-Set-Location -LiteralPath 'D:\[Project]_atriaV2'
+Set-Location -LiteralPath 'D:\[Project]_minderV2'
 ```
 
 The `.\run-*.ps1` and `.\switch-llm.ps1` scripts already `cd` to their own folder
 internally, so you can also just call them by full path from anywhere, e.g.
-`& 'D:\[Project]_atriaV2\switch-llm.ps1' status`.
+`& 'D:\[Project]_minderV2\switch-llm.ps1' status`.
 
 ---
 
 ## TL;DR
 
 ```powershell
-Set-Location -LiteralPath 'D:\[Project]_atriaV2'   # go to project
+Set-Location -LiteralPath 'D:\[Project]_minderV2'   # go to project
 .\switch-llm.ps1 openai      # use OpenAI (gpt-5.4-mini / fallback gpt-5-mini)
 .\run-backend.ps1            # Terminal 1  -> API  http://127.0.0.1:8080
 .\run-frontend.ps1           # Terminal 2  -> Web  http://localhost:5173  (open this)
@@ -36,23 +36,23 @@ Open **http://localhost:5173** and chat.
 ## 1. Prerequisites (once)
 
 - **uv** installed (`uv --version`).
-- **Docker Desktop running** — Atria's backend needs Postgres on `localhost:5432`.
+- **Docker Desktop running** — Minder's backend needs Postgres on `localhost:5432`.
 - Frontend deps install automatically on first `run-frontend.ps1` (`npm install`).
 
 ### Start Postgres (localhost:5432)
 
-If you already have the Atria Postgres container, just start it:
+If you already have the Minder Postgres container, just start it:
 
 ```powershell
-docker start atria-pg
+docker start minder-pg
 ```
 
 First time (creates it, loads schema, publishes 5432):
 
 ```powershell
-docker run -d --name atria-pg -p 5432:5432 `
-  -e POSTGRES_DB=atria -e POSTGRES_USER=atria -e POSTGRES_PASSWORD=atria `
-  -v "D:\[Project]_atriaV2\schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro" `
+docker run -d --name minder-pg -p 5432:5432 `
+  -e POSTGRES_DB=minder -e POSTGRES_USER=minder -e POSTGRES_PASSWORD=minder `
+  -v "D:\[Project]_minderV2\schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro" `
   postgres:16-alpine
 ```
 
@@ -62,7 +62,7 @@ Check it's up:
 (Test-NetConnection localhost -Port 5432 -WarningAction SilentlyContinue).TcpTestSucceeded  # -> True
 ```
 
-`DATABASE_URL` in `.env` is already `postgresql://atria:atria@localhost:5432/atria`.
+`DATABASE_URL` in `.env` is already `postgresql://minder:minder@localhost:5432/minder`.
 
 ---
 
@@ -86,8 +86,8 @@ Then open **http://localhost:5173** in a browser and chat.
 
 ## 3. Switch LLM provider
 
-The switch rewrites four lines in `.env` (`OPENAI_API_KEY`, `ATRIA_MODEL`,
-`ATRIA_FALLBACK_MODEL`, `ATRIA_API_BASE_URL`). Atria reads the active provider's
+The switch rewrites four lines in `.env` (`OPENAI_API_KEY`, `MINDER_MODEL`,
+`MINDER_FALLBACK_MODEL`, `MINDER_API_BASE_URL`). Minder reads the active provider's
 key via `OPENAI_API_KEY` regardless of provider. **Everything — keys AND models —
 lives in the `.env` vault** (commented `LLM_KEY_/LLM_MODEL_/LLM_FALLBACK_/LLM_BASE_<PROVIDER>`
 lines); nothing is hardcoded in the script. To change a model or fallback, edit
@@ -133,5 +133,5 @@ Expect a JSON response with `choices[0].message.content = "OK"`.
   `insufficient_quota` again, top up that project's credit or swap `LLM_KEY_OPENAI`
   in the `.env` vault.
 - **qwen3.5 is a thinking model** — it spends some `reasoning_tokens` per reply;
-  Atria's `max_tokens=8192` leaves plenty of room.
+  Minder's `max_tokens=8192` leaves plenty of room.
 - `.env` is git-ignored; both API keys live only there (in the key vault comments).

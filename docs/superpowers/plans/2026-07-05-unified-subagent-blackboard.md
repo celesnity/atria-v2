@@ -12,27 +12,27 @@
 
 - Line length 100 (Black + Ruff); type hints on public APIs (mypy strict); Google-style docstrings.
 - Never use table format in prompt/tool-description markdown — prose or bullets only.
-- Redis + a running `atria-worker` are required for any delegation (always-worker; no in-process path).
-- Blackboard keys are namespaced `atria:bb:{run_id}...`; job records use `JobStore` prefixes.
+- Redis + a running `minder-worker` are required for any delegation (always-worker; no in-process path).
+- Blackboard keys are namespaced `minder:bb:{run_id}...`; job records use `JobStore` prefixes.
 - Tests use `from fakeredis import aioredis as fake_aioredis` and `fake_aioredis.FakeRedis()`.
 - Do not commit `Co-Authored-By: Claude` trailers. Run the full test suite once at the end, not per task.
 
 ## File Structure
 
-- Create `atria/core/blackboard/models.py` additions — `Task` dataclass + status constants (results/task record).
-- Create `atria/core/blackboard/task_store.py` — `TaskStore`: add / get / claim / set_status / all over a Redis hash.
-- Create `atria/core/subagents/__init__.py` — package marker.
-- Create `atria/core/subagents/orchestrator.py` — `SubagentOrchestrator`: write tasks + enqueue workers + collect.
-- Create `atria/core/subagents/tools.py` — `build_subagent_orchestrator` + `execute_subagent_fanout` + `execute_get_subagent_output`.
-- Modify `atria/core/orchestration/job_store.py` — add `SUBAGENT_PREFIX`.
-- Modify `atria/core/tasks/payload.py` — add `subagent_task_id`.
-- Modify `atria/core/tasks/tasks.py` — worker claims + reads task from blackboard, marks status.
-- Modify `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py` — replace solve/divide/parallel handlers with subagent handlers.
-- Delete `atria/core/context_engineering/tools/registry_mixins/subagent_ops.py` — move `_get_repo_dir` into orchestration_ops.
-- Modify `atria/core/context_engineering/tools/registry_mixins/__init__.py` and `registry.py` — drop `SubagentOpsMixin`, re-route tool names.
-- Modify `atria/core/agents/subagents/task_tool.py` — `spawn_subagent` → `subagent`, `tasks[]` signature.
-- Modify `atria/core/agents/components/schemas/builtin/orchestration_tools.py` — replace `solve`/`get_solve_result` schemas with `subagent`/`get_subagent_output`.
-- Delete `atria/core/parallel/` (whole dir), `atria/core/divide/decompose.py`, `atria/core/divide/scheduler.py`.
+- Create `minder/core/blackboard/models.py` additions — `Task` dataclass + status constants (results/task record).
+- Create `minder/core/blackboard/task_store.py` — `TaskStore`: add / get / claim / set_status / all over a Redis hash.
+- Create `minder/core/subagents/__init__.py` — package marker.
+- Create `minder/core/subagents/orchestrator.py` — `SubagentOrchestrator`: write tasks + enqueue workers + collect.
+- Create `minder/core/subagents/tools.py` — `build_subagent_orchestrator` + `execute_subagent_fanout` + `execute_get_subagent_output`.
+- Modify `minder/core/orchestration/job_store.py` — add `SUBAGENT_PREFIX`.
+- Modify `minder/core/tasks/payload.py` — add `subagent_task_id`.
+- Modify `minder/core/tasks/tasks.py` — worker claims + reads task from blackboard, marks status.
+- Modify `minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py` — replace solve/divide/parallel handlers with subagent handlers.
+- Delete `minder/core/context_engineering/tools/registry_mixins/subagent_ops.py` — move `_get_repo_dir` into orchestration_ops.
+- Modify `minder/core/context_engineering/tools/registry_mixins/__init__.py` and `registry.py` — drop `SubagentOpsMixin`, re-route tool names.
+- Modify `minder/core/agents/subagents/task_tool.py` — `spawn_subagent` → `subagent`, `tasks[]` signature.
+- Modify `minder/core/agents/components/schemas/builtin/orchestration_tools.py` — replace `solve`/`get_solve_result` schemas with `subagent`/`get_subagent_output`.
+- Delete `minder/core/parallel/` (whole dir), `minder/core/divide/decompose.py`, `minder/core/divide/scheduler.py`.
 - Delete prompt sections `templates/tools/tool-solve.md`, `tool-get-solve-result.md`; add `tool-subagent.md`, `tool-get-subagent-output.md`; edit `main-subagent-guide.md`.
 
 ---
@@ -40,7 +40,7 @@
 ### Task 1: `Task` model + status constants
 
 **Files:**
-- Modify: `atria/core/blackboard/models.py`
+- Modify: `minder/core/blackboard/models.py`
 - Test: `tests/core/blackboard/test_models.py`
 
 **Interfaces:**
@@ -52,7 +52,7 @@ Append to `tests/core/blackboard/test_models.py`:
 
 ```python
 def test_task_roundtrips_through_dict():
-    from atria.core.blackboard.models import Task, TASK_STATUSES
+    from minder.core.blackboard.models import Task, TASK_STATUSES
 
     assert "pending" in TASK_STATUSES and "done" in TASK_STATUSES
     t = Task(id="t0", subagent_type="code_explorer", prompt="find X", ts=1.5)
@@ -71,7 +71,7 @@ Expected: FAIL with `ImportError: cannot import name 'Task'`.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Add to `atria/core/blackboard/models.py` (below the existing `Note` class):
+Add to `minder/core/blackboard/models.py` (below the existing `Note` class):
 
 ```python
 TASK_STATUSES: tuple[str, ...] = ("pending", "claimed", "done", "failed")
@@ -108,7 +108,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/blackboard/models.py tests/core/blackboard/test_models.py
+git add minder/core/blackboard/models.py tests/core/blackboard/test_models.py
 git commit -m "feat(blackboard): add Task model + status constants"
 ```
 
@@ -117,12 +117,12 @@ git commit -m "feat(blackboard): add Task model + status constants"
 ### Task 2: `TaskStore` — task channel over Redis
 
 **Files:**
-- Create: `atria/core/blackboard/task_store.py`
+- Create: `minder/core/blackboard/task_store.py`
 - Test: `tests/core/blackboard/test_task_store.py`
 
 **Interfaces:**
 - Consumes: `Task` from Task 1.
-- Produces: `TaskStore(redis, run_id: str, ttl: int)` with async methods `add(tasks: list[Task]) -> None`, `get(task_id: str) -> Task | None`, `claim(task_id: str) -> bool` (atomic; True only for the first caller), `set_status(task_id: str, status: str, result: str = "") -> None`, `all() -> list[Task]`. Hash key is `atria:bb:{run_id}:tasks`; claim flag key is `atria:bb:{run_id}:claim:{task_id}`.
+- Produces: `TaskStore(redis, run_id: str, ttl: int)` with async methods `add(tasks: list[Task]) -> None`, `get(task_id: str) -> Task | None`, `claim(task_id: str) -> bool` (atomic; True only for the first caller), `set_status(task_id: str, status: str, result: str = "") -> None`, `all() -> list[Task]`. Hash key is `minder:bb:{run_id}:tasks`; claim flag key is `minder:bb:{run_id}:claim:{task_id}`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -131,8 +131,8 @@ Create `tests/core/blackboard/test_task_store.py`:
 ```python
 import pytest
 
-from atria.core.blackboard.models import Task
-from atria.core.blackboard.task_store import TaskStore
+from minder.core.blackboard.models import Task
+from minder.core.blackboard.task_store import TaskStore
 
 
 @pytest.mark.asyncio
@@ -172,26 +172,26 @@ async def test_set_status_updates_result():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/core/blackboard/test_task_store.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'atria.core.blackboard.task_store'`.
+Expected: FAIL with `ModuleNotFoundError: No module named 'minder.core.blackboard.task_store'`.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Create `atria/core/blackboard/task_store.py`:
+Create `minder/core/blackboard/task_store.py`:
 
 ```python
 """Redis hot-path store for a run's delegated task records (the task channel).
 
 Sits beside the note channel (``BlackboardStore``). Tasks live in one hash keyed
-``atria:bb:{run_id}:tasks``; a per-task claim flag guards against duplicate worker
+``minder:bb:{run_id}:tasks``; a per-task claim flag guards against duplicate worker
 delivery. The caller owns the redis client lifecycle.
 """
 from __future__ import annotations
 
 import json
 
-from atria.core.blackboard.models import Task
+from minder.core.blackboard.models import Task
 
-_PREFIX = "atria:bb:"
+_PREFIX = "minder:bb:"
 
 
 class TaskStore:
@@ -261,7 +261,7 @@ Expected: PASS (3 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/blackboard/task_store.py tests/core/blackboard/test_task_store.py
+git add minder/core/blackboard/task_store.py tests/core/blackboard/test_task_store.py
 git commit -m "feat(blackboard): add TaskStore task channel with atomic claim"
 ```
 
@@ -270,9 +270,9 @@ git commit -m "feat(blackboard): add TaskStore task channel with atomic claim"
 ### Task 3: `SubagentOrchestrator` — write tasks, enqueue workers, collect
 
 **Files:**
-- Create: `atria/core/subagents/__init__.py`
-- Create: `atria/core/subagents/orchestrator.py`
-- Modify: `atria/core/orchestration/job_store.py` (add `SUBAGENT_PREFIX`)
+- Create: `minder/core/subagents/__init__.py`
+- Create: `minder/core/subagents/orchestrator.py`
+- Modify: `minder/core/orchestration/job_store.py` (add `SUBAGENT_PREFIX`)
 - Test: `tests/core/subagents/test_orchestrator.py`
 
 **Interfaces:**
@@ -283,10 +283,10 @@ git commit -m "feat(blackboard): add TaskStore task channel with atomic claim"
 
 - [ ] **Step 1: Add the job-store prefix**
 
-In `atria/core/orchestration/job_store.py`, below `DIVIDE_PREFIX`:
+In `minder/core/orchestration/job_store.py`, below `DIVIDE_PREFIX`:
 
 ```python
-SUBAGENT_PREFIX = "atria:sajob:"
+SUBAGENT_PREFIX = "minder:sajob:"
 ```
 
 - [ ] **Step 2: Write the failing test**
@@ -298,9 +298,9 @@ import asyncio
 
 import pytest
 
-from atria.core.blackboard.task_store import TaskStore
-from atria.core.orchestration.job_store import JobStore, SUBAGENT_PREFIX
-from atria.core.subagents.orchestrator import SubagentOrchestrator
+from minder.core.blackboard.task_store import TaskStore
+from minder.core.orchestration.job_store import JobStore, SUBAGENT_PREFIX
+from minder.core.subagents.orchestrator import SubagentOrchestrator
 
 
 class _Cfg:
@@ -369,11 +369,11 @@ async def test_collect_reports_task_statuses_and_digest():
 - [ ] **Step 3: Run test to verify it fails**
 
 Run: `uv run pytest tests/core/subagents/test_orchestrator.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'atria.core.subagents'`.
+Expected: FAIL with `ModuleNotFoundError: No module named 'minder.core.subagents'`.
 
 - [ ] **Step 4: Write minimal implementation**
 
-Create `atria/core/subagents/__init__.py` (empty file), then `atria/core/subagents/orchestrator.py`:
+Create `minder/core/subagents/__init__.py` (empty file), then `minder/core/subagents/orchestrator.py`:
 
 ```python
 """Subagent fan-out coordinator: write tasks to the blackboard, enqueue one worker
@@ -386,12 +386,12 @@ import time
 import uuid
 from typing import Any, Awaitable, Callable
 
-from atria.core.blackboard.models import Task
-from atria.core.blackboard.render import render_digest
-from atria.core.blackboard.store import BlackboardStore
-from atria.core.blackboard.task_store import TaskStore
-from atria.core.orchestration.job_store import JobStore
-from atria.core.tasks.payload import SubagentTaskPayload
+from minder.core.blackboard.models import Task
+from minder.core.blackboard.render import render_digest
+from minder.core.blackboard.store import BlackboardStore
+from minder.core.blackboard.task_store import TaskStore
+from minder.core.orchestration.job_store import JobStore
+from minder.core.tasks.payload import SubagentTaskPayload
 
 logger = logging.getLogger(__name__)
 
@@ -506,8 +506,8 @@ Expected: PASS (2 tests).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add atria/core/subagents/__init__.py atria/core/subagents/orchestrator.py \
-        atria/core/orchestration/job_store.py tests/core/subagents/
+git add minder/core/subagents/__init__.py minder/core/subagents/orchestrator.py \
+        minder/core/orchestration/job_store.py tests/core/subagents/
 git commit -m "feat(subagents): add SubagentOrchestrator fan-out coordinator"
 ```
 
@@ -516,11 +516,11 @@ git commit -m "feat(subagents): add SubagentOrchestrator fan-out coordinator"
 ### Task 4: Orchestrator builder + tool handlers
 
 **Files:**
-- Create: `atria/core/subagents/tools.py`
+- Create: `minder/core/subagents/tools.py`
 - Test: `tests/core/subagents/test_tools.py`
 
 **Interfaces:**
-- Consumes: `SubagentOrchestrator` (Task 3); `ensure_async_redis`, `make_run_async` from `atria.core.orchestration.bridge`; `JobStore`, `SUBAGENT_PREFIX`.
+- Consumes: `SubagentOrchestrator` (Task 3); `ensure_async_redis`, `make_run_async` from `minder.core.orchestration.bridge`; `JobStore`, `SUBAGENT_PREFIX`.
 - Produces:
   - `build_subagent_orchestrator(task_client, config, owner_id, session_id, working_dir="", progress_cb=None, redis_client=None) -> SubagentOrchestrator`.
   - `execute_subagent_fanout(arguments: dict, orchestrator) -> dict` — reads `arguments["tasks"]` (list of `{subagent_type, prompt}`), returns `{"success", "job_id", "status", "output"}`.
@@ -531,7 +531,7 @@ git commit -m "feat(subagents): add SubagentOrchestrator fan-out coordinator"
 Create `tests/core/subagents/test_tools.py`:
 
 ```python
-from atria.core.subagents.tools import execute_get_subagent_output, execute_subagent_fanout
+from minder.core.subagents.tools import execute_get_subagent_output, execute_subagent_fanout
 
 
 class _Orch:
@@ -573,11 +573,11 @@ def test_get_output_returns_collect():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/core/subagents/test_tools.py -v`
-Expected: FAIL with `ModuleNotFoundError: No module named 'atria.core.subagents.tools'`.
+Expected: FAIL with `ModuleNotFoundError: No module named 'minder.core.subagents.tools'`.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Create `atria/core/subagents/tools.py`:
+Create `minder/core/subagents/tools.py`:
 
 ```python
 """Tool handlers + orchestrator builder for the unified ``subagent`` tool.
@@ -592,10 +592,10 @@ import asyncio
 import logging
 from typing import Any
 
-from atria.core.orchestration.bridge import ensure_async_redis, make_run_async
-from atria.core.orchestration.job_store import SUBAGENT_PREFIX, JobStore
-from atria.core.subagents.orchestrator import SubagentOrchestrator
-from atria.core.tasks.payload import SubagentTaskPayload
+from minder.core.orchestration.bridge import ensure_async_redis, make_run_async
+from minder.core.orchestration.job_store import SUBAGENT_PREFIX, JobStore
+from minder.core.subagents.orchestrator import SubagentOrchestrator
+from minder.core.tasks.payload import SubagentTaskPayload
 
 logger = logging.getLogger(__name__)
 
@@ -618,8 +618,8 @@ def build_subagent_orchestrator(
     broker = task_client._broker
 
     async def enqueue_worker(payload: SubagentTaskPayload) -> str:
-        from atria.core.tasks import meta
-        from atria.core.tasks.client import _TASK_NAME
+        from minder.core.tasks import meta
+        from minder.core.tasks.client import _TASK_NAME
 
         task = broker.find_task(_TASK_NAME)
         if task is None:
@@ -698,7 +698,7 @@ Expected: PASS (4 tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/subagents/tools.py tests/core/subagents/test_tools.py
+git add minder/core/subagents/tools.py tests/core/subagents/test_tools.py
 git commit -m "feat(subagents): add builder + subagent/get_subagent_output tool handlers"
 ```
 
@@ -707,18 +707,18 @@ git commit -m "feat(subagents): add builder + subagent/get_subagent_output tool 
 ### Task 5: Worker reads task from the blackboard + marks status
 
 **Files:**
-- Modify: `atria/core/tasks/payload.py`
-- Modify: `atria/core/tasks/tasks.py`
+- Modify: `minder/core/tasks/payload.py`
+- Modify: `minder/core/tasks/tasks.py`
 - Test: `tests/core/tasks/test_worker_blackboard_task.py`
 
 **Interfaces:**
 - Consumes: `TaskStore` (Task 2); `SubagentTaskPayload`.
 - Produces: `SubagentTaskPayload.subagent_task_id: str | None`. Worker behaviour: when `subagent_task_id` is set, claim the task (skip if already claimed), read `subagent_type`+`prompt` from the blackboard `Task` (authoritative), run it, then `set_status("done"|"failed", result=<summary>)`.
-  - New helper `atria.core.tasks.tasks._claim_and_load(redis, bb_id, task_id, ttl) -> Task | None` (returns the claimed Task, or None if unclaimable/missing).
+  - New helper `minder.core.tasks.tasks._claim_and_load(redis, bb_id, task_id, ttl) -> Task | None` (returns the claimed Task, or None if unclaimable/missing).
 
 - [ ] **Step 1: Add the payload field**
 
-In `atria/core/tasks/payload.py`, add below `thread_id`:
+In `minder/core/tasks/payload.py`, add below `thread_id`:
 
 ```python
     subagent_task_id: str | None = None
@@ -731,9 +731,9 @@ Create `tests/core/tasks/test_worker_blackboard_task.py`:
 ```python
 import pytest
 
-from atria.core.blackboard.models import Task
-from atria.core.blackboard.task_store import TaskStore
-from atria.core.tasks.tasks import _claim_and_load
+from minder.core.blackboard.models import Task
+from minder.core.blackboard.task_store import TaskStore
+from minder.core.tasks.tasks import _claim_and_load
 
 
 @pytest.mark.asyncio
@@ -765,12 +765,12 @@ Expected: FAIL with `ImportError: cannot import name '_claim_and_load'`.
 
 - [ ] **Step 4: Write minimal implementation**
 
-In `atria/core/tasks/tasks.py`, add imports at the top (after the existing imports):
+In `minder/core/tasks/tasks.py`, add imports at the top (after the existing imports):
 
 ```python
 import os
 
-from atria.core.blackboard.task_store import TaskStore
+from minder.core.blackboard.task_store import TaskStore
 ```
 
 Add this helper above `run_background_subagent`:
@@ -791,7 +791,7 @@ async def _claim_and_load(redis: Any, bb_id: str, task_id: str, ttl: int):
 Then rewrite `run_background_subagent` so a blackboard-sourced task is claimed, read, run, and marked. Replace the function body with:
 
 ```python
-@broker.task(task_name="atria.core.tasks.tasks.run_background_subagent")
+@broker.task(task_name="minder.core.tasks.tasks.run_background_subagent")
 async def run_background_subagent(payload: dict) -> dict:
     """Rebuild a headless runtime from the payload and run the subagent.
 
@@ -806,7 +806,7 @@ async def run_background_subagent(payload: dict) -> dict:
     if p.subagent_task_id and p.blackboard_task_id:
         import redis.asyncio as aioredis  # noqa: F811 — local import mirrors provision.py
 
-        url = os.environ.get("ATRIA_REDIS_URL", "redis://localhost:6379/0")
+        url = os.environ.get("MINDER_REDIS_URL", "redis://localhost:6379/0")
         redis = aioredis.from_url(url)
         claimed = await _claim_and_load(redis, p.blackboard_task_id, p.subagent_task_id, 3600)
         if claimed is None:
@@ -838,7 +838,7 @@ async def run_background_subagent(payload: dict) -> dict:
     finally:
         handle = getattr(deps, "blackboard", None) if deps is not None else None
         if handle is not None:
-            from atria.core.blackboard.provision import teardown_run_blackboard
+            from minder.core.blackboard.provision import teardown_run_blackboard
 
             teardown_run_blackboard(handle)
         if redis is not None:
@@ -853,7 +853,7 @@ Expected: PASS (2 tests).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add atria/core/tasks/payload.py atria/core/tasks/tasks.py \
+git add minder/core/tasks/payload.py minder/core/tasks/tasks.py \
         tests/core/tasks/test_worker_blackboard_task.py
 git commit -m "feat(tasks): worker claims + reads delegated task from blackboard"
 ```
@@ -863,12 +863,12 @@ git commit -m "feat(tasks): worker claims + reads delegated task from blackboard
 ### Task 6: Tool schemas + `subagent` tool description
 
 **Files:**
-- Modify: `atria/core/agents/components/schemas/builtin/orchestration_tools.py`
-- Modify: `atria/core/agents/subagents/task_tool.py`
-- Create: `atria/core/agents/prompts/templates/tools/tool-subagent.md`
-- Create: `atria/core/agents/prompts/templates/tools/tool-get-subagent-output.md`
-- Delete: `atria/core/agents/prompts/templates/tools/tool-solve.md`
-- Delete: `atria/core/agents/prompts/templates/tools/tool-get-solve-result.md`
+- Modify: `minder/core/agents/components/schemas/builtin/orchestration_tools.py`
+- Modify: `minder/core/agents/subagents/task_tool.py`
+- Create: `minder/core/agents/prompts/templates/tools/tool-subagent.md`
+- Create: `minder/core/agents/prompts/templates/tools/tool-get-subagent-output.md`
+- Delete: `minder/core/agents/prompts/templates/tools/tool-solve.md`
+- Delete: `minder/core/agents/prompts/templates/tools/tool-get-solve-result.md`
 - Test: `tests/core/agents/test_subagent_schema.py`
 
 **Interfaces:**
@@ -880,7 +880,7 @@ git commit -m "feat(tasks): worker claims + reads delegated task from blackboard
 Create `tests/core/agents/test_subagent_schema.py`:
 
 ```python
-from atria.core.agents.components.schemas.builtin.orchestration_tools import SCHEMAS
+from minder.core.agents.components.schemas.builtin.orchestration_tools import SCHEMAS
 
 
 def _names():
@@ -911,7 +911,7 @@ Expected: FAIL (`subagent` not in names; `solve` still present).
 
 - [ ] **Step 3: Replace the schemas**
 
-In `atria/core/agents/components/schemas/builtin/orchestration_tools.py`, delete the two dicts for `solve` and `get_solve_result` (from the `# ===== Unified Solver Tools ...` comment through the closing `},` of the `get_solve_result` schema, i.e. the block ending at line ~106). Replace with:
+In `minder/core/agents/components/schemas/builtin/orchestration_tools.py`, delete the two dicts for `solve` and `get_solve_result` (from the `# ===== Unified Solver Tools ...` comment through the closing `},` of the `get_solve_result` schema, i.e. the block ending at line ~106). Replace with:
 
 ```python
     # ===== Unified subagent tool (blackboard task channel) =====
@@ -986,7 +986,7 @@ In `atria/core/agents/components/schemas/builtin/orchestration_tools.py`, delete
 
 - [ ] **Step 4: Create the tool-description markdown**
 
-Create `atria/core/agents/prompts/templates/tools/tool-subagent.md`:
+Create `minder/core/agents/prompts/templates/tools/tool-subagent.md`:
 
 ```markdown
 Delegate one or more independent tasks to ephemeral subagents.
@@ -1003,10 +1003,10 @@ the conversation. Pass several tasks at once to run them concurrently.
 Tasks are independent (no dependency ordering). When you need step B to use step
 A's result, run A first, collect it with `get_subagent_output`, then issue B.
 
-Returns a `job_id`. Requires Redis and a running `atria-worker`.
+Returns a `job_id`. Requires Redis and a running `minder-worker`.
 ```
 
-Create `atria/core/agents/prompts/templates/tools/tool-get-subagent-output.md`:
+Create `minder/core/agents/prompts/templates/tools/tool-get-subagent-output.md`:
 
 ```markdown
 Collect the results of a `subagent` job by its `job_id`.
@@ -1019,11 +1019,11 @@ every task finishes; pass `block: false` for a non-blocking status poll.
 - [ ] **Step 5: Delete the obsolete descriptions and update the task tool**
 
 ```bash
-git rm atria/core/agents/prompts/templates/tools/tool-solve.md \
-       atria/core/agents/prompts/templates/tools/tool-get-solve-result.md
+git rm minder/core/agents/prompts/templates/tools/tool-solve.md \
+       minder/core/agents/prompts/templates/tools/tool-get-solve-result.md
 ```
 
-In `atria/core/agents/subagents/task_tool.py`, change:
+In `minder/core/agents/subagents/task_tool.py`, change:
 
 ```python
 TASK_TOOL_NAME = "spawn_subagent"
@@ -1045,10 +1045,10 @@ Expected: PASS (3 tests).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add atria/core/agents/components/schemas/builtin/orchestration_tools.py \
-        atria/core/agents/subagents/task_tool.py \
-        atria/core/agents/prompts/templates/tools/tool-subagent.md \
-        atria/core/agents/prompts/templates/tools/tool-get-subagent-output.md \
+git add minder/core/agents/components/schemas/builtin/orchestration_tools.py \
+        minder/core/agents/subagents/task_tool.py \
+        minder/core/agents/prompts/templates/tools/tool-subagent.md \
+        minder/core/agents/prompts/templates/tools/tool-get-subagent-output.md \
         tests/core/agents/test_subagent_schema.py
 git commit -m "feat(schemas): replace solve/spawn_subagent schemas with unified subagent tool"
 ```
@@ -1058,10 +1058,10 @@ git commit -m "feat(schemas): replace solve/spawn_subagent schemas with unified 
 ### Task 7: Rewire the registry to the unified handlers
 
 **Files:**
-- Modify: `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py` (full rewrite)
-- Delete: `atria/core/context_engineering/tools/registry_mixins/subagent_ops.py`
-- Modify: `atria/core/context_engineering/tools/registry_mixins/__init__.py`
-- Modify: `atria/core/context_engineering/tools/registry.py`
+- Modify: `minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py` (full rewrite)
+- Delete: `minder/core/context_engineering/tools/registry_mixins/subagent_ops.py`
+- Modify: `minder/core/context_engineering/tools/registry_mixins/__init__.py`
+- Modify: `minder/core/context_engineering/tools/registry.py`
 - Test: `tests/core/context_engineering/test_registry_subagent_routing.py`
 
 **Interfaces:**
@@ -1074,7 +1074,7 @@ Create `tests/core/context_engineering/test_registry_subagent_routing.py`:
 
 ```python
 def test_registry_routes_unified_subagent_tools(monkeypatch):
-    import atria.core.context_engineering.tools.registry as reg_mod
+    import minder.core.context_engineering.tools.registry as reg_mod
 
     reg = reg_mod.ToolRegistry.__new__(reg_mod.ToolRegistry)
     reg._subagent_manager = None
@@ -1100,7 +1100,7 @@ Expected: FAIL (source still contains `"solve"` / `spawn_subagent`).
 
 - [ ] **Step 3: Rewrite `orchestration_ops.py`**
 
-Replace the entire contents of `atria/core/context_engineering/tools/registry_mixins/orchestration_ops.py` with:
+Replace the entire contents of `minder/core/context_engineering/tools/registry_mixins/orchestration_ops.py` with:
 
 ```python
 """Unified ``subagent`` fan-out orchestration for the tool registry."""
@@ -1135,10 +1135,10 @@ class OrchestrationOpsMixin:
         if task_client is None:
             return None
 
-        from atria.core.context_engineering.tools.implementations.send_table_tool import (
+        from minder.core.context_engineering.tools.implementations.send_table_tool import (
             resolve_session,
         )
-        from atria.core.subagents.tools import build_subagent_orchestrator
+        from minder.core.subagents.tools import build_subagent_orchestrator
 
         ui_callback = getattr(context, "ui_callback", None) if context else None
         progress_cb = None
@@ -1176,7 +1176,7 @@ class OrchestrationOpsMixin:
                 "Requires a running TaskIQ worker + Redis.",
                 "output": None,
             }
-        from atria.core.subagents.tools import execute_subagent_fanout
+        from minder.core.subagents.tools import execute_subagent_fanout
 
         return execute_subagent_fanout(arguments, orch)
 
@@ -1191,7 +1191,7 @@ class OrchestrationOpsMixin:
                 "error": "Subagent delegation unavailable (no task client).",
                 "output": None,
             }
-        from atria.core.subagents.tools import execute_get_subagent_output
+        from minder.core.subagents.tools import execute_get_subagent_output
 
         return execute_get_subagent_output(arguments, orch)
 ```
@@ -1199,10 +1199,10 @@ class OrchestrationOpsMixin:
 - [ ] **Step 4: Delete `subagent_ops.py` and update the mixin package**
 
 ```bash
-git rm atria/core/context_engineering/tools/registry_mixins/subagent_ops.py
+git rm minder/core/context_engineering/tools/registry_mixins/subagent_ops.py
 ```
 
-In `atria/core/context_engineering/tools/registry_mixins/__init__.py`, remove the `SubagentOpsMixin` import, its `__all__` entry, and its docstring bullet. The file's import/`__all__` should read:
+In `minder/core/context_engineering/tools/registry_mixins/__init__.py`, remove the `SubagentOpsMixin` import, its `__all__` entry, and its docstring bullet. The file's import/`__all__` should read:
 
 ```python
 from .inline_tools import InlineToolsMixin
@@ -1215,7 +1215,7 @@ __all__ = ["OrchestrationOpsMixin", "InlineToolsMixin"]
 
 - [ ] **Step 5: Update `registry.py`**
 
-In `atria/core/context_engineering/tools/registry.py`:
+In `minder/core/context_engineering/tools/registry.py`:
 
 1. Remove `SubagentOpsMixin` from the import block (line ~75) and from the class bases (line ~80: `class ToolRegistry(SubagentOpsMixin, OrchestrationOpsMixin, InlineToolsMixin):` → `class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):`).
 2. In the handler map (lines ~193-199), replace:
@@ -1269,7 +1269,7 @@ with:
 4. In the `build_context(...)` call (near line ~424), remove the `divide_orchestrator=divide_orchestrator,` and `parallel_orchestrator=parallel_orchestrator,` keyword arguments and any local variables that computed them. Grep to confirm none remain:
 
 ```bash
-grep -n "divide_orchestrator\|parallel_orchestrator" atria/core/context_engineering/tools/registry.py
+grep -n "divide_orchestrator\|parallel_orchestrator" minder/core/context_engineering/tools/registry.py
 ```
 
 Expected after edits: no matches.
@@ -1279,14 +1279,14 @@ Expected after edits: no matches.
 Run: `uv run pytest tests/core/context_engineering/test_registry_subagent_routing.py -v`
 Expected: PASS.
 
-Run: `uv run python -c "import atria.core.context_engineering.tools.registry"`
+Run: `uv run python -c "import minder.core.context_engineering.tools.registry"`
 Expected: no ImportError.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add atria/core/context_engineering/tools/registry_mixins/ \
-        atria/core/context_engineering/tools/registry.py \
+git add minder/core/context_engineering/tools/registry_mixins/ \
+        minder/core/context_engineering/tools/registry.py \
         tests/core/context_engineering/test_registry_subagent_routing.py
 git commit -m "refactor(registry): route unified subagent tools, drop solve/spawn_subagent"
 ```
@@ -1296,23 +1296,23 @@ git commit -m "refactor(registry): route unified subagent tools, drop solve/spaw
 ### Task 8: Delete dead divide/parallel code + purge references
 
 **Files:**
-- Delete: `atria/core/parallel/` (whole dir)
-- Delete: `atria/core/divide/decompose.py`, `atria/core/divide/scheduler.py`
-- Modify: `atria/core/divide/orchestrator.py`, `atria/core/divide/tools.py`, `atria/core/divide/__init__.py` (remove or reduce — see below)
+- Delete: `minder/core/parallel/` (whole dir)
+- Delete: `minder/core/divide/decompose.py`, `minder/core/divide/scheduler.py`
+- Modify: `minder/core/divide/orchestrator.py`, `minder/core/divide/tools.py`, `minder/core/divide/__init__.py` (remove or reduce — see below)
 - Modify: `build_context` provider (wherever `divide_orchestrator`/`parallel_orchestrator` were injected)
 - Delete: obsolete tests `tests/test_parallel_*.py`, `tests/test_divide_redecompose.py`, `tests/test_subagent_dispatch.py` (dispatch-strategy test)
 
 **Interfaces:**
-- Produces: a codebase with no remaining importers of `atria.core.parallel`, `atria.core.divide.decompose`, or `atria.core.divide.scheduler`.
+- Produces: a codebase with no remaining importers of `minder.core.parallel`, `minder.core.divide.decompose`, or `minder.core.divide.scheduler`.
 
 - [ ] **Step 1: Find every reference**
 
 Run:
 
 ```bash
-grep -rn "core\.parallel\|from atria.core.parallel" atria tests --include="*.py"
-grep -rn "core\.divide\|from atria.core.divide" atria tests --include="*.py"
-grep -rn "divide_orchestrator\|parallel_orchestrator\|_dispatch_via_orchestrator\|execute_solve\|get_solve_result\|_execute_spawn_subagent\|spawn_subagent" atria tests --include="*.py"
+grep -rn "core\.parallel\|from minder.core.parallel" minder tests --include="*.py"
+grep -rn "core\.divide\|from minder.core.divide" minder tests --include="*.py"
+grep -rn "divide_orchestrator\|parallel_orchestrator\|_dispatch_via_orchestrator\|execute_solve\|get_solve_result\|_execute_spawn_subagent\|spawn_subagent" minder tests --include="*.py"
 ```
 
 Record every hit; each must be removed or repointed by the end of this task.
@@ -1320,28 +1320,28 @@ Record every hit; each must be removed or repointed by the end of this task.
 - [ ] **Step 2: Delete parallel + divide decomposition/scheduler**
 
 ```bash
-git rm -r atria/core/parallel
-git rm atria/core/divide/decompose.py atria/core/divide/scheduler.py
+git rm -r minder/core/parallel
+git rm minder/core/divide/decompose.py minder/core/divide/scheduler.py
 ```
 
 - [ ] **Step 3: Reduce the divide package**
 
-`atria/core/divide/orchestrator.py` and `tools.py` import `decompose`/`schedule`, which are now gone. The divide package no longer has a tool entry point (Task 7 removed its handlers). Delete the remaining divide modules that only served the old flow:
+`minder/core/divide/orchestrator.py` and `tools.py` import `decompose`/`schedule`, which are now gone. The divide package no longer has a tool entry point (Task 7 removed its handlers). Delete the remaining divide modules that only served the old flow:
 
 ```bash
-git rm atria/core/divide/orchestrator.py atria/core/divide/tools.py
+git rm minder/core/divide/orchestrator.py minder/core/divide/tools.py
 ```
 
-Keep `atria/core/divide/models.py` ONLY if `grep -rn "divide.models\|DivideJob\|DivideTask" atria --include="*.py"` shows a live importer outside the deleted files; otherwise:
+Keep `minder/core/divide/models.py` ONLY if `grep -rn "divide.models\|DivideJob\|DivideTask" minder --include="*.py"` shows a live importer outside the deleted files; otherwise:
 
 ```bash
-git rm atria/core/divide/models.py
+git rm minder/core/divide/models.py
 ```
 
-If the whole `atria/core/divide/` directory is now empty except `__init__.py`, remove it:
+If the whole `minder/core/divide/` directory is now empty except `__init__.py`, remove it:
 
 ```bash
-git rm -r atria/core/divide
+git rm -r minder/core/divide
 ```
 
 - [ ] **Step 4: Remove orchestrator injection from context building**
@@ -1349,7 +1349,7 @@ git rm -r atria/core/divide
 From Task 7 the registry no longer passes `divide_orchestrator`/`parallel_orchestrator`. Now remove them at the source. Locate the context object + any builder that still sets them:
 
 ```bash
-grep -rn "divide_orchestrator\|parallel_orchestrator" atria --include="*.py"
+grep -rn "divide_orchestrator\|parallel_orchestrator" minder --include="*.py"
 ```
 
 For each hit (e.g. a `ToolExecutionContext` dataclass field, or a `build_context` helper), delete the field/parameter and its assignment. Re-run the grep; expected: no matches.
@@ -1376,8 +1376,8 @@ For any remaining hit that references removed behaviour (e.g. `strategy=` on the
 Run:
 
 ```bash
-uv run python -c "import atria.cli"
-grep -rn "core\.parallel\|core\.divide\|_execute_spawn_subagent\|_execute_solve" atria --include="*.py"
+uv run python -c "import minder.cli"
+grep -rn "core\.parallel\|core\.divide\|_execute_spawn_subagent\|_execute_solve" minder --include="*.py"
 ```
 
 Expected: import succeeds; grep returns no matches.
@@ -1394,11 +1394,11 @@ git commit -m "refactor: delete divide/parallel machinery superseded by unified 
 ### Task 9: Update prompt guidance for the unified concept
 
 **Files:**
-- Modify: `atria/core/agents/prompts/templates/system/main/main-subagent-guide.md`
-- Modify: `atria/core/agents/prompts/templates/system/main/main-available-tools.md`
-- Modify: `atria/core/agents/prompts/templates/system/main/main-tool-selection.md`
-- Modify: `atria/core/agents/prompts/templates/system/main/main-action-safety.md`
-- Modify: `atria/core/agents/prompts/templates/system/main/main-tone-and-style.md`
+- Modify: `minder/core/agents/prompts/templates/system/main/main-subagent-guide.md`
+- Modify: `minder/core/agents/prompts/templates/system/main/main-available-tools.md`
+- Modify: `minder/core/agents/prompts/templates/system/main/main-tool-selection.md`
+- Modify: `minder/core/agents/prompts/templates/system/main/main-action-safety.md`
+- Modify: `minder/core/agents/prompts/templates/system/main/main-tone-and-style.md`
 
 **Interfaces:** None (prompt text only). No tables (project rule).
 
@@ -1408,7 +1408,7 @@ Run:
 
 ```bash
 grep -rln "spawn_subagent\|solve\|get_solve_result\|divide\|parallel\|strategy" \
-     atria/core/agents/prompts/templates/system
+     minder/core/agents/prompts/templates/system
 ```
 
 - [ ] **Step 2: Rewrite the subagent guide**
@@ -1417,7 +1417,7 @@ In `main-subagent-guide.md`, remove any `spawn_subagent`, `strategy`, `divide`, 
 
 - Call `subagent(tasks=[{subagent_type, prompt}, ...])` to delegate; one element for a single hand-off, several for concurrent independent tasks.
 - Tasks share one blackboard and write notes back; there is no dependency ordering — run a wave, collect with `get_subagent_output(job_id)`, then issue the next wave when step B needs step A's result.
-- Delegation requires Redis + a running `atria-worker`.
+- Delegation requires Redis + a running `minder-worker`.
 
 - [ ] **Step 3: Fix the remaining sections**
 
@@ -1429,7 +1429,7 @@ Run:
 
 ```bash
 grep -rn "spawn_subagent\|get_solve_result\|\bsolve\b\|strategy=\"divide\"\|strategy=\"parallel\"" \
-     atria/core/agents/prompts/templates/system
+     minder/core/agents/prompts/templates/system
 ```
 
 Expected: no matches (a bare word "parallel" describing concurrency is fine; the tool/strategy references are gone).
@@ -1437,7 +1437,7 @@ Expected: no matches (a bare word "parallel" describing concurrency is fine; the
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/agents/prompts/templates/system/main/
+git add minder/core/agents/prompts/templates/system/main/
 git commit -m "docs(prompts): describe the unified subagent tool, drop divide/parallel/solve"
 ```
 
@@ -1459,18 +1459,18 @@ Expected: Black clean, Ruff clean, mypy clean. Fix issues inline.
 
 - [ ] **Step 3: Real end-to-end (per CLAUDE.md — REQUIRED)**
 
-In three terminals with `OPENAI_API_KEY` exported and `ATRIA_REDIS_URL` set:
+In three terminals with `OPENAI_API_KEY` exported and `MINDER_REDIS_URL` set:
 
 ```bash
 # 1) Redis
 redis-server
 
 # 2) Worker
-uv run atria-worker
+uv run minder-worker
 
 # 3) Drive the CLI with a real fan-out
-export OPENAI_API_KEY="...";  export ATRIA_REDIS_URL="redis://localhost:6379/0"
-uv run atria -p "Use the subagent tool to run two independent tasks: (a) a code_explorer that lists the top-level packages under atria/core, and (b) a code_explorer that finds where the blackboard TaskStore is defined. Then call get_subagent_output on the returned job_id and summarize both results."
+export OPENAI_API_KEY="...";  export MINDER_REDIS_URL="redis://localhost:6379/0"
+uv run minder -p "Use the subagent tool to run two independent tasks: (a) a code_explorer that lists the top-level packages under minder/core, and (b) a code_explorer that finds where the blackboard TaskStore is defined. Then call get_subagent_output on the returned job_id and summarize both results."
 ```
 
 Expected: the agent calls `subagent` once with two tasks, both run on the worker, and `get_subagent_output` returns both task statuses as `done` with a notes digest. Confirm no `solve` / `spawn_subagent` tool appears and no traceback in the worker log.
@@ -1480,10 +1480,10 @@ Expected: the agent calls `subagent` once with two tasks, both run on the worker
 While the run is in flight (or from the worker log), verify the task channel was populated:
 
 ```bash
-redis-cli --scan --pattern 'atria:bb:sa_*:tasks' | head
+redis-cli --scan --pattern 'minder:bb:sa_*:tasks' | head
 ```
 
-Expected: at least one `atria:bb:sa_<job>:tasks` hash key exists, confirming tasks were sourced from the blackboard.
+Expected: at least one `minder:bb:sa_<job>:tasks` hash key exists, confirming tasks were sourced from the blackboard.
 
 - [ ] **Step 5: Final commit (if any verification fixes were made)**
 

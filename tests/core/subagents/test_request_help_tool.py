@@ -1,4 +1,4 @@
-from atria.core.subagents.tools import execute_get_help_responses, execute_request_help
+from minder.core.subagents.tools import execute_get_help_responses, execute_request_help
 
 
 class FakeOrch:

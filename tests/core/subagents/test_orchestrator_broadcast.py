@@ -1,6 +1,6 @@
 import pytest
 
-from atria.core.subagents.orchestrator import SubagentOrchestrator
+from minder.core.subagents.orchestrator import SubagentOrchestrator
 
 
 class FakeRedis:

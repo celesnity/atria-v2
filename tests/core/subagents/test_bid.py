@@ -1,6 +1,6 @@
 import pytest
 
-from atria.core.subagents.bid import parse_bid, run_bids
+from minder.core.subagents.bid import parse_bid, run_bids
 
 
 def test_parse_bid_yes_no():

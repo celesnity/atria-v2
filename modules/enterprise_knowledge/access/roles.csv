@@ -1,6 +1,0 @@
-Roles,,,,
-role_en,role_vi,company_knowledge,department_knowledge,executive_knowledge
-Employee,Nhân viên,Yes,Own Department,No
-Manager,Quản lý,Yes,Own Department,No
-Director,Giám đốc,Yes,Own Department,No
-Executive,Ban Điều hành,Yes,All Departments,Yes

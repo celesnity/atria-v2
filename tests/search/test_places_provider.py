@@ -10,7 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "modules" / "maps_search"))
 from geo import distance_decay, haversine_km  # noqa: E402
 
-from atria.core.context_engineering.search.types import SearchContext
+from minder.core.context_engineering.search.types import SearchContext
 
 _LIVE = bool(
     os.environ.get("DATABASE_URL")

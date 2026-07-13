@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from atria.core.context_engineering.search.embedder import Embedder
+from minder.core.context_engineering.search.embedder import Embedder
 
 
 class _FakeResponse:

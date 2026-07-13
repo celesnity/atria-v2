@@ -1,10 +1,12 @@
-"""Unit tests for the Atria-side remote connector client (httpx mocked)."""
+"""Unit tests for the Minder-side remote connector client (httpx mocked)."""
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import httpx
 import pytest
 
-from atria.core.modules import remote
+from minder.core.modules import remote
 
 
 def _connector(handler):
@@ -53,77 +55,94 @@ def test_unavailable_card_is_fail_closed_plain_dict():
     assert card["citations"] == []
 
 
-from dataclasses import dataclass, field as _field
+@pytest.fixture(autouse=True)
+def _reset_module_registry():
+    """Isolate every test from registry state left by a previous test."""
+    from minder.core.modules.registry import reset_registry_for_tests
+    reset_registry_for_tests()
+    yield
+    reset_registry_for_tests()
 
 
-@dataclass
-class _FakeManifestService:
-    connector_url: str
-    tools: list = _field(default_factory=list)
-    health_path: str = "/connector/health"
+def _ready_registry(monkeypatch, tmp_path):
+    """Register and ready a maintenance_copilot connector in a fresh registry."""
+    from minder.core.modules.registry import reset_registry_for_tests, get_registry
+    reset_registry_for_tests()
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
+    reg = get_registry()
+    reg.register_connector(name="maintenance_copilot", connector_url="http://mc:9200")
+    reg.mark_connector_ready("maintenance_copilot", [
+        {"name": "maintenance_copilot_query", "description": "q",
+         "parameters": {"type": "object",
+                        "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+    ])
+    return reg
 
 
-@dataclass
-class _FakeManifest:
-    service: object = None
-
-
-@dataclass
-class _FakeModule:
-    name: str
-    manifest: object
-
-
-def _module_with_tool():
-    svc = _FakeManifestService(
-        connector_url="http://mc:9200",
-        tools=[{"name": "maintenance_copilot_query", "description": "q",
-                "parameters": {"type": "object", "properties": {"query": {"type": "string"}},
-                               "required": ["query"]}}],
-    )
-    return _FakeModule("maintenance_copilot", _FakeManifest(service=svc))
-
-
-def test_build_specs_registers_declared_tools(monkeypatch):
-    from atria.core.skill_tools import SkillToolContext
+def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok", "review_required": False}, "llm_suffix": None}
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
 
-    specs = remote.build_remote_tool_specs(ctx, [_module_with_tool()])
+    reg = _ready_registry(monkeypatch, tmp_path)
+    specs = remote.build_remote_tool_specs(ctx, reg.live_service_modules())
     assert [s.name for s in specs] == ["maintenance_copilot_query"]
 
     out = specs[0].handler(query="torque?")
     assert out["success"] is True
     assert out["output"]["answer"] == "ok"
-    assert broadcasts == [{"type": "maintenance_answer", "answer": "ok", "review_required": False}]
+    # No card_type in the response → broadcast under the generic "{module}_card"
+    # type. A module names its own renderer by returning card_type explicitly.
+    assert broadcasts == [
+        {"type": "maintenance_copilot_card", "answer": "ok", "review_required": False}
+    ]
 
 
-def test_handler_connector_down_fails_closed(monkeypatch):
-    from atria.core.skill_tools import SkillToolContext
+def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def boom(self, tool, arguments, timeout=110.0):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+        return {"success": True, "output": {"answer": "ok"},
+                "card": {"answer": "ok"}, "card_type": "maintenance_answer",
+                "llm_suffix": None}
+    monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
+
+    reg = _ready_registry(monkeypatch, tmp_path)
+    specs = remote.build_remote_tool_specs(ctx, reg.live_service_modules())
+    specs[0].handler(query="torque?")
+    assert broadcasts[0]["type"] == "maintenance_answer"
+
+
+def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
+    from minder.core.skill_tools import SkillToolContext
+
+    broadcasts = []
+    ctx = SkillToolContext(broadcaster=broadcasts.append)
+
+    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
         raise remote.ConnectorUnreachable("refused")
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", boom)
 
-    specs = remote.build_remote_tool_specs(ctx, [_module_with_tool()])
+    reg = _ready_registry(monkeypatch, tmp_path)
+    specs = remote.build_remote_tool_specs(ctx, reg.live_service_modules())
     out = specs[0].handler(query="torque?")
     assert out["success"] is True
     assert out["output"]["review_required"] is True
     assert "connector unreachable" in out["_llm_suffix"].lower()
-    assert broadcasts[0]["type"] == "maintenance_answer"
+    assert broadcasts[0]["type"] == "maintenance_copilot_card"
 
 
 def test_module_without_service_yields_no_specs():
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     @dataclass
     class _NoSvc:

@@ -1,4 +1,4 @@
-from atria.core.blackboard.models import Bid, Request, Response
+from minder.core.blackboard.models import Bid, Request, Response
 
 
 def test_request_roundtrip():
