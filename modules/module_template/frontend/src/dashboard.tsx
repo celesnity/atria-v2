@@ -9,6 +9,7 @@ import {
   type DashboardComponent,
 } from "minder-ui-sdk";
 import { ToastProvider } from "./ui/Toast";
+import Mascot from "./ui/Mascot";
 import StatHeader from "./ui/StatHeader";
 import ProductsPanel from "./panels/ProductsPanel";
 import JobsPanel from "./panels/JobsPanel";
@@ -70,6 +71,7 @@ function Dashboard({ apiBase, activeTab, theme }: DashboardProps) {
                 parks at Approve for proposals. Read-only stage — remove this line
                 and the agent still works entirely through the backend SDK. */}
             <AgentPresence apiBase={apiBase} />
+            <Mascot />
           </ToastProvider>
         </AgentRegistryProvider>
       </AgentDriverProvider>
