@@ -50,6 +50,10 @@ class ToolSchemaBuilder:
         self._provider = provider
         self._extra_schemas = extra_schemas or []
         self._blackboard_enabled = blackboard_enabled
+        # Assembled-schema cache. Keyed by inputs that vary at runtime so a
+        # repeat call with an unchanged tool surface skips the deepcopy+assembly.
+        self._cache_key: tuple | None = None
+        self._cached_schemas: list[dict[str, Any]] | None = None
 
     def build(self, thinking_visible: bool = True) -> list[dict[str, Any]]:
         """Return tool schema definitions including MCP and task tool extensions.
@@ -62,6 +66,18 @@ class ToolSchemaBuilder:
             List of tool schemas. If allowed_tools was set, only returns
             schemas for tools in that list.
         """
+        # Fast path: return the cached assembly when the runtime-varying inputs
+        # (MCP-discovered set + disabled set) are unchanged. Avoids a full
+        # deepcopy of every builtin schema on each call_llm.
+        discovered = frozenset(
+            self._tool_registry.get_discovered_mcp_tools()
+            if self._tool_registry and hasattr(self._tool_registry, "get_discovered_mcp_tools")
+            else ()
+        )
+        key = (thinking_visible, discovered, frozenset(load_disabled_tools()))
+        if key == self._cache_key and self._cached_schemas is not None:
+            return self._cached_schemas
+
         # Get all builtin tool schemas plus any skill-provided extras
         schemas: list[dict[str, Any]] = deepcopy(_BUILTIN_TOOL_SCHEMAS)
         if self._extra_schemas:
@@ -110,6 +126,8 @@ class ToolSchemaBuilder:
                 if schema.get("function", {}).get("name") not in disabled
             ]
 
+        self._cache_key = key
+        self._cached_schemas = schemas
         return schemas
 
     def _build_task_schema(self) -> dict[str, Any] | None:

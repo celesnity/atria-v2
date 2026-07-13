@@ -315,6 +315,21 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         """
         self._hook_manager = manager
 
+    def reset_per_run_state(self) -> None:
+        """Clear session-scoped mutable state so a cached registry can be safely
+        reused for a fresh run without state bleeding between web sessions.
+
+        Rebuildable/re-wired-per-run objects (subagent orchestrator, hook
+        manager) are dropped; the subagent manager and per-run task client are
+        re-attached by the caller (web executor) after reset.
+        """
+        self._invoked_skills = set()
+        self._discovered_mcp_tools = set()
+        self._subagent_orchestrator = None
+        self._hook_manager = None
+        # Fresh todo store for the new run.
+        self.todo_handler = TodoHandler()
+
     def set_skill_loader(self, loader: "SkillLoader") -> None:
         """Set the skill loader for invoke_skill tool.
 

@@ -30,6 +30,11 @@ class AgentExecutor:
         self.executor = ThreadPoolExecutor(max_workers=4)
         # Lock protecting session_manager.current_session mutation
         self._session_lock = __import__("threading").Lock()
+        from minder.web.suite_cache import SuiteCache
+
+        # Cross-request RuntimeSuite cache — skips skill discovery + agent/prompt/
+        # schema construction on repeat same-key requests (see suite_cache.py).
+        self._suite_cache = SuiteCache(maxsize=8)
         atexit.register(self.executor.shutdown, wait=False)
 
         # Shared thread pool for parallel tool execution across sessions
@@ -259,6 +264,11 @@ class AgentExecutor:
         # Clear any previous interrupt flags
         self.state.clear_interrupt()
 
+        # Always-safe release handle; reassigned once the suite is acquired so the
+        # cleanup path never references an unbound name if setup fails early.
+        def _release_suite() -> None:
+            return None
+
         # Resolve config/working directory from session (no mutation of current_session)
         config_manager, config, working_dir = self._resolve_runtime_context_for_session(session)
 
@@ -285,17 +295,27 @@ class AgentExecutor:
 
         set_current_ui_callback(web_ui_callback)
 
-        # Build runtime suite
+        # Build (or reuse) the runtime suite. Caching skips skill discovery +
+        # agent/prompt/schema construction on repeat same-key requests.
+        from minder.web.suite_cache import make_suite_cache_key
+
         runtime_service = RuntimeService(config_manager, self.state.mode_manager)
-        runtime_suite = runtime_service.build_suite(
-            file_ops=file_ops,
-            write_tool=write_tool,
-            edit_tool=edit_tool,
-            bash_tool=bash_tool,
-            notebook_edit_tool=notebook_edit_tool,
-            ask_user_tool=ask_user_tool,
-            mcp_manager=self.state.mcp_manager,
-        )
+
+        def _build_suite():
+            return runtime_service.build_suite(
+                file_ops=file_ops,
+                write_tool=write_tool,
+                edit_tool=edit_tool,
+                bash_tool=bash_tool,
+                notebook_edit_tool=notebook_edit_tool,
+                ask_user_tool=ask_user_tool,
+                mcp_manager=self.state.mcp_manager,
+            )
+
+        _suite_key = make_suite_cache_key(working_dir, config, self.state.mcp_manager)
+        runtime_suite, _release_suite = self._suite_cache.acquire(_suite_key, _build_suite)
+        # Reset session-scoped mutable state before this run reuses the suite.
+        runtime_suite.tool_registry.reset_per_run_state()
 
         # Wire hooks system (4-point wiring, matching TUI's repl.py)
         hook_manager = None
@@ -401,8 +421,9 @@ class AgentExecutor:
         )
         if bb_handle is not None:
             agent._blackboard_handle = bb_handle
-            # Rebuild so the dynamic Shared Lessons section is included in the prompt.
-            agent.system_prompt = agent.build_system_prompt()
+            # Append lessons to the dynamic tail instead of a full prompt rebuild —
+            # the stable prefix stays cacheable and no templates are re-read.
+            agent.apply_blackboard_lessons()
 
         # Point session manager at the right session for this execution.
         # Protected by lock to avoid race conditions with concurrent requests.
@@ -550,6 +571,13 @@ class AgentExecutor:
             logger.error(traceback.format_exc())
             return {"summary": None, "error": str(e), "latency_ms": 0}
         finally:
+            # Release the cached runtime suite so a later same-key request can
+            # reuse it (no-op for an ephemeral copy-on-contention build).
+            try:
+                _release_suite()
+            except Exception:
+                pass
+
             # Blackboard: archive (best-effort) + shut down the per-run handle.
             teardown_run_blackboard(bb_handle)
 

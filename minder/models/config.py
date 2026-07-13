@@ -271,6 +271,12 @@ class AppConfig(BaseModel):
     # for non-reasoning models that need an explicit prompted thinking trace.
     native_reasoning: bool = True
 
+    # Blocking LLM-powered context compaction fires when usage crosses this
+    # fraction of the context window. Lowered from the old hard 0.99 so it runs
+    # before the window is critically full and (usually) not at the top of a
+    # user-facing turn. Masking/pruning stages (0.80/0.85/0.90) are unchanged.
+    compaction_threshold: float = 0.90
+
     @field_validator("agent_mode")
     @classmethod
     def _validate_agent_mode(cls, v: str) -> str:
