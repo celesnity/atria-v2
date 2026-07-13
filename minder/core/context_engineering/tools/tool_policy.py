@@ -21,7 +21,6 @@ TOOL_GROUPS: dict[str, set[str]] = {
     "group:write": {
         "write_file",
         "edit_file",
-        "notebook_edit",
         "apply_patch",
     },
     "group:process": {
@@ -32,8 +31,6 @@ TOOL_GROUPS: dict[str, set[str]] = {
     },
     "group:session": {
         "request_help",
-        "get_help_responses",
-        "list_subagents",
     },
     "group:meta": {
         "task_complete",
@@ -44,12 +41,9 @@ TOOL_GROUPS: dict[str, set[str]] = {
         "complete_todo",
         "list_todos",
         "clear_todos",
-        "search_tools",
-        "invoke_skill",
         "batch_tool",
     },
     "group:messaging": {"send_message"},
-    "group:automation": {"schedule"},
     "group:thinking": set(),  # populated dynamically if thinking tools exist
     "group:mcp": set(),  # populated dynamically from discovered MCP tools
 }
