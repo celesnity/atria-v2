@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, animate, useDragControls } from "motion/react";
 import { useMinderTheme, useAgentActivity, type UiIntent } from "minder-ui-sdk";
 
 /**
@@ -117,6 +117,29 @@ export default function Mascot() {
   /** Element the mascot is currently escorting (for scroll/resize re-anchoring). */
   const tracked = useRef<Element | null>(null);
 
+  // Live x/y the body is actually rendered at. Both the agent-driven `pos` spring
+  // AND the user's drag write these same values, so hand-dragging and autonomous
+  // movement never fight. `true` while a finger/pointer is dragging Pilo around.
+  const initial = homePos();
+  const mx = useMotionValue(initial.x);
+  const my = useMotionValue(initial.y);
+  const [dragging, setDragging] = useState(false);
+  // Drag is started manually from the robot body (not the whole 130×210 box) so
+  // the transparent speech-bubble area above it never intercepts clicks.
+  const dragControls = useDragControls();
+
+  // Whenever the commanded position changes (intent walk / home / wander), spring
+  // the live values toward it — unless the user is currently dragging.
+  useEffect(() => {
+    if (dragging) return;
+    const a = animate(mx, pos.x, { type: "spring", stiffness: 130, damping: 18, mass: 0.7 });
+    const b = animate(my, pos.y, { type: "spring", stiffness: 130, damping: 18, mass: 0.7 });
+    return () => {
+      a.stop();
+      b.stop();
+    };
+  }, [pos.x, pos.y, dragging, mx, my]);
+
   const say = (m: Mood, t: string | null, hold = 3000) => {
     setMood(m);
     setText(t);
@@ -164,10 +187,19 @@ export default function Mascot() {
   }, [activity?.tick]);
 
   // Keep the mascot pinned beside its target as the page scrolls / resizes.
+  // When it's NOT escorting an element we leave it wherever it wandered/was
+  // dropped — only clamp it back inside the viewport on resize.
   useEffect(() => {
     const reanchor = () => {
       const el = tracked.current;
-      setPos(el && el.isConnected ? poseBeside(el) : homePos());
+      if (el && el.isConnected) {
+        setPos(poseBeside(el));
+      } else {
+        const maxX = Math.max(GAP, window.innerWidth - BOX_W - GAP);
+        const maxY = Math.max(GAP, window.innerHeight - BOX_H - GAP);
+        if (mx.get() > maxX) animate(mx, maxX);
+        if (my.get() > maxY) animate(my, maxY);
+      }
     };
     window.addEventListener("scroll", reanchor, true);
     window.addEventListener("resize", reanchor);
@@ -175,7 +207,31 @@ export default function Mascot() {
       window.removeEventListener("scroll", reanchor, true);
       window.removeEventListener("resize", reanchor);
     };
-  }, []);
+  }, [mx, my]);
+
+  // Autonomous wandering: when Pilo is idle (no agent intent to escort) and not
+  // being dragged, it strolls to a random spot every few seconds. Pauses the
+  // moment an intent arrives (mood leaves "idle") or the user grabs it.
+  useEffect(() => {
+    if (mood !== "idle" || dragging) return;
+    let alive = true;
+    let hop: ReturnType<typeof setTimeout>;
+    const roam = () => {
+      if (!alive) return;
+      const maxX = Math.max(GAP, window.innerWidth - BOX_W - GAP);
+      const maxY = Math.max(GAP, window.innerHeight - BOX_H - GAP);
+      const nx = GAP + Math.random() * (maxX - GAP);
+      const ny = GAP + Math.random() * (maxY - GAP);
+      setPos((prev) => ({ x: nx, y: ny, facing: nx >= prev.x ? "right" : "left" }));
+      hop = setTimeout(roam, 3500 + Math.random() * 3500);
+    };
+    // Settle first so it doesn't dart off the instant you drop it or it goes idle.
+    hop = setTimeout(roam, 2500);
+    return () => {
+      alive = false;
+      clearTimeout(hop);
+    };
+  }, [mood, dragging]);
 
   // React to panel-level nudges.
   useEffect(() => {
@@ -203,10 +259,30 @@ export default function Mascot() {
 
   return (
     <motion.div
-      initial={false}
-      animate={{ x: pos.x, y: pos.y }}
-      transition={{ type: "spring", stiffness: 130, damping: 18, mass: 0.7 }}
+      drag
+      dragListener={false}
+      dragControls={dragControls}
+      dragMomentum={false}
+      dragElastic={0.12}
+      dragConstraints={{
+        left: GAP,
+        top: GAP,
+        right: Math.max(GAP, (typeof window === "undefined" ? 1280 : window.innerWidth) - BOX_W - GAP),
+        bottom: Math.max(GAP, (typeof window === "undefined" ? 800 : window.innerHeight) - BOX_H - GAP),
+      }}
+      onDragStart={() => {
+        tracked.current = null; // stop escorting any element while hand-held
+        setDragging(true);
+      }}
+      onDragEnd={() => {
+        // Commit the dropped spot as the new commanded position so the follow
+        // spring doesn't yank Pilo back to where an old intent left it.
+        setPos((prev) => ({ ...prev, x: mx.get(), y: my.get() }));
+        setDragging(false);
+      }}
       style={{
+        x: mx,
+        y: my,
         position: "fixed",
         left: 0,
         top: 0,
@@ -245,7 +321,23 @@ export default function Mascot() {
         )}
       </AnimatePresence>
 
-      <motion.div animate={mood} variants={{}} style={{ width: 90, height: 96, position: "relative", transform: pos.facing === "left" ? "scaleX(-1)" : undefined }}>
+      <motion.div
+        animate={mood}
+        variants={{}}
+        onPointerDown={(e) => dragControls.start(e)}
+        title="Kéo tôi đi chơi! 🖐️"
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 1.12 }}
+        style={{
+          width: 90,
+          height: 96,
+          position: "relative",
+          pointerEvents: "auto",
+          cursor: dragging ? "grabbing" : "grab",
+          touchAction: "none",
+          scaleX: pos.facing === "left" ? -1 : 1,
+        }}
+      >
         <motion.div animate={BODY[mood]} style={{ width: "100%", height: "100%" }}>
           {/* confetti on celebrate */}
           <AnimatePresence>
