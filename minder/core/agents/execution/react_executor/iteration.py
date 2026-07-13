@@ -116,12 +116,9 @@ class IterationMixin:
             "list_files",
             "search",
             "list_todos",
-            "search_tools",
             "list_processes",
             "get_process_output",
             "read_pdf",
-            "list_subagents",
-            "list_agents",
         }
     )
 

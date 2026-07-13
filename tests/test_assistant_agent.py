@@ -16,9 +16,7 @@ FORBIDDEN_TOOLS = {
     "list_files",
     "search",
     "subagent",
-    "invoke_skill",
     "batch_tool",
-    "notebook_edit",
 }
 
 

@@ -11,37 +11,6 @@ from typing import Any
 from minder.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
-    # ===== Schedule Tool =====
-    {
-        "type": "function",
-        "function": {
-            "name": "schedule",
-            "description": load_tool_description("schedule"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "enum": ["list", "add", "remove", "run_now", "status"],
-                        "description": "Schedule action to perform",
-                    },
-                    "name": {
-                        "type": "string",
-                        "description": "Schedule name (for add/remove/run_now)",
-                    },
-                    "cron": {
-                        "type": "string",
-                        "description": "Cron expression (for add). Format: minute hour day-of-month month day-of-week",
-                    },
-                    "command": {
-                        "type": "string",
-                        "description": "Shell command to run (for add)",
-                    },
-                },
-                "required": ["action"],
-            },
-        },
-    },
     # ===== Message Tool =====
     {
         "type": "function",

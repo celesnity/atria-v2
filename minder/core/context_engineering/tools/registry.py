@@ -26,22 +26,14 @@ from minder.core.context_engineering.tools.handlers.search_tools_handler import 
 from minder.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
 from minder.core.context_engineering.tools.implementations.note_tool import execute_note
 from minder.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
-from minder.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from minder.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from minder.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
-from minder.core.context_engineering.tools.implementations.md_to_pdf_tool import (
-    MarkdownToPdfHandler,
-)
-from minder.core.context_engineering.tools.handlers.md_to_pdf_handler import MdToPdfHandler
-from minder.core.context_engineering.tools.implementations.md_to_pdf_tool import MdToPdfTool
-from minder.core.context_engineering.tools.handlers.artifacts_handler import ArtifactsToolHandler
 
 if TYPE_CHECKING:
     from minder.core.skills import SkillLoader
 
 logger = logging.getLogger(__name__)
 
-from minder.core.context_engineering.tools.implementations.agents_tool import AgentsTool
 from minder.core.context_engineering.tools.implementations.patch_tool import PatchTool
 from minder.core.context_engineering.tools.implementations.pdf_tool import PDFTool
 from minder.core.context_engineering.tools.implementations.task_complete_tool import (
@@ -165,15 +157,12 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 file_ops.protected_roots = self._protected_guard.roots
             except Exception:  # noqa: BLE001 — guard wiring must never block init
                 pass
-        self._md_to_pdf_tool = MdToPdfTool()
-        self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
         self._ask_user_handler = AskUserHandler(ask_user_tool)
         self._mcp_handler = McpToolHandler(mcp_manager)
         self.todo_handler = TodoHandler()
         self.thinking_handler = ThinkingHandler()
         self._pdf_tool = PDFTool()
-        self._agents_tool = AgentsTool()
         self._patch_tool = PatchTool()
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
@@ -195,12 +184,9 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             mcp_manager=mcp_manager,
             on_discover=self.discover_mcp_tool,
         )
-        self._schedule_handler = ScheduleToolHandler()
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
-        self._markdown_to_pdf_handler = MarkdownToPdfHandler()
         self._session_handler = SessionToolHandler()
-        self._artifacts_handler = ArtifactsToolHandler()
         self._batch_handler: Union[BatchToolHandler, None] = None  # Lazy init after registry ready
 
         self.set_mcp_manager(mcp_manager)
@@ -215,8 +201,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "list_processes": lambda args, ctx: self._process_handler.list_processes(),
             "get_process_output": self._process_handler.get_process_output,
             "kill_process": self._process_handler.kill_process,
-            "md_to_pdf": self._md_to_pdf_handler_new.md_to_pdf,
-            "notebook_edit": self._notebook_edit_handler.edit_cell,
             "ask_user": self._ask_user_handler.ask_questions,
             "write_todos": self._write_todos,
             "update_todo": self._update_todo,
@@ -225,35 +209,21 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             "clear_todos": self._clear_todos,
             # Broadcast blackboard: un-addressed request + voluntary response
             "request_help": self._execute_request_help,
-            "get_help_responses": self._execute_get_help_responses,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
-            # MCP tool discovery (token-efficient)
-            "search_tools": self._search_tools_handler.search_tools,
             # Task completion tool
             "task_complete": self._execute_task_complete,
             # Plan presentation tool
             "present_plan": self._execute_present_plan,
-            # Skills system tool
-            "invoke_skill": self._handle_invoke_skill,
-            # Schedule tool
-            "schedule": self._schedule_handler.handle,
             # Message tool
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
-            "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
-            # Session inspection tools
-            "list_subagents": self._session_handler.list_subagents,
+            # Session inspection tools (dormant — list_subagents removed from schema)
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
-            # Agents listing
-            "list_agents": self._handle_list_agents,
             # Apply patch
             "apply_patch": self._handle_apply_patch,
-            # Artifact tools
-            "list_artifact_images": self._artifacts_handler.list_artifact_images,
-            "read_artifact_image": self._artifacts_handler.read_artifact_image,
             # Blackboard note tool
             "NOTE": lambda args, ctx=None: execute_note(
                 args, blackboard=getattr(ctx, "blackboard", None)
@@ -471,11 +441,8 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 "batch_tool",
                 "present_plan",
                 "send_image",
-                "list_artifact_images",
-                "read_artifact_image",
                 "NOTE",
                 "request_help",
-                "get_help_responses",
                 "write_todos",
                 "update_todo",
                 "complete_todo",
