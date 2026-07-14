@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../stores/chat';
 
 /**
@@ -23,6 +24,8 @@ function reply(id: string, phase: Phase, text?: string) {
 }
 
 export function QuickChatBridge() {
+  const { t } = useTranslation('common');
+
   useEffect(() => {
     // The request currently being answered, and where its assistant turn starts
     // in the message list (so we never mistake the previous turn for the reply).
@@ -47,7 +50,7 @@ export function QuickChatBridge() {
 
       const store = useChatStore.getState();
       if (!store.currentSessionId) {
-        reply(id, 'error', 'Chưa có phiên chat — mở một cuộc trò chuyện trước nhé.');
+        reply(id, 'error', t('quickChat.noSessionError'));
         return;
       }
 
@@ -62,7 +65,7 @@ export function QuickChatBridge() {
       baseLen = ss ? ss.messages.length : 0;
 
       clearTimeout(safety);
-      safety = setTimeout(() => finish(sawText ? 'done' : 'error', sawText ? undefined : 'Hết thời gian chờ.'), 90_000);
+      safety = setTimeout(() => finish(sawText ? 'done' : 'error', sawText ? undefined : t('quickChat.timeoutError')), 90_000);
     };
 
     const unsub = useChatStore.subscribe((state) => {
@@ -96,7 +99,7 @@ export function QuickChatBridge() {
       unsub();
       clearTimeout(safety);
     };
-  }, []);
+  }, [t]);
 
   return null;
 }

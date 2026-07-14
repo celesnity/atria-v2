@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 interface Props {
   columns: string[];
   rows: (string | number | null | undefined)[][];
@@ -19,6 +21,7 @@ export function DataTable({
   onCellChange,
   onColumnChange,
 }: Props) {
+  const { t } = useTranslation('artifacts');
   const capped = rows.slice(0, maxRows);
   const editableProps = editable
     ? {
@@ -31,8 +34,8 @@ export function DataTable({
     <div className="flex flex-col h-full">
       {truncatedFrom !== undefined && truncatedFrom > maxRows && (
         <div className="px-3 py-1.5 text-[13px] font-mono text-block-coral border-b border-hairline-soft bg-surface-soft/70">
-          Showing {maxRows.toLocaleString()} of {truncatedFrom.toLocaleString()} rows
-          {editable && ' — edits beyond this window are not persisted'}
+          {t('dataTable.truncated', { shown: maxRows.toLocaleString(), total: truncatedFrom.toLocaleString() })}
+          {editable && t('dataTable.truncatedEditWarning')}
         </div>
       )}
       <div className="flex-1 overflow-auto">

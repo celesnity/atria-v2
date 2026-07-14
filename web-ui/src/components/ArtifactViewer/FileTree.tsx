@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, Eye, EyeOff, RefreshCw, FilePlus, FolderPlus } from 'lucide-react';
 import { useFileExplorerStore } from '../../stores/fileExplorer';
 import { FileTreeNode } from './FileTreeNode';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }: Props) {
+  const { t } = useTranslation('artifacts');
   const key = useMemo(() => fsScopeKey(scope), [scope]);
   const tree = useFileExplorerStore(s => s.treesByScope[key]);
   const loadDir = useFileExplorerStore(s => s.loadDir);
@@ -58,8 +60,8 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
   const canMutate = true;
 
   const buildRootMenu = (): Array<MenuItem | 'divider'> => ([
-    { label: 'New File', onSelect: () => beginCreate(scope, '', 'file') },
-    { label: 'New Folder', onSelect: () => beginCreate(scope, '', 'dir') },
+    { label: t('fileTree.menuNewFile'), onSelect: () => beginCreate(scope, '', 'file') },
+    { label: t('fileTree.menuNewFolder'), onSelect: () => beginCreate(scope, '', 'dir') },
   ]);
 
   // Tree-focused keyboard shortcuts (Cmd/Ctrl+N → new file at root)
@@ -89,7 +91,7 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
           <input
             value={search}
             onChange={(e) => setSearch(scope, e.target.value)}
-            placeholder="Search files…"
+            placeholder={t('fileTree.searchPlaceholder')}
             className="flex-1 bg-transparent text-[12px] font-mono text-ink placeholder:text-text-muted outline-none min-w-0"
           />
         </div>
@@ -97,16 +99,16 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
           <>
             <button
               onClick={() => void beginCreate(scope, '', 'file')}
-              title="New file (⌘N)"
-              aria-label="New file"
+              title={t('fileTree.newFileTitle')}
+              aria-label={t('fileTree.newFile')}
               className="p-1 rounded text-ink/45 hover:text-ink/85 hover:bg-ink/5 cursor-pointer transition-colors"
             >
               <FilePlus className="w-3 h-3" />
             </button>
             <button
               onClick={() => void beginCreate(scope, '', 'dir')}
-              title="New folder (⌘⇧N)"
-              aria-label="New folder"
+              title={t('fileTree.newFolderTitle')}
+              aria-label={t('fileTree.newFolder')}
               className="p-1 rounded text-ink/45 hover:text-ink/85 hover:bg-ink/5 cursor-pointer transition-colors"
             >
               <FolderPlus className="w-3 h-3" />
@@ -116,8 +118,8 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
         {showHiddenToggle && (
           <button
             onClick={() => void setShowHidden(scope, !showHidden)}
-            title={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
-            aria-label={showHidden ? 'Hide dotfiles' : 'Show dotfiles'}
+            title={showHidden ? t('fileTree.hideDotfiles') : t('fileTree.showDotfiles')}
+            aria-label={showHidden ? t('fileTree.hideDotfiles') : t('fileTree.showDotfiles')}
             className={`p-1 rounded transition-colors cursor-pointer ${showHidden ? 'text-accent-cobalt hover:text-accent-cobalt/80' : 'text-ink/35 hover:text-ink/65'}`}
           >
             {showHidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -125,8 +127,8 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
         )}
         <button
           onClick={() => refresh(scope)}
-          aria-label="Refresh tree"
-          title="Refresh"
+          aria-label={t('fileTree.refreshTree')}
+          title={t('fileTree.refresh')}
           className="p-1 rounded text-ink/35 hover:text-ink/65 cursor-pointer transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${rootLoading ? 'animate-spin' : ''}`} />
@@ -146,10 +148,10 @@ export function FileTree({ convId, scope, showHiddenToggle = true, autoExpand }:
         }}
       >
         {rootLoading && rootEntries.length === 0 && (
-          <p className="px-4 py-2 text-[12px] font-mono text-ink/35">Loading…</p>
+          <p className="px-4 py-2 text-[12px] font-mono text-ink/35">{t('fileTree.loading')}</p>
         )}
         {!rootLoading && rootEntries.length === 0 && !pendingEntry && (
-          <p className="px-4 py-2 text-[12px] font-mono text-ink/35">No files</p>
+          <p className="px-4 py-2 text-[12px] font-mono text-ink/35">{t('fileTree.noFiles')}</p>
         )}
         {rootEntries.map(entry => (
           <FileTreeNode

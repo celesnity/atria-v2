@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ChevronRight, ChevronDown, ArrowRight, ArrowUpRight, FileText, ClipboardList } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Message, TaxonomyCategory, DeepResearchSection } from '../../types';
 import { wsClient } from '../../api/websocket';
 
@@ -9,9 +10,9 @@ interface Props {
 }
 
 const DEPTH_OPTIONS = [
-  { value: 'shallow', label: 'Shallow', desc: 'Quick overview' },
-  { value: 'standard', label: 'Standard', desc: 'Balanced' },
-  { value: 'deep', label: 'Deep', desc: 'Comprehensive' },
+  { value: 'shallow' },
+  { value: 'standard' },
+  { value: 'deep' },
 ] as const;
 type Depth = 'shallow' | 'standard' | 'deep';
 
@@ -23,13 +24,7 @@ const STATUS_COLORS = {
   error:     'text-semantic-danger',
 } as const;
 
-const STATUS_LABELS = {
-  reviewing: 'Awaiting review',
-  queued:    'Queued',
-  running:   'Researching…',
-  done:      'Complete',
-  error:     'Error',
-} as const;
+// STATUS_LABELS replaced by t('deepResearch.status.*') calls at the render site.
 
 // ─── Read-only taxonomy tree ──────────────────────────────────────────────────
 
@@ -73,6 +68,7 @@ function TaxonomyTree({ categories }: { categories: TaxonomyCategory[] }) {
 // ─── Review panel — blocks until user accepts or requests regeneration ────────
 
 function ReviewPanel({ message }: { message: Message }) {
+  const { t } = useTranslation('chat');
   const { dr_review_request_id, dr_taxonomy, dr_job_id, dr_topic } = message;
 
   const [topicDraft] = useState(dr_topic ?? '');
@@ -122,7 +118,7 @@ function ReviewPanel({ message }: { message: Message }) {
       {categories.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-xs text-text-400 font-mono">
-            Taxonomy — {categories.length} categories, {totalSubs} subtopics
+            {t('deepResearch.taxonomySummary', { categories: categories.length, subtopics: totalSubs })}
           </p>
           <TaxonomyTree categories={categories} />
         </div>
@@ -130,7 +126,7 @@ function ReviewPanel({ message }: { message: Message }) {
 
       {/* Modification request input */}
       <div className="space-y-1.5">
-        <label className="text-xs text-text-400 font-mono">Request changes</label>
+        <label className="text-xs text-text-400 font-mono">{t('deepResearch.requestChanges')}</label>
         <div className="flex gap-2 items-end">
           <textarea
             className="flex-1 bg-bg-100 border border-border-300/20 focus:border-accent-main-100/50 rounded-md px-3 py-2 text-sm text-text-100 font-mono resize-none outline-none transition-colors placeholder:text-text-500 min-h-[2.5rem]"
@@ -138,14 +134,14 @@ function ReviewPanel({ message }: { message: Message }) {
             value={modifyInstructions}
             onChange={e => setModifyInstructions(e.target.value)}
             onKeyDown={handleModifyKey}
-            placeholder={'e.g. "translate all to Vietnamese", "add a category on economics", "remove mental health subtopic"...'}
+            placeholder={t('deepResearch.requestChangesPlaceholder')}
             disabled={pending !== null}
           />
           <button
             onClick={() => send('modify')}
             disabled={pending !== null || !modifyInstructions.trim()}
             className="flex-shrink-0 px-3 py-2 bg-bg-200/60 hover:bg-bg-200 disabled:opacity-40 disabled:cursor-not-allowed border border-border-300/20 text-text-200 text-xs font-semibold font-mono rounded transition-colors h-10"
-            title="Apply changes (Enter)"
+            title={t('deepResearch.applyChanges')}
           >
             {pending === 'modify' ? (
               <span className="inline-block w-3.5 h-3.5 border-2 border-text-400 border-t-transparent rounded-md animate-spin" />
@@ -154,12 +150,12 @@ function ReviewPanel({ message }: { message: Message }) {
             )}
           </button>
         </div>
-        <p className="text-xs text-text-500 font-mono">Press Enter or ↵ to apply · Shift+Enter for new line</p>
+        <p className="text-xs text-text-500 font-mono">{t('deepResearch.applyHint')}</p>
       </div>
 
       {/* Depth selector */}
       <div className="space-y-1.5">
-        <p className="text-xs text-text-400 font-mono">Research depth</p>
+        <p className="text-xs text-text-400 font-mono">{t('deepResearch.researchDepth')}</p>
         <div className="flex gap-2">
           {DEPTH_OPTIONS.map(opt => (
             <button
@@ -171,9 +167,9 @@ function ReviewPanel({ message }: { message: Message }) {
                   ? 'bg-accent-main-100/15 border-accent-main-100/50 text-accent-main-100'
                   : 'bg-bg-200/40 border-border-300/15 text-text-300 hover:border-border-300/40 hover:text-text-200'
               }`}
-              title={opt.desc}
+              title={t(`deepResearch.depth.${opt.value}Desc`)}
             >
-              {opt.label}
+              {t(`deepResearch.depth.${opt.value}`)}
             </button>
           ))}
         </div>
@@ -189,9 +185,9 @@ function ReviewPanel({ message }: { message: Message }) {
           {pending === 'regenerate' ? (
             <span className="flex items-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 border-2 border-text-400 border-t-transparent rounded-md animate-spin" />
-              Regenerating…
+              {t('deepResearch.regenerating')}
             </span>
-          ) : 'Regenerate'}
+          ) : t('deepResearch.regenerate')}
         </button>
 
         <button
@@ -202,11 +198,11 @@ function ReviewPanel({ message }: { message: Message }) {
           {pending === 'accept' ? (
             <span className="flex items-center justify-center gap-1.5">
               <span className="inline-block w-2.5 h-2.5 border-2 border-bg-000/60 border-t-transparent rounded-md animate-spin" />
-              Starting…
+              {t('deepResearch.starting')}
             </span>
           ) : (
             <span className="inline-flex items-center justify-center gap-1">
-              Start Research <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+              {t('deepResearch.startResearch')} <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </span>
           )}
         </button>
@@ -293,6 +289,7 @@ function StaticTaxonomyTree({ categories }: { categories: TaxonomyCategory[] }) 
 // ─── Main block ───────────────────────────────────────────────────────────────
 
 export function DeepResearchBlock({ message }: Props) {
+  const { t } = useTranslation('chat');
   const [showTaxonomy, setShowTaxonomy] = useState(false);
   const {
     dr_job_id, dr_topic, dr_taxonomy, dr_status = 'queued',
@@ -313,9 +310,9 @@ export function DeepResearchBlock({ message }: Props) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-text-300">deep research</span>
+            <span className="text-xs font-mono text-text-300">{t('deepResearch.label')}</span>
             <span className={`text-xs font-mono font-semibold ${STATUS_COLORS[dr_status]}`}>
-              {STATUS_LABELS[dr_status]}
+              {t(`deepResearch.statusLabel.${dr_status}`)}
             </span>
           </div>
           {dr_topic && (
@@ -373,7 +370,7 @@ export function DeepResearchBlock({ message }: Props) {
             <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
               <FileText className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
               <span className="text-xs font-mono text-emerald-300 truncate" title={dr_report_path}>
-                Saved: {dr_report_path}
+                {t('deepResearch.saved', { path: dr_report_path })}
               </span>
             </div>
           )}
@@ -386,7 +383,7 @@ export function DeepResearchBlock({ message }: Props) {
                 className="flex items-center gap-1.5 text-xs text-text-400 hover:text-text-200 transition-colors font-mono"
               >
                 <ChevronRight className={`w-3 h-3 transition-transform ${showTaxonomy ? 'rotate-90' : ''}`} />
-                Research plan ({categories.length} categories, {totalSubs} subtopics)
+                {t('deepResearch.researchPlan', { categories: categories.length, subtopics: totalSubs })}
               </button>
               {showTaxonomy && (
                 <div className="mt-2 pl-2 border-l border-border-300/20">
@@ -400,7 +397,7 @@ export function DeepResearchBlock({ message }: Props) {
           {dr_sections.length > 0 && (
             <div>
               <p className="text-xs font-mono text-text-400 mb-1.5">
-                {dr_sections.length} section{dr_sections.length !== 1 ? 's' : ''} completed
+                {t('deepResearch.sectionsCompleted', { count: dr_sections.length })}
               </p>
               <SectionAccordion sections={dr_sections} />
             </div>

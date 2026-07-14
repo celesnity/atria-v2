@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import type { MCPServer } from '../../types/mcp';
 
@@ -64,7 +65,9 @@ export function MCPServerCard({
             <h4 className="text-sm font-medium text-ink truncate">{server.name}</h4>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs text-text-muted">
-                {server.status === 'connected' ? `${server.tools_count} tools` : 'Not connected'}
+                {server.status === 'connected'
+                  ? <ToolsCountDisplay count={server.tools_count} />
+                  : <NotConnectedDisplay />}
               </span>
               <span className="text-xs text-text-muted">•</span>
               <span className="text-xs text-text-muted capitalize">{server.config_location}</span>
@@ -111,12 +114,24 @@ export function MCPServerCard({
 // Sub-components (Single Responsibility Principle)
 // ============================================================================
 
+function ToolsCountDisplay({ count }: { count: number }) {
+  const { t } = useTranslation('settings');
+  return <>{t('mcp.toolsCount', { count })}</>;
+}
+
+function NotConnectedDisplay() {
+  const { t } = useTranslation('settings');
+  return <>{t('mcp.notConnected')}</>;
+}
+
 interface StatusIndicatorProps {
   status: MCPServer['status'];
   isProcessing: boolean;
 }
 
 function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
+  const { t } = useTranslation('settings');
+
   if (isProcessing) {
     return (
       <div className="flex items-center justify-center w-8 h-8">
@@ -126,10 +141,10 @@ function StatusIndicator({ status, isProcessing }: StatusIndicatorProps) {
   }
 
   const statusConfig = {
-    connected: { color: 'bg-green-500', label: 'Connected' },
-    disconnected: { color: 'bg-gray-400', label: 'Disconnected' },
-    connecting: { color: 'bg-yellow-500', label: 'Connecting' },
-    error: { color: 'bg-semantic-danger', label: 'Error' },
+    connected: { color: 'bg-green-500', label: t('mcp.statusConnected') },
+    disconnected: { color: 'bg-gray-400', label: t('mcp.statusDisconnected') },
+    connecting: { color: 'bg-yellow-500', label: t('mcp.statusConnecting') },
+    error: { color: 'bg-semantic-danger', label: t('mcp.statusError') },
   };
 
   const config = statusConfig[status];
@@ -148,6 +163,7 @@ interface ConnectionButtonProps {
 }
 
 function ConnectionButton({ status, isProcessing, onClick }: ConnectionButtonProps) {
+  const { t } = useTranslation('settings');
   const isConnected = status === 'connected';
 
   return (
@@ -160,7 +176,7 @@ function ConnectionButton({ status, isProcessing, onClick }: ConnectionButtonPro
           : 'text-white bg-gradient-brand hover:brightness-110'
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
-      {isProcessing ? 'Processing...' : isConnected ? 'Disconnect' : 'Connect'}
+      {isProcessing ? t('mcp.processing') : isConnected ? t('mcp.disconnectButton') : t('mcp.connectButton')}
     </button>
   );
 }
@@ -170,19 +186,20 @@ interface ServerDetailsProps {
 }
 
 function ServerDetails({ server }: ServerDetailsProps) {
+  const { t } = useTranslation('settings');
   const { config } = server;
 
   return (
     <div className="mt-3 space-y-2 text-xs">
-      <DetailRow label="Command" value={config.command} mono />
+      <DetailRow label={t('mcp.commandDetail')} value={config.command} mono />
 
       {config.args.length > 0 && (
-        <DetailRow label="Args" value={config.args.join(' ')} mono />
+        <DetailRow label={t('mcp.argsDetail')} value={config.args.join(' ')} mono />
       )}
 
       {Object.keys(config.env).length > 0 && (
         <div>
-          <span className="text-text-muted font-medium">Environment:</span>
+          <span className="text-text-muted font-medium">{t('mcp.environmentDetail')}</span>
           <div className="mt-1 space-y-1">
             {Object.entries(config.env).map(([key, value]) => (
               <div key={key} className="flex gap-2 text-text-secondary">
@@ -196,13 +213,13 @@ function ServerDetails({ server }: ServerDetailsProps) {
 
       <div className="flex items-center gap-4">
         <DetailRow
-          label="Auto-start"
-          value={config.auto_start ? 'Enabled' : 'Disabled'}
+          label={t('mcp.autoStartDetail')}
+          value={config.auto_start ? t('mcp.autoStartEnabled') : t('mcp.autoStartDisabled')}
           valueColor={config.auto_start ? 'text-green-600' : 'text-text-muted'}
         />
         <DetailRow
-          label="Enabled"
-          value={config.enabled ? 'Yes' : 'No'}
+          label={t('mcp.enabledDetail')}
+          value={config.enabled ? t('mcp.yes') : t('mcp.no')}
           valueColor={config.enabled ? 'text-green-600' : 'text-text-muted'}
         />
       </div>
@@ -243,6 +260,8 @@ function ActionButtons({
   onEdit,
   onDelete,
 }: ActionButtonsProps) {
+  const { t } = useTranslation('settings');
+
   return (
     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-hairline-soft">
       {server.status === 'connected' && (
@@ -251,7 +270,7 @@ function ActionButtons({
           disabled={isProcessing}
           variant="secondary"
         >
-          View Tools ({server.tools_count})
+          {t('mcp.viewTools', { count: server.tools_count })}
         </ActionButton>
       )}
 
@@ -260,7 +279,7 @@ function ActionButtons({
         disabled={isProcessing}
         variant="secondary"
       >
-        Test Connection
+        {t('mcp.testConnection')}
       </ActionButton>
 
       <ActionButton
@@ -268,7 +287,7 @@ function ActionButtons({
         disabled={isProcessing}
         variant="secondary"
       >
-        Edit
+        {t('mcp.actionEdit')}
       </ActionButton>
 
       <div className="flex-1" />
@@ -278,7 +297,7 @@ function ActionButtons({
         disabled={isProcessing}
         variant="danger"
       >
-        Remove
+        {t('mcp.actionRemove')}
       </ActionButton>
     </div>
   );

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshCw, ExternalLink, Code2, Eye } from 'lucide-react';
 import { apiClient } from '../../../api/client';
 import { fsScopeKey, type FsScope } from '../../../types';
@@ -133,6 +134,7 @@ function dirname(p: string): string {
 }
 
 export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Props) {
+  const { t } = useTranslation('artifacts');
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -147,8 +149,8 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
     setError(null);
     apiClient
       .readFsText(scope, path)
-      .then(t => {
-        if (!cancelled) setText(t);
+      .then(txt => {
+        if (!cancelled) setText(txt);
       })
       .catch(e => {
         if (!cancelled) setError(String(e));
@@ -190,12 +192,12 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
   if (error) {
     return (
       <div className="p-4 text-xs font-mono text-block-coral">
-        Failed to load file: {error}
+        {t('htmlViewer.loadError', { error })}
       </div>
     );
   }
   if (text === null) {
-    return <div className="p-4 text-xs font-mono text-ink/45">Loading…</div>;
+    return <div className="p-4 text-xs font-mono text-ink/45">{t('htmlViewer.loading')}</div>;
   }
 
   const externalUrl = apiClient.readFsUrl(scope, path);
@@ -209,28 +211,28 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-1 px-2 py-1 border-b border-hairline-soft">
         {canEdit && (
-          <div role="tablist" aria-label="View mode" className="flex items-center gap-0.5 bg-ink/5 rounded p-0.5">
+          <div role="tablist" aria-label={t('htmlViewer.viewMode')} className="flex items-center gap-0.5 bg-ink/5 rounded p-0.5">
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'preview'}
               onClick={() => setMode('preview')}
-              title="Preview rendered HTML"
+              title={t('htmlViewer.previewTitle')}
               className={segBtn(mode === 'preview')}
             >
               <Eye className="w-3 h-3" />
-              Preview
+              {t('htmlViewer.preview')}
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={mode === 'source'}
               onClick={() => setMode('source')}
-              title="Edit HTML source"
+              title={t('htmlViewer.sourceTitle')}
               className={segBtn(mode === 'source')}
             >
               <Code2 className="w-3 h-3" />
-              Source
+              {t('htmlViewer.source')}
             </button>
           </div>
         )}
@@ -239,8 +241,8 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
           <button
             type="button"
             onClick={() => setReloadKey(k => k + 1)}
-            title="Reload preview"
-            aria-label="Reload preview"
+            title={t('htmlViewer.reloadPreview')}
+            aria-label={t('htmlViewer.reloadPreview')}
             className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
           >
             <RefreshCw className="w-3 h-3" />
@@ -250,8 +252,8 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
           href={externalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="Open in new tab"
-          aria-label="Open in new tab"
+          title={t('htmlViewer.openNewTab')}
+          aria-label={t('htmlViewer.openNewTab')}
           className="inline-flex items-center gap-1 px-2 py-0.5 text-[13px] font-mono rounded cursor-pointer text-ink/65 hover:bg-surface-soft transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
         >
           <ExternalLink className="w-3 h-3" />
@@ -260,7 +262,7 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
 
       {mode === 'source' && canEdit ? (
         <div className="flex-1 min-h-0">
-          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading editor…</div>}>
+          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">{t('htmlViewer.loadingEditor')}</div>}>
             <MonacoViewer scope={scope} path={path} editable languageOverride="html" convId={convId} tabId={tabId} />
           </Suspense>
         </div>
@@ -269,7 +271,7 @@ export function HtmlViewer({ scope, path, editable = false, convId, tabId }: Pro
           <iframe
             ref={iframeRef}
             key={reloadKey}
-            title="HTML preview"
+            title={t('htmlViewer.htmlPreviewTitle')}
             srcDoc={srcDoc}
             sandbox="allow-scripts allow-forms allow-popups allow-modals"
             className="w-full h-full border-0 bg-white"

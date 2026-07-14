@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pencil, Eye } from 'lucide-react';
 import { PersonaForm } from '../Personas/PersonaForm';
 import { apiClient } from '../../api/client';
 import type { Persona } from '../../types';
 
 export function PersonasSettings() {
+  const { t } = useTranslation('settings');
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -47,12 +49,12 @@ export function PersonasSettings() {
       setSelectedPersona(savedPersona);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : t('personas.errorSave'));
     }
   };
 
   const handleDeletePersona = async (name: string) => {
-    if (!confirm(`Delete persona "${name}"?`)) return;
+    if (!confirm(t('personas.confirmDelete', { name }))) return;
 
     try {
       await apiClient.deletePersona(name);
@@ -61,7 +63,7 @@ export function PersonasSettings() {
         setSelectedPersona(personas[0] || null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
+      setError(err instanceof Error ? err.message : t('personas.errorDelete'));
     }
   };
 
@@ -70,7 +72,7 @@ export function PersonasSettings() {
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center gap-2 text-ink/50">
           <div className="w-4 h-4 border-2 border-ink/20 border-t-ink rounded-md animate-spin" />
-          <span className="text-sm">Loading personas...</span>
+          <span className="text-sm">{t('personas.loading')}</span>
         </div>
       </div>
     );
@@ -80,8 +82,8 @@ export function PersonasSettings() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-ink">Personas</h2>
-        <p className="text-sm text-ink/60 mt-1">Create and manage custom agent personalities</p>
+        <h2 className="text-lg font-semibold text-ink">{t('personas.title')}</h2>
+        <p className="text-sm text-ink/60 mt-1">{t('personas.subtitle')}</p>
       </div>
 
       {error && (
@@ -94,7 +96,7 @@ export function PersonasSettings() {
         {/* Left: Personas List */}
         <div className="lg:col-span-1 border border-hairline rounded-md bg-canvas flex flex-col">
           <div className="bg-surface-soft px-4 py-3 border-b border-hairline flex items-center justify-between rounded-t-lg">
-            <h3 className="font-medium text-ink text-sm">All Personas</h3>
+            <h3 className="font-medium text-ink text-sm">{t('personas.allPersonas')}</h3>
             <button
               onClick={() => {
                 setSelectedPersona(null);
@@ -102,15 +104,15 @@ export function PersonasSettings() {
               }}
               className="px-3 py-1.5 bg-ink text-inverse-ink text-xs rounded-md hover:bg-ink/90 font-medium transition-colors active:scale-[0.98] whitespace-nowrap"
             >
-              + New
+              {t('personas.newButton')}
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-hairline">
             {personas.length === 0 ? (
               <div className="p-6 text-center">
-                <p className="text-sm text-ink/50">No personas yet</p>
-                <p className="text-xs text-ink/40 mt-2">Click "+ New" to create one</p>
+                <p className="text-sm text-ink/50">{t('personas.noPersonasYet')}</p>
+                <p className="text-xs text-ink/40 mt-2">{t('personas.noPersonasHint')}</p>
               </div>
             ) : (
               personas.map(p => (
@@ -140,9 +142,9 @@ export function PersonasSettings() {
             <div className="bg-surface-soft px-4 py-3 border-b border-hairline flex items-center justify-between rounded-t-lg">
               <h3 className="font-medium text-ink text-sm inline-flex items-center gap-1.5">
                 {isEditing ? (
-                  <><Pencil className="w-3.5 h-3.5" strokeWidth={1.5} /> Edit Persona</>
+                  <><Pencil className="w-3.5 h-3.5" strokeWidth={1.5} /> {t('personas.editPersona')}</>
                 ) : (
-                  <><Eye className="w-3.5 h-3.5" strokeWidth={1.5} /> View Persona</>
+                  <><Eye className="w-3.5 h-3.5" strokeWidth={1.5} /> {t('personas.viewPersona')}</>
                 )}
               </h3>
               {!isEditing && selectedPersona && (
@@ -150,7 +152,7 @@ export function PersonasSettings() {
                   onClick={() => handleDeletePersona(selectedPersona.name)}
                   className="px-3 py-1.5 text-semantic-danger text-xs rounded-md hover:bg-red-50 font-medium transition-colors border border-semantic-danger active:scale-[0.98] whitespace-nowrap"
                 >
-                  Delete
+                  {t('personas.delete')}
                 </button>
               )}
             </div>
@@ -165,11 +167,11 @@ export function PersonasSettings() {
               ) : selectedPersona ? (
                 <div className="p-6 space-y-6">
                   <div>
-                    <h4 className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-2">Name</h4>
+                    <h4 className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-2">{t('personas.nameSection')}</h4>
                     <p className="text-base font-medium text-ink">{selectedPersona.name}</p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-3">System Prompt</h4>
+                    <h4 className="text-xs font-semibold text-ink/60 uppercase tracking-wide mb-3">{t('personas.systemPromptSection')}</h4>
                     <div className="bg-surface-soft border border-hairline rounded-md p-4 overflow-auto max-h-96">
                       <pre className="text-xs text-ink whitespace-pre-wrap font-mono leading-relaxed">
                         {selectedPersona.system_prompt}
@@ -180,7 +182,7 @@ export function PersonasSettings() {
                     onClick={() => setIsEditing(true)}
                     className="w-full px-4 py-2 bg-ink text-inverse-ink rounded-md hover:bg-ink/90 font-medium text-sm transition-colors active:scale-[0.98] whitespace-nowrap"
                   >
-                    Edit Persona
+                    {t('personas.editPersonaButton')}
                   </button>
                 </div>
               ) : null}

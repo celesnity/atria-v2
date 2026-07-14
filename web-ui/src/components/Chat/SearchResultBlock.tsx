@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, ChevronDown, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types';
 
 interface Props {
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function SearchResultBlock({ message }: Props) {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
   const { search_query, search_result_count = 0, search_results = [], search_provider } = message;
   const hasResults = search_results.length > 0;
@@ -23,7 +25,7 @@ export function SearchResultBlock({ message }: Props) {
         <Search className="w-4 h-4 text-accent-secondary-100 flex-shrink-0" />
 
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-mono text-text-300 mr-2">searched</span>
+          <span className="text-xs font-mono text-text-300 mr-2">{t('searchResult.searched')}</span>
           <span className="text-sm text-text-100 font-medium truncate">{search_query}</span>
         </div>
 
@@ -32,7 +34,7 @@ export function SearchResultBlock({ message }: Props) {
             <span className="text-xs text-text-400 font-mono">{search_provider}</span>
           )}
           <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-bg-200 text-text-300 border border-border-300/20">
-            {search_result_count} results
+            {t('searchResult.results', { count: search_result_count })}
           </span>
           {hasResults && (
             <ChevronDown className={`w-3.5 h-3.5 text-text-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />

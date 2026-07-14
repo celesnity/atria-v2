@@ -6,9 +6,11 @@ import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { signOut } from "../../lib/auth";
 import { useChatStore } from "../../stores/chat";
+import { useUiStore } from "../../stores/ui";
 import { TenantSwitcher } from "../TenantSwitcher";
 import { ModuleBreadcrumb } from "./ModuleBreadcrumb";
 import { ModuleTabs } from "./ModuleTabs";
+import { useTranslation } from "react-i18next";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -40,13 +42,14 @@ interface MeInfo {
  * bar reads identically across surfaces.
  */
 export function TopBar() {
+  const { t } = useTranslation('layout');
   const navigate = useNavigate();
   const status = useChatStore((state) => state.status);
   const isConnected = useChatStore((state) => state.isConnected);
-  const toggleSidebar = useChatStore((state) => state.toggleSidebar);
-  const openMobileSidebar = useChatStore((state) => state.openMobileSidebar);
-  const openCommandPalette = useChatStore((state) => state.openCommandPalette);
-  const openSettingsModal = useChatStore((state) => state.openSettingsModal);
+  const toggleSidebar = useUiStore((state) => state.toggleSidebar);
+  const openMobileSidebar = useUiStore((state) => state.openMobileSidebar);
+  const openCommandPalette = useUiStore((state) => state.openCommandPalette);
+  const openSettingsModal = useUiStore((state) => state.openSettingsModal);
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const reduce = useReducedMotion();
@@ -160,8 +163,8 @@ export function TopBar() {
       <button
         onClick={openMobileSidebar}
         className={`${iconBtn} md:hidden -ml-1`}
-        title="Open menu"
-        aria-label="Open navigation menu"
+        title={t('topbar.openMenu')}
+        aria-label={t('topbar.openNavigationMenu')}
       >
         <Menu className="w-5 h-5" strokeWidth={1.5} />
       </button>
@@ -172,7 +175,7 @@ export function TopBar() {
           {/* Minder AI logo mark */}
           <img
             src="/logo.png"
-            alt="Minder AI"
+            alt={t('topbar.brandLogoAlt')}
             className="h-7 w-7 select-none"
             draggable={false}
           />
@@ -181,7 +184,7 @@ export function TopBar() {
               Minder
             </span>
             <span className="eyebrow-mono text-ink/40 hidden lg:inline">
-              AI Assistant
+              {t('topbar.brandTagline')}
             </span>
           </div>
         </div>
@@ -209,7 +212,7 @@ export function TopBar() {
           {status.session_cost != null && status.session_cost > 0 && (
             <span
               className={`${pillBase} hidden sm:inline-flex cursor-default bg-bg-200 text-text-300 border-border-300/30`}
-              title={`Session cost: ${formatCost(status.session_cost)}`}
+              title={t('topbar.sessionCost', { cost: formatCost(status.session_cost) })}
             >
               {formatCost(status.session_cost)}
             </span>
@@ -218,24 +221,27 @@ export function TopBar() {
           {status.context_usage_pct != null && (
             <span
               className={`${pillBase} hidden sm:inline-flex cursor-default ${getContextColor(status.context_usage_pct)}`}
-              title={`Context window: ${Math.round(status.context_usage_pct)}% used, ${Math.round(100 - status.context_usage_pct)}% remaining`}
+              title={t('topbar.contextWindow', {
+                used: Math.round(status.context_usage_pct),
+                remaining: Math.round(100 - status.context_usage_pct),
+              })}
             >
-              Ctx: {Math.round(status.context_usage_pct)}%
+              {t('topbar.contextPct', { pct: Math.round(status.context_usage_pct) })}
             </span>
           )}
 
           <button
             onClick={openCommandPalette}
             className={`${pillBase} bg-surface-soft text-ink/70 border-hairline-soft hover:bg-canvas hover:text-ink`}
-            title="Command palette (Ctrl/Cmd+K)"
-            aria-label="Open command palette"
+            title={t('topbar.commandPaletteTitle')}
+            aria-label={t('topbar.openCommandPalette')}
           >
             <Command className="w-3 h-3" strokeWidth={1.5} />
           </button>
 
           <span
             role="status"
-            aria-label={isConnected ? "Connected" : "Offline"}
+            aria-label={isConnected ? t('topbar.connected') : t('topbar.offline')}
             className={`${pillBase} cursor-default ${
               isConnected
                 ? "bg-semantic-success/10 text-semantic-success border-semantic-success/20"
@@ -243,7 +249,7 @@ export function TopBar() {
             }`}
           >
             <span className="hidden sm:inline">
-              {isConnected ? "Connected" : "Offline"}
+              {isConnected ? t('topbar.connected') : t('topbar.offline')}
             </span>
           </span>
         </div>
@@ -286,9 +292,9 @@ export function TopBar() {
         <button
           onClick={toggleTheme}
           className={`${iconBtn} relative overflow-hidden`}
-          title={theme === "cosmos" ? "Switch to Daybreak (light)" : "Switch to Cosmos (dark)"}
+          title={theme === "cosmos" ? t('topbar.switchToLight') : t('topbar.switchToDark')}
           aria-label={
-            theme === "cosmos" ? "Switch to light theme" : "Switch to dark theme"
+            theme === "cosmos" ? t('topbar.switchToLightTheme') : t('topbar.switchToDarkTheme')
           }
         >
           <AnimatePresence mode="popLayout" initial={false}>
@@ -312,8 +318,8 @@ export function TopBar() {
         <button
           onClick={openSettingsModal}
           className={iconBtn}
-          title="Settings"
-          aria-label="Settings"
+          title={t('topbar.settings')}
+          aria-label={t('topbar.settings')}
         >
           <Settings className="w-[18px] h-[18px]" strokeWidth={1.5} />
         </button>
@@ -382,7 +388,7 @@ export function TopBar() {
                   className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-ink/85 hover:bg-surface-soft cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  {signingOut ? "Signing out…" : "Sign out"}
+                  {signingOut ? t('topbar.signingOut') : t('topbar.signOut')}
                 </button>
               </motion.div>
               )}

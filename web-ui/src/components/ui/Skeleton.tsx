@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/cn';
 
 /**
@@ -38,7 +39,7 @@ export function SkeletonList({
   count = 3,
   className,
   itemClassName,
-  label = 'Loading…',
+  label,
 }: {
   count?: number;
   className?: string;
@@ -46,12 +47,14 @@ export function SkeletonList({
   /** Screen-reader status while the list loads. */
   label?: string;
 }) {
+  const { t } = useTranslation('common');
+  const resolvedLabel = label ?? t('skeleton.loading');
   return (
-    <div className={cn('space-y-3', className)} role="status" aria-busy="true" aria-label={label}>
+    <div className={cn('space-y-3', className)} role="status" aria-busy="true" aria-label={resolvedLabel}>
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton key={i} variant="block" className={itemClassName} />
       ))}
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{resolvedLabel}</span>
     </div>
   );
 }

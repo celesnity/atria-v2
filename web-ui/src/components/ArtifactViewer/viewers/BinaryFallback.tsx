@@ -1,4 +1,5 @@
 import { File as FileIcon, Download } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   path: string;
@@ -14,6 +15,7 @@ function formatSize(n?: number): string {
 }
 
 export function BinaryFallback({ path, size, url }: Props) {
+  const { t } = useTranslation('artifacts');
   const name = path.split('/').pop() ?? path;
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3 p-6 select-none">
@@ -33,7 +35,7 @@ export function BinaryFallback({ path, size, url }: Props) {
         download={name}
         className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-gradient-brand px-3 py-1.5 text-xs font-medium text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-px cursor-pointer"
       >
-        <Download className="w-3.5 h-3.5" /> Download
+        <Download className="w-3.5 h-3.5" /> {t('binaryFallback.download')}
       </a>
     </div>
   );

@@ -1,4 +1,5 @@
 import { Children, Fragment, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
 import { looksLikeFileToken, toWorkspaceRelative } from '../../utils/fileLinks';
@@ -16,6 +17,7 @@ interface FileLinkProps {
  * can't be resolved inside the current conversation workspace (no dead links).
  */
 export function FileLink({ token, variant = 'text' }: FileLinkProps) {
+  const { t } = useTranslation('chat');
   const convId = useChatStore((s) => s.currentSessionId);
   const workingDir = useChatStore((s) => s.status?.working_dir ?? '');
   const openTab = useViewerTabsStore((s) => s.openTab);
@@ -40,7 +42,7 @@ export function FileLink({ token, variant = 'text' }: FileLinkProps) {
       <button
         type="button"
         onClick={onClick}
-        title={`Open ${rel}`}
+        title={t('fileLink.open', { path: rel })}
         className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-sky-500 border border-hairline-soft hover:border-sky-400/60 hover:text-sky-400 cursor-pointer transition-colors align-baseline"
       >
         {token}
@@ -52,7 +54,7 @@ export function FileLink({ token, variant = 'text' }: FileLinkProps) {
     <button
       type="button"
       onClick={onClick}
-      title={`Open ${rel}`}
+      title={t('fileLink.open', { path: rel })}
       className="font-[540] text-sky-500 hover:text-sky-400 underline underline-offset-2 decoration-sky-400/40 hover:decoration-sky-400 cursor-pointer"
     >
       {token}

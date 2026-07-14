@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronRight, ChevronDown,
   Folder, FolderOpen,
@@ -46,6 +47,7 @@ function fileIcon(ext: string) {
 }
 
 export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchActive, searchTerm }: Props) {
+  const { t } = useTranslation('artifacts');
   const fullPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
   const key = useMemo(() => fsScopeKey(scope), [scope]);
 
@@ -113,23 +115,23 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
     const items: Array<MenuItem | 'divider'> = [];
     if (entry.kind === 'dir') {
       if (canCreate) {
-        items.push({ label: 'New File', onSelect: () => onCreateInside('file') });
-        items.push({ label: 'New Folder', onSelect: () => onCreateInside('dir') });
+        items.push({ label: t('fileTree.menuNewFile'), onSelect: () => onCreateInside('file') });
+        items.push({ label: t('fileTree.menuNewFolder'), onSelect: () => onCreateInside('dir') });
         items.push('divider');
       }
     } else {
-      items.push({ label: 'Open', onSelect: handleClick });
-      items.push({ label: 'Download', onSelect: handleDownload });
+      items.push({ label: t('fileTree.menuOpen'), onSelect: handleClick });
+      items.push({ label: t('fileTree.menuDownload'), onSelect: handleDownload });
       items.push('divider');
     }
     items.push({
-      label: 'Rename',
+      label: t('fileTree.menuRename'),
       shortcut: 'F2',
       onSelect: () => beginRename(scope, fullPath),
       disabled: !canModify,
     });
     items.push({
-      label: 'Delete',
+      label: t('fileTree.menuDelete'),
       shortcut: '⌫',
       onSelect: () => setConfirmDel(true),
       danger: true,
@@ -219,8 +221,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onCreateInside('file'); }}
-                    aria-label={`New file in ${entry.name}`}
-                    title="New file"
+                    aria-label={t('fileTree.newFileIn', { name: entry.name })}
+                    title={t('fileTree.newFile')}
                     className="p-0.5 rounded text-ink/45 hover:text-ink/90 hover:bg-ink/5 cursor-pointer"
                   >
                     <FilePlus className="w-3 h-3" />
@@ -228,8 +230,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onCreateInside('dir'); }}
-                    aria-label={`New folder in ${entry.name}`}
-                    title="New folder"
+                    aria-label={t('fileTree.newFolderIn', { name: entry.name })}
+                    title={t('fileTree.newFolder')}
                     className="p-0.5 rounded text-ink/45 hover:text-ink/90 hover:bg-ink/5 cursor-pointer"
                   >
                     <FolderPlus className="w-3 h-3" />
@@ -240,8 +242,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-                  aria-label={`Download ${entry.name}`}
-                  title="Download"
+                  aria-label={t('fileTree.downloadFile', { name: entry.name })}
+                  title={t('fileTree.menuDownload')}
                   className="p-0.5 rounded text-ink/45 hover:text-ink/90 hover:bg-ink/5 cursor-pointer"
                 >
                   <Download className="w-3 h-3" />
@@ -250,8 +252,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); const r = (e.target as HTMLElement).getBoundingClientRect(); setMenu({ x: r.left, y: r.bottom + 2 }); }}
-                aria-label={`Actions for ${entry.name}`}
-                title="More actions"
+                aria-label={t('fileTree.actionsFor', { name: entry.name })}
+                title={t('fileTree.moreActions')}
                 className="p-0.5 rounded text-ink/45 hover:text-ink/90 hover:bg-ink/5 cursor-pointer"
               >
                 <MoreHorizontal className="w-3 h-3" />
@@ -291,12 +293,8 @@ export function FileTreeNode({ convId, scope, parentPath, entry, depth, searchAc
 
       <DeleteConfirmDialog
         open={confirmDel}
-        title={`Delete ${entry.kind === 'dir' ? 'folder' : 'file'}`}
-        message={
-          entry.kind === 'dir'
-            ? `Delete folder "${entry.name}" and all of its contents? This cannot be undone.`
-            : `Delete "${entry.name}"? This cannot be undone.`
-        }
+        title={t(entry.kind === 'dir' ? 'fileTree.deleteFolderTitle' : 'fileTree.deleteFileTitle')}
+        message={t(entry.kind === 'dir' ? 'fileTree.deleteFolderMessage' : 'fileTree.deleteFileMessage', { name: entry.name })}
         onConfirm={() => removePath(scope, fullPath, entry.kind)}
         onClose={() => setConfirmDel(false)}
       />

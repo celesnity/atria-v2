@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MCPServer, MCPServerUpdateRequest } from '../../types/mcp';
 import {
   ModalHeader,
@@ -33,6 +34,7 @@ interface FormData {
 }
 
 export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMCPServerModalProps) {
+  const { t } = useTranslation('settings');
   const [formData, setFormData] = useState<FormData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
     setError(null);
 
     if (!formData.command.trim()) {
-      setError('Command is required');
+      setError(t('mcp.validationEditCommandRequired'));
       return;
     }
 
@@ -76,7 +78,7 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
 
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update server');
+      setError(err instanceof Error ? err.message : t('mcp.errorUpdateFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +129,7 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-canvas rounded-2xl shadow-modal w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
         <ModalHeader
-          title="Edit MCP Server"
+          title={t('mcp.editServerTitle')}
           subtitle={server.name}
           onClose={handleClose}
           disabled={isSubmitting}
@@ -138,7 +140,7 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
             {error && <ErrorMessage message={error} />}
 
             <TextField
-              label="Command"
+              label={t('mcp.commandLabel')}
               value={formData.command}
               onChange={(value) => setFormData(prev => prev ? ({ ...prev, command: value }) : null)}
               required
@@ -166,14 +168,14 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
             />
 
             <CheckboxField
-              label="Enable auto-start on launch"
+              label={t('mcp.autoStartLabel')}
               checked={formData.auto_start}
               onChange={(checked) => setFormData(prev => prev ? ({ ...prev, auto_start: checked }) : null)}
               disabled={isSubmitting}
             />
 
             <CheckboxField
-              label="Enable this server"
+              label={t('mcp.enableServerLabel')}
               checked={formData.enabled}
               onChange={(checked) => setFormData(prev => prev ? ({ ...prev, enabled: checked }) : null)}
               disabled={isSubmitting}
@@ -185,8 +187,8 @@ export function EditMCPServerModal({ isOpen, server, onClose, onSubmit }: EditMC
           onClose={handleClose}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          submitLabel="Save Changes"
-          submittingLabel="Saving..."
+          submitLabel={t('mcp.saveChanges')}
+          submittingLabel={t('mcp.saving')}
         />
       </div>
     </div>

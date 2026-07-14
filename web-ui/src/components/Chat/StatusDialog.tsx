@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import { apiClient } from '../../api/client';
 
@@ -16,6 +17,7 @@ interface MCPServer {
 }
 
 export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
+  const { t } = useTranslation('chat');
   const status = useChatStore(state => state.status);
   const currentSessionId = useChatStore(state => state.currentSessionId);
   const sessionMessages = useChatStore(state => {
@@ -45,8 +47,8 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-300/20">
-          <h2 className="text-sm font-semibold text-text-000">Session Status</h2>
-          <button onClick={onClose} aria-label="Close status dialog" className="text-text-400 hover:text-text-200">
+          <h2 className="text-sm font-semibold text-text-000">{t('statusDialog.title')}</h2>
+          <button onClick={onClose} aria-label={t('statusDialog.close')} className="text-text-400 hover:text-text-200">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -54,10 +56,10 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
         <div className="px-4 py-3 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Model Info */}
           <section>
-            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">Model</h3>
+            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">{t('statusDialog.sectionModel')}</h3>
             <div className="text-sm text-text-200 space-y-1">
               <div className="flex justify-between">
-                <span className="text-text-400">Model</span>
+                <span className="text-text-400">{t('statusDialog.model')}</span>
                 <span className="font-mono">{status?.model || '—'}</span>
               </div>
             </div>
@@ -65,27 +67,27 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
 
           {/* Session Info */}
           <section>
-            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">Session</h3>
+            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">{t('statusDialog.sectionSession')}</h3>
             <div className="text-sm text-text-200 space-y-1">
               <div className="flex justify-between">
-                <span className="text-text-400">ID</span>
+                <span className="text-text-400">{t('statusDialog.sessionId')}</span>
                 <span className="font-mono">{currentSessionId || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-400">Messages</span>
+                <span className="text-text-400">{t('statusDialog.messages')}</span>
                 <span>{sessionMessages}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-400">Mode</span>
+                <span className="text-text-400">{t('statusDialog.mode')}</span>
                 <span className="capitalize">{status?.mode || '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-400">Autonomy</span>
+                <span className="text-text-400">{t('statusDialog.autonomy')}</span>
                 <span>{status?.autonomy_level || '—'}</span>
               </div>
               {status?.session_cost != null && (
                 <div className="flex justify-between">
-                  <span className="text-text-400">Cost</span>
+                  <span className="text-text-400">{t('statusDialog.cost')}</span>
                   <span className="font-mono">
                     {status.session_cost < 0.01
                       ? `$${status.session_cost.toFixed(4)}`
@@ -95,7 +97,7 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
               )}
               {status?.context_usage_pct != null && (
                 <div className="flex justify-between">
-                  <span className="text-text-400">Context Usage</span>
+                  <span className="text-text-400">{t('statusDialog.contextUsage')}</span>
                   <span>{Math.round(status.context_usage_pct)}%</span>
                 </div>
               )}
@@ -104,18 +106,18 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
 
           {/* MCP Servers */}
           <section>
-            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">MCP Servers</h3>
+            <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">{t('statusDialog.sectionMcp')}</h3>
             {loading ? (
-              <div className="text-sm text-text-400">Loading...</div>
+              <div className="text-sm text-text-400">{t('statusDialog.loading')}</div>
             ) : mcpServers.length === 0 ? (
-              <div className="text-sm text-text-400">No MCP servers configured</div>
+              <div className="text-sm text-text-400">{t('statusDialog.noMcpServers')}</div>
             ) : (
               <div className="space-y-1.5">
                 {mcpServers.map(server => (
                   <div key={server.name} className="flex items-center gap-2 text-sm">
                     <span className="text-text-200 font-mono">{server.name}</span>
                     <span className="text-text-400 text-xs">
-                      {server.status === 'connected' ? `connected (${server.tools_count} tools)` : 'disconnected'}
+                      {server.status === 'connected' ? t('statusDialog.mcpConnected', { count: server.tools_count }) : t('statusDialog.mcpDisconnected')}
                     </span>
                   </div>
                 ))}
@@ -126,10 +128,10 @@ export function StatusDialog({ isOpen, onClose }: StatusDialogProps) {
           {/* Working Directory */}
           {status?.working_dir && (
             <section>
-              <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">Working Directory</h3>
+              <h3 className="text-xs font-semibold uppercase text-text-400 mb-2">{t('statusDialog.sectionWorkingDir')}</h3>
               <div className="text-sm text-text-200 font-mono break-all">{status.working_dir}</div>
               {status.git_branch && (
-                <div className="text-sm text-text-400 mt-1">Branch: {status.git_branch}</div>
+                <div className="text-sm text-text-400 mt-1">{t('statusDialog.branch', { branch: status.git_branch })}</div>
               )}
             </section>
           )}

@@ -1,6 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 
 export function Header() {
+  const { t } = useTranslation('layout');
   const isConnected = useChatStore(state => state.isConnected);
 
   return (
@@ -10,19 +12,19 @@ export function Header() {
           {/* Minder AI logo mark */}
           <img
             src="/logo.png"
-            alt="Minder AI"
+            alt={t('header.brandLogoAlt')}
             className="h-7 w-7 select-none"
             draggable={false}
           />
           <div className="flex items-baseline gap-3">
-            <h1 className="text-[18px] font-[600] tracking-[-0.02em] text-gradient-brand">Minder AI</h1>
-            <span className="eyebrow-mono text-ink/40">Web Interface</span>
+            <h1 className="text-[18px] font-[600] tracking-[-0.02em] text-gradient-brand">{t('header.brandName')}</h1>
+            <span className="eyebrow-mono text-ink/40">{t('header.webInterface')}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-[12px] tracking-[0.01em] text-ink/60">
-            {isConnected ? 'Connected' : 'Disconnected'}
+            {isConnected ? t('header.connected') : t('header.disconnected')}
           </span>
         </div>
       </div>
