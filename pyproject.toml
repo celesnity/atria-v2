@@ -87,7 +87,7 @@ dev = [
     "fakeredis>=2.0.0",
 ]
 
-# NOTE: the shared connector SDK (minder_module_sdk/) is a SEPARATE package, not an
+# NOTE: the shared connector SDK (minder_python_sdk/) is a SEPARATE package, not an
 # minder dependency — declaring it here as a path source broke the Docker build
 # (`uv run` re-resolves it before the dir is copied). `make install` installs it
 # editable for the connector tests / `minder-module`; module containers ship their

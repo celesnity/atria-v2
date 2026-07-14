@@ -81,7 +81,7 @@ Registry stays **versioned** (as today), so the prompt catalog and subagent rout
 - **`core/modules/remote.py`.** `build_remote_tool_specs` iterates `live_service_modules()` and builds tool specs from `connector_tools(name)` (live manifest) rather than `module.manifest.service.tools`. Proxy handler, fail-closed behavior, and card broadcast unchanged.
 - **Announce reconciliation with the guidance folder.** A registered connector whose name matches a known guidance `Module` binds to it (tools + liveness attach to that module). A registered connector with *no* matching folder is still allowed but logs a warning and contributes tools with no SKILL block (tools-only). `maintenance_copilot`'s folder stays; only its `manifest.service.tools` stops being the schema source.
 
-### SDK (`minder_module_sdk`) — never imports `minder`
+### SDK (`minder_python_sdk`) — never imports `minder`
 
 - **Auto-announce.** `Connector` reads `MINDER_URL` + Keycloak client credentials from env. The `conn.asgi()` app gets a **startup hook** that POSTs `/api/modules/register` (token via client-credentials, role `module-register`) and a **shutdown hook** that best-effort POSTs `/api/modules/deregister`. No heartbeat loop in the SDK — Minder's health-poll owns liveness.
 - **Tool schemas are derived from the connector, not from `manifest.service.tools`.** `GET /connector/manifest` (already SDK-generated from decorators) becomes the source of truth for tool specs and liveness. The module folder's `manifest.json` keeps its *presentation* half (`display_name`, `dashboard`, `activity`, `remote`, `protected_paths`); its `service.tools` array is now optional/documentation-only. `minder-module new` still emits the full manifest.

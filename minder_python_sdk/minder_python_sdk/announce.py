@@ -36,7 +36,7 @@ from typing import Callable, Optional
 
 import httpx
 
-logger = logging.getLogger("minder_module_sdk.announce")
+logger = logging.getLogger("minder_python_sdk.announce")
 
 
 # ---------------------------------------------------------------------------

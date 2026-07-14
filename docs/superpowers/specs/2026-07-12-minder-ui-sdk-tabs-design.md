@@ -28,7 +28,7 @@ rebuild → header tự cập nhật. Đổi module → header đổi bộ tabs 
   làm nội dung (slot cố định). Host top-bar sở hữu Back + title + tab row.
   Luồng một chiều host → module (`activeTab` prop).
 - **Đóng gói:** package TS top-level riêng `minder_ui_sdk/` (sibling của
-  `minder_module_sdk/`), npm name `minder-ui-sdk`, kèm vite plugin codegen.
+  `minder_python_sdk/`), npm name `minder-ui-sdk`, kèm vite plugin codegen.
 - **`icon`:** giữ trong khai báo TS (module dùng nội bộ); codegen chỉ ghi
   `{id, label}` vào manifest (host `ModuleTabs` hiện chỉ render label).
 

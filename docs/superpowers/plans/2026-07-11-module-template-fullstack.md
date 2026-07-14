@@ -4,14 +4,14 @@
 
 **Goal:** Upgrade `modules/module_template/` into a full-stack, production-shaped reference module — Celery worker, shared-Postgres data layer (own tables, read-only Minder reads), S3/MinIO media, and a four-panel advanced dashboard — while keeping its existing SDK-feature tools working.
 
-**Architecture:** A pure-`minder_module_sdk` connector (never imports `minder`) plus its own infra clients: SQLAlchemy → the shared `minder` DB (module owns `mt_jobs`/`mt_media`, reads Minder tables read-only), boto3 → MinIO, Celery → the shared Redis (DB index `/2`). A Celery task processes jobs and reverse-pushes live progress blocks + artifacts via the SDK's `MinderClient`. Frontend is a Module-Federation remote with four panels.
+**Architecture:** A pure-`minder_python_sdk` connector (never imports `minder`) plus its own infra clients: SQLAlchemy → the shared `minder` DB (module owns `mt_jobs`/`mt_media`, reads Minder tables read-only), boto3 → MinIO, Celery → the shared Redis (DB index `/2`). A Celery task processes jobs and reverse-pushes live progress blocks + artifacts via the SDK's `MinderClient`. Frontend is a Module-Federation remote with four panels.
 
-**Tech Stack:** Python 3.12 + `minder_module_sdk` + SQLAlchemy 2 + psycopg2 + boto3 + Celery(redis); React 18 + Vite 5 + Module Federation; pytest (SQLite + fakes + `task_always_eager`).
+**Tech Stack:** Python 3.12 + `minder_python_sdk` + SQLAlchemy 2 + psycopg2 + boto3 + Celery(redis); React 18 + Vite 5 + Module Federation; pytest (SQLite + fakes + `task_always_eager`).
 
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-11-module-template-fullstack-design.md`.
-- **The module NEVER imports `minder`** — only `minder_module_sdk` + its own deps (`sqlalchemy`, `psycopg2-binary`, `boto3`, `celery`). `MinderClient` uses httpx+env.
+- **The module NEVER imports `minder`** — only `minder_python_sdk` + its own deps (`sqlalchemy`, `psycopg2-binary`, `boto3`, `celery`). `MinderClient` uses httpx+env.
 - **DB reuse, data isolation:** engine → `MT_DATABASE_URL` (default `postgresql://minder:minder@db:5432/minder`). The module WRITES only its own tables `mt_jobs`/`mt_media`; it READS Minder tables (`conversations`, `artifacts`) **read-only** via `text()` SELECT, each wrapped so a schema mismatch degrades to empty/zero (never 500). Own tables created with `Base.metadata.create_all(engine, checkfirst=True)` on the module's OWN metadata (never touches Minder tables — no Alembic).
 - **Redis:** `MT_REDIS_URL` default `redis://redis:6379/2` (Minder uses `/0`).
 - **S3:** `MT_S3_ENDPOINT` (default `http://minio:9000`), `MT_S3_BUCKET` (default `module-template`), creds `MT_S3_ACCESS_KEY`/`MT_S3_SECRET_KEY`.
@@ -388,7 +388,7 @@ if os.environ.get("MT_TEST") == "1":
 - Test: `modules/module_template/backend/tests/test_jobs.py`
 
 **Interfaces:**
-- Consumes: `celery_app` (W1), `db` (D1), `minder_module_sdk` (`Connector`/`MinderClient`).
+- Consumes: `celery_app` (W1), `db` (D1), `minder_python_sdk` (`Connector`/`MinderClient`).
 - Produces: `run_job(job_id: int, session_id: str | None, steps: int) -> dict` (a Celery task). It
   updates the `MtJob` (running → pct per step → done), reverse-pushes a live block via
   `MinderClient` when `session_id` + config are present (best-effort), and marks `error` on failure.
@@ -415,8 +415,8 @@ logger = logging.getLogger("module_template.tasks")
 
 def _client():
     """Build an MinderClient from env (announce config); None if unconfigured."""
-    from minder_module_sdk.announce import resolve_announce_config
-    from minder_module_sdk.client import MinderClient
+    from minder_python_sdk.announce import resolve_announce_config
+    from minder_python_sdk.client import MinderClient
     cfg = resolve_announce_config()
     return MinderClient("module_template", cfg) if cfg is not None else None
 
@@ -882,7 +882,7 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
-COPY minder_module_sdk /sdk
+COPY minder_python_sdk /sdk
 RUN pip install --no-cache-dir /sdk
 COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
@@ -899,7 +899,7 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]
 FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
-COPY minder_module_sdk /sdk
+COPY minder_python_sdk /sdk
 RUN pip install --no-cache-dir /sdk
 COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
@@ -1008,7 +1008,7 @@ Minder conversation/artifact aggregates render; confirm the module's tools stay 
 
 - **Spec coverage:** data layer (D1) · media (S1) · Celery app (W1) · run_job task with reverse-push + artifact (W2) · job/media/db tools + routes + readiness (A1) · four frontend panels (F1) · Dockerfiles/compose/docs (M1). Every spec component maps to a task; the existing 7 SDK-feature tools are preserved in A1.
 - **Type/name consistency:** `MtJob`/`MtMedia` + `.as_dict()` used identically in db/media/tasks/app/tests. `run_job(job_id, session_id, steps)` signature matches between `tasks.py`, the `template_start_job` enqueue, and the eager test. Route paths (`/jobs`, `/media`, `/media/upload`, `/overview`, `/metrics`) match between `app.py` and the frontend panels' `fetch` calls. `MT_*` env names consistent across db/media/celery/compose. `MinderClient(module, cfg)` + `resolve_announce_config()` match the SDK.
-- **No-minder-import:** db/media/celery/tasks/app import only `minder_module_sdk` (+ `sqlalchemy`/`boto3`/`celery`/stdlib) — never `minder`.
+- **No-minder-import:** db/media/celery/tasks/app import only `minder_python_sdk` (+ `sqlalchemy`/`boto3`/`celery`/stdlib) — never `minder`.
 - **Deviation from spec (flagged):** own-tables created via `Base.metadata.create_all(checkfirst=True)` instead of Alembic — simpler and strictly safer on a shared DB (only ever creates the module's own metadata). Documented in db.py + README.
 - **Reconcile-against-reality (flagged inline):** W2 worker task-module resolution (`backend/tasks.py` canonical + `worker/tasks.py` re-export vs `celery -A tasks` with PYTHONPATH) — the implementer picks the clean option; the compose worker uses `celery -A tasks worker` with the backend dir as WORKDIR. The fresh-import test pattern (reload after setting `MT_DATABASE_URL`) is required because `db.py` binds the engine at import.
 ```

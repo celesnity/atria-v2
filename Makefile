@@ -18,7 +18,7 @@ help:
 install:
 	uv venv && uv pip install -e ".[dev]"
 	# Shared connector SDK (separate package) for the connector tests + `minder-module`.
-	uv pip install -e ./minder_module_sdk
+	uv pip install -e ./minder_python_sdk
 
 format:
 	black $(PYTHON_DIRS) --line-length $(LINE_LENGTH)
