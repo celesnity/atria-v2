@@ -109,7 +109,7 @@
     "emptyState": "No modules yet",
     "loading": "Loading…",
     "newModule": "New module",
-    "noMatches": "No modules match",
+    "noMatches": "No matches for “{{query}}”.",
     "searchPlaceholder": "Search modules…",
     "title": "Modules"
   },
