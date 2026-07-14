@@ -1,6 +1,6 @@
--- Atria PostgreSQL schema (REFERENCE SNAPSHOT — NOT THE SOURCE OF TRUTH).
+-- Minder PostgreSQL schema (REFERENCE SNAPSHOT — NOT THE SOURCE OF TRUTH).
 -- The application now creates the schema from SQLAlchemy ORM models in
--- atria/db/models.py via Base.metadata.create_all(). This file is kept as a
+-- minder/db/models.py via Base.metadata.create_all(). This file is kept as a
 -- human-readable reference for the column layout and may drift over time.
 
 DROP TABLE IF EXISTS "artifacts";

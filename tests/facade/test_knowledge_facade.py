@@ -17,7 +17,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def client():
-    from atria.web.facade.knowledge_router import knowledge_facade_router
+    from minder.web.facade.knowledge_router import knowledge_facade_router
 
     app = FastAPI()
     app.include_router(knowledge_facade_router)

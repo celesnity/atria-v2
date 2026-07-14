@@ -1,0 +1,414 @@
+"""Configuration models."""
+
+import os
+import re
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field, field_validator
+
+from minder.core.paths import APP_DIR_NAME, minder_dir as _minder_home
+
+
+class ToolPermission(BaseModel):
+    """Permission settings for a specific tool."""
+
+    enabled: bool = True
+    always_allow: bool = False
+    deny_patterns: list[str] = Field(default_factory=list)
+    compiled_patterns: list[re.Pattern[str]] = Field(default_factory=list, exclude=True)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Compile regex patterns after initialization."""
+        self.compiled_patterns = [re.compile(pattern) for pattern in self.deny_patterns]
+
+    def is_allowed(self, target: str) -> bool:
+        """Check if a target (file path, command, etc.) is allowed."""
+        if not self.enabled:
+            return False
+        if self.always_allow:
+            return True
+        return not any(pattern.match(target) for pattern in self.compiled_patterns)
+
+
+class ProtectedPath(BaseModel):
+    """A directory tools may never touch, with a redirect message for the agent.
+
+    ``pattern`` is a glob, resolved against the working directory and the
+    modules root. Entries come from ``permissions.protected_paths`` in
+    settings.json and from each module's ``protected_paths`` manifest block
+    (collected at registry init) — core hardcodes no module-specific paths.
+    """
+
+    pattern: str
+    message: str = ""
+
+
+def _default_protected_paths() -> "list[ProtectedPath]":
+    """Built-in protected roots. Empty by design: protection is declared by
+    modules (their manifest ``protected_paths``) or settings.json, not by core."""
+    return []
+
+
+class PermissionConfig(BaseModel):
+    """Global permission configuration."""
+
+    file_write: ToolPermission = Field(default_factory=ToolPermission)
+    file_read: ToolPermission = Field(default_factory=ToolPermission)
+    bash: ToolPermission = Field(
+        default_factory=lambda: ToolPermission(
+            enabled=True,  # Enabled for development
+            always_allow=False,
+            deny_patterns=["rm -rf /", "sudo rm -rf /*", "chmod -R 777 /*"],
+        )
+    )
+    git: ToolPermission = Field(default_factory=ToolPermission)
+    web_fetch: ToolPermission = Field(default_factory=ToolPermission)
+    protected_paths: list[ProtectedPath] = Field(default_factory=_default_protected_paths)
+
+    @field_validator("protected_paths", mode="before")
+    @classmethod
+    def _coerce_protected_paths(cls, v: Any) -> Any:
+        """Allow settings.json to list plain glob strings."""
+        if isinstance(v, list):
+            return [{"pattern": item} if isinstance(item, str) else item for item in v]
+        return v
+
+
+class AutoModeConfig(BaseModel):
+    """Auto mode configuration."""
+
+    enabled: bool = False
+    max_operations: int = 10  # Max operations before requiring approval
+    require_confirmation_after: int = 5  # Ask for confirmation after N operations
+    dangerous_operations_require_approval: bool = True
+
+
+class OperationConfig(BaseModel):
+    """Operation-specific settings."""
+
+    show_diffs: bool = True
+    backup_before_edit: bool = True
+    max_file_size: int = 1_000_000  # 1MB max file size
+    allowed_extensions: list[str] = Field(default_factory=list)  # Empty = all allowed
+
+
+class PlaybookScoringWeights(BaseModel):
+    """Scoring weights for ACE playbook bullet selection."""
+
+    effectiveness: float = Field(default=0.5, ge=0.0, le=1.0)
+    recency: float = Field(default=0.3, ge=0.0, le=1.0)
+    semantic: float = Field(default=0.2, ge=0.0, le=1.0)
+
+    @field_validator("effectiveness", "recency", "semantic")
+    @classmethod
+    def validate_weight(cls, v: float) -> float:
+        """Ensure weights are between 0 and 1."""
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("Weight must be between 0.0 and 1.0")
+        return v
+
+    def to_dict(self) -> dict[str, float]:
+        """Convert to dictionary format for BulletSelector."""
+        return {
+            "effectiveness": self.effectiveness,
+            "recency": self.recency,
+            "semantic": self.semantic,
+        }
+
+
+class PlaybookConfig(BaseModel):
+    """ACE playbook configuration."""
+
+    max_strategies: int = Field(default=30, ge=1)
+    use_selection: bool = True
+    embedding_model: str = "text-embedding-3-small"
+    embedding_provider: str = "openai"
+    scoring_weights: PlaybookScoringWeights = Field(default_factory=PlaybookScoringWeights)
+    cache_embeddings: bool = True  # Phase 4: Enable embedding persistence
+    cache_file: Optional[str] = None  # Path to embedding cache file (None = session-based default)
+
+
+def _default_iframe_allowlist() -> list[str]:
+    # Read-only gates are safe to enable by default; write/RPC gates are opt-in.
+    return ["chat.get_messages", "chat.get_session", "artifact.list", "config.read"]
+
+
+def _default_config_read_keys() -> list[str]:
+    # Only non-secret, UI-relevant AppConfig attributes. mode/autonomy_level/thinking_level
+    # are runtime-state, not AppConfig fields — excluded to avoid confusing None returns.
+    return ["model", "simple_mode"]
+
+
+class IframeRpcConfig(BaseModel):
+    """RPC settings for custom-block iframes (push_block)."""
+
+    tool_allowlist: list[str] = Field(default_factory=_default_iframe_allowlist)
+    config_read_keys: list[str] = Field(default_factory=_default_config_read_keys)
+
+
+def _default_redis_url() -> str:
+    """Default Redis URL for all Redis-backed subsystems.
+
+    Honors ``MINDER_REDIS_URL`` so a single env var points the whole stack at the
+    same Redis (e.g. ``redis://redis:6379/0`` in Docker). Falls back to localhost
+    for local/dev.
+    """
+    return os.environ.get("MINDER_REDIS_URL", "redis://localhost:6379/0")
+
+
+class BusConfig(BaseModel):
+    """Cross-process message bus for routing push_block / block_event when the
+    WS owner and the publisher are different worker processes."""
+
+    kind: str = "in_memory"  # "in_memory" | "redis"
+    redis_url: str = Field(default_factory=_default_redis_url)
+
+
+class WebConfig(BaseModel):
+    """Web-UI specific settings."""
+
+    iframe_rpc: IframeRpcConfig = Field(default_factory=IframeRpcConfig)
+    bus: BusConfig = Field(default_factory=BusConfig)
+
+
+class ModelVariant(BaseModel):
+    """A named model configuration variant."""
+
+    name: str
+    model: str
+    provider: str
+    temperature: float = 0.6
+    max_tokens: int = 8192
+    description: str = ""
+
+
+class AppConfig(BaseModel):
+    """Application configuration."""
+
+    model_config = {"protected_namespaces": ()}
+
+    # AI model settings — OpenAI-compatible endpoint
+    model: str = "gpt-4o"
+
+    # Fallback model used automatically when a call with `model` fails
+    # (transport error, rate limit, model unavailable, server error). Empty = no
+    # fallback. Same provider/endpoint as `model`.
+    fallback_model: str = ""
+
+    # Optional model slots (fall back to normal model if not set)
+    model_thinking: Optional[str] = None
+    model_vlm: Optional[str] = None
+    model_critique: Optional[str] = None
+    model_compact: Optional[str] = None
+
+    api_key: Optional[str] = None
+    api_base_url: Optional[str] = None  # defaults to https://api.openai.com/v1/chat/completions
+    agent_mode: str = "normal"  # "normal" | "assistant" — which suite agent serves chats
+    max_tokens: int = 8192
+    temperature: float = 0.6
+
+    # Reasoning models (gpt-5 family, o1/o3/o4) spend internal reasoning tokens
+    # before emitting any output, which dominates time-to-first-token. "minimal"
+    # keeps TTFT lowest so streaming is visible; raise to "low"/"medium"/"high"
+    # for harder tasks. Empty string omits the param (provider default). Ignored
+    # by non-reasoning models.
+    reasoning_effort: str = "minimal"
+
+    # Reasoning models (e.g. gpt-5-mini) reason internally during the single
+    # streamed action call, so a separate prompted-thinking round-trip is
+    # redundant and only adds latency before the first token. When True (default)
+    # the executor skips the prompted thinking + self-critique phases. Set False
+    # for non-reasoning models that need an explicit prompted thinking trace.
+    native_reasoning: bool = True
+
+    # Blocking LLM-powered context compaction fires when usage crosses this
+    # fraction of the context window. Lowered from the old hard 0.99 so it runs
+    # before the window is critically full and (usually) not at the top of a
+    # user-facing turn. Masking/pruning stages (0.80/0.85/0.90) are unchanged.
+    compaction_threshold: float = 0.90
+
+    @field_validator("agent_mode")
+    @classmethod
+    def _validate_agent_mode(cls, v: str) -> str:
+        """Reject anything but the two known modes — fail closed, never silently
+        degrade to the unrestricted normal agent on a typo (e.g. settings.json or
+        MINDER_AGENT_MODE with a bad value)."""
+        valid_modes = {"normal", "assistant"}
+        if v not in valid_modes:
+            raise ValueError(f"agent_mode must be one of 'normal', 'assistant'; got {v!r}")
+        return v
+
+    # Session settings
+    auto_save_interval: int = 5  # Save every N turns
+    max_context_tokens: int = 100000  # Dynamically set from model context_length (80%)
+
+    # UI settings
+    verbose: bool = False
+    debug_logging: bool = False  # Show [QUERY], [REACT], [LLM] debug messages
+    color_scheme: str = "monokai"
+    show_token_count: bool = True
+    enable_sound: bool = True
+    # Simple Mode: non-technical UX — auto-approve tool calls (safety floor still
+    # refuses dangerous commands) and show friendly activity lines instead of
+    # technical tool cards. Developers can disable via settings.json.
+    simple_mode: bool = True
+
+    # Per-tool enable/disable — names of built-in tools whose schemas are dropped
+    # from the LLM request (saves context tokens). None = unset → fall back to the
+    # seed defaults (DEFAULT_DISABLED_TOOLS); a list (even empty) is explicit.
+    disabled_tools: Optional[list[str]] = None
+
+    # Permissions
+    permissions: PermissionConfig = Field(default_factory=PermissionConfig)
+
+    # Phase 2: Operation settings
+    enable_bash: bool = True  # Enable bash execution for development
+    bash_timeout: int = 30  # Timeout in seconds for bash commands
+    auto_mode: AutoModeConfig = Field(default_factory=AutoModeConfig)
+    operation: OperationConfig = Field(default_factory=OperationConfig)
+    max_undo_history: int = 50  # Maximum operations to track for undo
+
+    # Session intelligence
+    topic_detection: bool = True
+
+    # ACE Playbook settings
+    playbook: PlaybookConfig = Field(default_factory=PlaybookConfig)
+
+    # Plan mode configuration
+    plan_mode_workflow: str = "5-phase"  # "5-phase" or "iterative"
+    plan_mode_explore_agent_count: int = 3
+    plan_mode_plan_agent_count: int = 1
+    plan_mode_explore_variant: str = "enabled"  # "enabled" or "disabled"
+
+    # Prompt caching (OpenAI-compatible). When enabled, sends a stable
+    # per-session prompt_cache_key for KV-cache affinity; ignored by
+    # servers that do not support it.
+    prompt_cache_key_enabled: bool = False
+
+    # ReAct loop control. Behavior-changing flags default to prior behavior.
+    max_iterations_default: int = 25  # runaway guard when caller passes None
+    max_nudge_attempts: int = 3  # was hardcoded MAX_NUDGE_ATTEMPTS
+    max_todo_nudges: int = 4  # was hardcoded MAX_TODO_NUDGES
+    completion_nudge_enabled: bool = False  # off => skip extra completion round-trip
+    explore_first_enabled: bool = False  # off => do not force Code-Explorer first
+
+    # Custom instructions (accumulated across config levels)
+    instructions: Optional[str] = None
+
+    # Model variants
+    model_variants: dict[str, ModelVariant] = Field(default_factory=dict)
+
+    # Web UI nested settings (iframe RPC, etc.)
+    web: WebConfig = Field(default_factory=WebConfig)
+
+    # Paths - resolved via minder_dir() so they honor the MINDER_DIR override
+    # (default ~/.minder). Factories run at instantiation, after env is loaded.
+    minder_dir: str = Field(default_factory=lambda: str(_minder_home()))
+    session_dir: str = Field(default_factory=lambda: str(_minder_home() / "sessions"))
+    log_dir: str = Field(default_factory=lambda: str(_minder_home() / "logs"))
+    command_dir: str = f"{APP_DIR_NAME}/commands"
+
+    def get_api_key(self) -> str:
+        """Get API key from config or environment.
+
+        Resolution order: an explicit ``api_key`` value, then a
+        provider-appropriate environment variable. When the configured
+        endpoint is OpenRouter, ``OPENROUTER_API_KEY`` is preferred; otherwise
+        ``OPENAI_API_KEY``. Both are accepted as fallbacks so either key works
+        against any OpenAI-compatible endpoint.
+        """
+        import os
+
+        if self.api_key:
+            return self.api_key
+
+        base_url = (self.api_base_url or "").lower()
+        if "openrouter.ai" in base_url:
+            env_order = ("OPENROUTER_API_KEY", "OPENAI_API_KEY")
+        else:
+            env_order = ("OPENAI_API_KEY", "OPENROUTER_API_KEY")
+
+        for var in env_order:
+            key = os.getenv(var)
+            if key:
+                return key
+
+        raise ValueError(
+            "No API key found. Set OPENAI_API_KEY or OPENROUTER_API_KEY " "environment variable."
+        )
+
+    def get_model_info(self):
+        """Get model information from the registry.
+
+        Returns:
+            ModelInfo object or None if model not found
+        """
+        from minder.config import get_model_registry
+
+        registry = get_model_registry()
+        result = registry.find_model_by_id(self.model)
+        if result:
+            return result[2]  # Return ModelInfo
+        return None
+
+    def get_thinking_model_info(self):
+        """Get thinking model info, fallback to normal model."""
+        from minder.config import get_model_registry
+
+        registry = get_model_registry()
+        if self.model_thinking:
+            result = registry.find_model_by_id(self.model_thinking)
+            if result:
+                return result
+        return registry.find_model_by_id(self.model)
+
+    def get_vlm_model_info(self):
+        """Get VLM model info, fallback to normal model."""
+        from minder.config import get_model_registry
+
+        registry = get_model_registry()
+        if self.model_vlm:
+            result = registry.find_model_by_id(self.model_vlm)
+            if result:
+                return result
+        return registry.find_model_by_id(self.model)
+
+    def get_critique_model_info(self):
+        """Get critique model info, fallback to thinking then normal."""
+        from minder.config import get_model_registry
+
+        registry = get_model_registry()
+        for model_id in [self.model_critique, self.model_thinking, self.model]:
+            if model_id:
+                result = registry.find_model_by_id(model_id)
+                if result:
+                    return result
+        return None
+
+    def get_compact_model_info(self):
+        """Get compact model info, fallback to normal model."""
+        from minder.config import get_model_registry
+
+        registry = get_model_registry()
+        if self.model_compact:
+            result = registry.find_model_by_id(self.model_compact)
+            if result:
+                return result
+        return registry.find_model_by_id(self.model)
+
+    def get_variant(self, name: str) -> ModelVariant | None:
+        """Get a named model variant configuration."""
+        return self.model_variants.get(name)
+
+    def apply_variant(self, name: str) -> bool:
+        """Apply a named model variant to the current config.
+
+        Returns True if variant was found and applied.
+        """
+        variant = self.model_variants.get(name)
+        if not variant:
+            return False
+        self.model = variant.model
+        self.temperature = variant.temperature
+        self.max_tokens = variant.max_tokens
+        return True

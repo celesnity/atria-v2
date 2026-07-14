@@ -15,14 +15,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Repo root, so `atria` resolves when this file is run directly (as a script,
+# Repo root, so `minder` resolves when this file is run directly (as a script,
 # rather than through a test runner that already puts the repo root on
-# sys.path). Needed regardless of whether atria is pip-installed editable —
-# works around a venv .pth import defect where `atria` is only importable
+# sys.path). Needed regardless of whether minder is pip-installed editable —
+# works around a venv .pth import defect where `minder` is only importable
 # under pytest otherwise.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from atria.core.context_engineering.tools.registry import ToolRegistry  # noqa: E402
+from minder.core.context_engineering.tools.registry import ToolRegistry  # noqa: E402
 
 _OPEN_CLASSIFICATIONS = {"Public", "Internal"}
 
@@ -64,14 +64,14 @@ def main() -> None:
     assert "get_user_profile" in registry.get_skill_specs(), "maps tool not discovered"
 
     # Documents: employee view vs unknown identity
-    os.environ["ATRIA_SEARCH_USER_ID"] = "U001"
+    os.environ["MINDER_SEARCH_USER_ID"] = "U001"
     employee_payload = _run(
         registry,
         "documents as U001",
         {"query": "quy định làm việc từ xa", "source": "documents"},
     )
     assert employee_payload["hits"], "expected ranked hits for U001"
-    os.environ.pop("ATRIA_SEARCH_USER_ID", None)
+    os.environ.pop("MINDER_SEARCH_USER_ID", None)
     anon_payload = _run(
         registry,
         "documents anonymous",

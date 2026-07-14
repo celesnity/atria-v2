@@ -5,8 +5,8 @@ import os
 import httpx
 import pytest
 
-from atria.core.context_engineering.search import pg
-from atria.core.context_engineering.search.dense import DenseIndex
+from minder.core.context_engineering.search import pg
+from minder.core.context_engineering.search.dense import DenseIndex
 
 
 def _pg_available() -> bool:

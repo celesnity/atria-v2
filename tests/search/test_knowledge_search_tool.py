@@ -4,9 +4,9 @@ import importlib.util
 import json
 from pathlib import Path
 
-from atria.core.context_engineering.search.provider import SearchProvider
-from atria.core.context_engineering.search.registry import SearchProviderRegistry
-from atria.core.context_engineering.search.types import SearchHit, SourceResults
+from minder.core.context_engineering.search.provider import SearchProvider
+from minder.core.context_engineering.search.registry import SearchProviderRegistry
+from minder.core.context_engineering.search.types import SearchHit, SourceResults
 
 _TOOLS_PATH = Path(__file__).resolve().parents[2] / "modules" / "knowledge_search" / "tools.py"
 
@@ -56,7 +56,7 @@ def test_handler_dispatches_and_serializes(monkeypatch):
     provider = _EchoProvider()
     registry.register(provider)
     spec = module.build_tool_spec(registry)
-    monkeypatch.setenv("ATRIA_SEARCH_USER_ID", "U042")
+    monkeypatch.setenv("MINDER_SEARCH_USER_ID", "U042")
     result = spec.handler(query="cà phê", source="echo", filters={"tag": "x"}, limit=3)
     assert result["success"] is True
     payload = json.loads(result["output"])

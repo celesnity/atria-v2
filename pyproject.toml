@@ -3,17 +3,17 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "atria"
+name = "minder"
 version = "0.1.7"
 description = "AI-powered command-line tool for accelerated development workflows"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Atria Team", email = "lnma020504@gmail.com"}
+    {name = "Minder Team", email = "lnma020504@gmail.com"}
 ]
 maintainers = [
-    {name = "Atria Team", email = "lnma020504@gmail.com"}
+    {name = "Minder Team", email = "lnma020504@gmail.com"}
 ]
 keywords = [
     "ai",
@@ -60,10 +60,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0",
     # Pub/sub bus for cross-process push_block routing
     "redis>=5.0",
-    # Distributed task queue for background subagents
-    "taskiq>=0.11",
-    "taskiq-redis>=1.0",
-    # PDF extraction for Paper2Code subagent
+    # PDF extraction (read_pdf tool)
     "pypdf>=4.0.0",
     # Excel / CSV parsing
     "openpyxl>=3.1.0",
@@ -73,7 +70,7 @@ dependencies = [
     "watchdog>=4.0",
     # JWT validation for Keycloak auth
     "pyjwt[crypto]>=2.8",
-    # Knowledge graph for maintenance_copilot (atria/web/routes/maintenance.py)
+    # Knowledge graph for maintenance_copilot (minder/web/routes/maintenance.py)
     "neo4j>=6.2.0",
     # WS client for proxying streaming speech-to-text to the ASR sidecar
     "websockets>=12",
@@ -90,26 +87,33 @@ dev = [
     "fakeredis>=2.0.0",
 ]
 
+# NOTE: the shared connector SDK (minder_module_sdk/) is a SEPARATE package, not an
+# minder dependency — declaring it here as a path source broke the Docker build
+# (`uv run` re-resolves it before the dir is copied). `make install` installs it
+# editable for the connector tests / `minder-module`; module containers ship their
+# own copy via their Dockerfile.
+
 [project.urls]
-Homepage = "https://github.com/atria-to/atria"
-Documentation = "https://github.com/atria-to/atria#readme"
-Repository = "https://github.com/atria-to/atria"
-"Bug Tracker" = "https://github.com/atria-to/atria/issues"
-Changelog = "https://github.com/atria-to/atria/releases"
+Homepage = "https://github.com/minder-to/minder"
+Documentation = "https://github.com/minder-to/minder#readme"
+Repository = "https://github.com/minder-to/minder"
+"Bug Tracker" = "https://github.com/minder-to/minder/issues"
+Changelog = "https://github.com/minder-to/minder/releases"
 
 [project.scripts]
-atria = "atria.serve:main"
+minder = "minder.serve:main"
+minder-module = "minder.module_dev:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["atria*"]
+include = ["minder*"]
 exclude = ["tests*", "docs*", "_archived_tests*"]
 
 [tool.setuptools.package-data]
-atria = [
+minder = [
     "config/**/*.json",
     "prompts/**/*.txt",
     "prompts/**/*.md",
@@ -136,6 +140,6 @@ warn_unused_configs = true
 [tool.pytest.ini_options]
 testpaths = [
     "tests",
-    "atria/skills/builtin/deep_research/tests",
+    "minder/skills/builtin/deep_research/tests",
 ]
 asyncio_mode = "auto"

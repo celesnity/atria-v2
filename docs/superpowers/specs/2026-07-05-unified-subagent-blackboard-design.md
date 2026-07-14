@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-05
 **Status:** Approved (brainstorming) — pending implementation plan
-**Area:** `atria/core/{agents/subagents,blackboard,divide,parallel,orchestration}`
+**Area:** `minder/core/{agents/subagents,blackboard,divide,parallel,orchestration}`
 
 ## Problem
 
-`atria/` exposes three overlapping delegation concepts — **subagent**, **divide**,
+`minder/` exposes three overlapping delegation concepts — **subagent**, **divide**,
 and **parallel** — reachable through two redundant LLM-facing entry points:
 
 - `spawn_subagent(strategy=direct|divide|parallel)` + `get_subagent_output`
@@ -36,7 +36,7 @@ write results back as shared-context notes.
 - **Dependencies:** none. Tasks are a flat, independent pool. Ordering is the
   agent's job via waves (write batch → collect → write next batch).
 - **Execution:** always dispatch to the TaskIQ worker. Redis + a running
-  `atria-worker` become required for any delegation.
+  `minder-worker` become required for any delegation.
 
 ## Architecture
 
@@ -58,12 +58,12 @@ Removed: `solve`, `get_solve_result`, and the `strategy` parameter on
 
 ### 2. Blackboard task channel & data flow
 
-The existing `Note` channel (append-only, Redis key `atria:bb:{run_id}`) stays
+The existing `Note` channel (append-only, Redis key `minder:bb:{run_id}`) stays
 as the **shared-context / results channel**. A **task channel** is added
 alongside it.
 
 New `Task` model (`core/blackboard/models.py`), stored under
-`atria:bb:{run_id}:tasks`:
+`minder:bb:{run_id}:tasks`:
 
 - `id` (short id), `subagent_type`, `prompt`,
   `status` (`pending|claimed|done|failed`), `result_ref`, `ts`.
@@ -129,7 +129,7 @@ admission/verifier gates.
 `:tasks:pending` and enqueues **one worker job per task** via the existing
 TaskIQ/Redis path —
 the same infra `divide` uses today, minus decompose/schedule. Redis + a running
-`atria-worker` become required for any delegation. Keep the
+`minder-worker` become required for any delegation. Keep the
 `ListQueueBroker socket_timeout=None` fix already in place.
 
 **Isolation.** Each worker runs its subagent type in its own context/process,
@@ -154,7 +154,7 @@ dependencies. The agent decides whether to re-issue.
   aggregates statuses + digest; registry exposes `subagent`/`get_subagent_output`
   and no longer exposes `solve`/`divide`/`parallel`.
 - **E2E (real API, per CLAUDE.md):** with `OPENAI_API_KEY` + Redis +
-  `atria-worker` running — issue `subagent(tasks=[two independent tasks])`,
+  `minder-worker` running — issue `subagent(tasks=[two independent tasks])`,
   confirm both run on the worker, write notes back, and `get_subagent_output`
   returns both results from the shared context. Verify removed tools are gone
   from the schema.

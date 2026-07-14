@@ -16,7 +16,7 @@
 - Line length ≤ 100 (verify with `uvx ruff check ...` AND `awk 'length>100{print FILENAME":"NR}'` — Ruff's default select does not flag E501 in this repo). Type hints; Google-style docstrings; builtin generics (`list`/`dict`/`X | None`), not `typing.List/Dict/Optional` (`Callable` from typing is fine).
 - Tests run with `uv run pytest`. Module tests live at `tests/test_maintenance_copilot_*.py`, load module files via `importlib`, and register each loaded module in `sys.modules` under a unique sentinel name immediately after `module_from_spec`.
 - Module scripts add `sys.path.insert(0, str(Path(__file__).resolve().parent))` before sibling imports.
-- Module-local only — no imports from `atria/`.
+- Module-local only — no imports from `minder/`.
 - Tests must NOT hit the network, a DB, or the real clock: inject `chat_fn`, `run_fn`/fake stores, and a `now_fn`. Use a real in-memory Qdrant (`QdrantClient(":memory:")`) for store-backed command tests.
 - **Advisory-only is non-negotiable:** no command may emit an approval or dispatch verdict. Every synthesized answer carries the advisory disclaimer; low-confidence results are marked `needs_review` and not presented as settled.
 - **Mandatory citation:** any synthesized sentence without a citation marker resolving to a retrieved chunk is dropped from the answer (kept in a `dropped` list for transparency).
@@ -1069,14 +1069,14 @@ Record for a Docker host (not run in CI/sandbox):
 ```bash
 docker compose -f docker-compose.dev.yml up -d tei qdrant neo4j
 # LLM: --profile gpu + copilot-llm, or set MC_SYNTHESIS_BASE_URL to a reachable endpoint
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py ingest
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py query "gear fails to retract" --synthesize
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py validate \
       '{"defect":"gear indicator inop","cited_refs":["MEL 32-30-01"]}'
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py check \
       '{"defect":"gear indicator inop","cited_mel":"MEL 32-30-01","dispatch_condition":"one inop","classification":"A"}'
 ```

@@ -1,3 +1,5 @@
+.worktrees/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -147,16 +149,16 @@ cython_debug/
 .DS_Store
 Thumbs.db
 
-# Atria specific
+# Minder specific
 .opencli/
-atria/web/static/*
-.atria/
-atria-home/
+minder/web/static/*
+.minder/
+minder-home/
 .swecli/
 
 # Local-only runtime data, notes, scratch, one-off data — never commit.
 # App-data home (cache/sessions/snapshots/scratch) is regenerated at runtime
-# and lives at ATRIA_DIR; the in-repo copy must stay untracked.
+# and lives at MINDER_DIR; the in-repo copy must stay untracked.
 _local/
 Tasks/
 history.txt
@@ -179,7 +181,7 @@ ace/
 .ignore/
 docs/
 figures/
-.atria/
+.minder/
 
 # Agent harness / eval scaffolding (do not push)
 .superpowers/
@@ -199,7 +201,7 @@ init.sh
 run-backend.ps1
 run-frontend.ps1
 # Top-level data-modules created at runtime. Anchored to the repo root so it does
-# NOT also match the source package atria/core/modules/.
+# NOT also match the source package minder/core/modules/.
 
 # modules/*
 testingData

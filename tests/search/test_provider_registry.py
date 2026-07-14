@@ -2,12 +2,12 @@
 
 from pathlib import Path
 
-from atria.core.context_engineering.search.provider import SearchProvider
-from atria.core.context_engineering.search.registry import (
+from minder.core.context_engineering.search.provider import SearchProvider
+from minder.core.context_engineering.search.registry import (
     SearchProviderRegistry,
     discover_module_providers,
 )
-from atria.core.context_engineering.search.types import SourceResults
+from minder.core.context_engineering.search.types import SourceResults
 
 
 class _StubProvider(SearchProvider):
@@ -32,8 +32,8 @@ def test_discover_module_providers(tmp_path: Path):
     good = tmp_path / "good_mod"
     good.mkdir()
     (good / "search_provider.py").write_text(
-        "from atria.core.context_engineering.search.provider import SearchProvider\n"
-        "from atria.core.context_engineering.search.types import SourceResults\n"
+        "from minder.core.context_engineering.search.provider import SearchProvider\n"
+        "from minder.core.context_engineering.search.types import SourceResults\n"
         "class P(SearchProvider):\n"
         "    name = 'good'\n"
         "    description = 'd'\n"

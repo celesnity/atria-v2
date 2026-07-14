@@ -1,12 +1,12 @@
-# switch-llm.ps1 - flip Atria's chat LLM provider between Qwen (DashScope) and OpenAI.
+# switch-llm.ps1 - flip Minder's chat LLM provider between Qwen (DashScope) and OpenAI.
 #
 # Usage:
 #   .\switch-llm.ps1 qwen      # use Qwen via DashScope
 #   .\switch-llm.ps1 openai    # use OpenAI
 #   .\switch-llm.ps1 status    # print the currently active provider
 #
-# How it works: Atria reads OPENAI_API_KEY / ATRIA_MODEL / ATRIA_FALLBACK_MODEL /
-# ATRIA_API_BASE_URL from .env (loaded by run-backend.ps1 on every start). This
+# How it works: Minder reads OPENAI_API_KEY / MINDER_MODEL / MINDER_FALLBACK_MODEL /
+# MINDER_API_BASE_URL from .env (loaded by run-backend.ps1 on every start). This
 # script rewrites those four active lines in place, pulling ALL of each provider's
 # values (key + model + fallback + base URL) from the commented per-provider "vault"
 # in .env (LLM_KEY_/LLM_MODEL_/LLM_FALLBACK_/LLM_BASE_<PROVIDER>). Nothing is
@@ -57,15 +57,15 @@ function Get-ActiveValue([string]$name) {
 }
 
 if ($Provider -eq 'status') {
-  $model = Get-ActiveValue 'ATRIA_MODEL'
-  $url = Get-ActiveValue 'ATRIA_API_BASE_URL'
+  $model = Get-ActiveValue 'MINDER_MODEL'
+  $url = Get-ActiveValue 'MINDER_API_BASE_URL'
   $name = if ($url -match 'dashscope') { 'QWEN (DashScope)' }
           elseif ($url -match 'openai') { 'OPENAI' }
           else { 'UNKNOWN' }
   Write-Host "Active LLM provider : $name" -ForegroundColor Cyan
-  Write-Host "  ATRIA_MODEL          = $model"
-  Write-Host "  ATRIA_FALLBACK_MODEL = $(Get-ActiveValue 'ATRIA_FALLBACK_MODEL')"
-  Write-Host "  ATRIA_API_BASE_URL   = $url"
+  Write-Host "  MINDER_MODEL          = $model"
+  Write-Host "  MINDER_FALLBACK_MODEL = $(Get-ActiveValue 'MINDER_FALLBACK_MODEL')"
+  Write-Host "  MINDER_API_BASE_URL   = $url"
   exit 0
 }
 
@@ -99,9 +99,9 @@ if ($missing.Count -gt 0) {
 # that starts (no leading #) with KEY=, leaving comments and other vars intact.
 $replacements = @{
   'OPENAI_API_KEY'       = $key
-  'ATRIA_MODEL'          = $model
-  'ATRIA_FALLBACK_MODEL' = $fallback
-  'ATRIA_API_BASE_URL'   = $baseUrl
+  'MINDER_MODEL'          = $model
+  'MINDER_FALLBACK_MODEL' = $fallback
+  'MINDER_API_BASE_URL'   = $baseUrl
 }
 
 $newLines = foreach ($line in $lines) {
@@ -124,9 +124,9 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllLines($envPath, $newLines, $utf8NoBom)
 
 Write-Host "Switched LLM provider -> $label" -ForegroundColor Green
-Write-Host "  ATRIA_MODEL          = $model"
-Write-Host "  ATRIA_FALLBACK_MODEL = $fallback"
-Write-Host "  ATRIA_API_BASE_URL   = $baseUrl"
+Write-Host "  MINDER_MODEL          = $model"
+Write-Host "  MINDER_FALLBACK_MODEL = $fallback"
+Write-Host "  MINDER_API_BASE_URL   = $baseUrl"
 Write-Host ""
 Write-Host "RESTART the backend terminal for this to take effect:" -ForegroundColor Yellow
 Write-Host "  Ctrl+C in the run-backend.ps1 window, then re-run  .\run-backend.ps1" -ForegroundColor Yellow

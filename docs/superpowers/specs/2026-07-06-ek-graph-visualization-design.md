@@ -61,7 +61,7 @@ offline-safe), delivered **in the module dashboard only** (not the main agent ch
 
 ```
 Graph tab opens (or reload / after a search)
-  → AtriaDash.json('knowledge.py', ['graph','export','--user',U, '--query', q?], {timeout_ms})
+  → MinderDash.json('knowledge.py', ['graph','export','--user',U, '--query', q?], {timeout_ms})
     → knowledge.py _cmd_graph_export
        → graph_store.export_subgraph(acl_params(user), ...)   [Neo4j, ACL-scoped Cypher]
        → (if --query) reuse retrieval to get retrieved_doc_ids
@@ -70,7 +70,7 @@ Graph tab opens (or reload / after a search)
   → dashboard renders SVG at server-provided x,y + vanilla-JS interactions
 ```
 
-The bridge (`AtriaDash.json` → `POST /api/modules/{name}/run`, 120 s cap) is the existing,
+The bridge (`MinderDash.json` → `POST /api/modules/{name}/run`, 120 s cap) is the existing,
 unchanged transport. The Graph tab is a new consumer of it.
 
 ## 5. The `graph export` command
@@ -134,7 +134,7 @@ rather than breaking. Consistent with the query-path fallback philosophy.
   - Hover node → highlight it + its neighbors + incident edges, dim the rest.
   - Drag background → pan; wheel or ± buttons → zoom (both via SVG `viewBox`).
 - **States:** loading (while export runs); empty ("chưa có đồ thị — chạy `graph build`") at
-  0 nodes; error (on `meta.error`); `AtriaDash.resize()` to fit height.
+  0 nodes; error (on `meta.error`); `MinderDash.resize()` to fit height.
 - The dashboard **trusts the export** — it never fetches or filters raw graph data itself.
 
 ## 7. ACL & security (the crux)

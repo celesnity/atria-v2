@@ -1,10 +1,10 @@
-# Atria
+# Minder AI
 
 ## Repo Layout
 
 ```
-atria-py/
-├── atria/                  # Main py pkg
+minder-py/
+├── minder/                  # Main py pkg
 │   ├── cli/                # CLI entry + cmds
 │   ├── config/             # Cfg load + models
 │   ├── core/               # Agent core
@@ -17,12 +17,12 @@ atria-py/
 │   └── skills/             # Built-in skills
 ├── modules/                # Domain modules (SKILL.md + manifest.json + dashboard.html + blocks/ + data/ + scripts/)
 │   └── warehouse/          # Example: inventory mgmt module
-├── web-ui/                 # React/Vite/Zustand → builds atria/web/static
+├── web-ui/                 # React/Vite/Zustand → builds minder/web/static
 ├── tests/                  # Pytest
 ├── docs/                   # Provider setup + guides
 ├── schema.sql              # Postgres schema (auto-load on init)
 ├── Dockerfile
-├── docker-compose.yml      # Prod: db + adminer + atria
+├── docker-compose.yml      # Prod: db + adminer + minder
 ├── docker-compose.dev.yml  # Dev override (live reload + mounted vols)
 ├── Makefile                # install / format / lint / typecheck / test / build-ui
 ├── pyproject.toml
@@ -42,13 +42,13 @@ cp .env.example .env
 docker compose up -d --build
 
 # 3. Logs
-docker compose logs -f atria
+docker compose logs -f minder
 ```
 
 Svcs:
 
-- **atria** — http://localhost:8080 (UI + API)
-- **adminer** — http://localhost:8081 (DB browser, server `db`, u/p `atria`/`atria`)
+- **minder** — http://localhost:8080 (UI + API)
+- **adminer** — http://localhost:8081 (DB browser, server `db`, u/p `minder`/`minder`)
 - **db** — Postgres 16 internal, schema `schema.sql`
 
 ### Dev (live reload, src mounted)
@@ -61,7 +61,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 ```bash
 docker compose ps              # status
-docker compose restart atria   # app only
+docker compose restart minder   # app only
 docker compose down            # stop (keep vols)
 docker compose down -v         # stop + wipe pg vol
 ```
@@ -141,7 +141,7 @@ cd modules/myorders
 chmod +x scripts/*.py
 ```
 
-Restart atria → new tile appears in UI, agent loads SKILL.md.
+Restart minder → new tile appears in UI, agent loads SKILL.md.
 
 Reference impl: `modules/warehouse/` (CSV-backed inventory).
 

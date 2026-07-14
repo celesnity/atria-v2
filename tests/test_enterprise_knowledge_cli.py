@@ -79,14 +79,14 @@ def test_parse_dotenv_reads_pairs_and_ignores_noise():
         "OPENROUTER_API_KEY=sk-or-abc\n"
         "export EK_SYNTHESIS_MODEL=openai/gpt-4o-mini\n"
         'EK_SYNTHESIS_BASE_URL="https://openrouter.ai/api/v1"\n'
-        "ATRIA_MODEL='openai/gpt-4o'\n"
+        "MINDER_MODEL='openai/gpt-4o'\n"
         "MALFORMED_NO_EQUALS\n"
     )
     parsed = k._parse_dotenv(text)
     assert parsed["OPENROUTER_API_KEY"] == "sk-or-abc"
     assert parsed["EK_SYNTHESIS_MODEL"] == "openai/gpt-4o-mini"
     assert parsed["EK_SYNTHESIS_BASE_URL"] == "https://openrouter.ai/api/v1"
-    assert parsed["ATRIA_MODEL"] == "openai/gpt-4o"
+    assert parsed["MINDER_MODEL"] == "openai/gpt-4o"
     assert "MALFORMED_NO_EQUALS" not in parsed
 
 

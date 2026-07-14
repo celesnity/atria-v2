@@ -1,0 +1,585 @@
+"""Agent executor for WebSocket queries with streaming support."""
+
+from __future__ import annotations
+
+import atexit
+import asyncio
+import functools
+import time
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from typing import Any, Dict, Tuple
+
+from minder.web.state import WebState
+from minder.web.logging_config import logger
+from minder.web.protocol import WSMessageType
+from minder.core.runtime import ConfigManager
+from minder.models.config import AppConfig
+
+
+class AgentExecutor:
+    """Executes agent queries in background with WebSocket streaming."""
+
+    def __init__(self, state: WebState):
+        """Initialize agent executor.
+
+        Args:
+            state: Shared web state
+        """
+        self.state = state
+        self.executor = ThreadPoolExecutor(max_workers=4)
+        # Lock protecting session_manager.current_session mutation
+        self._session_lock = __import__("threading").Lock()
+        from minder.web.suite_cache import SuiteCache
+
+        # Cross-request RuntimeSuite cache — skips skill discovery + agent/prompt/
+        # schema construction on repeat same-key requests (see suite_cache.py).
+        self._suite_cache = SuiteCache(maxsize=8)
+        atexit.register(self.executor.shutdown, wait=False)
+
+        # Shared thread pool for parallel tool execution across sessions
+        self._shared_parallel_executor = ThreadPoolExecutor(
+            max_workers=5, thread_name_prefix="web-tool"
+        )
+        atexit.register(self._shared_parallel_executor.shutdown, wait=False)
+
+        # Current ReactExecutor per session (for interrupt bridging)
+        self._current_react_executors: Dict[str, Any] = {}
+
+    def interrupt_session(self, session_id: str) -> bool:
+        """Interrupt a running session's ReactExecutor.
+
+        Args:
+            session_id: Session ID to interrupt
+
+        Returns:
+            True if interrupt was requested, False if no executor found
+        """
+        executor = self._current_react_executors.get(session_id)
+        if executor:
+            return executor.request_interrupt()
+        return False
+
+    async def execute_query(
+        self,
+        message: str,
+        ws_manager: Any,
+        *,
+        session_id: str,
+        session: Any,
+        persona_name: str | None = None,
+        thinking_level_override: str | None = None,
+    ) -> Dict[str, Any] | None:
+        """Execute query and stream results via WebSocket.
+
+        Args:
+            message: User query
+            ws_manager: WebSocket manager for broadcasting
+            session_id: Session ID for scoping this execution
+            session: Pre-loaded Session object (avoids mutating current_session)
+            persona_name: Optional persona name to prepend its system prompt
+            thinking_level_override: Force this run's thinking level (e.g. "Off"
+                for the warehouse quick-chat) instead of the global web state;
+                per-run, so other chats are unaffected.
+
+        Returns:
+            The agent result dict ``{"summary", "error", "latency_ms"}`` from
+            ``_run_agent_sync`` (None if execution failed before the run).
+            WS-driven callers ignore this; the module-dashboard chat route
+            relies on it for its synchronous reply.
+        """
+        try:
+            # Anchor for latency metrics: everything (TTFT, total) is measured from
+            # the moment the query reached the executor, not from LLM dispatch.
+            query_started_at = time.monotonic()
+            # Mark session as running
+            self.state.set_session_running(session_id)
+            await ws_manager.broadcast(
+                {
+                    "type": WSMessageType.SESSION_ACTIVITY,
+                    "data": {"session_id": session_id, "status": "running"},
+                }
+            )
+
+            # Broadcast message start
+            try:
+                await ws_manager.broadcast(
+                    {
+                        "type": WSMessageType.MESSAGE_START,
+                        "data": {
+                            "messageId": str(time.time()),
+                            "session_id": session_id,
+                        },
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Failed to broadcast message_start: {e}")
+
+            # Run agent in thread pool to avoid blocking event loop
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                self.executor,
+                functools.partial(
+                    self._run_agent_sync,
+                    message,
+                    ws_manager,
+                    loop,
+                    session_id,
+                    session,
+                    persona_name=persona_name,
+                    thinking_level_override=thinking_level_override,
+                    query_started_at=query_started_at,
+                ),
+            )
+
+            # ReactExecutor handles step-by-step persistence — just log the result
+            ttft_ms = response.get("ttft_ms")
+            total_ms = (time.monotonic() - query_started_at) * 1000
+            logger.info(
+                f"Agent response: summary={(response.get('summary') or '')[:100]}, "
+                f"error={response.get('error')}, "
+                f"ttft_ms={ttft_ms if ttft_ms is None else round(ttft_ms)}, "
+                f"total_ms={round(total_ms)}"
+            )
+
+            # Broadcast message complete
+            try:
+                await ws_manager.broadcast(
+                    {
+                        "type": WSMessageType.MESSAGE_COMPLETE,
+                        "data": {
+                            "messageId": str(time.time()),
+                            "session_id": session_id,
+                        },
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Failed to broadcast message_complete: {e}")
+
+            return response
+
+        except Exception as e:
+            # Broadcast structured error
+            logger.error(f"Agent execution error: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+            try:
+                from minder.core.errors import StructuredError, classify_api_error
+
+                if isinstance(e, StructuredError):
+                    structured = e
+                else:
+                    structured = classify_api_error(str(e))
+                await ws_manager.broadcast(
+                    {
+                        "type": WSMessageType.ERROR,
+                        "data": {
+                            "message": structured.message,
+                            "category": structured.category.value,
+                            "is_retryable": structured.is_retryable,
+                            "status_code": structured.status_code,
+                            "session_id": session_id,
+                        },
+                    }
+                )
+            except Exception as broadcast_err:
+                logger.error(f"Failed to broadcast error: {broadcast_err}")
+        finally:
+            # Clean up ReactExecutor reference
+            self._current_react_executors.pop(session_id, None)
+            # Clear the ui_bridge registries so push_block calls after the run
+            # raise instead of broadcasting to a torn-down session.
+            try:
+                from minder.web.ui_bridge import (
+                    clear_runtime_context,
+                    clear_session_ui_callback,
+                    set_current_ui_callback,
+                )
+
+                clear_session_ui_callback(session_id)
+                set_current_ui_callback(None)
+                clear_runtime_context(session_id)
+            except Exception as _e:
+                logger.warning(f"Failed to clear ui_bridge callback: {_e}")
+            # Always mark session as idle and clean up injection queue + approvals
+            self.state.set_session_idle(session_id)
+            self.state.clear_injection_queue(session_id)
+            self.state.clear_session_approvals(session_id)
+            try:
+                await ws_manager.broadcast(
+                    {
+                        "type": WSMessageType.SESSION_ACTIVITY,
+                        "data": {"session_id": session_id, "status": "idle"},
+                    }
+                )
+            except Exception:
+                pass
+
+    def _run_agent_sync(
+        self,
+        message: str,
+        ws_manager: Any,
+        loop: asyncio.AbstractEventLoop,
+        session_id: str,
+        session: Any,
+        *,
+        persona_name: str | None = None,
+        thinking_level_override: str | None = None,
+        query_started_at: float | None = None,
+    ) -> Dict[str, Any]:
+        """Run agent synchronously in thread pool using ReactExecutor.
+
+        Args:
+            message: User query
+            ws_manager: WebSocket manager
+            loop: Event loop for async operations
+            session_id: Session ID for scoping
+            session: Pre-loaded Session object
+            persona_name: Optional persona name to prepend its system prompt
+            thinking_level_override: Force this run's thinking level (per-run)
+            query_started_at: ``time.monotonic()`` stamp of query arrival; when
+                set, time-to-first-token is measured against it
+
+        Returns:
+            Dict with summary, error, latency_ms, ttft_ms
+        """
+        from minder.core.runtime.services import RuntimeService
+        from minder.core.context_engineering.tools.implementations import (
+            FileOperations,
+            BashTool,
+        )
+        from minder.core.context_engineering.tools.implementations.notebook_edit_tool import (
+            NotebookEditTool,
+        )
+        from minder.core.context_engineering.tools.implementations.ask_user_tool import AskUserTool
+        from minder.web.web_approval_manager import WebApprovalManager
+        from minder.web.web_ask_user_manager import WebAskUserManager
+        from minder.web.web_ui_callback import WebUICallback
+        from minder.web.ws_tool_broadcaster import WebSocketToolBroadcaster
+        from minder.core.agents.execution.react_executor import ReactExecutor
+
+        # Clear any previous interrupt flags
+        self.state.clear_interrupt()
+
+        # Always-safe release handle; reassigned once the suite is acquired so the
+        # cleanup path never references an unbound name if setup fails early.
+        def _release_suite() -> None:
+            return None
+
+        # Resolve config/working directory from session (no mutation of current_session)
+        config_manager, config, working_dir = self._resolve_runtime_context_for_session(session)
+
+        # Initialize tools
+        file_ops = FileOperations(config, working_dir)
+        bash_tool = BashTool(config, working_dir)
+        notebook_edit_tool = NotebookEditTool(working_dir)
+        # Create web-based ask-user manager with session_id
+        web_ask_user_manager = WebAskUserManager(ws_manager, loop, session_id=session_id)
+        ask_user_tool = AskUserTool(ui_prompt_callback=web_ask_user_manager.prompt_user)
+
+        # Create web-based approval manager with session_id
+        web_approval_manager = WebApprovalManager(ws_manager, loop, session_id=session_id)
+
+        # Create web UI callback for plan approval, subagent events, etc.
+        web_ui_callback = WebUICallback(ws_manager, loop, session_id, self.state)
+        web_ui_callback.query_started_at = query_started_at
+
+        # TTFT phase profiler (opt-in via MINDER_TTFT_PROFILE). Logs elapsed-since-
+        # query-arrival at each setup boundary so we can see where pre-action time
+        # goes. Zero cost when the env var is unset.
+        import os as _os
+
+        _ttft_profile = _os.environ.get("MINDER_TTFT_PROFILE")
+        _ttft_base = query_started_at if query_started_at is not None else time.monotonic()
+        _ck_prev = [_ttft_base]
+
+        def _ck(label: str) -> None:
+            if not _ttft_profile:
+                return
+            now = time.monotonic()
+            step = (now - _ck_prev[0]) * 1000
+            total = (now - _ttft_base) * 1000
+            _ck_prev[0] = now
+            logger.info("TTFT-PROFILE %-28s +%7.1fms  (total %7.1fms)", label, step, total)
+
+        _ck("setup:tools+managers")
+
+        # Register the callback so module code (push_block, etc.) can reach it
+        # via session_id or the contextvar. Cleared in the run-cleanup path.
+        from minder.web.ui_bridge import set_current_ui_callback
+
+        set_current_ui_callback(web_ui_callback)
+
+        # Build (or reuse) the runtime suite. Caching skips skill discovery +
+        # agent/prompt/schema construction on repeat same-key requests.
+        from minder.web.suite_cache import make_suite_cache_key
+
+        runtime_service = RuntimeService(config_manager, self.state.mode_manager)
+
+        def _build_suite():
+            return runtime_service.build_suite(
+                file_ops=file_ops,
+                bash_tool=bash_tool,
+                notebook_edit_tool=notebook_edit_tool,
+                ask_user_tool=ask_user_tool,
+                mcp_manager=self.state.mcp_manager,
+            )
+
+        _suite_key = make_suite_cache_key(working_dir, config, self.state.mcp_manager)
+        runtime_suite, _release_suite = self._suite_cache.acquire(_suite_key, _build_suite)
+        # Reset session-scoped mutable state before this run reuses the suite.
+        runtime_suite.tool_registry.reset_per_run_state()
+        _ck("suite:acquire+reset")
+
+        # Wire hooks system (4-point wiring, matching TUI's repl.py)
+        hook_manager = None
+        try:
+            from minder.core.hooks.loader import load_hooks_config
+            from minder.core.hooks.manager import HookManager
+
+            hooks_config = load_hooks_config(working_dir)
+            if hooks_config and hooks_config.hooks:
+                hook_manager = HookManager(
+                    hooks_config, session_id=session_id, cwd=str(working_dir)
+                )
+                # Tool registry
+                runtime_suite.tool_registry.set_hook_manager(hook_manager)
+        except Exception as e:
+            logger.warning(f"Failed to wire hooks: {e}")
+        _ck("hooks:load+wire")
+
+        # Set thinking level from web state
+        from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingLevel
+
+        thinking_level_str = thinking_level_override or self.state.get_thinking_level()
+        try:
+            thinking_level = ThinkingLevel(thinking_level_str)
+        except ValueError:
+            thinking_level = ThinkingLevel.MEDIUM
+        runtime_suite.tool_registry.thinking_handler.set_level(thinking_level)
+
+        # Wrap tool registry with WebSocket broadcaster (includes session_id)
+        _owner = getattr(session, "owner_id", "") or ""
+        _principal = {"username": _owner, "email": ""} if _owner else None
+        wrapped_registry = WebSocketToolBroadcaster(
+            runtime_suite.tool_registry,
+            ws_manager,
+            loop,
+            working_dir=working_dir,
+            session_id=session_id,
+            principal=_principal,
+        )
+
+        # Expose the live runtime suite to ui_bridge so block_rpc tool.invoke can
+        # dispatch via the same wrapped registry/approval manager used by the agent.
+        try:
+            from minder.web.ui_bridge import set_runtime_context
+
+            set_runtime_context(
+                session_id,
+                {
+                    "tool_registry": wrapped_registry,
+                    "approval_manager": web_approval_manager,
+                    "ui_callback": web_ui_callback,
+                    "working_dir": working_dir,
+                    "config": config,
+                },
+            )
+        except Exception as _ctx_err:
+            logger.warning(f"Failed to register runtime context: {_ctx_err}")
+
+        # Instantiate CostTracker for this execution
+        from minder.core.runtime.cost_tracker import CostTracker
+
+        cost_tracker = CostTracker()
+
+        # Get agent
+        agent = runtime_suite.agents.normal
+        assistant_selected = False
+        if (
+            getattr(config, "agent_mode", "normal") == "assistant"
+            and getattr(runtime_suite.agents, "assistant", None) is not None
+        ):
+            agent = runtime_suite.agents.assistant
+            assistant_selected = True
+        agent.tool_registry = wrapped_registry
+        agent._cost_tracker = cost_tracker
+
+        # Point session manager at the right session for this execution.
+        # Protected by lock to avoid race conditions with concurrent requests.
+        with self._session_lock:
+            self.state.session_manager.current_session = session
+
+        # Prepare messages for the ReAct loop
+        message_history = session.to_api_messages()
+        _ck("history:to_api_messages")
+
+        # Inject system prompt (TUI path does this via query_enhancer.prepare_messages)
+        # Append working directory context so the agent knows where to write files.
+        system_content = agent.system_prompt
+        # Prepend persona system prompt if one was selected for this run
+        if persona_name:
+            from minder.core.personas.manager import PersonaManager
+
+            persona = PersonaManager().get_persona(persona_name)
+            if persona:
+                system_content = persona.system_prompt + "\n\n" + system_content
+            else:
+                logger.warning(f"Persona '{persona_name}' not found, using base system prompt")
+        wd_str = str(working_dir)
+        if wd_str and wd_str not in system_content:
+            system_content += (
+                f"\n\n## Workspace\n\n"
+                f"Your working directory for this conversation is `{wd_str}`. "
+                f"All files you create or save MUST be placed inside this directory. "
+                f"Use relative paths when possible."
+            )
+
+        # Inject the file-based module SKILL block into the cached prefix so the LLM
+        # provider's prefix cache picks it up. Stable across turns; rebuilt only when
+        # the registry version bumps (i.e. when files change on disk).
+        #
+        # Skip entirely for assistant deployments: AssistantAgent.build_system_prompt
+        # already embeds its own SKILL block directly into system_content above, so
+        # appending another copy here would duplicate it.
+        if not assistant_selected:
+            try:
+                from minder.core.modules.prompt import build_skill_block
+                from minder.core.modules.registry import get_registry as _get_module_registry
+
+                _modules_block = build_skill_block(_get_module_registry())
+            except Exception as _mod_err:  # never let modules break a chat turn
+                logger.warning("Failed to build module SKILL block: %s", _mod_err)
+                _modules_block = ""
+
+            if _modules_block and _modules_block not in system_content:
+                skill_block = "\n\n" + _modules_block
+                system_content += skill_block
+                if hasattr(agent, "_system_stable") and agent._system_stable:
+                    agent._system_stable += skill_block
+        _ck("modules:build_skill_block")
+
+        if not message_history or message_history[0].get("role") != "system":
+            message_history.insert(0, {"role": "system", "content": system_content})
+        elif message_history[0].get("role") == "system" and wd_str not in message_history[0].get(
+            "content", ""
+        ):
+            message_history[0]["content"] += (
+                f"\n\n## Workspace\n\n" f"Working directory: `{wd_str}`. Write all files here."
+            )
+
+        # Create ReactExecutor (no console, no llm_caller, no tool_executor — Web UI mode)
+        react_executor = ReactExecutor(
+            session_manager=self.state.session_manager,
+            config=config,
+            mode_manager=self.state.mode_manager,
+            console=None,
+            llm_caller=None,
+            tool_executor=None,
+            cost_tracker=cost_tracker,
+            parallel_executor=self._shared_parallel_executor,
+        )
+
+        # 3. Wire hooks into react_executor (covers query_processor path)
+        if hook_manager:
+            react_executor.set_hook_manager(hook_manager)
+
+        # 4. Wire hooks into compactor (matches TUI's repl.py:363-366)
+        if hook_manager and hasattr(react_executor, "_compactor"):
+            compactor = react_executor._compactor
+            if compactor and hasattr(compactor, "set_hook_manager"):
+                compactor.set_hook_manager(hook_manager)
+
+        # Wire injection queue for mid-execution user messages
+        react_executor._injection_queue = self.state.get_injection_queue(session_id)
+
+        # Store for interrupt bridging
+        self._current_react_executors[session_id] = react_executor
+
+        # Execute unified ReAct loop
+        try:
+            # Fire SESSION_START hook (matches TUI's repl.py:474)
+            if hook_manager:
+                from minder.core.hooks.models import HookEvent
+
+                hook_manager.run_hooks(HookEvent.SESSION_START, match_value="web_query")
+
+            # Expand @file mentions — TUI path does this via query_enhancer.prepare_messages
+            import re as _re
+            from minder.core.agents.execution.file_content_injector import FileContentInjector
+
+            _ck("react_executor:constructed")
+            _injector = FileContentInjector(file_ops, config, working_dir)
+            _injection = _injector.inject_content(message)
+            if _injection.text_content:
+                # Strip @ prefix from file references so the agent doesn't
+                # construct tool paths with @ (e.g. @.artifacts/... → .artifacts/...)
+                _clean_msg = _re.sub(
+                    r"(?:^|(?<=\s)|(?<=[^\w]))@([a-zA-Z0-9_./\-]+)",
+                    r"\1",
+                    message,
+                )
+                query = _clean_msg + "\n\n" + _injection.text_content
+            else:
+                query = message
+            _ck("file_injection:done -> execute()")
+
+            summary, error, latency_ms = react_executor.execute(
+                query=query,
+                messages=message_history,
+                agent=agent,
+                tool_registry=wrapped_registry,
+                approval_manager=web_approval_manager,
+                undo_manager=self.state.undo_manager,
+                ui_callback=web_ui_callback,
+            )
+            return {
+                "summary": summary,
+                "error": error,
+                "latency_ms": latency_ms,
+                "ttft_ms": web_ui_callback.first_token_ms,
+            }
+        except Exception as e:
+            logger.error(f"ReactExecutor error: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+            return {"summary": None, "error": str(e), "latency_ms": 0}
+        finally:
+            # Release the cached runtime suite so a later same-key request can
+            # reuse it (no-op for an ephemeral copy-on-contention build).
+            try:
+                _release_suite()
+            except Exception:
+                pass
+
+            # Fire SESSION_END hook (matches TUI's repl.py:690)
+            if hook_manager:
+                try:
+                    from minder.core.hooks.models import HookEvent
+
+                    hook_manager.run_hooks(HookEvent.SESSION_END)
+                    hook_manager.shutdown()
+                except Exception as e:
+                    logger.warning(f"Failed to run SESSION_END hook: {e}")
+
+    def _resolve_runtime_context_for_session(
+        self, session: Any
+    ) -> Tuple[ConfigManager, AppConfig, Path]:
+        """Determine config manager, config, and working dir for a specific session."""
+        if session and session.working_directory:
+            working_dir = Path(session.working_directory).expanduser().resolve()
+            config_manager = ConfigManager(working_dir)
+            config = config_manager.get_config()
+        else:
+            config_manager = self.state.config_manager
+            config = config_manager.get_config()
+            working_dir = Path(config_manager.working_dir).resolve()
+
+        try:
+            config_manager.ensure_directories()
+        except Exception:
+            pass
+
+        return config_manager, config, working_dir
