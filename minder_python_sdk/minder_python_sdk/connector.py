@@ -181,10 +181,8 @@ class Connector:
         # (node + depth) with {nodes, edges} so the agent reasons over connected
         # context instead of a single isolated read.
         self._graph_provider: Optional[Callable[..., Any]] = None
-        # Declared UI surface (pages/forms/controls) + a per-session intent bus
-        # the module frontend drains over SSE.
+        # Declared UI surface (pages/forms/controls).
         self._ui = UiSurface()
-        self._ui_bus: "dict[str, list[Any]]" = {}
         # Per-session declarative UI snapshot cache (page/data/actions) the agent
         # reads via /connector/context to see what's currently on screen.
         self._ui_snapshots: dict[str, dict] = {}
@@ -452,8 +450,9 @@ class Connector:
         self, session_id: str, intent: dict, *, actor: Optional[dict] = None
     ) -> dict:
         """Send a UI intent to a session's frontend. Validates it against the
-        declared surface (warns, doesn't block), records a ``ui.intent`` event
-        for ground truth, and enqueues it for the SSE bus + any event sink."""
+        declared surface (warns, doesn't block) and dispatches it as a
+        ``ui.intent`` envelope to subscribers (the ``/connector/stream`` SSE) and
+        any event sink — the merged stream is the frontend's command bus."""
         if not is_intent(intent):
             raise ValueError(f"not a UI intent: {intent!r}")
         err = self._ui.validate(intent)
@@ -469,11 +468,6 @@ class Connector:
                 session_id=session_id,
             )
         )
-        for q in self._ui_bus.get(session_id, []):
-            try:
-                q.put_nowait(intent)
-            except Exception:  # noqa: BLE001 — full/closed queue: drop for that consumer
-                pass
         return {"ok": True, "warning": err}
 
     def apply_decision(self, decision: dict, principal: Optional[Principal] = None) -> dict:
@@ -1001,18 +995,23 @@ class Connector:
                 "default_autonomy": self.default_autonomy,
             }
 
-        @app.get("/connector/events")
-        def events() -> StreamingResponse:
-            """SSE stream of this module's event envelopes — the agent's
-            subscription to state changes (backlog B2)."""
+        @app.get("/connector/stream")
+        def stream(request: Request) -> StreamingResponse:
+            """One SSE stream of every envelope for a session — module domain
+            events and ``ui.intent`` alike. Replaces ``/connector/events`` and
+            ``/connector/ui/intents``. Broadcast events (no ``session_id``) reach
+            every subscriber; session-scoped events reach only their session."""
             import queue as _queue
 
+            session = request.query_params.get("session") or "default"
             q: "_queue.Queue[EventEnvelope]" = _queue.Queue(maxsize=256)
 
             def listener(env: EventEnvelope) -> None:
+                if env.session_id not in (None, session):
+                    return
                 try:
                     q.put_nowait(env)
-                except _queue.Full:  # slow consumer — drop rather than block the action
+                except _queue.Full:  # slow consumer — drop rather than block
                     pass
 
             self._event_listeners.append(listener)
@@ -1031,32 +1030,6 @@ class Connector:
                         self._event_listeners.remove(listener)
                     except ValueError:
                         pass
-
-            return StreamingResponse(gen(), media_type="text/event-stream")
-
-        @app.get("/connector/ui/intents")
-        def ui_intents(request: Request) -> StreamingResponse:
-            """SSE stream of UI intents for one session — the module frontend's
-            command bus (the agent drives the real UI through this)."""
-            import queue as _queue
-
-            session = request.query_params.get("session") or "default"
-            q: "_queue.Queue[dict]" = _queue.Queue(maxsize=256)
-            self._ui_bus.setdefault(session, []).append(q)
-
-            def gen() -> Iterator[bytes]:
-                try:
-                    yield b": ok\n\n"
-                    while True:
-                        try:
-                            intent = q.get(timeout=15)
-                            yield f"data: {json.dumps(intent)}\n\n".encode()
-                        except _queue.Empty:
-                            yield b": ping\n\n"
-                finally:
-                    subs = self._ui_bus.get(session, [])
-                    if q in subs:
-                        subs.remove(q)
 
             return StreamingResponse(gen(), media_type="text/event-stream")
 
