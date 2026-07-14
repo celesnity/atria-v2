@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMediaQuery } from 'usehooks-ts';
 import { ProjectSidebar } from '../components/Layout/ProjectSidebar';
 import { ChatRail } from '../components/Layout/ChatRail';
@@ -19,6 +20,7 @@ import { useProjectsStore } from '../stores/projects';
 import { ModuleDashboardView } from '../components/ModuleDashboard/ModuleDashboardView';
 
 export function ChatPage() {
+  const { t } = useTranslation('common');
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const commandPaletteOpen = useUiStore(state => state.commandPaletteOpen);
@@ -119,7 +121,7 @@ export function ChatPage() {
     <div className="flex flex-1 items-center justify-center p-8 text-center">
       <div className="max-w-sm">
         <p className="text-sm text-text-secondary">
-          Pick a module from the breadcrumb above, or keep chatting in the left rail.
+          {t('chatPage.noModuleHint')}
         </p>
       </div>
     </div>

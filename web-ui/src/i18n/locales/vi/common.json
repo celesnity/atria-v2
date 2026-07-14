@@ -1,3 +1,126 @@
 {
-  "appName": ""
+  "admin": {
+    "tenants": {
+      "accessRequired": "",
+      "colName": "",
+      "colSlug": "",
+      "createButton": "",
+      "deleteButton": "",
+      "deleteConfirm": "",
+      "namePlaceholder": "",
+      "slugPlaceholder": "",
+      "title": ""
+    },
+    "users": {
+      "accessRequired": "",
+      "colEmail": "",
+      "colRole": "",
+      "colUser": "",
+      "emailPlaceholder": "",
+      "inviteButton": "",
+      "removeButton": "",
+      "removeConfirm": "",
+      "roleAdmin": "",
+      "roleMember": "",
+      "title": ""
+    }
+  },
+  "appName": "",
+  "approval": {
+    "argumentsLabel": "",
+    "descriptionLabel": "",
+    "keyboardHint": "",
+    "option1": "",
+    "option2": "",
+    "option2Hint": "",
+    "option3": "",
+    "previewLabel": "",
+    "subtitle": "",
+    "title": "",
+    "toolLabel": "",
+    "warning": {
+      "body": "",
+      "title": ""
+    }
+  },
+  "chatPage": {
+    "noModuleHint": ""
+  },
+  "login": {
+    "capability": {
+      "artifacts": "",
+      "canvas": "",
+      "collaborator": "",
+      "console": "",
+      "deepResearch": "",
+      "dispatch": "",
+      "mcpServers": "",
+      "modules": "",
+      "personas": "",
+      "planMode": ""
+    },
+    "coworkerMode": "",
+    "email": {
+      "continueButton": "",
+      "description": "",
+      "fieldLabel": "",
+      "placeholder": "",
+      "signingIn": "",
+      "title": ""
+    },
+    "eyebrow": "",
+    "headline": "",
+    "loginFailed": "",
+    "signIn": "",
+    "sso": {
+      "continueButton": "",
+      "description": "",
+      "providerLabel": "",
+      "redirecting": "",
+      "title": ""
+    },
+    "stat": {
+      "mcp": {
+        "desc": "",
+        "label": ""
+      },
+      "parallel": {
+        "desc": "",
+        "label": ""
+      },
+      "planNormal": {
+        "desc": "",
+        "label": ""
+      }
+    },
+    "subheadline": ""
+  },
+  "modal": {
+    "closeLabel": ""
+  },
+  "quickChat": {
+    "noSessionError": "",
+    "timeoutError": ""
+  },
+  "skeleton": {
+    "loading": ""
+  },
+  "toast": {
+    "dismissLabel": "",
+    "notificationsRegionLabel": ""
+  },
+  "upload": {
+    "clearButton": "",
+    "clickToSelect": "",
+    "dismissErrorLabel": "",
+    "dragAndDrop": "",
+    "maxSize": "",
+    "removeFileLabel": "",
+    "scopeConversation": "",
+    "scopeProject": "",
+    "selectedFiles_other": "",
+    "totalSize": "",
+    "uploadButton": "",
+    "uploading": ""
+  }
 }

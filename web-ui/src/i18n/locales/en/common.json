@@ -1,3 +1,127 @@
 {
-  "appName": "Minder"
+  "admin": {
+    "tenants": {
+      "accessRequired": "Platform admin access required.",
+      "colName": "Name",
+      "colSlug": "Slug",
+      "createButton": "Create",
+      "deleteButton": "Delete",
+      "deleteConfirm": "Delete tenant {{slug}}?",
+      "namePlaceholder": "Display name",
+      "slugPlaceholder": "slug (lowercase)",
+      "title": "Tenants"
+    },
+    "users": {
+      "accessRequired": "Tenant admin access required.",
+      "colEmail": "Email",
+      "colRole": "Role",
+      "colUser": "User",
+      "emailPlaceholder": "email@example.com",
+      "inviteButton": "Invite",
+      "removeButton": "Remove",
+      "removeConfirm": "Remove user from tenant?",
+      "roleAdmin": "admin",
+      "roleMember": "member",
+      "title": "users"
+    }
+  },
+  "appName": "Minder",
+  "approval": {
+    "argumentsLabel": "Arguments",
+    "descriptionLabel": "Description",
+    "keyboardHint": "Press <kbd1>1</kbd1>, <kbd2>2</kbd2>, or <kbd3>3</kbd3> to select",
+    "option1": "Yes, run this command",
+    "option2": "Yes, and auto-approve all <bold>{{toolName}}</bold> commands",
+    "option2Hint": "Future similar commands will run automatically",
+    "option3": "No, cancel and provide feedback",
+    "previewLabel": "Preview",
+    "subtitle": "The assistant needs permission to execute the following operation",
+    "title": "Approval Required",
+    "toolLabel": "Tool",
+    "warning": {
+      "body": "This operation will be executed with your current permissions. Make sure you understand what it will do.",
+      "title": "Review carefully before approving"
+    }
+  },
+  "chatPage": {
+    "noModuleHint": "Pick a module from the breadcrumb above, or keep chatting in the left rail."
+  },
+  "login": {
+    "capability": {
+      "artifacts": "Artifacts",
+      "canvas": "Canvas",
+      "collaborator": "Collaborator",
+      "console": "Console",
+      "deepResearch": "Deep research",
+      "dispatch": "Dispatch",
+      "mcpServers": "MCP servers",
+      "modules": "Modules",
+      "personas": "Personas",
+      "planMode": "Plan mode"
+    },
+    "coworkerMode": "Co-worker mode",
+    "email": {
+      "continueButton": "Continue",
+      "description": "Enter your address and we'll take you straight in. New accounts are created automatically.",
+      "fieldLabel": "Email address",
+      "placeholder": "you@studio.dev",
+      "signingIn": "Signing in",
+      "title": "Continue with email"
+    },
+    "eyebrow": "One editorial workspace",
+    "headline": "Where the work\ntakes shape.",
+    "loginFailed": "Login failed",
+    "signIn": "Sign in",
+    "sso": {
+      "continueButton": "Continue with Keycloak",
+      "description": "Authenticate through your organization's identity provider, then you'll land right back here.",
+      "providerLabel": "Identity provider · Keycloak",
+      "redirecting": "Redirecting",
+      "title": "Continue with SSO"
+    },
+    "stat": {
+      "mcp": {
+        "desc": "Bring your own tools",
+        "label": "MCP"
+      },
+      "parallel": {
+        "desc": "Dispatch subagents",
+        "label": "Parallel"
+      },
+      "planNormal": {
+        "desc": "Two reasoning modes",
+        "label": "Plan · Normal"
+      }
+    },
+    "subheadline": "A canvas, a console, and a collaborator. Reason across your work, dispatch tasks in parallel, and keep every artifact within reach."
+  },
+  "modal": {
+    "closeLabel": "Close modal"
+  },
+  "quickChat": {
+    "noSessionError": "Chưa có phiên chat — mở một cuộc trò chuyện trước nhé.",
+    "timeoutError": "Hết thời gian chờ."
+  },
+  "skeleton": {
+    "loading": "Loading…"
+  },
+  "toast": {
+    "dismissLabel": "Dismiss notification",
+    "notificationsRegionLabel": "Notifications"
+  },
+  "upload": {
+    "clearButton": "Clear",
+    "clickToSelect": "Click to select files",
+    "dismissErrorLabel": "Dismiss error",
+    "dragAndDrop": "or drag and drop",
+    "maxSize": "Max {{maxMB}}MB per file",
+    "removeFileLabel": "Remove file",
+    "scopeConversation": "Conversation Scope",
+    "scopeProject": "Project Scope",
+    "selectedFiles_one": "Selected Files ({{count}})",
+    "selectedFiles_other": "Selected Files ({{count}})",
+    "totalSize": "Total: {{size}}",
+    "uploadButton": "Upload",
+    "uploading": "Uploading..."
+  }
 }

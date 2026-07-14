@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useToastStore, type ToastVariant } from '../../stores/toast';
 
 /**
@@ -14,6 +15,7 @@ const VARIANT_ACCENT: Record<ToastVariant, string> = {
 };
 
 export function ToastContainer() {
+  const { t } = useTranslation('common');
   const toasts = useToastStore(state => state.toasts);
   const removeToast = useToastStore(state => state.removeToast);
   const reduce = useReducedMotion();
@@ -21,7 +23,7 @@ export function ToastContainer() {
   return (
     <div
       role="region"
-      aria-label="Notifications"
+      aria-label={t('toast.notificationsRegionLabel')}
       aria-live="polite"
       className="fixed top-14 right-4 z-[10000] flex flex-col gap-2 max-w-sm pointer-events-none"
     >
@@ -39,7 +41,7 @@ export function ToastContainer() {
             <span className="flex-1 leading-snug">{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
-              aria-label="Dismiss notification"
+              aria-label={t('toast.dismissLabel')}
               className="flex-shrink-0 text-text-muted hover:text-ink rounded-md p-0.5"
             >
               <X className="w-3.5 h-3.5" />

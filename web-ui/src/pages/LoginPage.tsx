@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/client';
 import { Eyebrow } from '../components/ui/Eyebrow';
 import { AnimatedHeadline } from '../components/ui/AnimatedHeadline';
@@ -10,19 +11,28 @@ import { MotionRise, transitions } from '../components/ui/motion';
 
 type AuthMode = 'keycloak' | 'none' | 'loading';
 
-// Capability spine for the trust marquee — plain nouns, no marketing cliches.
-const CAPABILITIES = [
-  'Canvas', 'Console', 'Collaborator', 'Plan mode', 'MCP servers',
-  'Artifacts', 'Deep research', 'Personas', 'Dispatch', 'Modules',
-];
-
 export function LoginPage() {
+  const { t } = useTranslation('common');
   const [mode, setMode] = useState<AuthMode>('loading');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const reduce = useReducedMotion();
+
+  // Capability spine for the trust marquee — plain nouns, no marketing cliches.
+  const CAPABILITIES = [
+    t('login.capability.canvas'),
+    t('login.capability.console'),
+    t('login.capability.collaborator'),
+    t('login.capability.planMode'),
+    t('login.capability.mcpServers'),
+    t('login.capability.artifacts'),
+    t('login.capability.deepResearch'),
+    t('login.capability.personas'),
+    t('login.capability.dispatch'),
+    t('login.capability.modules'),
+  ];
 
   useEffect(() => {
     apiClient
@@ -45,7 +55,7 @@ export function LoginPage() {
       await apiClient.login(email);
       navigate('/chat', { replace: true });
     } catch (err: any) {
-      setError(err.message ?? 'Login failed');
+      setError(err.message ?? t('login.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -71,8 +81,8 @@ export function LoginPage() {
       {/* Top brand row. */}
       <div className="relative z-10 flex items-center justify-between px-8 md:px-14 lg:px-20 pt-8">
         <div className="flex items-baseline gap-3">
-          <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">Minder</span>
-          <span className="eyebrow-mono text-white/40 hidden sm:inline">Co-worker mode</span>
+          <span className="text-[18px] font-[600] tracking-[-0.02em] text-white">{t('appName')}</span>
+          <span className="eyebrow-mono text-white/40 hidden sm:inline">{t('login.coworkerMode')}</span>
         </div>
         <Eyebrow className="!text-white/40">v1 · 2026</Eyebrow>
       </div>
@@ -82,11 +92,11 @@ export function LoginPage() {
         {/* ── Attention: the headline ── */}
         <div className="max-w-2xl">
           <MotionRise>
-            <Eyebrow className="!text-white/60">One editorial workspace</Eyebrow>
+            <Eyebrow className="!text-white/60">{t('login.eyebrow')}</Eyebrow>
           </MotionRise>
 
           <AnimatedHeadline
-            text={'Where the work\ntakes shape.'}
+            text={t('login.headline')}
             className="mt-6 max-w-[16ch] text-[48px] md:text-display-lg lg:text-display-xl font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-white"
           />
 
@@ -96,8 +106,7 @@ export function LoginPage() {
             transition={{ ...transitions.editorial, delay: 0.5 }}
             className="mt-8 max-w-md text-body-lg leading-[1.6] text-white/65"
           >
-            A canvas, a console, and a collaborator. Reason across your work,
-            dispatch tasks in parallel, and keep every artifact within reach.
+            {t('login.subheadline')}
           </motion.p>
 
           {/* Interest: quiet proof row — real capabilities, no fake stats. */}
@@ -108,9 +117,9 @@ export function LoginPage() {
             className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4"
           >
             {[
-              ['Plan · Normal', 'Two reasoning modes'],
-              ['Parallel', 'Dispatch subagents'],
-              ['MCP', 'Bring your own tools'],
+              [t('login.stat.planNormal.label'), t('login.stat.planNormal.desc')],
+              [t('login.stat.parallel.label'), t('login.stat.parallel.desc')],
+              [t('login.stat.mcp.label'), t('login.stat.mcp.desc')],
             ].map(([big, small]) => (
               <div key={big} className="min-w-[7rem]">
                 <div className="text-[22px] font-[600] tracking-[-0.02em] text-white">{big}</div>
@@ -128,7 +137,7 @@ export function LoginPage() {
           className="relative w-full"
         >
           <div className="rounded-xl border border-white/12 bg-white/[0.04] p-8 backdrop-blur-xl shadow-cosmos md:p-10">
-            <Eyebrow className="!text-white/55">Sign in</Eyebrow>
+            <Eyebrow className="!text-white/55">{t('login.signIn')}</Eyebrow>
 
             {mode === 'loading' && (
               <div className="mt-8 space-y-3">
@@ -141,15 +150,14 @@ export function LoginPage() {
             {mode === 'keycloak' && (
               <>
                 <h2 className="mt-4 text-headline font-[600] tracking-[-0.02em] text-white">
-                  Continue with SSO
+                  {t('login.sso.title')}
                 </h2>
                 <p className="mt-3 text-body-sm leading-[1.6] text-white/55">
-                  Authenticate through your organization&rsquo;s identity provider,
-                  then you&rsquo;ll land right back here.
+                  {t('login.sso.description')}
                 </p>
 
                 <Eyebrow className="mt-10 block !text-white/40">
-                  Identity provider · Keycloak
+                  {t('login.sso.providerLabel')}
                 </Eyebrow>
 
                 {error && (
@@ -168,11 +176,11 @@ export function LoginPage() {
                   {loading ? (
                     <>
                       <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
-                      <span>Redirecting</span>
+                      <span>{t('login.sso.redirecting')}</span>
                     </>
                   ) : (
                     <>
-                      <span>Continue with Keycloak</span>
+                      <span>{t('login.sso.continueButton')}</span>
                       <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" strokeWidth={2} />
                     </>
                   )}
@@ -183,21 +191,20 @@ export function LoginPage() {
             {mode === 'none' && (
               <>
                 <h2 className="mt-4 text-headline font-[600] tracking-[-0.02em] text-white">
-                  Continue with email
+                  {t('login.email.title')}
                 </h2>
                 <p className="mt-3 text-body-sm leading-[1.6] text-white/55">
-                  Enter your address and we&rsquo;ll take you straight in. New
-                  accounts are created automatically.
+                  {t('login.email.description')}
                 </p>
 
                 <form onSubmit={handleSubmit} className="mt-9">
                   <label className="block">
-                    <Eyebrow className="mb-3 block !text-white/50">Email address</Eyebrow>
+                    <Eyebrow className="mb-3 block !text-white/50">{t('login.email.fieldLabel')}</Eyebrow>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@studio.dev"
+                      placeholder={t('login.email.placeholder')}
                       required
                       autoFocus
                       className="w-full rounded-sm border border-white/15 bg-white/[0.06] px-4 py-3 text-body-sm text-white placeholder:text-white/35 outline-none transition-shadow focus:border-accent-magenta focus:shadow-[0_0_0_3px_hsl(var(--accent-magenta)/0.35)]"
@@ -219,11 +226,11 @@ export function LoginPage() {
                     {loading ? (
                       <>
                         <span className="h-4 w-4 animate-spin rounded-md border-2 border-white/40 border-t-white" />
-                        <span>Signing in</span>
+                        <span>{t('login.email.signingIn')}</span>
                       </>
                     ) : (
                       <>
-                        <span>Continue</span>
+                        <span>{t('login.email.continueButton')}</span>
                         <ArrowRight className="h-4 w-4 transition-transform duration-base group-hover:translate-x-1" strokeWidth={2} />
                       </>
                     )}
