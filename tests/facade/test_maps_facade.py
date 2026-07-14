@@ -29,7 +29,7 @@ PLACE_RESULT_KEYS = {
 
 @pytest.fixture(scope="module")
 def client():
-    from atria.web.facade.maps_router import maps_facade_router
+    from minder.web.facade.maps_router import maps_facade_router
 
     app = FastAPI()
     app.include_router(maps_facade_router)
@@ -102,7 +102,7 @@ def test_route_is_documented_unavailable(client):
 
 
 def test_search_backend_failure_returns_service_unavailable(client, monkeypatch):
-    import atria.web.facade.maps_router as maps_router
+    import minder.web.facade.maps_router as maps_router
 
     monkeypatch.setattr(
         maps_router,

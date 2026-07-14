@@ -1,15 +1,15 @@
-"""Agent-level bench harness: drive the real Atria ReAct loop with a real LLM.
+"""Agent-level bench harness: drive the real Minder ReAct loop with a real LLM.
 
 Mirrors the production execution paths:
-- Stack construction follows atria/core/agents/deps_builder.py (headless worker)
-  and atria/web/agent_executor.py (system-prompt assembly, executor wiring).
+- Stack construction follows minder/core/agents/deps_builder.py (headless worker)
+  and minder/web/agent_executor.py (system-prompt assembly, executor wiring).
 - DB access follows the web-server pattern: a dedicated asyncio loop runs in a
-  background thread and is registered via atria.db.sync.set_main_loop, so the
+  background thread and is registered via minder.db.sync.set_main_loop, so the
   sync ReactExecutor's run_sync() calls schedule onto one long-lived loop that
   owns the SQLAlchemy AsyncEngine.
 
 Run cases sequentially in one process. Per-case identity is injected via the
-ATRIA_SEARCH_USER_ID env var (the knowledge_search tool reads it at call time;
+MINDER_SEARCH_USER_ID env var (the knowledge_search tool reads it at call time;
 sequential execution makes the documented single-user limitation safe here).
 """
 
@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-# Workaround: the venv's .pth files carry the macOS hidden flag, so `atria`
+# Workaround: the venv's .pth files carry the macOS hidden flag, so `minder`
 # is not importable from directly-run scripts without this.
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -50,7 +50,7 @@ def load_env(env_path: Path | None = None) -> None:
                 os.environ[key] = val
     db_url = os.environ.get("DATABASE_URL", "")
     if "@db:" in db_url:
-        os.environ["DATABASE_URL"] = "postgresql://atria:atria@localhost:5433/atria"
+        os.environ["DATABASE_URL"] = "postgresql://minder:minder@localhost:5433/minder"
 
 
 class RecorderCallback:
@@ -109,7 +109,7 @@ class BenchHarness:
             self._loop_thread = None
 
     def _start_background_loop(self) -> None:
-        from atria.db.sync import set_main_loop
+        from minder.db.sync import set_main_loop
 
         loop = asyncio.new_event_loop()
 
@@ -124,25 +124,25 @@ class BenchHarness:
         self._loop_thread = thread
 
     def _build_stack(self) -> None:
-        from atria.core.runtime.config import ConfigManager
-        from atria.core.runtime import ModeManager
-        from atria.core.runtime.services.runtime_service import RuntimeService
-        from atria.core.context_engineering.tools.implementations.file_ops import (
+        from minder.core.runtime.config import ConfigManager
+        from minder.core.runtime import ModeManager
+        from minder.core.runtime.services.runtime_service import RuntimeService
+        from minder.core.context_engineering.tools.implementations.file_ops import (
             FileOperations,
         )
-        from atria.core.context_engineering.tools.implementations.write_tool import (
+        from minder.core.context_engineering.tools.implementations.write_tool import (
             WriteTool,
         )
-        from atria.core.context_engineering.tools.implementations.edit_tool.tool import (
+        from minder.core.context_engineering.tools.implementations.edit_tool.tool import (
             EditTool,
         )
-        from atria.core.context_engineering.tools.implementations.bash_tool.tool import (
+        from minder.core.context_engineering.tools.implementations.bash_tool.tool import (
             BashTool,
         )
-        from atria.core.context_engineering.tools.implementations.notebook_edit_tool import (
+        from minder.core.context_engineering.tools.implementations.notebook_edit_tool import (
             NotebookEditTool,
         )
-        from atria.core.context_engineering.history.session_manager import (
+        from minder.core.context_engineering.history.session_manager import (
             PgSessionManager,
         )
 
@@ -170,8 +170,8 @@ class BenchHarness:
         # the module SKILL block natively, so guard against double-appending it.
         system_content = agent.system_prompt
         try:
-            from atria.core.modules.prompt import build_skill_block
-            from atria.core.modules.registry import get_registry
+            from minder.core.modules.prompt import build_skill_block
+            from minder.core.modules.registry import get_registry
 
             modules_block = build_skill_block(get_registry(), include_subagent_delegation=False)
         except Exception:
@@ -206,16 +206,16 @@ class BenchHarness:
             Dict with final_answer, tool_calls, assistant_messages, error,
             latency_ms, session_id.
         """
-        from atria.db.sync import run_sync
-        from atria.repl.react_executor import ReactExecutor
-        from atria.core.runtime.approval.manager import ApprovalManager
-        from atria.core.context_engineering.history.undo_manager import UndoManager
-        from atria.core.runtime.cost_tracker import CostTracker
+        from minder.db.sync import run_sync
+        from minder.repl.react_executor import ReactExecutor
+        from minder.core.runtime.approval.manager import ApprovalManager
+        from minder.core.context_engineering.history.undo_manager import UndoManager
+        from minder.core.runtime.cost_tracker import CostTracker
 
         if search_user_id is not None:
-            os.environ["ATRIA_SEARCH_USER_ID"] = search_user_id
+            os.environ["MINDER_SEARCH_USER_ID"] = search_user_id
         else:
-            os.environ.pop("ATRIA_SEARCH_USER_ID", None)
+            os.environ.pop("MINDER_SEARCH_USER_ID", None)
 
         session = run_sync(
             self._session_manager.create_session(
@@ -278,7 +278,7 @@ class BenchHarness:
 
 # -- process-pool batch execution ---------------------------------------------
 #
-# Identity is injected via the process-global ATRIA_SEARCH_USER_ID env var, so
+# Identity is injected via the process-global MINDER_SEARCH_USER_ID env var, so
 # concurrency must be across PROCESSES: each worker owns one stack and runs one
 # case at a time, which keeps the per-case identity write race-free.
 

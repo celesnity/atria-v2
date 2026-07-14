@@ -39,7 +39,7 @@ def main() -> None:
     t1_raw = load("track1_transcripts.jsonl")
     t8_raw = load("track8_transcripts.jsonl")
 
-    agent_model = os.environ.get("ATRIA_MODEL", "?")
+    agent_model = os.environ.get("MINDER_MODEL", "?")
     judge_model = os.environ.get("JUDGE_MODEL", "openai/gpt-4o-mini")
 
     lines: list[str] = []
@@ -47,14 +47,14 @@ def main() -> None:
     add("# Agent-Level Bench Report — 2026-07-08")
     add("")
     add(
-        f"- Agent under test: real Atria ReAct loop, model `{agent_model}` "
+        f"- Agent under test: real Minder ReAct loop, model `{agent_model}` "
         "(bench override — .env's `openrouter/free` proved non-viable, see "
         "findings), live Postgres+Qdrant stores"
     )
     add(f"- Judge: `{judge_model}` at temperature 0 (separate from agent model)")
     add(
         "- Harness: scripts/agent_bench/ — headless stack per deps_builder.py, "
-        "per-case identity via ATRIA_SEARCH_USER_ID, one fresh session per case, "
+        "per-case identity via MINDER_SEARCH_USER_ID, one fresh session per case, "
         "assistant-agent deployment (suite.agents.assistant)"
     )
     add("- Discipline: measure-only. No retrieval/prompt tuning from these results.")

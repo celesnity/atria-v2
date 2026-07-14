@@ -14,7 +14,7 @@
 - No table format in prompt/description markdown — prose or bullets only.
 - Modules are first-party/trusted, but every `block_rpc` method stays gated by `config.web.iframe_rpc.tool_allowlist`.
 - Persistence target is Postgres repos (`conversation_repo`/`message_repo`); JSON `session_manager` is legacy fallback only.
-- DB schema is created via `Base.metadata.create_all` in `atria/db/connection.py::init_schema` — there is **no Alembic**; schema changes to existing tables must be idempotent `ALTER TABLE` DDL added to `init_schema`.
+- DB schema is created via `Base.metadata.create_all` in `minder/db/connection.py::init_schema` — there is **no Alembic**; schema changes to existing tables must be idempotent `ALTER TABLE` DDL added to `init_schema`.
 - DB round-trip fidelity is via the `blocks` JSON `"raw"` field (`message_repo._msg_to_blocks`/`_blocks_to_msg`); the `role` column is secondary (query/index) but must not truncate.
 - Commit after every task. Do not add a `Co-Authored-By: Claude` trailer.
 - Real-DB tests are gated on `DATABASE_URL`; e2e agent tests require `OPENAI_API_KEY`.
@@ -23,18 +23,18 @@
 
 ## File Structure
 
-- `atria/db/models.py` — widen `Message.role` column.
-- `atria/db/connection.py` — idempotent `ALTER TABLE` in `init_schema`.
-- `atria/db/repositories/message_repo.py` — stop truncating role on insert.
-- `atria/web/ui_bridge.py` — make block persistence mandatory + reliable (surface errors).
-- `atria/core/context_engineering/tools/implementations/render_component_tool.py` — new `render_component` tool handler.
-- `atria/core/context_engineering/tools/registry.py` — register the handler.
-- `atria/core/agents/components/schemas/builtin/component_tools.py` — new tool schema.
-- `atria/core/agents/components/schemas/builtin/__init__.py` — wire schema into `BUILTIN_TOOL_SCHEMAS`.
-- `atria/core/agents/prompts/templates/tools/tool-render-component.md` — tool description.
-- `atria/models/config.py` — extend `IframeRpcConfig` (default allowlist + `config.read` key whitelist).
-- `atria/web/websocket.py` — new `block_rpc` methods (read gates, event feed, module.rpc).
-- `atria/web/routes/module_dashboard.py` — `POST /api/modules/{name}/rpc` route.
+- `minder/db/models.py` — widen `Message.role` column.
+- `minder/db/connection.py` — idempotent `ALTER TABLE` in `init_schema`.
+- `minder/db/repositories/message_repo.py` — stop truncating role on insert.
+- `minder/web/ui_bridge.py` — make block persistence mandatory + reliable (surface errors).
+- `minder/core/context_engineering/tools/implementations/render_component_tool.py` — new `render_component` tool handler.
+- `minder/core/context_engineering/tools/registry.py` — register the handler.
+- `minder/core/agents/components/schemas/builtin/component_tools.py` — new tool schema.
+- `minder/core/agents/components/schemas/builtin/__init__.py` — wire schema into `BUILTIN_TOOL_SCHEMAS`.
+- `minder/core/agents/prompts/templates/tools/tool-render-component.md` — tool description.
+- `minder/models/config.py` — extend `IframeRpcConfig` (default allowlist + `config.read` key whitelist).
+- `minder/web/websocket.py` — new `block_rpc` methods (read gates, event feed, module.rpc).
+- `minder/web/routes/module_dashboard.py` — `POST /api/modules/{name}/rpc` route.
 
 Tests:
 - `tests/test_message_repo_orm.py` — role widening + custom_block round-trip.
@@ -50,9 +50,9 @@ Tests:
 ### Task 1: Widen `messages.role` column and stop truncation
 
 **Files:**
-- Modify: `atria/db/models.py:111`
-- Modify: `atria/db/connection.py:83-95`
-- Modify: `atria/db/repositories/message_repo.py:108`
+- Modify: `minder/db/models.py:111`
+- Modify: `minder/db/connection.py:83-95`
+- Modify: `minder/db/repositories/message_repo.py:108`
 - Test: `tests/test_message_repo_orm.py`
 
 **Interfaces:**
@@ -68,7 +68,7 @@ async def test_custom_block_role_roundtrip_preserved(sm):
     users = UserRepository(sm)
     convs = ConversationRepository(sm)
     msgs = MessageRepository(sm)
-    uid = await users.upsert_by_email("orm-msg-cb@atria.local")
+    uid = await users.upsert_by_email("orm-msg-cb@minder.local")
     cid = await convs.create(None, uid, "cb", "normal")
     original = ChatMessage(
         role=Role.CUSTOM_BLOCK,
@@ -98,7 +98,7 @@ Expected: FAIL — `assert 'custom_blo' == 'custom_block'`.
 
 - [ ] **Step 3: Widen the column in the model**
 
-In `atria/db/models.py:111` change:
+In `minder/db/models.py:111` change:
 
 ```python
     role: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -106,7 +106,7 @@ In `atria/db/models.py:111` change:
 
 - [ ] **Step 4: Stop truncating on insert**
 
-In `atria/db/repositories/message_repo.py:108` change `role=message.role.value[:10]` to:
+In `minder/db/repositories/message_repo.py:108` change `role=message.role.value[:10]` to:
 
 ```python
                     role=message.role.value[:32],
@@ -114,7 +114,7 @@ In `atria/db/repositories/message_repo.py:108` change `role=message.role.value[:
 
 - [ ] **Step 5: Add idempotent ALTER to `init_schema`**
 
-In `atria/db/connection.py::init_schema`, after `await conn.run_sync(Base.metadata.create_all)` (line 89), add:
+In `minder/db/connection.py::init_schema`, after `await conn.run_sync(Base.metadata.create_all)` (line 89), add:
 
 ```python
         # Widen messages.role so block roles (e.g. custom_block) are not
@@ -137,7 +137,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add atria/db/models.py atria/db/connection.py atria/db/repositories/message_repo.py tests/test_message_repo_orm.py
+git add minder/db/models.py minder/db/connection.py minder/db/repositories/message_repo.py tests/test_message_repo_orm.py
 git commit -m "fix(db): widen messages.role to VARCHAR(32) so block roles persist faithfully"
 ```
 
@@ -146,7 +146,7 @@ git commit -m "fix(db): widen messages.role to VARCHAR(32) so block roles persis
 ### Task 2: Make chat-block persistence mandatory and reliable
 
 **Files:**
-- Modify: `atria/web/ui_bridge.py:176-297` (`_persist_block_message`, `push_block`)
+- Modify: `minder/web/ui_bridge.py:176-297` (`_persist_block_message`, `push_block`)
 - Test: `tests/web/test_ui_bridge_persistence.py`
 
 **Interfaces:**
@@ -162,7 +162,7 @@ Create `tests/web/test_ui_bridge_persistence.py`:
 from __future__ import annotations
 
 import pytest
-from atria.web import ui_bridge
+from minder.web import ui_bridge
 
 
 class _FakeSessionMgr:
@@ -214,11 +214,11 @@ def test_persist_success_writes_custom_block_message():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/web/test_ui_bridge_persistence.py -v`
-Expected: FAIL — `AttributeError: module 'atria.web.ui_bridge' has no attribute 'BlockPersistError'` / `_persist_block_message_sync`.
+Expected: FAIL — `AttributeError: module 'minder.web.ui_bridge' has no attribute 'BlockPersistError'` / `_persist_block_message_sync`.
 
 - [ ] **Step 3: Add the error type and a synchronous, testable persist core**
 
-In `atria/web/ui_bridge.py`, add near `BlockNotFound` (line 40):
+In `minder/web/ui_bridge.py`, add near `BlockNotFound` (line 40):
 
 ```python
 class BlockPersistError(RuntimeError):
@@ -286,7 +286,7 @@ def _persist_block(
     sm = getattr(cb, "state", None)
     session_manager = getattr(sm, "session_manager", None) if sm else None
     if session_manager is None:
-        from atria.web.state import get_state
+        from minder.web.state import get_state
 
         session_manager = getattr(get_state(), "session_manager", None)
     if session_manager is None:
@@ -304,13 +304,13 @@ Expected: PASS
 
 - [ ] **Step 6: Verify no other caller referenced the removed function**
 
-Run: `grep -rn "_persist_block_message\b" atria/`
+Run: `grep -rn "_persist_block_message\b" minder/`
 Expected: only `_persist_block_message_sync` remains; no reference to the old name.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add atria/web/ui_bridge.py tests/web/test_ui_bridge_persistence.py
+git add minder/web/ui_bridge.py tests/web/test_ui_bridge_persistence.py
 git commit -m "fix(webui): make chat-block persistence mandatory and surface failures"
 ```
 
@@ -319,11 +319,11 @@ git commit -m "fix(webui): make chat-block persistence mandatory and surface fai
 ### Task 3: `render_component` agent tool
 
 **Files:**
-- Create: `atria/core/context_engineering/tools/implementations/render_component_tool.py`
-- Create: `atria/core/agents/components/schemas/builtin/component_tools.py`
-- Modify: `atria/core/agents/components/schemas/builtin/__init__.py`
-- Create: `atria/core/agents/prompts/templates/tools/tool-render-component.md`
-- Modify: `atria/core/context_engineering/tools/registry.py:173-242`
+- Create: `minder/core/context_engineering/tools/implementations/render_component_tool.py`
+- Create: `minder/core/agents/components/schemas/builtin/component_tools.py`
+- Modify: `minder/core/agents/components/schemas/builtin/__init__.py`
+- Create: `minder/core/agents/prompts/templates/tools/tool-render-component.md`
+- Modify: `minder/core/context_engineering/tools/registry.py:173-242`
 - Test: `tests/core/test_render_component_tool.py`
 
 **Interfaces:**
@@ -338,10 +338,10 @@ Create `tests/core/test_render_component_tool.py`:
 from __future__ import annotations
 
 import pytest
-from atria.core.context_engineering.tools.implementations.render_component_tool import (
+from minder.core.context_engineering.tools.implementations.render_component_tool import (
     RenderComponentHandler,
 )
-from atria.web import ui_bridge
+from minder.web import ui_bridge
 
 
 class _Ctx:
@@ -396,7 +396,7 @@ Expected: FAIL — `ModuleNotFoundError: ...render_component_tool`.
 
 - [ ] **Step 3: Implement the handler**
 
-Create `atria/core/context_engineering/tools/implementations/render_component_tool.py`:
+Create `minder/core/context_engineering/tools/implementations/render_component_tool.py`:
 
 ```python
 """render_component tool — render a module block into the chat mid-turn."""
@@ -405,7 +405,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from atria.web import ui_bridge
+from minder.web import ui_bridge
 
 
 class RenderComponentHandler:
@@ -461,7 +461,7 @@ class RenderComponentHandler:
 
 - [ ] **Step 4: Add the tool schema**
 
-Create `atria/core/agents/components/schemas/builtin/component_tools.py`:
+Create `minder/core/agents/components/schemas/builtin/component_tools.py`:
 
 ```python
 """Built-in tool schemas: module component rendering."""
@@ -470,7 +470,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from atria.core.agents.prompts.loader import load_tool_description
+from minder.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
     {
@@ -511,7 +511,7 @@ SCHEMAS: list[dict[str, Any]] = [
 
 - [ ] **Step 5: Wire the schema into the builtin list**
 
-In `atria/core/agents/components/schemas/builtin/__init__.py`, add the import
+In `minder/core/agents/components/schemas/builtin/__init__.py`, add the import
 after the other imports (line 21) and append to `BUILTIN_TOOL_SCHEMAS`:
 
 ```python
@@ -522,7 +522,7 @@ and add `*_COMPONENT,` as the last entry inside `BUILTIN_TOOL_SCHEMAS`.
 
 - [ ] **Step 6: Add the tool description**
 
-Create `atria/core/agents/prompts/templates/tools/tool-render-component.md`:
+Create `minder/core/agents/prompts/templates/tools/tool-render-component.md`:
 
 ```markdown
 Render a module's HTML block directly into the chat during your turn.
@@ -539,11 +539,11 @@ returns an error; render only blocks you know the module provides.
 
 - [ ] **Step 7: Register the handler in the registry**
 
-In `atria/core/context_engineering/tools/registry.py`, near the other
+In `minder/core/context_engineering/tools/registry.py`, near the other
 implementation handlers (import section, ~line 35) add:
 
 ```python
-from atria.core.context_engineering.tools.implementations.render_component_tool import (
+from minder.core.context_engineering.tools.implementations.render_component_tool import (
     RenderComponentHandler,
 )
 ```
@@ -570,14 +570,14 @@ Expected: PASS
 
 Run:
 ```bash
-uv run python -c "from atria.core.agents.components.schemas.builtin import BUILTIN_TOOL_SCHEMAS; print([s['function']['name'] for s in BUILTIN_TOOL_SCHEMAS if s['function']['name']=='render_component'])"
+uv run python -c "from minder.core.agents.components.schemas.builtin import BUILTIN_TOOL_SCHEMAS; print([s['function']['name'] for s in BUILTIN_TOOL_SCHEMAS if s['function']['name']=='render_component'])"
 ```
 Expected: `['render_component']`
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add atria/core/context_engineering/tools/implementations/render_component_tool.py atria/core/agents/components/schemas/builtin/component_tools.py atria/core/agents/components/schemas/builtin/__init__.py atria/core/agents/prompts/templates/tools/tool-render-component.md atria/core/context_engineering/tools/registry.py tests/core/test_render_component_tool.py
+git add minder/core/context_engineering/tools/implementations/render_component_tool.py minder/core/agents/components/schemas/builtin/component_tools.py minder/core/agents/components/schemas/builtin/__init__.py minder/core/agents/prompts/templates/tools/tool-render-component.md minder/core/context_engineering/tools/registry.py tests/core/test_render_component_tool.py
 git commit -m "feat(agent): add render_component tool to render module blocks in chat"
 ```
 
@@ -586,8 +586,8 @@ git commit -m "feat(agent): add render_component tool to render module blocks in
 ### Task 4: Read gates — `chat.get_messages`, `chat.get_session`, `artifact.list`, `config.read`
 
 **Files:**
-- Modify: `atria/models/config.py:103-106` (`IframeRpcConfig`)
-- Modify: `atria/web/websocket.py:459-512` (`_handle_block_rpc`)
+- Modify: `minder/models/config.py:103-106` (`IframeRpcConfig`)
+- Modify: `minder/web/websocket.py:459-512` (`_handle_block_rpc`)
 - Test: `tests/web/test_block_rpc_gates.py`
 
 **Interfaces:**
@@ -601,7 +601,7 @@ Create `tests/web/test_block_rpc_gates.py`:
 ```python
 from __future__ import annotations
 
-from atria.models.config import IframeRpcConfig
+from minder.models.config import IframeRpcConfig
 
 
 def test_default_allowlist_includes_read_gates():
@@ -631,7 +631,7 @@ Expected: FAIL — default `tool_allowlist` is empty; `config_read_keys` missing
 
 - [ ] **Step 3: Extend `IframeRpcConfig`**
 
-In `atria/models/config.py` replace the `IframeRpcConfig` class (lines 103-106):
+In `minder/models/config.py` replace the `IframeRpcConfig` class (lines 103-106):
 
 ```python
 def _default_iframe_allowlist() -> list[str]:
@@ -663,7 +663,7 @@ via a fake WebSocket manager. Add:
 
 ```python
 import pytest
-from atria.web.websocket import WebSocketManager
+from minder.web.websocket import WebSocketManager
 
 
 class _FakeWS:
@@ -685,7 +685,7 @@ def _record(m):
 
 
 async def test_config_read_returns_whitelisted_only(mgr, monkeypatch):
-    from atria.web import state as _state
+    from minder.web import state as _state
 
     class _Cfg:
         class web:
@@ -721,7 +721,7 @@ Expected: FAIL — `config.read` not handled (`unsupported method`).
 
 - [ ] **Step 7: Implement the read gates in `_handle_block_rpc`**
 
-In `atria/web/websocket.py::_handle_block_rpc`, extend `_run_sync` (before the
+In `minder/web/websocket.py::_handle_block_rpc`, extend `_run_sync` (before the
 final `raise ValueError(f"unsupported method: {method}")`, line 512) with:
 
 ```python
@@ -770,8 +770,8 @@ For the async repo-backed reads, add to `_dispatch` (alongside the
 
             if method == "artifact.list":
                 try:
-                    from atria.core.context_engineering.tools.context import ToolExecutionContext
-                    from atria.core.context_engineering.tools.handlers.artifacts_handler import (
+                    from minder.core.context_engineering.tools.context import ToolExecutionContext
+                    from minder.core.context_engineering.tools.handlers.artifacts_handler import (
                         ArtifactsHandler,
                     )
 
@@ -789,7 +789,7 @@ For the async repo-backed reads, add to `_dispatch` (alongside the
 
 Note: `list_artifact_images` signature mirrors `read_artifact_image` used at
 line 510. If `ArtifactsHandler` exposes a differently named list method, use
-that name — verify with `grep -n "def .*list" atria/core/context_engineering/tools/handlers/artifacts_handler.py` and adjust.
+that name — verify with `grep -n "def .*list" minder/core/context_engineering/tools/handlers/artifacts_handler.py` and adjust.
 
 - [ ] **Step 8: Run tests to verify they pass**
 
@@ -799,7 +799,7 @@ Expected: PASS
 - [ ] **Step 9: Commit**
 
 ```bash
-git add atria/models/config.py atria/web/websocket.py tests/web/test_block_rpc_gates.py
+git add minder/models/config.py minder/web/websocket.py tests/web/test_block_rpc_gates.py
 git commit -m "feat(webui): add read gates (chat/session/artifact/config) to block_rpc"
 ```
 
@@ -810,8 +810,8 @@ git commit -m "feat(webui): add read gates (chat/session/artifact/config) to blo
 ### Task 5: `events.subscribe` + `block_event_feed` forwarding
 
 **Files:**
-- Modify: `atria/models/config.py` (`_default_iframe_allowlist` unchanged; `events.subscribe` stays opt-in)
-- Modify: `atria/web/websocket.py` (subscription registry + broadcast tap + `events.subscribe` method)
+- Modify: `minder/models/config.py` (`_default_iframe_allowlist` unchanged; `events.subscribe` stays opt-in)
+- Modify: `minder/web/websocket.py` (subscription registry + broadcast tap + `events.subscribe` method)
 - Test: `tests/web/test_block_event_feed.py`
 
 **Interfaces:**
@@ -826,7 +826,7 @@ Create `tests/web/test_block_event_feed.py`:
 from __future__ import annotations
 
 import pytest
-from atria.web.websocket import WebSocketManager
+from minder.web.websocket import WebSocketManager
 
 
 class _FakeWS:
@@ -846,7 +846,7 @@ def mgr(monkeypatch):
 
 
 async def test_subscribe_records_interest(mgr, monkeypatch):
-    from atria.web import state as _state
+    from minder.web import state as _state
 
     class _Cfg:
         class web:
@@ -887,7 +887,7 @@ Expected: FAIL — no `_block_feed_subs` / `forward_to_block_feed` / `events.sub
 
 - [ ] **Step 3: Add subscription state and forwarder**
 
-In `atria/web/websocket.py`, in `WebSocketManager.__init__`, add:
+In `minder/web/websocket.py`, in `WebSocketManager.__init__`, add:
 
 ```python
         self._block_feed_subs: Dict[str, set] = {}
@@ -941,12 +941,12 @@ Expected: PASS
 
 Find where turn events (`tool_call`, `tool_result`, `message_complete`) are
 broadcast in the callback layer. Run:
-`grep -rn "\"type\": WSMessageType.TOOL_CALL\|tool_call\|message_complete" atria/web/web_ui_callback.py | head`
+`grep -rn "\"type\": WSMessageType.TOOL_CALL\|tool_call\|message_complete" minder/web/web_ui_callback.py | head`
 
 In `web_ui_callback.py`, after each broadcast of a tapped event, add a call to
 `ws_manager.forward_to_block_feed(self.session_id, "<event>", <data>)`. If the
 callback does not already hold a reference to the manager, import the singleton:
-`from atria.web.websocket import ws_manager`. Add forwarding for `tool_call`,
+`from minder.web.websocket import ws_manager`. Add forwarding for `tool_call`,
 `tool_result`, and `message_complete` only (keep the feed small).
 
 - [ ] **Step 7: Run the full web test suite for regressions**
@@ -957,7 +957,7 @@ Expected: PASS
 - [ ] **Step 8: Commit**
 
 ```bash
-git add atria/web/websocket.py atria/web/web_ui_callback.py tests/web/test_block_event_feed.py
+git add minder/web/websocket.py minder/web/web_ui_callback.py tests/web/test_block_event_feed.py
 git commit -m "feat(webui): add events.subscribe gate with block_event_feed forwarding"
 ```
 
@@ -968,8 +968,8 @@ git commit -m "feat(webui): add events.subscribe gate with block_event_feed forw
 ### Task 6: `POST /api/modules/{name}/rpc` route + `module.rpc` gate
 
 **Files:**
-- Modify: `atria/web/routes/module_dashboard.py` (new `/rpc` route)
-- Modify: `atria/web/websocket.py` (`module.rpc` method in `_run_sync`/`_dispatch`)
+- Modify: `minder/web/routes/module_dashboard.py` (new `/rpc` route)
+- Modify: `minder/web/websocket.py` (`module.rpc` method in `_run_sync`/`_dispatch`)
 - Test: `tests/web/test_module_rpc_route.py`
 
 **Interfaces:**
@@ -990,8 +990,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from atria.web.routes import module_dashboard
-from atria.core.modules.registry import ModuleRegistry
+from minder.web.routes import module_dashboard
+from minder.core.modules.registry import ModuleRegistry
 
 
 @pytest.fixture
@@ -1017,7 +1017,7 @@ def test_module_rpc_echo(client):
     resp = client.post(
         "/api/modules/demo/rpc",
         json={"method": "ping", "payload": {"x": 1}},
-        headers={"x-atria-session-id": "s1"},
+        headers={"x-minder-session-id": "s1"},
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -1040,7 +1040,7 @@ Expected: FAIL — no `/rpc` route (404 for all).
 
 - [ ] **Step 3: Implement the `/rpc` route**
 
-In `atria/web/routes/module_dashboard.py`, add a request model near `RunBody`:
+In `minder/web/routes/module_dashboard.py`, add a request model near `RunBody`:
 
 ```python
 class RpcBody(BaseModel):
@@ -1083,9 +1083,9 @@ def module_rpc(
                             "message": "too many in-flight runs"})
     try:
         env = os.environ.copy()
-        env["ATRIA_SESSION_ID"] = session_id
-        env["ATRIA_MODULE_ROOT"] = str(module_dir)
-        env.setdefault("ATRIA_API_BASE", "http://127.0.0.1:8000")
+        env["MINDER_SESSION_ID"] = session_id
+        env["MINDER_MODULE_ROOT"] = str(module_dir)
+        env.setdefault("MINDER_API_BASE", "http://127.0.0.1:8000")
         stdin = json.dumps({"method": body.method, "payload": body.payload,
                             "session_id": session_id})
         try:
@@ -1115,7 +1115,7 @@ Expected: PASS
 
 - [ ] **Step 5: Wire `module.rpc` into `block_rpc`**
 
-In `atria/web/websocket.py::_handle_block_rpc::_run_sync`, add before the final
+In `minder/web/websocket.py::_handle_block_rpc::_run_sync`, add before the final
 `raise ValueError`:
 
 ```python
@@ -1123,8 +1123,8 @@ In `atria/web/websocket.py::_handle_block_rpc::_run_sync`, add before the final
                 module_name = args.get("module")
                 if not module_name:
                     raise ValueError("module.rpc requires 'module'")
-                from atria.web.dependencies.modules import get_modules_registry_singleton  # see note
-                from atria.web.routes.module_dashboard import RpcBody, module_rpc
+                from minder.web.dependencies.modules import get_modules_registry_singleton  # see note
+                from minder.web.routes.module_dashboard import RpcBody, module_rpc
 
                 # Reuse the route function directly with a lightweight request shim.
                 raise ValueError("module.rpc dispatch handled in _dispatch")
@@ -1139,8 +1139,8 @@ in `module_dashboard.py`, have the route call it, and call the same helper from
 
 ```python
             if method == "module.rpc":
-                from atria.web.dependencies.modules import get_modules_registry
-                from atria.web.routes.module_dashboard import run_module_rpc
+                from minder.web.dependencies.modules import get_modules_registry
+                from minder.web.routes.module_dashboard import run_module_rpc
 
                 reg = get_modules_registry()
                 try:
@@ -1156,7 +1156,7 @@ in `module_dashboard.py`, have the route call it, and call the same helper from
 ```
 
 Note: verify the DI accessor name with
-`grep -n "def get_modules_registry" atria/web/dependencies/modules.py`; if it is a
+`grep -n "def get_modules_registry" minder/web/dependencies/modules.py`; if it is a
 FastAPI `Depends` provider, add/obtain a plain singleton accessor and use that.
 `module.rpc` stays opt-in (not in the default allowlist).
 
@@ -1170,7 +1170,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add atria/web/routes/module_dashboard.py atria/web/websocket.py tests/web/test_module_rpc_route.py
+git add minder/web/routes/module_dashboard.py minder/web/websocket.py tests/web/test_module_rpc_route.py
 git commit -m "feat(modules): add module.rpc gate + POST /api/modules/{name}/rpc route"
 ```
 
@@ -1190,7 +1190,7 @@ Expected: no errors.
 
 - [ ] **Step 3: Real-API end-to-end**
 
-With `OPENAI_API_KEY` and `DATABASE_URL` set, start the web UI (`atria run ui`) with an existing module that has a `blocks/*.html` (e.g. `warehouse/blocks/item_form.html`). Prompt the agent to render that block via `render_component`. Verify:
+With `OPENAI_API_KEY` and `DATABASE_URL` set, start the web UI (`minder run ui`) with an existing module that has a `blocks/*.html` (e.g. `warehouse/blocks/item_form.html`). Prompt the agent to render that block via `render_component`. Verify:
 - the block appears in the chat,
 - a row exists in `messages` with `role = 'custom_block'` and metadata in `blocks->'raw'`,
 - reloading the session re-renders the block,

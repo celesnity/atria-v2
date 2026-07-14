@@ -1,0 +1,40 @@
+"""Factory for assembling the tool registry and related primitives."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Union
+
+from minder.core.context_engineering.tools import ToolRegistry
+
+
+@dataclass
+class ToolDependencies:
+    """Value object capturing tool-level dependencies."""
+
+    file_ops: Union[Any, None]
+    bash_tool: Union[Any, None]
+    notebook_edit_tool: Union[Any, None] = None
+    ask_user_tool: Union[Any, None] = None
+    vlm_tool: Union[Any, None] = None
+    app_config: Union[Any, None] = None
+
+
+class ToolFactory:
+    """Creates tool registries with consistent wiring."""
+
+    def __init__(self, dependencies: ToolDependencies) -> None:
+        self._deps = dependencies
+
+    def create_registry(self, *, mcp_manager: Union[Any, None] = None) -> ToolRegistry:
+        """Instantiate a `ToolRegistry` with the configured dependencies."""
+        registry = ToolRegistry(
+            file_ops=self._deps.file_ops,
+            bash_tool=self._deps.bash_tool,
+            notebook_edit_tool=self._deps.notebook_edit_tool,
+            ask_user_tool=self._deps.ask_user_tool,
+            vlm_tool=self._deps.vlm_tool,
+            mcp_manager=mcp_manager,
+            app_config=self._deps.app_config,
+        )
+        return registry

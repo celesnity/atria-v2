@@ -179,7 +179,7 @@ Maps two feature roles (index_embed, synthesis) to OpenAI-compatible endpoints.
 Defaults target a hosted API (OpenAI); every field is overridable per role via
 ``EK_<ROLE>_<FIELD>``. The api_key default falls back to OPENAI_API_KEY, then
 OPENROUTER_API_KEY, so the module runs against your existing keys unchanged.
-This layer is self-contained and does not touch Atria's global provider system.
+This layer is self-contained and does not touch Minder's global provider system.
 """
 from __future__ import annotations
 

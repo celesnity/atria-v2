@@ -46,7 +46,7 @@ def test_chunk_preserves_all_content():
     reason="needs live Postgres, Qdrant, an embedding key and the Track 1 xlsx",
 )
 def test_ingest_end_to_end():
-    from atria.core.context_engineering.search import pg
+    from minder.core.context_engineering.search import pg
 
     script = Path(__file__).resolve().parents[2] / "modules/enterprise_search/scripts/ingest.py"
     proc = subprocess.run(

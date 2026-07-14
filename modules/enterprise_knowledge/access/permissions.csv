@@ -1,6 +1,0 @@
-Permissions Matrix,,,,,
-classification,employee,manager,director,executive,rule_description_vi
-Public,Allow,Allow,Allow,Allow,Tất cả nhân viên được truy cập
-Internal,Allow,Allow,Allow,Allow,Tất cả nhân viên nội bộ được truy cập
-Confidential,Own Department,Own Department,Own Department,Allow,"Chỉ phòng ban sở hữu, Executive được truy cập tất cả"
-Restricted,Deny,Deny,Deny,Allow,Chỉ Ban Điều hành được truy cập

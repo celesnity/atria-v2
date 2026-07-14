@@ -3,14 +3,14 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=atria
-      - POSTGRES_USER=atria
-      - POSTGRES_PASSWORD=atria
+      - POSTGRES_DB=minder
+      - POSTGRES_USER=minder
+      - POSTGRES_PASSWORD=minder
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atria -d atria"]
+      test: ["CMD-SHELL", "pg_isready -U minder -d minder"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,158 +22,108 @@ services:
       - "8081:8080"
     environment:
       - ADMINER_DEFAULT_SERVER=db
-      - ADMINER_DEFAULT_DB=atria
-      - ADMINER_DEFAULT_USERNAME=atria
-      - ADMINER_DEFAULT_PASSWORD=atria
+      - ADMINER_DEFAULT_DB=minder
+      - ADMINER_DEFAULT_USERNAME=minder
+      - ADMINER_DEFAULT_PASSWORD=minder
       - ADMINER_DESIGN=pepa-linha
-    depends_on:
-      db:
-        condition: service_healthy
 
-  atria:
-    build: .
+  # Single public entry point (see nginx/nginx.conf). Only nginx publishes a
+  # host port; it reverse-proxies UI + /api + /ws to `minder`.
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - minder
+
+  minder:
+    build: .
+    # Internal-only — reached through nginx (single exposed port).
+    expose:
+      - "8080"
     environment:
-      - ATRIA_ASR_BASE_URL=http://asr:9000/v1
+      - MINDER_ASR_BASE_URL=http://asr:9000/v1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SERPER_API_KEY=${SERPER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
+      - MINDER_MODEL=${MINDER_MODEL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
+      - MINDER_REDIS_URL=redis://redis:6379/0
+      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
+      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
+      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
+      # - MC_QDRANT_URL=http://qdrant:6333
+      # - MC_NEO4J_URI=bolt://neo4j:7687
+      # - MC_NEO4J_USER=neo4j
+      # - MC_NEO4J_PASSWORD=minder-neo4j
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/home/atria/.atria
+      - minder_data:/home/minder/.minder
       # Mount Python source for hot reload — no rebuild needed on code change
-      - ./atria:/app/atria
+      - ./minder:/app/minder
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
     command: >
       /bin/sh -c "
-        mkdir -p /home/atria/.atria &&
-        : \"$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}\" &&
-        : \"$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}\" &&
+        mkdir -p /home/minder/.minder &&
+        : \"$${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}\" &&
+        : \"$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}\" &&
         printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\n'
-          \"$${ATRIA_MODEL}\"
-          \"$${ATRIA_API_BASE_URL}\"
-          > /home/atria/.atria/settings.json &&
-        exec uvicorn atria.web.server:create_app --factory
+          \"$${MINDER_MODEL}\"
+          \"$${MINDER_API_BASE_URL}\"
+          > /home/minder/.minder/settings.json &&
+        exec uvicorn minder.web.server:create_app --factory
           --host 0.0.0.0 --port 8080
-          --reload --reload-dir /app/atria
+          --reload --reload-dir /app/minder
           --reload-delay 0.25
           --log-level info
       "
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+  # Redis is external (remote) — set ATRIA_REDIS_URL (default points at the
+  # remote host). No in-compose redis service.
 
   # CPU speech-to-text sidecar (see docker-compose.yml for details).
-  asr:
-    build: ./services/asr
-    ports:
-      - "9000:9000"
-    volumes:
-      - asr_models:/models
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-
-  # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool).
-  atria-worker:
-    build: .
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SERPER_API_KEY=${SERPER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://atria:atria@db:5432/atria}
-      - ATRIA_REDIS_URL=redis://redis:6379/0
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      - MC_QDRANT_URL=http://qdrant:6333
-      - MC_NEO4J_URI=bolt://neo4j:7687
-      - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - atria_data:/home/atria/.atria
-      - ./atria:/app/atria
-      - ./modules:/app/modules
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        mkdir -p /home/atria/.atria &&
-        : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
-        : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
-        printf '{"model":"%s","api_base_url":"%s"}\n'
-          "$${ATRIA_MODEL}"
-          "$${ATRIA_API_BASE_URL}"
-          > /home/atria/.atria/settings.json &&
-        exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+  # asr:
+  #   build: ./services/asr
+  #   ports:
+  #     - "9000:9000"
+  #   volumes:
+  #     - asr_models:/models
+  #   healthcheck:
+  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 60s
+  #   restart: unless-stopped
 
   # Opt-in only (profile "embed-tei"). Embeddings default to an external
   # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
   # this local embedder explicitly with `--profile embed-tei` when wanted. Note
   # cpu-1.9 has no arm64 image, so on Apple Silicon it runs under emulation.
-  tei:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
-    profiles: ["embed-tei"]
-    ports:
-      - "8082:80"
-    volumes:
-      - tei_data:/data
-    restart: unless-stopped
+  # tei:
+  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
+  #   command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
+  #   profiles: ["embed-tei"]
+  #   ports:
+  #     - "8082:80"
+  #   volumes:
+  #     - tei_data:/data
+  #   restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
+  # Qdrant is external (remote) — set EK_QDRANT_URL / MC_QDRANT_URL. No
+  # in-compose qdrant service.
 
   neo4j:
     image: neo4j:5
     environment:
-      - NEO4J_AUTH=neo4j/atria-neo4j
+      - NEO4J_AUTH=neo4j/minder-neo4j
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -194,10 +144,9 @@ services:
     profiles: ["gpu"]
 
 volumes:
-  atria_data:
+  minder_data:
   postgres_data:
   tei_data:
-  qdrant_data:
   neo4j_data:
   hf_cache:
   asr_models:

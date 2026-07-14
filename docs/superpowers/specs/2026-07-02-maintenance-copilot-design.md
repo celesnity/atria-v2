@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-Build a working pilot of the AI Maintenance Knowledge Copilot as an Atria
+Build a working pilot of the AI Maintenance Knowledge Copilot as an Minder
 module. The copilot helps the Maintenance Control Center (MCC) and engineering
 teams **retrieve, validate, and cross-reference** aircraft maintenance
 documentation (AMM, MEL, CDL, TSM) faster and with fewer errors. It is strictly
@@ -43,7 +43,7 @@ This pilot implements the five stated pilot-scope items from the brief:
   confidence + `unverified`/`engineer_confirmed` status on every node and edge.
 - **Corpus:** synthetic sample AMM/MEL/CDL/TSM manuals (no IP/licensing risk);
   real manuals swap in later via config.
-- **Model-provider config:** module-local only. Not wired into Atria's global
+- **Model-provider config:** module-local only. Not wired into Minder's global
   provider system.
 - **Module status on disk:** `maintenance_copilot` is the only module; the five
   prior modules were left deleted per the user's decision.
@@ -57,8 +57,8 @@ and explicit (auditability is the priority in a safety-critical context).
 
 ```
                        ┌─────────────────────────────────────────┐
-   engineer / MCC ───▶ │  copilot.py  (module CLI, in Atria)       │
-   (via Atria agent    │  ingest · index · graph · query · validate│
+   engineer / MCC ───▶ │  copilot.py  (module CLI, in Minder)       │
+   (via Minder agent    │  ingest · index · graph · query · validate│
     or dashboard)      └───┬───────┬───────────┬──────────┬────────┘
                            │       │           │          │
               chunk (Chonkie)  embed        vector      graph
@@ -106,7 +106,7 @@ four **roles** to endpoints, resolved through one thin OpenAI-compatible client:
 Each role entry is `{provider, model, base_url, api_key}`. Swapping any model
 per feature, or falling back to the proxy on a no-GPU box, is a config change —
 no branching at call sites. This layer is self-contained; it does not depend on
-or modify Atria internals.
+or modify Minder internals.
 
 ## 4. Ingestion pipeline & data model
 
@@ -164,7 +164,7 @@ guardrail).
 
 ## 5. CLI capabilities (pilot scope)
 
-`copilot.py` subcommands. Each returns structured JSON (for the Atria agent and
+`copilot.py` subcommands. Each returns structured JSON (for the Minder agent and
 dashboard) and never phrases output as a decision.
 
 - **`query "<defect or question>" [--ata NN] [--k 5]`** — *Retrieve.* Qdrant

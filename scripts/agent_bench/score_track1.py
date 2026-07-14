@@ -59,7 +59,7 @@ Reply with ONLY a JSON object:
 
 
 def fetch_doc_content(doc_ids: list[str]) -> str:
-    from atria.core.context_engineering.search import pg
+    from minder.core.context_engineering.search import pg
 
     parts = []
     for doc_id in doc_ids:

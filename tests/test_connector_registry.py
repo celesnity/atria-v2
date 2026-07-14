@@ -1,4 +1,4 @@
-from atria.core.modules.registry import (
+from minder.core.modules.registry import (
     ConnectorState,
     ModuleRegistry,
     RECONCILE_FAIL_LIMIT,
@@ -54,3 +54,26 @@ def test_live_service_modules_tracks_ready_state(tmp_path):
     assert reg.live_service_modules() == [reg._modules["m"]]
     reg.mark_connector_down("m")
     assert reg.live_service_modules() == []
+
+
+def test_mark_connector_ready_stores_context_block(tmp_path):
+    from minder.core.modules.registry import ModuleRegistry
+
+    reg = ModuleRegistry(tmp_path)
+    reg.register_connector(name="m", connector_url="http://m:9200")
+    reg.mark_connector_ready(
+        "m",
+        [{"name": "m_tool"}],
+        context={"knowledge": ["K1"], "notes": [{"name": "a", "text": "t"}]},
+    )
+    rec = reg.connector("m")
+    assert rec.context == {"knowledge": ["K1"], "notes": [{"name": "a", "text": "t"}]}
+
+
+def test_mark_connector_ready_defaults_context_to_empty_dict(tmp_path):
+    from minder.core.modules.registry import ModuleRegistry
+
+    reg = ModuleRegistry(tmp_path)
+    reg.register_connector(name="m", connector_url="http://m:9200")
+    reg.mark_connector_ready("m", [{"name": "m_tool"}])  # no context arg
+    assert reg.connector("m").context == {}
