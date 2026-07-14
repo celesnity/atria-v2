@@ -165,6 +165,12 @@ export interface Message {
   image_src?: string;
   image_mime?: string;
   image_caption?: string;
+  // latency metrics attached to the assistant bubble on message_complete
+  metrics?: {
+    ttftMs?: number;       // client-perceived time-to-first-token (ms)
+    totalMs?: number;      // client-perceived total turn duration (ms)
+    serverTtftMs?: number; // server-side TTFT reported by backend
+  };
 }
 
 // Session types
@@ -229,7 +235,7 @@ export interface ParallelSolverDoneData {
 
 // WebSocket event types
 export interface WSMessage {
-  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'subagent_start' | 'subagent_complete' | 'todos_updated' | 'parallel_agents_start' | 'parallel_agents_done' | 'parallel_solver_started' | 'parallel_solver_progress' | 'parallel_solver_done' | 'divide_job_started' | 'divide_task_update' | 'divide_job_done' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'image_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced' | 'blackboard.note' | 'blackboard.request' | 'blackboard.bid' | 'blackboard.response'
+  type: 'user_message' | 'message_start' | 'message_chunk' | 'message_complete' | 'tool_call' | 'tool_result' | 'approval_required' | 'approval_resolved' | 'error' | 'pong' | 'mcp_status_update' | 'mcp_servers_update' | 'connected' | 'disconnected' | 'thinking_block' | 'thinking' | 'thinking_done' | 'search_done' | 'status_update' | 'ask_user_required' | 'ask_user_resolved' | 'session_activity' | 'plan_approval_required' | 'plan_approval_resolved' | 'plan_content' | 'todos_updated' | 'task_completed' | 'progress' | 'nested_tool_call' | 'nested_tool_result' | 'deep_research_taxonomy_ready' | 'deep_research_queued' | 'deep_research_start' | 'deep_research_section_start' | 'deep_research_section_done' | 'deep_research_done' | 'deep_research_error' | 'image_message' | 'custom_block' | 'custom_block_update' | 'custom_block_remove' | 'block_rpc_result' | 'session_messages_replaced'
     // Service-module UI cards arrive as a per-module `card_type` string (either a
     // module-chosen type or the default `{module}_card`).
     // `(string & {})` keeps arbitrary card_type values assignable without collapsing the union to `string`.
@@ -338,6 +344,9 @@ export interface PerSessionState {
   // Unsent input text, kept per-conversation so it survives navigating away
   // (e.g. opening a module dashboard) and back.
   draft?: string;
+  // True between turn start and the first visible output (streamed token or
+  // tool activity). Used to show a lightweight "Thinking…" indicator.
+  thinkingIndicator: boolean;
 }
 
 // ── Artifact Viewer ──────────────────────────────────────────────────────────

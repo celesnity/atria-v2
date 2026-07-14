@@ -135,9 +135,9 @@ export function LandingPage() {
       {/* Ambient cosmic backdrop — subtle starfield + nebula bloom. */}
       <CosmicField count={38} className="opacity-70" />
 
-      <div className="relative z-10 w-full max-w-3xl">
-        {/* ── Attention: wide editorial headline ── */}
-        <div className="mb-9 text-center">
+      <div className="relative z-10 w-full max-w-2xl">
+        {/* ── Attention: a refined, compact editorial headline ── */}
+        <div className="mb-6 text-center">
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -148,7 +148,7 @@ export function LandingPage() {
           <AnimatedHeadline
             as="h2"
             text={"What should we think through?"}
-            className="mx-auto mt-4 max-w-4xl text-[44px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand"
+            className="mx-auto mt-2.5 max-w-xl text-[28px] md:text-[38px] font-sans font-[600] leading-[1.08] tracking-[-0.03em] text-gradient-brand"
           />
         </div>
 
@@ -168,7 +168,7 @@ export function LandingPage() {
               placeholder="Describe what's on your mind, or pick a starting point below."
               disabled={isLoading || !isConnected}
               className="w-full resize-none border-0 bg-transparent text-base leading-relaxed text-ink placeholder-text-muted outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              minRows={3}
+              minRows={2}
               maxRows={8}
             />
 
@@ -251,7 +251,7 @@ export function LandingPage() {
         )}
 
         {/* ── Interest: gapless prompt-starter bento (grid-flow-dense, no voids) ── */}
-        <div className="mt-6 grid grid-flow-dense grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="mt-4 grid grid-flow-dense grid-cols-1 gap-2 sm:grid-cols-2">
           {STARTERS.map((s, i) => (
             <motion.button
               key={s.title}
@@ -260,7 +260,7 @@ export function LandingPage() {
               initial={reduce ? false : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...transitions.editorial, delay: 0.5 + i * 0.06 }}
-              className="group flex flex-col items-start gap-1.5 rounded-md border border-hairline-soft bg-surface-soft/50 p-4 text-left transition-all duration-base hover:border-ink/20 hover:bg-surface-soft hover:-translate-y-0.5"
+              className="group flex flex-col items-start gap-1.5 rounded-md border border-hairline-soft bg-surface-soft/50 p-3.5 text-left transition-all duration-base hover:border-ink/20 hover:bg-surface-soft hover:-translate-y-0.5"
             >
               <div className="flex w-full items-center justify-between">
                 <span className="eyebrow-mono text-text-muted">{s.kind}</span>

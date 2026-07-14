@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ESNext", "useDefineForClassFields": true, "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ESNext", "skipLibCheck": true, "moduleResolution": "bundler",
+    "resolveJsonModule": true, "isolatedModules": true, "noEmit": true, "jsx": "react-jsx",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": { "minder-ui-sdk": ["../../../minder_ui_sdk/src/index.ts"] }
+  },
+  "include": ["src"]
+}

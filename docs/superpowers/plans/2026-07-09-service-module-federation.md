@@ -2,19 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extract `maintenance_copilot` from Atria's in-process module system into a self-contained, containerized service-module (own deps, own backend, own federated React frontend), leaving Atria to talk to it only over an HTTP connector contract and Module Federation.
+**Goal:** Extract `maintenance_copilot` from Minder's in-process module system into a self-contained, containerized service-module (own deps, own backend, own federated React frontend), leaving Minder to talk to it only over an HTTP connector contract and Module Federation.
 
-**Architecture:** A *service-module* is a full-stack folder under `modules/<name>/` with a `backend/` (FastAPI connector, own `requirements.txt` + `Dockerfile`, own container) and a `frontend/` (Vite Module Federation remote). Atria core stops importing the module's Python; it registers **proxy tools** from the module's committed manifest that HTTP-call the connector at run time, re-broadcasting the module's structured card to the UI. The web UI host loads the module's dashboard as a runtime-registered federation remote, rendered natively in-host (no iframe). Built backend-first across 4 phases so the dependency-isolation win lands and is verifiable before the federation frontend.
+**Architecture:** A *service-module* is a full-stack folder under `modules/<name>/` with a `backend/` (FastAPI connector, own `requirements.txt` + `Dockerfile`, own container) and a `frontend/` (Vite Module Federation remote). Minder core stops importing the module's Python; it registers **proxy tools** from the module's committed manifest that HTTP-call the connector at run time, re-broadcasting the module's structured card to the UI. The web UI host loads the module's dashboard as a runtime-registered federation remote, rendered natively in-host (no iframe). Built backend-first across 4 phases so the dependency-isolation win lands and is verifiable before the federation frontend.
 
-**Tech Stack:** Python 3.12 + FastAPI + httpx (backend & Atria consumer), pydantic; React 18 + Vite 5 + `@module-federation/vite` + `@module-federation/runtime` (frontend); Docker Compose (orchestration); pytest + Vitest (tests).
+**Tech Stack:** Python 3.12 + FastAPI + httpx (backend & Minder consumer), pydantic; React 18 + Vite 5 + `@module-federation/vite` + `@module-federation/runtime` (frontend); Docker Compose (orchestration); pytest + Vitest (tests).
 
 ## Global Constraints
 
 - **Spec:** `docs/superpowers/specs/2026-07-09-service-module-federation-design.md` — this plan implements it.
-- **Boundary rule:** Atria core and the service communicate ONLY over HTTP (connector) + Module Federation (UI). No Python import may cross the boundary — after Phase 1, nothing in `atria/` imports `openai`, `qdrant-client`, `neo4j`, or `chonkie` on behalf of this module.
-- **Heavy deps stay service-side:** `openai>=1.40`, `qdrant-client>=1.11`, `neo4j>=5.24`, `chonkie>=1.0` live only in `modules/maintenance_copilot/backend/requirements.txt`, never in the Atria image.
+- **Boundary rule:** Minder core and the service communicate ONLY over HTTP (connector) + Module Federation (UI). No Python import may cross the boundary — after Phase 1, nothing in `minder/` imports `openai`, `qdrant-client`, `neo4j`, or `chonkie` on behalf of this module.
+- **Heavy deps stay service-side:** `openai>=1.40`, `qdrant-client>=1.11`, `neo4j>=5.24`, `chonkie>=1.0` live only in `modules/maintenance_copilot/backend/requirements.txt`, never in the Minder image.
 - **Preserve behavior:** the agent tool name stays exactly `maintenance_copilot_query`; the UI card broadcast stays exactly `{"type": "maintenance_answer", ...}`; the guardrail (no direct `sample_manuals` reads; the `_llm_suffix` no-freelancing directive) is preserved; a down sidecar/service returns a structured "unavailable" card, never a crash and never freelancing.
-- **Connector URL split:** Atria's server-side proxy tool calls the connector over the Docker network (`http://maintenance-copilot:9200`); the browser loads the federation remote over a public URL (`http://localhost:9200`). Never conflate them.
+- **Connector URL split:** Minder's server-side proxy tool calls the connector over the Docker network (`http://maintenance-copilot:9200`); the browser loads the federation remote over a public URL (`http://localhost:9200`). Never conflate them.
 - **Python style:** line length 100 (Black + Ruff), type hints on public APIs (mypy strict), Google-style docstrings.
 - **Test command:** `uv run --no-sync pytest <path>` for Python; `pnpm --dir web-ui test` for web-ui (Vitest). Do NOT use bare `pytest`.
 - **Compose service name:** `maintenance-copilot` (hyphen); container port `9200`.
@@ -28,25 +28,25 @@
 **Created (module — service side):**
 - `modules/maintenance_copilot/backend/pipeline/` — the current `scripts/*.py`, moved verbatim.
 - `modules/maintenance_copilot/backend/sample_manuals/` — the RAG corpus, moved.
-- `modules/maintenance_copilot/backend/service.py` — pure pipeline entry: `run_query()` + `unavailable_payload()` (the brains of today's `tools.py`, minus the Atria import).
+- `modules/maintenance_copilot/backend/service.py` — pure pipeline entry: `run_query()` + `unavailable_payload()` (the brains of today's `tools.py`, minus the Minder import).
 - `modules/maintenance_copilot/backend/app.py` — FastAPI connector contract.
 - `modules/maintenance_copilot/backend/requirements.txt` — heavy deps.
 - `modules/maintenance_copilot/backend/Dockerfile` — service image.
 - `modules/maintenance_copilot/frontend/` — Vite MF remote (`package.json`, `vite.config.ts`, `src/DashboardApp.tsx`).
 
-**Created (Atria — consumer side):**
-- `atria/core/modules/remote.py` — `RemoteConnector` HTTP client + `build_remote_tool_specs()`.
+**Created (Minder — consumer side):**
+- `minder/core/modules/remote.py` — `RemoteConnector` HTTP client + `build_remote_tool_specs()`.
 - `web-ui/src/lib/federation.ts` — runtime remote registration + component loader.
 - `tests/test_connector_app.py`, `tests/test_remote_connector.py`, `tests/test_module_service_manifest.py` — Python tests.
 
 **Modified:**
 - `modules/maintenance_copilot/manifest.json` — add `service` + `remote` blocks.
-- `modules/maintenance_copilot/SKILL.md` — remove `tools: tools.py` (Atria no longer loads it).
-- `modules/maintenance_copilot/tools.py`, `scripts/`, `requirements.txt`, `dashboard.html` — deleted from the Atria-loaded surface.
-- `atria/core/modules/store.py` — `ModuleServiceManifest`, `ModuleRemoteManifest`, parsing.
-- `atria/core/context_engineering/tools/registry.py` — merge remote proxy tools into skill specs.
-- `atria/core/context_engineering/tools/protected_paths.py` — protect `backend/sample_manuals`.
-- `atria/web/routes/modules.py` — surface `remote`/`remote_entry` in the dashboards listing.
+- `modules/maintenance_copilot/SKILL.md` — remove `tools: tools.py` (Minder no longer loads it).
+- `modules/maintenance_copilot/tools.py`, `scripts/`, `requirements.txt`, `dashboard.html` — deleted from the Minder-loaded surface.
+- `minder/core/modules/store.py` — `ModuleServiceManifest`, `ModuleRemoteManifest`, parsing.
+- `minder/core/context_engineering/tools/registry.py` — merge remote proxy tools into skill specs.
+- `minder/core/context_engineering/tools/protected_paths.py` — protect `backend/sample_manuals`.
+- `minder/web/routes/modules.py` — surface `remote`/`remote_entry` in the dashboards listing.
 - `docker-compose.yml` — add the `maintenance-copilot` service.
 - `web-ui/package.json`, `web-ui/vite.config.ts` — federation host wiring.
 - `web-ui/src/components/ModuleDashboard/ModuleDashboardView.tsx` — `remote` render branch.
@@ -110,7 +110,7 @@ git commit -m "refactor(maintenance_copilot): move pipeline + corpus into backen
 
 ---
 
-### Task 1.2: Extract `service.py` — pipeline entry without the Atria import
+### Task 1.2: Extract `service.py` — pipeline entry without the Minder import
 
 **Files:**
 - Create: `modules/maintenance_copilot/backend/service.py`
@@ -177,15 +177,15 @@ Expected: FAIL — `service.py` does not exist yet (import error).
 
 - [ ] **Step 3: Create `service.py`**
 
-Create `modules/maintenance_copilot/backend/service.py` by copying the brains of the current `tools.py` and dropping the Atria coupling. Full content:
+Create `modules/maintenance_copilot/backend/service.py` by copying the brains of the current `tools.py` and dropping the Minder coupling. Full content:
 
 ```python
 """Pure pipeline entry for the maintenance_copilot connector service.
 
 This is the intelligence that used to live in the module's in-process
 ``tools.py`` — retrieval + synthesis + citation/confidence guardrails — with
-the Atria ``ToolSpec`` coupling removed. The connector ``app.py`` calls
-``run_query`` and shapes the HTTP response; nothing here imports ``atria``.
+the Minder ``ToolSpec`` coupling removed. The connector ``app.py`` calls
+``run_query`` and shapes the HTTP response; nothing here imports ``minder``.
 """
 from __future__ import annotations
 
@@ -364,7 +364,7 @@ Expected: PASS (both tests). `unavailable_payload` needs no live sidecar.
 
 ```bash
 git add modules/maintenance_copilot/backend/service.py tests/test_connector_app.py
-git commit -m "feat(maintenance_copilot): extract service.py pipeline entry (no atria import)"
+git commit -m "feat(maintenance_copilot): extract service.py pipeline entry (no minder import)"
 ```
 
 ---
@@ -466,7 +466,7 @@ Expected: FAIL — `app.py` does not exist.
 Create `modules/maintenance_copilot/backend/app.py`:
 
 ```python
-"""maintenance_copilot connector service — the HTTP contract Atria speaks.
+"""maintenance_copilot connector service — the HTTP contract Minder speaks.
 
 Endpoints:
   GET  /connector/health          liveness
@@ -616,7 +616,7 @@ git commit -m "feat(maintenance_copilot): FastAPI connector contract (health/man
 Create `modules/maintenance_copilot/backend/Dockerfile`:
 
 ```dockerfile
-# Standalone maintenance_copilot RAG service. Kept OUT of the main atria image:
+# Standalone maintenance_copilot RAG service. Kept OUT of the main minder image:
 # openai/qdrant-client/neo4j/chonkie + the pipeline only run here.
 FROM python:3.12-slim
 
@@ -666,9 +666,9 @@ In `docker-compose.yml`, add under `services:` (mirror the `asr` block; wire the
 
 > NOTE for implementer: confirm the exact env var names the pipeline reads by grepping `modules/maintenance_copilot/backend/pipeline/config.py` for `os.environ`. Match them here; the names above are the conventional ones and may need adjusting.
 
-- [ ] **Step 3: Drop the in-process tool from the Atria surface**
+- [ ] **Step 3: Drop the in-process tool from the Minder surface**
 
-Delete the files Atria no longer loads:
+Delete the files Minder no longer loads:
 
 ```bash
 git rm modules/maintenance_copilot/tools.py modules/maintenance_copilot/requirements.txt modules/maintenance_copilot/.deps.sha256
@@ -676,7 +676,7 @@ git rm modules/maintenance_copilot/tools.py modules/maintenance_copilot/requirem
 
 Then edit `modules/maintenance_copilot/SKILL.md`: remove the `tools: tools.py` line from its YAML frontmatter (so `SkillToolLoader` no longer tries to load it). Leave the rest of SKILL.md intact.
 
-- [ ] **Step 4: Verify Atria no longer imports the heavy deps for this module**
+- [ ] **Step 4: Verify Minder no longer imports the heavy deps for this module**
 
 Run:
 ```bash
@@ -691,7 +691,7 @@ Run:
 ```bash
 docker compose build maintenance-copilot
 ```
-Expected: image builds; heavy deps install inside the image, not in Atria's.
+Expected: image builds; heavy deps install inside the image, not in Minder's.
 
 - [ ] **Step 6: Commit**
 
@@ -702,14 +702,14 @@ git commit -m "feat(maintenance_copilot): containerize service + compose entry; 
 
 ---
 
-# Phase 2 — Atria consumer (remote registry + proxy tool)
+# Phase 2 — Minder consumer (remote registry + proxy tool)
 
-Goal: Atria registers `maintenance_copilot_query` as an HTTP proxy from the committed manifest, re-broadcasts the card, and fails closed when the connector is down. After this phase the dep-isolation win is fully live end-to-end (dashboard still iframe).
+Goal: Minder registers `maintenance_copilot_query` as an HTTP proxy from the committed manifest, re-broadcasts the card, and fails closed when the connector is down. After this phase the dep-isolation win is fully live end-to-end (dashboard still iframe).
 
 ### Task 2.1: Manifest schema — `service` + `remote` blocks
 
 **Files:**
-- Modify: `atria/core/modules/store.py`
+- Modify: `minder/core/modules/store.py`
 - Test: `tests/test_module_service_manifest.py`
 
 **Interfaces:**
@@ -729,7 +729,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from atria.core.modules import store
+from minder.core.modules import store
 
 
 def _write_module(tmp_path: Path) -> Path:
@@ -779,7 +779,7 @@ Expected: FAIL — `ModuleManifest` has no `service`/`remote` attributes.
 
 - [ ] **Step 3: Add the dataclasses + parsing**
 
-In `atria/core/modules/store.py`, after `ModuleSubagentManifest`, add:
+In `minder/core/modules/store.py`, after `ModuleSubagentManifest`, add:
 
 ```python
 @dataclass
@@ -840,7 +840,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/modules/store.py tests/test_module_service_manifest.py
+git add minder/core/modules/store.py tests/test_module_service_manifest.py
 git commit -m "feat(modules): parse service/remote manifest blocks"
 ```
 
@@ -849,7 +849,7 @@ git commit -m "feat(modules): parse service/remote manifest blocks"
 ### Task 2.2: `RemoteConnector` HTTP client
 
 **Files:**
-- Create: `atria/core/modules/remote.py`
+- Create: `minder/core/modules/remote.py`
 - Test: `tests/test_remote_connector.py`
 
 **Interfaces:**
@@ -866,13 +866,13 @@ git commit -m "feat(modules): parse service/remote manifest blocks"
 Create `tests/test_remote_connector.py`:
 
 ```python
-"""Unit tests for the Atria-side remote connector client (httpx mocked)."""
+"""Unit tests for the Minder-side remote connector client (httpx mocked)."""
 from __future__ import annotations
 
 import httpx
 import pytest
 
-from atria.core.modules import remote
+from minder.core.modules import remote
 
 
 def _connector(handler):
@@ -924,14 +924,14 @@ def test_unavailable_card_is_fail_closed_plain_dict():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run --no-sync pytest tests/test_remote_connector.py -v`
-Expected: FAIL — `atria/core/modules/remote.py` does not exist.
+Expected: FAIL — `minder/core/modules/remote.py` does not exist.
 
 - [ ] **Step 3: Create `remote.py`**
 
-Create `atria/core/modules/remote.py`:
+Create `minder/core/modules/remote.py`:
 
 ```python
-"""Atria-side client for a module's out-of-process connector service.
+"""Minder-side client for a module's out-of-process connector service.
 
 Registration is deterministic from the committed manifest (Task 2.3); this
 client is only touched at *call time*. A dead connector fails closed with a
@@ -953,7 +953,7 @@ class ConnectorUnreachable(RuntimeError):
 
 
 # Connector-down directive for the model (mirrors the service's UNAVAILABLE_SUFFIX
-# but built on the Atria side, deps-free, when the whole container is down).
+# but built on the Minder side, deps-free, when the whole container is down).
 UNAVAILABLE_SUFFIX = (
     "\n\n[SYSTEM: The maintenance copilot service is unavailable (connector "
     "unreachable). Tell the user the copilot cannot answer right now and that the "
@@ -1025,7 +1025,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/modules/remote.py tests/test_remote_connector.py
+git add minder/core/modules/remote.py tests/test_remote_connector.py
 git commit -m "feat(modules): RemoteConnector HTTP client + fail-closed card"
 ```
 
@@ -1034,7 +1034,7 @@ git commit -m "feat(modules): RemoteConnector HTTP client + fail-closed card"
 ### Task 2.3: `build_remote_tool_specs` — proxy `ToolSpec`s that re-broadcast the card
 
 **Files:**
-- Modify: `atria/core/modules/remote.py`
+- Modify: `minder/core/modules/remote.py`
 - Test: `tests/test_remote_connector.py` (expand)
 
 **Interfaces:**
@@ -1078,7 +1078,7 @@ def _module_with_tool():
 
 
 def test_build_specs_registers_declared_tools(monkeypatch):
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
@@ -1098,7 +1098,7 @@ def test_build_specs_registers_declared_tools(monkeypatch):
 
 
 def test_handler_connector_down_fails_closed(monkeypatch):
-    from atria.core.skill_tools import SkillToolContext
+    from minder.core.skill_tools import SkillToolContext
 
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
@@ -1122,14 +1122,14 @@ Expected: FAIL — `build_remote_tool_specs` undefined.
 
 - [ ] **Step 3: Add `build_remote_tool_specs`**
 
-Append to `atria/core/modules/remote.py`:
+Append to `minder/core/modules/remote.py`:
 
 ```python
 from typing import TYPE_CHECKING, Any, Callable  # noqa: E402
 
 if TYPE_CHECKING:  # avoid import cycles / heavy imports at module load
-    from atria.core.modules.store import Module
-    from atria.core.skill_tools import SkillToolContext, ToolSpec
+    from minder.core.modules.store import Module
+    from minder.core.skill_tools import SkillToolContext, ToolSpec
 
 
 def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
@@ -1164,7 +1164,7 @@ def _make_handler(ctx: "SkillToolContext", conn: "RemoteConnector",
 def build_remote_tool_specs(ctx: "SkillToolContext",
                             modules: "list[Module]") -> "list[ToolSpec]":
     """Build proxy ToolSpecs for every service-module, from its committed manifest."""
-    from atria.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
+    from minder.core.skill_tools import ToolSpec  # local import: avoid cycle at module load
 
     specs: list[ToolSpec] = []
     for module in modules:
@@ -1193,7 +1193,7 @@ Expected: PASS (all tests).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add atria/core/modules/remote.py tests/test_remote_connector.py
+git add minder/core/modules/remote.py tests/test_remote_connector.py
 git commit -m "feat(modules): build_remote_tool_specs — proxy tools that re-broadcast the card"
 ```
 
@@ -1202,8 +1202,8 @@ git commit -m "feat(modules): build_remote_tool_specs — proxy tools that re-br
 ### Task 2.4: Wire remote proxy tools into the tool registry + protect the corpus
 
 **Files:**
-- Modify: `atria/core/context_engineering/tools/registry.py`
-- Modify: `atria/core/context_engineering/tools/protected_paths.py`
+- Modify: `minder/core/context_engineering/tools/registry.py`
+- Modify: `minder/core/context_engineering/tools/protected_paths.py`
 - Test: `tests/test_remote_registry_wiring.py`
 
 **Interfaces:**
@@ -1218,12 +1218,12 @@ Create `tests/test_remote_registry_wiring.py`:
 """The tool registry merges remote proxy tools from service-modules."""
 from __future__ import annotations
 
-from atria.core.skill_tools import SkillToolContext, ToolSpec
+from minder.core.skill_tools import SkillToolContext, ToolSpec
 
 
 def test_merge_remote_specs_into_skill_specs():
     # Emulate the merge the registry performs (unit-level; no full registry boot).
-    from atria.core.modules import remote
+    from minder.core.modules import remote
 
     ctx = SkillToolContext()
 
@@ -1254,15 +1254,15 @@ Expected: PASS-or-FAIL — this test only exercises `build_remote_tool_specs` (a
 
 - [ ] **Step 3: Merge remote specs in the registry**
 
-In `atria/core/context_engineering/tools/registry.py`, immediately after the block that builds `self._skill_specs` (the `try/except` around `SkillToolLoader(...).discover_and_register(...)`, ~line 116-123), add:
+In `minder/core/context_engineering/tools/registry.py`, immediately after the block that builds `self._skill_specs` (the `try/except` around `SkillToolLoader(...).discover_and_register(...)`, ~line 116-123), add:
 
 ```python
         # Merge remote proxy tools from service-modules (out-of-process connectors).
         # These replace what an in-process tools.py used to provide; on name
         # collision the remote spec wins (the local tools.py has been retired).
         try:
-            from atria.core.modules.registry import get_registry as _get_mod_registry
-            from atria.core.modules.remote import build_remote_tool_specs
+            from minder.core.modules.registry import get_registry as _get_mod_registry
+            from minder.core.modules.remote import build_remote_tool_specs
 
             _remote_specs = build_remote_tool_specs(self.skill_ctx, _get_mod_registry().all())
             for _spec in _remote_specs:
@@ -1275,7 +1275,7 @@ In `atria/core/context_engineering/tools/registry.py`, immediately after the blo
 
 - [ ] **Step 4: Protect the relocated corpus**
 
-In `atria/core/context_engineering/tools/protected_paths.py`, find the default protected globs (search `sample_manuals`). Update/confirm the default protects the new location. If the default is a glob like `modules/*/sample_manuals`, add `modules/*/backend/sample_manuals`:
+In `minder/core/context_engineering/tools/protected_paths.py`, find the default protected globs (search `sample_manuals`). Update/confirm the default protects the new location. If the default is a glob like `modules/*/sample_manuals`, add `modules/*/backend/sample_manuals`:
 
 ```python
     # (in the DEFAULT protected-path list)
@@ -1295,7 +1295,7 @@ Expected: PASS. Protected-path tests still pass with the added glob.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add atria/core/context_engineering/tools/registry.py atria/core/context_engineering/tools/protected_paths.py tests/test_remote_registry_wiring.py
+git add minder/core/context_engineering/tools/registry.py minder/core/context_engineering/tools/protected_paths.py tests/test_remote_registry_wiring.py
 git commit -m "feat(tools): register remote proxy tools; protect relocated corpus"
 ```
 
@@ -1330,9 +1330,9 @@ curl -s -X POST localhost:9200/connector/tools/maintenance_copilot_query \
 ```
 Expected: `success: true`, a `card` with grounded `citations` and a `confidence_band`.
 
-- [ ] **Step 4: Verify through Atria's proxy tool + guardrail**
+- [ ] **Step 4: Verify through Minder's proxy tool + guardrail**
 
-Run Atria (web or `-p`) with the same env, ask a maintenance question, and confirm: the `maintenance_copilot_query` tool fires, the `maintenance_answer` card renders in the UI, and the agent does NOT read `sample_manuals` (guardrail intact). Then stop the service (`docker compose stop maintenance-copilot`), ask again, and confirm the fail-closed "unavailable" card appears and the agent does not freelance.
+Run Minder (web or `-p`) with the same env, ask a maintenance question, and confirm: the `maintenance_copilot_query` tool fires, the `maintenance_answer` card renders in the UI, and the agent does NOT read `sample_manuals` (guardrail intact). Then stop the service (`docker compose stop maintenance-copilot`), ask again, and confirm the fail-closed "unavailable" card appears and the agent does not freelance.
 
 - [ ] **Step 5: Commit a note (optional)**
 
@@ -1371,7 +1371,7 @@ import { federation } from '@module-federation/vite';
 
 // ...inside plugins: [ ... ]
     federation({
-      name: 'atria_host',
+      name: 'minder_host',
       // No static remotes: modules are registered at runtime from their manifests.
       remotes: {},
       shared: {
@@ -1603,7 +1603,7 @@ interface HealthState {
 }
 
 /**
- * The maintenance_copilot dashboard, rendered natively inside the Atria host
+ * The maintenance_copilot dashboard, rendered natively inside the Minder host
  * via Module Federation (no iframe). Starts minimal: a live health panel + a
  * grounded-query box hitting the connector's /connector/run 'retrieve' action.
  */
@@ -1702,7 +1702,7 @@ git commit -m "feat(maintenance_copilot): federation remote frontend (./Dashboar
 ### Task 4.2: Surface `remote` fields to the web-ui
 
 **Files:**
-- Modify: `atria/web/routes/modules.py`
+- Modify: `minder/web/routes/modules.py`
 - Modify: `web-ui/src/types/index.ts`
 - Modify: `web-ui/src/api/modules.ts`
 - Modify: `web-ui/src/stores/modules.ts`
@@ -1713,7 +1713,7 @@ git commit -m "feat(maintenance_copilot): federation remote frontend (./Dashboar
 
 - [ ] **Step 1: Add remote fields in the backend dashboards route**
 
-In `atria/web/routes/modules.py`, find where a module's dashboard summary dict is built (search `dashboard_title` / the list of `modulesWithDashboards`). For each module, read `module.manifest.remote` and include:
+In `minder/web/routes/modules.py`, find where a module's dashboard summary dict is built (search `dashboard_title` / the list of `modulesWithDashboards`). For each module, read `module.manifest.remote` and include:
 
 ```python
         remote = getattr(m.manifest, "remote", None) if m.manifest else None
@@ -1752,7 +1752,7 @@ Expected: builds; route tests pass (new fields are additive).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add atria/web/routes/modules.py web-ui/src/types/index.ts web-ui/src/api/modules.ts web-ui/src/stores/modules.ts
+git add minder/web/routes/modules.py web-ui/src/types/index.ts web-ui/src/api/modules.ts web-ui/src/stores/modules.ts
 git commit -m "feat(modules): surface remote/federation fields to the web-ui"
 ```
 
@@ -1939,7 +1939,7 @@ Edit `modules/maintenance_copilot/manifest.json` to add (alongside the existing 
 
 ```bash
 export OPENAI_API_KEY="<real key>"
-docker compose up -d --build maintenance-copilot qdrant neo4j atria
+docker compose up -d --build maintenance-copilot qdrant neo4j minder
 pnpm --dir web-ui build   # host with federation
 ```
 
@@ -1952,10 +1952,10 @@ pnpm --dir web-ui build   # host with federation
 - [ ] **Step 4: Confirm the dep-isolation win**
 
 ```bash
-docker compose exec atria python -c "import importlib.util as u; \
-print('qdrant-client in atria image:', u.find_spec('qdrant_client') is not None)"
+docker compose exec minder python -c "import importlib.util as u; \
+print('qdrant-client in minder image:', u.find_spec('qdrant_client') is not None)"
 ```
-Expected: `False` — the Atria image no longer carries the module's heavy deps.
+Expected: `False` — the Minder image no longer carries the module's heavy deps.
 
 - [ ] **Step 5: Run the full Python suite once (per user's batch-test preference)**
 

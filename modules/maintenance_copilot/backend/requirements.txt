@@ -1,8 +1,0 @@
-# fastapi + pydantic + the whole /connector/* contract come from atria-module-sdk
-# (installed from the repo root in the Dockerfile). Only the module's own deps here.
-uvicorn[standard]>=0.30
-httpx>=0.27
-openai>=1.40
-qdrant-client>=1.11
-neo4j>=5.24
-chonkie>=1.0

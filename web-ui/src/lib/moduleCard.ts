@@ -11,7 +11,7 @@ export function moduleNameFromCardType(cardType: string): string {
 /**
  * Map a generic service-module card WS payload to a chat Message. Used for any
  * `card_type` that has no bespoke renderer registered — the payload shape is the
- * shared connector card contract (see atria/core/modules/remote.py), of which we
+ * shared connector card contract (see minder/core/modules/remote.py), of which we
  * only surface the fields common to every module: answer text, confidence band,
  * and validation warnings. The full card is kept in `card_raw` for future use.
  */

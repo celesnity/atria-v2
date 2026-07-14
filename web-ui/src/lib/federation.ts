@@ -6,7 +6,10 @@ const registered = new Set<string>();
 /** Idempotently register a module's federation remote by name + remoteEntry URL. */
 export function registerRemote(opts: { name: string; entry: string }): void {
   if (registered.has(opts.name)) return;
-  registerRemotes([{ name: opts.name, entry: opts.entry }], { force: true });
+  // type: 'module' — the connector's remoteEntry.js (built by @module-federation/vite)
+  // is an ESM module, so the runtime must load it via import(), not a classic <script>
+  // (which throws "Cannot use import statement outside a module").
+  registerRemotes([{ name: opts.name, entry: opts.entry, type: 'module' }], { force: true });
   registered.add(opts.name);
 }
 

@@ -157,9 +157,9 @@ export default {
         'hover':      'var(--shadow-hover)',
         'modal':      'var(--shadow-elevated)',
         'cosmos':     'var(--shadow-elevated)',
-        'glow-accent':  '0 10px 40px rgba(45, 68, 224, 0.35)',
-        'glow-nebula':  '0 14px 48px rgba(110, 31, 198, 0.38)',
-        'glow-magenta': '0 12px 44px rgba(177, 79, 208, 0.30)',
+        'glow-accent':  '0 10px 40px rgba(37, 99, 235, 0.35)',
+        'glow-nebula':  '0 14px 48px rgba(46, 107, 246, 0.38)',
+        'glow-magenta': '0 12px 44px rgba(90, 166, 255, 0.30)',
         'focus-ring': '0 0 0 3px hsl(var(--focus-ring) / 0.55)',
       },
       transitionDuration: {

@@ -1,5 +1,5 @@
-from atria.core.modules import watcher
-from atria.core.modules.registry import (
+from minder.core.modules import watcher
+from minder.core.modules.registry import (
     ConnectorState, RECONCILE_FAIL_LIMIT, reset_registry_for_tests,
 )
 
@@ -11,12 +11,14 @@ class _FakeConn:
         return self._manifest
     def is_healthy(self, timeout=2.0):
         return self._healthy
+    def health(self, timeout=2.0):
+        return {"ok": True, "ready": True}
 
 
 def _install(monkeypatch, tmp_path, manifest, healthy):
     reset_registry_for_tests()
-    monkeypatch.setenv("ATRIA_MODULES_DIR", str(tmp_path))
-    from atria.core.modules import registry as reg_mod
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
+    from minder.core.modules import registry as reg_mod
     reg = reg_mod.get_registry()
     reg.register_connector(name="m", connector_url="http://m:9200")
     monkeypatch.setattr(watcher, "RemoteConnector",

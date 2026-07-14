@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 import { ProjectSidebar } from '../components/Layout/ProjectSidebar';
+import { ChatRail } from '../components/Layout/ChatRail';
 import { ChatInterface } from '../components/Chat/ChatInterface';
 import { ApprovalDialog } from '../components/ApprovalDialog';
 import { AskUserDialog } from '../components/Chat/AskUserDialog';
@@ -13,6 +14,7 @@ import { MobileTabBar, type MobilePanel } from '../components/Layout/MobileTabBa
 import { useChatStore } from '../stores/chat';
 import { useViewerTabsStore } from '../stores/viewerTabs';
 import { useModulesStore } from '../stores/modules';
+import { useProjectsStore } from '../stores/projects';
 import { ModuleDashboardView } from '../components/ModuleDashboard/ModuleDashboardView';
 
 export function ChatPage() {
@@ -22,9 +24,64 @@ export function ChatPage() {
   const closeCommandPalette = useChatStore(state => state.closeCommandPalette);
   const currentSessionId = useChatStore(state => state.currentSessionId);
   const activeModuleDashboard = useModulesStore(s => s.activeModuleDashboard);
+  const modulesWithDashboards = useModulesStore(s => s.modulesWithDashboards);
+  const openDashboard = useModulesStore(s => s.openDashboard);
+  const createWorkspaceConversation = useProjectsStore(s => s.createWorkspaceConversation);
+  const loadProjects = useProjectsStore(s => s.loadProjects);
+  const workspaceProjectId = useProjectsStore(s => s.workspaceProjectId);
 
   const openStatusDialog = useCallback(() => setStatusDialogOpen(true), []);
   const closeStatusDialog = useCallback(() => setStatusDialogOpen(false), []);
+
+  // Load projects/workspace at the page level so the empty (no-conversation)
+  // screen works even though ProjectSidebar — which used to own this — is not
+  // mounted then. Without it createWorkspaceConversation throws "Workspace
+  // project not loaded yet" for both the landing composer and the effect below.
+  useEffect(() => {
+    if (!workspaceProjectId) loadProjects();
+  }, [workspaceProjectId, loadProjects]);
+
+  // Selecting a module from an empty (no-conversation) screen also starts a
+  // chat, so the layout transitions from the full-width landing straight into
+  // the split view (chat in the rail + the selected module in the center).
+  // Guarded on the workspace being loaded, and ref-guarded against duplicate
+  // creates while the async create is in flight.
+  const startingChatForModule = useRef(false);
+  useEffect(() => {
+    if (
+      activeModuleDashboard &&
+      !currentSessionId &&
+      workspaceProjectId &&
+      !startingChatForModule.current
+    ) {
+      startingChatForModule.current = true;
+      Promise.resolve(createWorkspaceConversation('New Chat')).finally(() => {
+        startingChatForModule.current = false;
+      });
+    }
+  }, [activeModuleDashboard, currentSessionId, workspaceProjectId, createWorkspaceConversation]);
+
+  // Chat-first → module-workspace transition: when a conversation becomes active
+  // (the user opened or started a chat) and no module is open yet, auto-open the
+  // first available module so the center isn't empty. Tracked per session so
+  // manually closing a module later doesn't immediately reopen it. Retries once
+  // the module list finishes loading (deps include modulesWithDashboards).
+  const autoModuleSession = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentSessionId) {
+      autoModuleSession.current = null;
+      return;
+    }
+    if (currentSessionId === autoModuleSession.current) return;
+    if (activeModuleDashboard) {
+      autoModuleSession.current = currentSessionId;
+      return;
+    }
+    if (modulesWithDashboards.length > 0) {
+      openDashboard(modulesWithDashboards[0].name);
+      autoModuleSession.current = currentSessionId;
+    }
+  }, [currentSessionId, activeModuleDashboard, modulesWithDashboards, openDashboard]);
 
   // Phone: one panel at a time, switched by the bottom tab bar.
   const isPhone = useMediaQuery('(max-width: 767px)');
@@ -53,23 +110,36 @@ export function ChatPage() {
     </>
   );
 
+  // The center column shows the active module's UI, or an empty-state prompt.
+  // Chat is no longer a center fallback — it lives permanently in the left rail.
   const centerContent = activeModuleDashboard ? (
     <ModuleDashboardView moduleName={activeModuleDashboard} />
   ) : (
-    <ChatInterface />
+    <div className="flex flex-1 items-center justify-center p-8 text-center">
+      <div className="max-w-sm">
+        <p className="text-sm text-text-secondary">
+          Pick a module from the breadcrumb above, or keep chatting in the left rail.
+        </p>
+      </div>
+    </div>
   );
 
   // ── Phone layout: drawer sidebar + single panel + bottom tab bar ──
   if (isPhone) {
-    // Files/Editor only make sense with a live conversation; otherwise show chat.
-    const panel: MobilePanel = currentSessionId ? mobilePanel : 'chat';
+    // Files/Editor only make sense with a live conversation; Chat and Module
+    // stand on their own, so fall back to chat only for the file-bound panels.
+    const panel: MobilePanel =
+      currentSessionId || mobilePanel === 'chat' || mobilePanel === 'module'
+        ? mobilePanel
+        : 'chat';
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
         {/* Drawer (fixed/off-canvas — does not take layout space) */}
         <ProjectSidebar />
 
         <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
-          {panel === 'chat' && centerContent}
+          {panel === 'chat' && <ChatInterface />}
+          {panel === 'module' && centerContent}
           {panel === 'files' && <ExplorerPane />}
           {panel === 'editor' && <EditorPane />}
         </main>
@@ -80,11 +150,26 @@ export function ChatPage() {
     );
   }
 
-  // ── Desktop / tablet: three coexisting columns ──
+  // ── Desktop / tablet, chat-first empty state: no conversation yet → a single
+  // full-width chat screen (the redesigned LandingPage). No rail, module, or
+  // artifact panel until a chat is opened. ──
+  if (!currentSessionId) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden bg-bg-000">
+          <ChatInterface />
+        </main>
+        {dialogs}
+      </div>
+    );
+  }
+
+  // ── Desktop / tablet, active conversation: chat shifts into the left rail and
+  // a module opens in the center (auto-selected above). Artifacts on the right. ──
   return (
     <div className="flex-1 min-h-0 flex overflow-hidden bg-bg-000">
-      <ProjectSidebar />
-      <main className="flex-1 flex flex-col overflow-hidden bg-bg-000">
+      <ChatRail />
+      <main className="flex-1 flex flex-col overflow-hidden bg-bg-000 min-w-0">
         {centerContent}
       </main>
       <ArtifactViewer />

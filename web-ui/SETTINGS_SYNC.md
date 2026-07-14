@@ -4,8 +4,8 @@
 
 Both the Web UI and Terminal CLI use **the same configuration files** as the single source of truth:
 
-- `~/.atria/settings.json` (global settings)
-- `.atria/settings.json` (project-specific settings)
+- `~/.minder/settings.json` (global settings)
+- `.minder/settings.json` (project-specific settings)
 
 This ensures automatic synchronization without needing special sync logic.
 

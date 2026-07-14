@@ -2,12 +2,13 @@ import { Command, Settings, LogOut, Menu, Moon, Sun, User as UserIcon } from "lu
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useThemeStore } from "../../stores/theme";
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "../../api/client";
 import { signOut } from "../../lib/auth";
 import { useChatStore } from "../../stores/chat";
 import { TenantSwitcher } from "../TenantSwitcher";
-import { ViewSwitcher } from "./ViewSwitcher";
+import { ModuleBreadcrumb } from "./ModuleBreadcrumb";
+import { ModuleTabs } from "./ModuleTabs";
 
 function formatCost(cost: number): string {
   return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
@@ -40,8 +41,6 @@ interface MeInfo {
  */
 export function TopBar() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isChatSurface = location.pathname === "/chat";
   const status = useChatStore((state) => state.status);
   const isConnected = useChatStore((state) => state.isConnected);
   const toggleSidebar = useChatStore((state) => state.toggleSidebar);
@@ -157,30 +156,29 @@ export function TopBar() {
 
   return (
     <header className="h-14 flex-shrink-0 z-40 flex items-center gap-3 px-4 bg-canvas/90 backdrop-blur-md border-b border-hairline-soft">
-      {/* ── Mobile: hamburger toggles the project drawer (chat surface only) ── */}
-      {isChatSurface && (
-        <button
-          onClick={openMobileSidebar}
-          className={`${iconBtn} md:hidden -ml-1`}
-          title="Open menu"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="w-5 h-5" strokeWidth={1.5} />
-        </button>
-      )}
+      {/* ── Mobile: hamburger toggles the chat rail / project drawer ── */}
+      <button
+        onClick={openMobileSidebar}
+        className={`${iconBtn} md:hidden -ml-1`}
+        title="Open menu"
+        aria-label="Open navigation menu"
+      >
+        <Menu className="w-5 h-5" strokeWidth={1.5} />
+      </button>
 
       {/* ── Left: Brand + primary view switcher ── */}
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="flex items-center gap-2.5">
-          {/* Signature orbit glyph — nebula-gradient ring with an off-center core. */}
-          <span aria-hidden className="relative grid h-6 w-6 place-items-center">
-            <span className="absolute inset-0 rounded-md bg-gradient-brand opacity-90" />
-            <span className="absolute inset-[3px] rounded-md bg-canvas" />
-            <span className="absolute right-[3px] top-[3px] h-1.5 w-1.5 rounded-md bg-gradient-brand" />
-          </span>
+          {/* Minder AI logo mark */}
+          <img
+            src="/logo.png"
+            alt="Minder AI"
+            className="h-7 w-7 select-none"
+            draggable={false}
+          />
           <div className="flex items-baseline gap-2">
             <span className="text-[16px] font-[600] tracking-[-0.3px] text-gradient-brand">
-              Atria
+              Minder
             </span>
             <span className="eyebrow-mono text-ink/40 hidden lg:inline">
               AI Assistant
@@ -188,8 +186,18 @@ export function TopBar() {
           </div>
         </div>
 
-        {/* Primary navigation: Chat ⇄ Dispatch */}
-        <ViewSwitcher />
+        {/* Primary navigation: module picker */}
+        <ModuleBreadcrumb />
+      </div>
+
+      {/* ── Active module's sub-view tabs (injected per module) ──
+           self-stretch: fill the bar height so the active-tab underline has room
+           and isn't clipped. overflow-y-hidden: a lone overflow-x-auto is coerced
+           to auto on both axes by the CSS spec, so the 2px underline triggered a
+           stray vertical scrollbar — pin Y to hidden and hide the X scrollbar so
+           the row scrolls cleanly when a module ships many tabs. */}
+      <div className="hidden md:flex self-stretch min-w-0 items-center overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ModuleTabs />
       </div>
 
       {/* ── Spacer ── */}

@@ -4,7 +4,7 @@ import { mapModuleCard } from './moduleCard';
 /**
  * Card render registry — keyed by the WS `card_type` a service module broadcasts.
  *
- * The backend (atria/core/modules/remote.py) sends every module's UI card as a WS
+ * The backend (minder/core/modules/remote.py) sends every module's UI card as a WS
  * message whose `type` is a per-module `card_type` string: either one the module
  * chose (e.g. `maintenance_answer`) or the default `"{module}_card"`. This registry
  * maps that payload to a chat Message; MessageList then routes the Message.role to

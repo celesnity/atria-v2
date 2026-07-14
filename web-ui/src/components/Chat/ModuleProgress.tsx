@@ -2,7 +2,7 @@ import type { Message } from '../../types';
 
 /**
  * Live progress for a streaming service-module tool call. Rendered from
- * `module_progress` WS events (see atria/core/modules/remote.py `_run_stream`),
+ * `module_progress` WS events (see minder/core/modules/remote.py `_run_stream`),
  * updated in place, and replaced by the module's card when the tool finishes.
  */
 export function ModuleProgress({ message }: { message: Message }) {

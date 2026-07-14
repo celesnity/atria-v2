@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Network, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import type { Message } from '../../types';
+import { JsonView } from './JsonView';
 
 interface ToolCallMessageProps {
   message: Message;
@@ -508,30 +508,41 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
       }
     }
 
-    // Check for expandable content
-    let fullOutput: string | undefined;
+    // Check for expandable content. Plain-text payloads (file contents, command
+    // stdout) render as text; structured payloads render as a JSON tree so the
+    // rail never shows a raw `JSON.stringify` blob.
+    let expandText: string | undefined;
+    let expandJson: unknown | undefined;
     if (typeof toolResult === 'string') {
-      fullOutput = toolResult;
-    } else if (resultData?.output) {
-      fullOutput = typeof resultData.output === 'string'
-        ? resultData.output
-        : JSON.stringify(resultData.output, null, 2);
-    } else if (Object.keys(resultData || {}).length > 0) {
-      try {
-        fullOutput = JSON.stringify(resultData, null, 2);
-      } catch {
-        fullOutput = String(resultData);
+      const trimmed = toolResult.trim();
+      const looksJson =
+        (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+        (trimmed.startsWith('[') && trimmed.endsWith(']'));
+      if (looksJson) {
+        try {
+          expandJson = JSON.parse(trimmed);
+        } catch {
+          expandText = toolResult;
+        }
+      } else {
+        expandText = toolResult;
       }
+    } else if (typeof resultData?.output === 'string' && resultData.output.length > 0) {
+      expandText = resultData.output;
+    } else if (resultData && typeof resultData === 'object' && Object.keys(resultData).length > 0) {
+      expandJson = resultData;
     }
+
     // Offer the expander whenever the raw output carries more than the collapsed
-    // summary already shows — either meaningfully longer text or more lines — so
-    // results stay inspectable instead of hiding behind a 200-char cutoff.
+    // summary already shows — either structured data, meaningfully longer text,
+    // or more lines — so results stay inspectable.
     const summaryChars = summaryLines.join('\n').length;
     const hasExpandableContent =
-      !!fullOutput &&
-      (fullOutput.length > 120 ||
-        fullOutput.split('\n').length > summaryLines.length ||
-        fullOutput.length > summaryChars + 40);
+      expandJson !== undefined ||
+      (!!expandText &&
+        (expandText.length > 120 ||
+          expandText.split('\n').length > summaryLines.length ||
+          expandText.length > summaryChars + 40));
 
     const isRunning = hasResult === false;
 
@@ -581,19 +592,6 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
           </div>
         )}
 
-        {/* Blackboard affordance — jump from chat to the live monitor */}
-        {(toolName === 'request_help' || toolName === 'get_help_responses') && (
-          <div className="px-3 pb-2 pl-5">
-            <Link
-              to="/blackboard"
-              className="inline-flex items-center gap-1.5 text-[12px] font-[450] text-semantic-success hover:underline cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring rounded"
-            >
-              <Network className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-              Mở Blackboard để theo dõi
-              <ArrowRight className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-            </Link>
-          </div>
-        )}
 
         {/* Expanded raw output */}
         {hasExpandableContent && (
@@ -602,11 +600,13 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
             style={{ maxHeight: isExpanded ? `${expandHeight}px` : '0px' }}
           >
             <div ref={expandRef} className="px-3 pt-2 pb-3 border-t border-hairline-soft/40">
-              {fullOutput && (
-                <pre className="text-[12px] text-ink/50 font-mono bg-surface-soft rounded px-3 py-2.5 overflow-x-auto leading-[1.55]">
-                  {fullOutput}
+              {expandJson !== undefined ? (
+                <JsonView data={expandJson} />
+              ) : expandText ? (
+                <pre className="text-[12px] text-ink/50 font-mono bg-surface-soft rounded px-3 py-2.5 overflow-x-auto leading-[1.55] whitespace-pre-wrap break-words">
+                  {expandText}
                 </pre>
-              )}
+              ) : null}
             </div>
           </div>
         )}

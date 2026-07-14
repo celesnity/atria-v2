@@ -9,6 +9,6 @@ export async function apiFetch(input: RequestInfo, init: RequestInit = {}): Prom
     headers.set("Authorization", `Bearer ${user.access_token}`);
   }
   const tenant = useTenantStore.getState().active;
-  if (tenant) headers.set("X-Atria-Tenant", tenant);
+  if (tenant) headers.set("X-Minder-Tenant", tenant);
   return fetch(input, { ...init, headers });
 }

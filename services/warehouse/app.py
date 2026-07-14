@@ -1,17 +1,17 @@
 """Warehouse microservice — the connector contract over the existing scripts.
 
 ponytail: this service does NOT re-implement inventory logic. It shells out to
-`modules/warehouse/scripts/inventory.py <action> --json`, exactly like Atria's
+`modules/warehouse/scripts/inventory.py <action> --json`, exactly like Minder's
 in-process /run route already does, so CLI and service outputs are identical by
 construction. Move to in-process import only if per-request subprocess latency
 ever measurably hurts.
 
-Endpoints (the connector contract Atria + the React remote speak):
+Endpoints (the connector contract Minder + the React remote speak):
   GET  /connector/health          liveness
   GET  /connector/manifest        module info + agent tool specs + remoteEntry
   POST /connector/tools/{name}    agent tool call  {arguments} -> {success, output}
   POST /connector/run             dashboard action {action, args} -> result dict
-  POST /connector/summarize       reverse call: ask Atria's LLM to summarize stock
+  POST /connector/summarize       reverse call: ask Minder's LLM to summarize stock
   /dashboard/*                    the federated React remote (static build)
 """
 
@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field
 SCRIPTS = Path(os.environ.get("WAREHOUSE_SCRIPTS", "/app/modules/warehouse/scripts"))
 INVENTORY = SCRIPTS / "inventory.py"
 DASHBOARD_DIST = Path(os.environ.get("DASHBOARD_DIST", "/svc/dashboard_dist"))
-ATRIA_API_BASE = os.environ.get("ATRIA_API_BASE", "http://atria:8080").rstrip("/")
+MINDER_API_BASE = os.environ.get("MINDER_API_BASE", "http://minder:8080").rstrip("/")
 PUBLIC_BASE = os.environ.get("WAREHOUSE_PUBLIC_BASE", "http://localhost:8090").rstrip("/")
 CORS_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o]
 
@@ -43,7 +43,7 @@ CORS_ORIGINS = [o for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o]
 _NO_JSON = {"snapshot", "move", "set-reorder", "remove", "reset", "export", "migrate"}
 _JSON_OUT = {"snapshot"}  # emit machine JSON even without a --json flag
 
-# Agent-facing tools (Atria calls these via /connector/tools/{name}). A focused,
+# Agent-facing tools (Minder calls these via /connector/tools/{name}). A focused,
 # useful subset — add writes here when the agent needs them.
 # ponytail: not every CLI subcommand is an agent tool; expose what earns its slot.
 TOOLS: list[dict] = [
@@ -190,8 +190,8 @@ class SummarizeBody(BaseModel):
 
 @app.post("/connector/summarize")
 def summarize(body: SummarizeBody) -> dict:
-    """Reverse connector: pull deterministic data locally, ask Atria's agent to
-    summarize it. ponytail: inline httpx, no AtriaClient class — the /chat route
+    """Reverse connector: pull deterministic data locally, ask Minder's agent to
+    summarize it. ponytail: inline httpx, no MinderClient class — the /chat route
     is a single ungated POST. Wrap in a client class only when a 2nd call site
     or auth appears."""
     snap = run_action("snapshot", {})
@@ -203,14 +203,14 @@ def summarize(body: SummarizeBody) -> dict:
     )
     try:
         r = httpx.post(
-            f"{ATRIA_API_BASE}/api/modules/warehouse/chat",
+            f"{MINDER_API_BASE}/api/modules/warehouse/chat",
             json={"message": prompt, "context_session_id": body.context_session_id},
             timeout=105,
         )
         r.raise_for_status()
         return {"summary": r.json().get("reply", "")}
     except httpx.HTTPError as exc:
-        raise HTTPException(502, f"atria chat unreachable: {exc}") from exc
+        raise HTTPException(502, f"minder chat unreachable: {exc}") from exc
 
 
 # ── federated React remote (static build) ─────────────────────────────────────

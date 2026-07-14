@@ -6,6 +6,9 @@ import { apiClient } from '../api/client';
 import { wsClient } from '../api/websocket';
 import { useToastStore } from './toast';
 import { useArtifactsStore } from './artifacts';
+import { trimCodePoints } from '../utils/stream';
+import { upsertToolCall } from '../utils/toolCalls';
+import { nextIndicatorState } from '../utils/thinkingIndicator';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -20,6 +23,7 @@ const DEFAULT_SESSION: PerSessionState = {
   queuedMessages: [],
   selectedPersona: null,
   draft: '',
+  thinkingIndicator: false,
 };
 
 function getSessionState(states: Record<string, PerSessionState>, id: string): PerSessionState {
@@ -326,6 +330,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const persona = getSessionState(get().sessionStates, sessionId).selectedPersona ?? null;
+      // Stamp send time for client-side TTFT / total latency measurement.
+      turnTimingBySession.set(sessionId, { sentAt: performance.now() });
       wsClient.send({
         type: 'query',
         data: {
@@ -508,6 +514,16 @@ let wasEverStable = false;
 // message_complete. See message_chunk handler below.
 const activeTurnBySession = new Map<string, string>();
 
+// Per-session latency timing for the in-flight turn, as the user perceives it:
+// sentAt is stamped when the query leaves sendMessage (or at message_start for
+// turns this client didn't initiate), ttftMs on the first assistant text chunk,
+// serverTtftMs from the backend's own first-token stamp. The final numbers are
+// attached to the turn's assistant bubble on message_complete.
+const turnTimingBySession = new Map<
+  string,
+  { sentAt: number; ttftMs?: number; serverTtftMs?: number }
+>();
+
 wsClient.on('connected', () => {
   useChatStore.getState().setConnected(true);
   if (wasEverStable) {
@@ -554,8 +570,16 @@ wsClient.on('message_start', (message) => {
   if (!sid) return;
   // Begin a new turn: all assistant chunks until message_complete group here.
   activeTurnBySession.set(sid, String(message.data.messageId ?? sid + ':' + Date.now()));
+  // Turns not initiated by this client (queued injection, another tab) have no
+  // send stamp — measure from turn start instead.
+  if (!turnTimingBySession.has(sid)) {
+    turnTimingBySession.set(sid, { sentAt: performance.now() });
+  }
   useChatStore.setState(state => ({
-    ...patchSession(state, sid, { isLoading: true }),
+    ...patchSession(state, sid, {
+      isLoading: true,
+      thinkingIndicator: nextIndicatorState(false, 'start'),
+    }),
   }));
 });
 
@@ -636,6 +660,15 @@ wsClient.on('message_chunk', (message) => {
     activeTurnBySession.set(sid, turnId);
   }
 
+  // First assistant token of the turn → time-to-first-token as perceived here.
+  const timing = turnTimingBySession.get(sid);
+  if (timing && timing.ttftMs === undefined) {
+    timing.ttftMs = performance.now() - timing.sentAt;
+    if (typeof message.data.ttft_ms === 'number') {
+      timing.serverTtftMs = message.data.ttft_ms;
+    }
+  }
+
   const buf = _chunkBuffers.get(sid);
   if (buf && buf.turnId === turnId) {
     buf.text += message.data.content;
@@ -645,6 +678,46 @@ wsClient.on('message_chunk', (message) => {
     _chunkBuffers.set(sid, { turnId, text: message.data.content });
   }
   _scheduleChunkFlush();
+
+  // Clear the "Thinking…" indicator on the first streamed token.
+  useChatStore.setState(state => {
+    const s = getSessionState(state.sessionStates, sid);
+    if (!s.thinkingIndicator) return {};
+    return patchSession(state, sid, { thinkingIndicator: nextIndicatorState(s.thinkingIndicator, 'chunk') });
+  });
+});
+
+// The backend withdrew streamed assistant text (e.g. an answer it decided to
+// withhold, or cleaned/replaced content): trim the last N code points from the
+// active turn's assistant bubble. The authoritative replacement, if any,
+// arrives as a normal message_chunk right after.
+wsClient.on('message_retract', (message) => {
+  const sid = resolveSessionId(message.data);
+  if (!sid) return;
+  const trim = Number(message.data.trim_chars) || 0;
+  if (trim <= 0) return;
+  // Apply pending streamed text first so the trim sees the full bubble.
+  flushStreamingChunks();
+  const turnId = activeTurnBySession.get(sid);
+  if (!turnId) return;
+  useChatStore.setState(state => ({
+    ...patchSession(state, sid, prev => {
+      const msgs = prev.messages;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        const m = msgs[i];
+        if (m.role === 'assistant' && m.turnId === turnId) {
+          return {
+            messages: [
+              ...msgs.slice(0, i),
+              { ...m, content: trimCodePoints(m.content, trim) },
+              ...msgs.slice(i + 1),
+            ],
+          };
+        }
+      }
+      return {};
+    }),
+  }));
 });
 
 wsClient.on('message_complete', (message) => {
@@ -655,9 +728,44 @@ wsClient.on('message_complete', (message) => {
   // tokens are dropped.
   flushStreamingChunks();
   // End the turn: next agent turn starts a fresh bubble.
+  const closedTurnId = activeTurnBySession.get(sid);
   activeTurnBySession.delete(sid);
+  const timing = turnTimingBySession.get(sid);
+  turnTimingBySession.delete(sid);
   useChatStore.setState(state => ({
-    ...patchSession(state, sid, { isLoading: false, queuedMessages: [] }),
+    ...patchSession(state, sid, prev => {
+      let messages = prev.messages;
+      // Safety net: the turn is over, so any tool_call still without a result
+      // lost its tool_result event (e.g. an id mismatch). Resolve it instead of
+      // leaving a perpetual "Working…" spinner beside the completed work.
+      if (messages.some(m => m.role === 'tool_call' && !m.tool_result)) {
+        messages = messages.map(m =>
+          m.role === 'tool_call' && !m.tool_result
+            ? { ...m, tool_result: { success: true }, tool_success: true }
+            : m
+        );
+      }
+      // Attach the turn's latency metrics to its assistant bubble.
+      if (timing && closedTurnId) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const m = messages[i];
+          if (m.role === 'assistant' && m.turnId === closedTurnId) {
+            const metrics = {
+              ...(timing.ttftMs !== undefined ? { ttftMs: timing.ttftMs } : {}),
+              totalMs: performance.now() - timing.sentAt,
+              ...(timing.serverTtftMs !== undefined ? { serverTtftMs: timing.serverTtftMs } : {}),
+            };
+            messages = [
+              ...messages.slice(0, i),
+              { ...m, metrics },
+              ...messages.slice(i + 1),
+            ];
+            break;
+          }
+        }
+      }
+      return { messages, isLoading: false, queuedMessages: [], thinkingIndicator: nextIndicatorState(prev.thinkingIndicator, 'complete') };
+    }),
   }));
   // Re-scan artifacts — agent may have written new files during its turn
   if (!isNaN(parseInt(sid, 10))) {
@@ -698,20 +806,12 @@ wsClient.on('tool_call', (message) => {
   const sid = resolveSessionId(message.data);
   if (!sid) return;
 
-  const toolCallMessage: Message = {
-    role: 'tool_call',
-    content: message.data.description || `Calling ${message.data.tool_name}`,
-    tool_call_id: message.data.tool_call_id,
-    tool_name: message.data.tool_name,
-    tool_args: message.data.arguments,
-    tool_args_display: message.data.arguments_display || null,
-    activity: message.data.activity || null,
-    timestamp: new Date().toISOString(),
-  };
-
   useChatStore.setState(state => {
     const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, toolCallMessage] });
+    return patchSession(state, sid, {
+      messages: upsertToolCall(sessionState.messages, message.data),
+      thinkingIndicator: nextIndicatorState(sessionState.thinkingIndicator, 'tool'),
+    });
   });
 });
 
@@ -929,58 +1029,6 @@ wsClient.on('plan_approval_resolved', (message) => {
   }));
 });
 
-// ─── Subagent Events ─────────────────────────────────────────────────────────
-
-wsClient.on('subagent_start', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { agent_type, description, tool_call_id } = message.data;
-  console.log('[Frontend] Subagent start:', agent_type, description);
-
-  const subagentMessage: Message = {
-    role: 'tool_call',
-    content: `Spawning ${agent_type} agent`,
-    tool_call_id: tool_call_id,
-    tool_name: 'spawn_subagent',
-    tool_args: { agent_type, description },
-    timestamp: new Date().toISOString(),
-  };
-
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    return patchSession(state, sid, { messages: [...sessionState.messages, subagentMessage] });
-  });
-});
-
-wsClient.on('subagent_complete', (message) => {
-  const sid = resolveSessionId(message.data);
-  if (!sid) return;
-  const { tool_call_id, success } = message.data;
-
-  useChatStore.setState(state => {
-    const sessionState = getSessionState(state.sessionStates, sid);
-    const msgs = sessionState.messages;
-
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (
-        msgs[i].role === 'tool_call' &&
-        msgs[i].tool_name === 'spawn_subagent' &&
-        msgs[i].tool_call_id === tool_call_id &&
-        !msgs[i].tool_result
-      ) {
-        const updatedMessages = [...msgs];
-        updatedMessages[i] = {
-          ...msgs[i],
-          tool_result: { success, output: success ? 'Agent completed' : 'Agent failed' },
-          tool_summary: success ? 'Agent completed successfully' : 'Agent failed',
-          tool_success: success,
-        };
-        return patchSession(state, sid, { messages: updatedMessages });
-      }
-    }
-    return {};
-  });
-});
 
 wsClient.on('task_completed', (message) => {
   const sid = resolveSessionId(message.data);

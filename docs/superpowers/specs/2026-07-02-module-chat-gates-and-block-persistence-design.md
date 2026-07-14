@@ -25,20 +25,20 @@ Module chat UI today flows through two asymmetric surfaces:
 - **Chat surface** (`web-ui/src/components/Chat/SandboxedBlock.tsx`): an iframe
   that is intentionally **view-only** — it drops all outbound RPC/events and
   allows only a single free-text `chat` message back to the agent.
-- **Dashboard surface** (`atria/web/dashboard_assets/__bridge.js`, `AtriaDash`):
+- **Dashboard surface** (`minder/web/dashboard_assets/__bridge.js`, `MinderDash`):
   fully interactive — can `run()` the module's own scripts via
   `POST /api/modules/{name}/run`.
 
 Backend capability gates for blocks live in
-`atria/web/websocket.py::_handle_block_rpc`, dispatched over the WebSocket and
+`minder/web/websocket.py::_handle_block_rpc`, dispatched over the WebSocket and
 gated by an allowlist config `config.web.iframe_rpc.tool_allowlist`
-(`atria/models/config.py:103`). Current methods:
+(`minder/models/config.py:103`). Current methods:
 
 - `tool.invoke` — invoke any registered agent tool (approval-managed)
 - `artifact.read` — read one artifact
 - `session.send_user_message` — inject a user message
 
-Server → chat rendering is done by `atria/web/ui_bridge.py::push_block`, which
+Server → chat rendering is done by `minder/web/ui_bridge.py::push_block`, which
 broadcasts a `custom_block` WS event and (when `persist=True`) appends a
 `custom_block`-role `ChatMessage`.
 
@@ -48,7 +48,7 @@ broadcasts a `custom_block` WS event and (when `persist=True`) appends a
   176–226) is **fire-and-forget, error-swallowing, and routed through whatever
   `session_manager` is bound** — historically the JSON file manager.
 - The Postgres path loses block messages entirely:
-  - `atria/db/models.py:111` — `messages.role` is `String(10)`;
+  - `minder/db/models.py:111` — `messages.role` is `String(10)`;
     `message_repo.insert` does `role=message.role.value[:10]`, so
     `custom_block` (12 chars) truncates to `custom_blo`.
   - `message_repo._blocks_to_msg` (line 49) reconstructs role as
@@ -80,7 +80,7 @@ broadcasts a `custom_block` WS event and (when `persist=True`) appends a
 
 ### A. Backend gate layer (widen `block_rpc`)
 
-Extend `_handle_block_rpc` (`atria/web/websocket.py:429`) with new methods,
+Extend `_handle_block_rpc` (`minder/web/websocket.py:429`) with new methods,
 each added to the `tool_allowlist` config and subject to the existing
 allowlist check. All read paths are **session-scoped** — a block may only read
 the session it was rendered in (resolved via the existing
@@ -138,7 +138,7 @@ resolution, prop serialization (256 KB cap), WS broadcast, and — via §D —
 mandatory DB persistence.
 
 Schema follows the existing tool-schema conventions
-(`atria/core/agents/components/schemas/builtin/`). Prompt guidance: the agent
+(`minder/core/agents/components/schemas/builtin/`). Prompt guidance: the agent
 renders a module block when a visual/interactive result is more useful than
 prose; it must not fabricate module/block names (validated against the
 registry, raising `BlockNotFound`).
@@ -146,9 +146,9 @@ registry, raising `BlockNotFound`).
 ### C. Typed module RPC route (`module.rpc` target)
 
 New route `POST /api/modules/{name}/rpc` in
-`atria/web/routes/module_dashboard.py`, reusing the existing subprocess
+`minder/web/routes/module_dashboard.py`, reusing the existing subprocess
 infrastructure (`_resolve_script`, concurrency caps via `_try_acquire`/
-`_release`, timeout, `ATRIA_SESSION_ID`/`ATRIA_MODULE_ROOT`/`ATRIA_API_BASE`
+`_release`, timeout, `MINDER_SESSION_ID`/`MINDER_MODULE_ROOT`/`MINDER_API_BASE`
 env). It runs the module's declared handler `scripts/rpc.py` with a JSON
 `{method, payload, session_id}` on stdin and returns the handler's JSON stdout.
 

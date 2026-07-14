@@ -1,6 +1,6 @@
-import { memo, useEffect, useRef, useState, useMemo } from 'react';
+import React, { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
-import { ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, FileText, Pencil, TerminalSquare, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,9 +8,7 @@ import type { Message } from '../../types';
 import { useChatStore } from '../../stores/chat';
 import { ToolCallMessage } from './ToolCallMessage';
 import { ModuleActivityLine } from './ModuleActivityLine';
-import { SolveDispatchCard } from './SolveDispatchCard';
 import { TodoListCard } from './TodoListCard';
-import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
@@ -26,13 +24,46 @@ import { MessageActions } from './MessageActions';
 import { useMessageActions } from '../../hooks/useMessageActions';
 import { CosmicField } from '../ui/CosmicField';
 import { Eyebrow } from '../ui/Eyebrow';
+import { isUnverifiedSuggestion, splitCitations } from '../../utils/citations';
+import { latencySummary } from '../../utils/latency';
+
+// Wrap inline [DOC#chunk] citation refs as monospaced badges.
+function wrapCitations(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child !== 'string') return child;
+    const parts = splitCitations(child);
+    if (parts.length === 1 && typeof parts[0] === 'string') return child;
+    return parts.map((part, i) =>
+      typeof part === 'string' ? (
+        part
+      ) : (
+        <span
+          key={`${part.cite}-${i}`}
+          className="mx-0.5 inline-block rounded-sm border border-hairline-soft bg-canvas/60 px-1 py-0.5 align-baseline font-mono text-[11px] font-[540] text-ink/80"
+          title="Trích dẫn tài liệu"
+        >
+          [{part.cite}]
+        </span>
+      )
+    );
+  });
+}
+
+function nodeText(node: React.ReactNode): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(nodeText).join('');
+  if (React.isValidElement(node)) return nodeText((node.props as { children?: React.ReactNode }).children);
+  return '';
+}
 
 // Stable module-level components map — passing a new object per render
 // makes ReactMarkdown discard its internal memoization on every parent tick.
 const MARKDOWN_COMPONENTS: Components = {
+  // Compact scale tuned for the narrow chat rail — small code blocks, dense
+  // tables, and a tight heading ramp so long docs stay readable at ~20vw.
   pre({ children }) {
     return (
-      <pre className="rounded-md p-4 overflow-x-auto my-4 bg-inverse-canvas text-inverse-ink">
+      <pre className="rounded-md p-2.5 overflow-x-auto my-2.5 bg-inverse-canvas text-inverse-ink text-[12px] leading-relaxed">
         {children}
       </pre>
     );
@@ -40,39 +71,53 @@ const MARKDOWN_COMPONENTS: Components = {
   code({ className, children, ...props }) {
     const language = /language-(\w+)/.exec(className || '')?.[1];
     if (language) {
-      return <code className="text-inverse-ink text-[14px] font-mono leading-relaxed" data-language={language} {...props}>{children}</code>;
+      return <code className="text-inverse-ink text-[12px] font-mono leading-relaxed" data-language={language} {...props}>{children}</code>;
     }
     return (
-      <code className="text-[14px] px-1.5 py-0.5 rounded-sm font-mono bg-canvas/60 text-ink border border-hairline-soft" {...props}>
+      <code className="text-[12px] px-1 py-0.5 rounded-sm font-mono bg-canvas/60 text-ink border border-hairline-soft break-words" {...props}>
         {children}
       </code>
     );
   },
   p({ children }) {
-    return <p className="mb-3 last:mb-0 text-ink text-body leading-relaxed">{children}</p>;
+    return <p className="mb-2 last:mb-0 text-ink text-[13.5px] leading-relaxed">{wrapCitations(children)}</p>;
   },
   ul({ children }) {
-    return <ul className="list-disc pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ul>;
+    return <ul className="list-disc pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ul>;
   },
   ol({ children }) {
-    return <ol className="list-decimal pl-6 space-y-1.5 mb-3 text-ink text-body">{children}</ol>;
+    return <ol className="list-decimal pl-4 space-y-0.5 mb-2 text-ink text-[13.5px]">{children}</ol>;
   },
   li({ children }) {
-    return <li className="text-ink text-body">{children}</li>;
+    return <li className="text-ink text-[13.5px] leading-snug marker:text-ink/40">{wrapCitations(children)}</li>;
   },
   strong({ children }) {
-    return <strong className="font-[540] text-ink">{children}</strong>;
+    return <strong className="font-[600] text-ink">{children}</strong>;
   },
   a({ children, href }) {
-    return <a href={href} className="link-underline text-ink underline underline-offset-4 hover:decoration-2" target="_blank" rel="noopener noreferrer">{children}</a>;
+    return <a href={href} className="link-underline text-ink underline underline-offset-2 break-words hover:decoration-2" target="_blank" rel="noopener noreferrer">{children}</a>;
   },
-  h1({ children }) { return <h1 className="text-headline tracking-[-0.26px] font-[540] mt-4 mb-3 text-ink">{children}</h1>; },
-  h2({ children }) { return <h2 className="text-headline tracking-[-0.26px] font-[540] mt-4 mb-3 text-ink">{children}</h2>; },
-  h3({ children }) { return <h3 className="text-[20px] leading-snug tracking-[-0.14px] font-[540] mt-3 mb-2 text-ink">{children}</h3>; },
+  h1({ children }) { return <h1 className="text-[17px] leading-tight tracking-[-0.02em] font-[600] mt-3 mb-1.5 first:mt-0 text-ink">{children}</h1>; },
+  h2({ children }) { return <h2 className="text-[15px] leading-tight tracking-[-0.01em] font-[600] mt-3 mb-1.5 first:mt-0 text-ink">{children}</h2>; },
+  h3({ children }) { return <h3 className="text-[13.5px] leading-snug font-[600] mt-2.5 mb-1 first:mt-0 text-ink">{children}</h3>; },
+  h4({ children }) { return <h4 className="text-[12.5px] leading-snug font-[600] mt-2 mb-1 first:mt-0 text-ink">{children}</h4>; },
+  h5({ children }) { return <h5 className="text-[11.5px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/70">{children}</h5>; },
+  h6({ children }) { return <h6 className="text-[11px] uppercase tracking-[0.04em] font-[600] mt-2 mb-1 first:mt-0 text-ink/50">{children}</h6>; },
+  blockquote({ children }) {
+    if (isUnverifiedSuggestion(nodeText(children))) {
+      return (
+        <blockquote className="my-2 rounded-md border border-amber-500/40 border-l-4 border-l-amber-500 bg-amber-500/10 px-3 py-2 text-ink [&_p]:mb-0">
+          {children}
+        </blockquote>
+      );
+    }
+    return <blockquote className="border-l-2 border-accent-cobalt/40 pl-2.5 my-2 text-[13px] italic text-text-secondary">{children}</blockquote>;
+  },
+  hr() { return <hr className="my-3 border-0 border-t border-hairline-soft" />; },
   table({ children }) {
     return (
-      <div className="my-4 overflow-x-auto rounded-md border border-hairline-soft">
-        <table className="w-full border-collapse text-[14px] text-ink">{children}</table>
+      <div className="my-2.5 overflow-x-auto rounded-md border border-hairline-soft">
+        <table className="w-full border-collapse text-[12px] text-ink">{children}</table>
       </div>
     );
   },
@@ -89,7 +134,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return (
       <th
         style={style}
-        className="px-3 py-2 text-left font-[540] text-ink border-r border-hairline-soft last:border-r-0"
+        className="px-2 py-1 text-left font-[600] text-ink border-r border-hairline-soft last:border-r-0 whitespace-nowrap"
       >
         {children}
       </th>
@@ -99,7 +144,7 @@ const MARKDOWN_COMPONENTS: Components = {
     return (
       <td
         style={style}
-        className="px-3 py-2 align-top text-ink/90 border-r border-hairline-soft last:border-r-0"
+        className="px-2 py-1 align-top text-ink/90 border-r border-hairline-soft last:border-r-0"
       >
         {children}
       </td>
@@ -107,29 +152,44 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-// Signature Atria avatar — nebula-gradient disc with a soft glow and the mark.
+// Signature Minder avatar — nebula-gradient disc with a soft glow and the mark.
 // Shared by assistant turns and the loading spinner so the agent reads as one
 // consistent presence in the thread.
-function AtriaAvatar() {
+function MinderAvatar() {
   return (
-    <div className="flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center rounded-md bg-gradient-brand shadow-[0_2px_10px_hsl(var(--accent-magenta)/0.35)]">
-      <span className="text-[8px] font-[700] leading-none tracking-tight text-white">A</span>
-    </div>
+    <img
+      src="/logo.png"
+      alt="Minder AI"
+      className="h-[18px] w-[18px] flex-shrink-0 select-none"
+      draggable={false}
+    />
   );
 }
 
-const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content: string }) {
+const AssistantMarkdown = memo(function AssistantMarkdown({
+  content,
+  metrics,
+}: {
+  content: string;
+  metrics?: Message['metrics'];
+}) {
+  const latency = latencySummary(metrics);
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <AtriaAvatar />
-        <span className="font-mono text-[11px] uppercase tracking-[0.54px] text-ink/40">Atria</span>
+      <div className="flex items-center gap-2 mb-2">
+        <MinderAvatar />
+        <span className="font-mono text-[10px] uppercase tracking-[0.5px] text-ink/40">Minder</span>
       </div>
-      <div className="prose max-w-none code-hover pl-[26px]">
+      <div className="prose max-w-none code-hover pl-0">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
           {content}
         </ReactMarkdown>
       </div>
+      {latency && (
+        <div className="mt-1.5 font-mono text-[10px] text-ink/30" title="Đo từ lúc gửi tin nhắn">
+          ⚡ {latency}
+        </div>
+      )}
     </div>
   );
 });
@@ -137,9 +197,9 @@ const AssistantMarkdown = memo(function AssistantMarkdown({ content }: { content
 const UserTurn = memo(function UserTurn({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] md:max-w-[70%]">
-        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-4 py-3 shadow-soft">
-          <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+      <div className="max-w-[90%]">
+        <div className="rounded-[10px] rounded-tr-[4px] border border-hairline-soft bg-surface-soft px-3 py-2 shadow-soft">
+          <div className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink">
             {content}
           </div>
         </div>
@@ -151,7 +211,7 @@ const UserTurn = memo(function UserTurn({ content }: { content: string }) {
 function LoadingSpinner({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2.5 py-1">
-      <AtriaAvatar />
+      <MinderAvatar />
       <span className="braille-spinner text-sm text-ink/40" aria-hidden="true" />
       <span className="text-sm text-ink/45">{label}</span>
     </div>
@@ -171,18 +231,22 @@ function ThinkingSpinner() {
 
 function WelcomeScreen() {
   return (
-    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-6">
-      <CosmicField count={34} className="opacity-70" />
-      <div className="relative z-10 w-full max-w-xl">
-        <div className="glass-card rounded-xl px-8 py-9 text-center md:px-12 md:py-10">
-          <Eyebrow className="mb-4 block text-text-muted">Welcome</Eyebrow>
-          <h2 className="text-[40px] md:text-display-lg font-sans font-[600] leading-[1.0] tracking-[-0.035em] text-gradient-brand">
-            Let&rsquo;s get to work.
-          </h2>
-          <p className="mt-5 text-body-sm leading-[1.6] text-text-secondary">
-            Start a conversation with your AI co-worker.
-          </p>
-        </div>
+    <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-4">
+      <CosmicField count={18} className="opacity-60" />
+      <div className="relative z-10 w-full max-w-[240px] text-center">
+        <img
+          src="/logo.png"
+          alt="Minder AI"
+          className="mx-auto mb-3 h-12 w-12 select-none"
+          draggable={false}
+        />
+        <Eyebrow className="mb-1.5 block text-text-muted">Welcome</Eyebrow>
+        <h2 className="text-balance text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
+          Let&rsquo;s get to work.
+        </h2>
+        <p className="mt-2 text-balance text-[12.5px] leading-[1.5] text-text-secondary">
+          Start a conversation with Minder.
+        </p>
       </div>
     </div>
   );
@@ -215,14 +279,6 @@ function MessageBody({
   if (message.role === 'todos') return <TodoListCard message={message} />;
   if (message.role === 'tool_call') {
     const hasResult = message.tool_result != null && Object.keys(message.tool_result).length > 0;
-    if (message.tool_name === 'solve') {
-      // Dispatch card: request text + strategy + live job progress.
-      return <SolveDispatchCard message={message} />;
-    }
-    if (message.tool_name === 'spawn_subagent') {
-      // Always show subagents as a distinct card, even in Simple Mode.
-      return <SubagentCard message={message} hasResult={hasResult} />;
-    }
     return simpleMode
       ? <ModuleActivityLine message={message} hasResult={hasResult} />
       : <ToolCallMessage message={message} hasResult={hasResult} />;
@@ -260,7 +316,7 @@ function MessageBody({
   if (message.role === 'deep_research') return <DeepResearchBlock message={message} />;
   return message.role === 'user'
     ? <UserTurn content={message.content} />
-    : <AssistantMarkdown content={message.content} />;
+    : <AssistantMarkdown content={message.content} metrics={message.metrics} />;
 }
 
 const MessageItem = memo(function MessageItem({
@@ -294,14 +350,25 @@ const MessageItem = memo(function MessageItem({
 
 // ─── activity group: collapses intra-turn thinking + tool exec ───────────────
 
-function activitySummaryText(s: ReturnType<typeof summarizeActivity>): string {
-  const parts: string[] = [];
-  if (s.reads) parts.push(`${s.reads} đọc`);
-  if (s.edits) parts.push(`${s.edits} sửa`);
-  if (s.commands) parts.push(`${s.commands} lệnh`);
-  if (s.other) parts.push(`${s.other} khác`);
-  if (s.thinking) parts.push(`${s.thinking} suy nghĩ`);
-  return parts.join(' · ');
+// Iconised, single-line activity breakdown — compact enough to sit on one row
+// in the ~20vw rail (icon + count chips) instead of a text list that wraps.
+function ActivityMeta({ s }: { s: ReturnType<typeof summarizeActivity> }) {
+  const chips: Array<{ icon: typeof FileText; n: number; title: string }> = [];
+  if (s.reads) chips.push({ icon: FileText, n: s.reads, title: 'đọc' });
+  if (s.edits) chips.push({ icon: Pencil, n: s.edits, title: 'sửa' });
+  if (s.commands) chips.push({ icon: TerminalSquare, n: s.commands, title: 'lệnh' });
+  if (s.thinking) chips.push({ icon: Sparkles, n: s.thinking, title: 'suy nghĩ' });
+  if (!chips.length) return null;
+  return (
+    <span className="flex items-center gap-1.5">
+      {chips.map(({ icon: Icon, n, title }, i) => (
+        <span key={i} title={title} className="inline-flex items-center gap-0.5 flex-shrink-0 tabular-nums">
+          <Icon className="w-3 h-3 opacity-80" strokeWidth={1.75} aria-hidden="true" />
+          {n}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 const ActivityGroupItem = memo(function ActivityGroupItem({
@@ -320,7 +387,6 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
 
   const summary = summarizeActivity(entries);
   const stepCount = summary.steps;
-  const summaryText = activitySummaryText(summary);
 
   // Live label = the last entry's current action (for the running state).
   const last = entries[entries.length - 1]?.message;
@@ -335,23 +401,24 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
         type="button"
         onClick={() => setExpanded(v => !v)}
         aria-expanded={expanded}
-        className="w-full flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring"
+        aria-label={running ? liveLabel : 'Activity'}
+        className="w-full flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring min-w-0"
       >
         {running ? (
           <Loader2 className="w-3.5 h-3.5 text-ink/45 flex-shrink-0 animate-spin motion-reduce:animate-none" strokeWidth={1.75} aria-hidden="true" />
         ) : (
           <ChevronRight className={`w-3.5 h-3.5 text-ink/35 flex-shrink-0 transition-transform duration-fast ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
         )}
-        <span className="text-[13px] font-[450] text-ink/55">
+        <span className="text-[12.5px] font-[500] text-ink/60 flex-shrink-0 truncate max-w-[52%]">
           {running ? liveLabel : 'Activity'}
         </span>
-        <span className="text-[12px] text-ink/35 font-mono ml-0.5">
-          {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
-          {summaryText ? ` · ${summaryText}` : ''}
+        {/* Meta: step count + iconised breakdown, clipped (never wrapped) in the rail. */}
+        <span className="ml-auto flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[11px] text-ink/35 font-mono">
+          <span className="flex-shrink-0 tabular-nums">
+            {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
+          </span>
+          {!running && <ActivityMeta s={summary} />}
         </span>
-        {!running && (
-          <span className="ml-auto text-[11px] text-ink/30">{expanded ? 'thu gọn' : 'bung'}</span>
-        )}
       </button>
 
       {expanded && (
@@ -375,7 +442,7 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
 function ListFooter({ context }: { context?: ListContext }) {
   if (!context?.isLoading) return null;
   return (
-    <div className="max-w-4.5xl mx-auto px-4 md:px-8 pb-8 pt-1">
+    <div className="max-w-4.5xl mx-auto px-3 pb-6 pt-1">
       {context.progressMessage
         ? <LoadingSpinner label={context.progressMessage} />
         : <ThinkingSpinner />
@@ -399,6 +466,10 @@ export function MessageList() {
   const progressMessage = useChatStore(state => {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.progressMessage ?? null : null;
+  });
+  const thinkingIndicator = useChatStore(state => {
+    const sid = state.currentSessionId;
+    return sid ? state.sessionStates[sid]?.thinkingIndicator ?? false : false;
   });
   const thinkingLevel = useChatStore(state => state.thinkingLevel);
 
@@ -504,7 +575,7 @@ export function MessageList() {
         scrollerRef={(el) => { scrollerRef.current = el as HTMLElement | null; }}
         itemContent={(itemIndex, item, ctx) => (
           <div
-            className="max-w-4.5xl mx-auto px-4 md:px-8 pb-5 md:pb-6"
+            className="max-w-4.5xl mx-auto px-3 pb-4"
             style={item.kind === 'message' && item.message.depth
               ? { paddingLeft: `calc(${item.message.depth * 1.5}rem + 1rem)` }
               : undefined}
@@ -519,6 +590,14 @@ export function MessageList() {
           Footer: ListFooter,
         }}
       />
+
+      {/* "Thinking…" indicator — visible between turn start and first token/tool */}
+      {thinkingIndicator && (
+        <div className="animate-fade-in flex items-center gap-2.5 px-3 py-1.5">
+          <span className="thinking-orb" aria-hidden="true" />
+          <span className="thinking-sweep text-xs font-medium tracking-tight">Thinking…</span>
+        </div>
+      )}
 
       {/* Scroll-to-bottom pill — appears when user has scrolled up into history */}
       {!atBottom && (
