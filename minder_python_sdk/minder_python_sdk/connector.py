@@ -5,7 +5,7 @@ from decorated handlers, so the service and the module's ``manifest.json`` can't
 drift, and fail-closed behavior is built in. It never imports ``minder`` — the
 service runs in its own slim container.
 
-    from minder_module_sdk import Connector, ServiceUnavailable, card
+    from minder_python_sdk import Connector, ServiceUnavailable, card
 
     conn = Connector("my_module", version="1")
 
@@ -62,7 +62,7 @@ from .envelope import (
 )
 from .ui import Control, Form, Page, UiSurface, is_intent, navigate
 
-logger = logging.getLogger("minder_module_sdk")
+logger = logging.getLogger("minder_python_sdk")
 
 # v3 is a superset of v2: risk/autonomy gating, dry-run, idempotency, declared
 # events, and auto-emitted envelopes are all optional. A v1/v2 module upgrades

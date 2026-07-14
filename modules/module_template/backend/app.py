@@ -1,4 +1,4 @@
-"""module_template — a runnable showcase of the minder-module-sdk surface.
+"""module_template — a runnable showcase of the minder-python-sdk surface.
 
 Each tool demonstrates exactly one SDK capability. Pure/fake logic; never imports
 ``minder``. Ask the agent to "show what the module SDK can do" and it will call these.
@@ -11,7 +11,7 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from minder_module_sdk import (
+from minder_python_sdk import (
     Connector,
     ToolError,
     card,
@@ -20,7 +20,7 @@ from minder_module_sdk import (
     navigate,
     request_confirm,
 )
-from minder_module_sdk.client import MinderClientError
+from minder_python_sdk.client import MinderClientError
 
 import service
 import db

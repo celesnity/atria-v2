@@ -15,7 +15,7 @@ import httpx
 from .announce import AnnounceConfig, _auth_headers
 from .envelope import EventEnvelope, make_envelope
 
-logger = logging.getLogger("minder_module_sdk.client")
+logger = logging.getLogger("minder_python_sdk.client")
 
 
 class MinderClientError(RuntimeError):

@@ -1,6 +1,6 @@
 {
   "display_name": "Module Template",
-  "tooltip": "SDK showcase — every minder-module-sdk capability",
+  "tooltip": "SDK showcase — every minder-python-sdk capability",
   "icon": "icon.svg",
   "dashboard": {
     "title": "Module Template · SDK showcase",

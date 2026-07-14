@@ -7,7 +7,7 @@ import sys
 # Make the backend package importable (app.py imports `service` as a top-level module).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from minder_module_sdk.connector import Principal  # noqa: E402
+from minder_python_sdk.connector import Principal  # noqa: E402
 import app as mt  # noqa: E402
 
 

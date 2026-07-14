@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `conn.context.*` decorator family to `minder_module_sdk` so a module can declaratively hand the agent live state, domain knowledge/guardrails, area notes, and richer per-tool semantics — the backend mirror of the frontend `Agent.*` layer.
+**Goal:** Add a `conn.context.*` decorator family to `minder_python_sdk` so a module can declaratively hand the agent live state, domain knowledge/guardrails, area notes, and richer per-tool semantics — the backend mirror of the frontend `Agent.*` layer.
 
 **Architecture:** A pure `context.py` module holds the `Note`/`_StateProvider` data types, a value cap, a `_ContextRegistrar` (the `conn.context` accessor), and a `build_state_entries` evaluator. The `Connector` gains three registries plus `self.context`, surfaces the static parts (`knowledge`, `notes`, tool `when_to_use`/`examples`) in `GET /connector/manifest`, and evaluates `state` live in `GET /connector/context`. No new transport; tool invocation and gating are untouched.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Extends `minder_module_sdk` only (plus a small `module_template` change in the E2E task).
+- Extends `minder_python_sdk` only (plus a small `module_template` change in the E2E task).
 - Line length 100 (Black + Ruff); Google-style docstrings; mypy-strict typing on public APIs.
 - One decorator namespace: `conn.context.*` (`state` decorator, `knowledge`, `note`).
 - `state` evaluates **live** on every `GET /connector/context`; receives `principal` /
@@ -22,7 +22,7 @@
   change to invocation, validation, or gating.
 - `state` value capped at **32768** serialized characters; over-cap → truncated with
   `truncated: true`. Non-JSON-serializable values coerce via `str()` before capping.
-- Test command: `cd minder_module_sdk && ./.venv/bin/pytest tests/ -q`.
+- Test command: `cd minder_python_sdk && ./.venv/bin/pytest tests/ -q`.
 - Commits: no `Co-Authored-By: Claude` trailer.
 
 ---
@@ -30,9 +30,9 @@
 ### Task 1: Pure context module (`context.py`)
 
 **Files:**
-- Create: `minder_module_sdk/minder_module_sdk/context.py`
-- Modify: `minder_module_sdk/minder_module_sdk/__init__.py` (export `Note`)
-- Test: `minder_module_sdk/tests/test_context_surface.py`
+- Create: `minder_python_sdk/minder_python_sdk/context.py`
+- Modify: `minder_python_sdk/minder_python_sdk/__init__.py` (export `Note`)
+- Test: `minder_python_sdk/tests/test_context_surface.py`
 
 **Interfaces:**
 - Produces:
@@ -48,10 +48,10 @@
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# minder_module_sdk/tests/test_context_surface.py
+# minder_python_sdk/tests/test_context_surface.py
 from types import SimpleNamespace
 
-from minder_module_sdk.context import (
+from minder_python_sdk.context import (
     MAX_STATE_CHARS,
     Note,
     _ContextRegistrar,
@@ -137,20 +137,20 @@ def test_build_state_entries_flags_truncated():
 
 # Helper: construct a _StateProvider without importing its private name everywhere.
 def _StateProvider_desc(fn, description):
-    from minder_module_sdk.context import _StateProvider
+    from minder_python_sdk.context import _StateProvider
 
     return _StateProvider(description=description, fn=fn)
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
-Expected: FAIL — `ModuleNotFoundError: No module named 'minder_module_sdk.context'`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
+Expected: FAIL — `ModuleNotFoundError: No module named 'minder_python_sdk.context'`
 
 - [ ] **Step 3: Write the implementation**
 
 ```python
-# minder_module_sdk/minder_module_sdk/context.py
+# minder_python_sdk/minder_python_sdk/context.py
 """Declarative agent-facing context: live state, knowledge, notes.
 
 The backend mirror of the frontend ``Agent.*`` wrapper layer. A module declares
@@ -278,7 +278,7 @@ class _ContextRegistrar:
 
 - [ ] **Step 4: Export `Note` from the package**
 
-Read `minder_module_sdk/minder_module_sdk/__init__.py`, then add `Note` to the exports next to the existing public names (e.g. where `Connector` / `Principal` are exported):
+Read `minder_python_sdk/minder_python_sdk/__init__.py`, then add `Note` to the exports next to the existing public names (e.g. where `Connector` / `Principal` are exported):
 
 ```python
 from .context import Note  # noqa: F401
@@ -288,14 +288,14 @@ If the file defines `__all__`, add `"Note"` to it.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
 Expected: PASS (7 tests)
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add minder_module_sdk/minder_module_sdk/context.py minder_module_sdk/minder_module_sdk/__init__.py
-git add -f minder_module_sdk/tests/test_context_surface.py
+git add minder_python_sdk/minder_python_sdk/context.py minder_python_sdk/minder_python_sdk/__init__.py
+git add -f minder_python_sdk/tests/test_context_surface.py
 git commit -m "feat(connector): add declarative context module (state/knowledge/note)"
 ```
 
@@ -304,8 +304,8 @@ git commit -m "feat(connector): add declarative context module (state/knowledge/
 ### Task 2: Wire `conn.context` + live `state` into `/connector/context`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (`__init__` ~lines 159-187; `GET /connector/context` handler ~lines 929-957)
-- Test: `minder_module_sdk/tests/test_context_surface.py` (append)
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py` (`__init__` ~lines 159-187; `GET /connector/context` handler ~lines 929-957)
+- Test: `minder_python_sdk/tests/test_context_surface.py` (append)
 
 **Interfaces:**
 - Consumes: `_ContextRegistrar`, `_StateProvider`, `Note`, `build_state_entries` from Task 1.
@@ -318,7 +318,7 @@ git commit -m "feat(connector): add declarative context module (state/knowledge/
 ```python
 def test_context_endpoint_returns_live_state_with_principal():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
@@ -338,7 +338,7 @@ def test_context_endpoint_returns_live_state_with_principal():
 
 def test_context_state_defaults_to_empty_list():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
     body = TestClient(conn.asgi()).get("/connector/context").json()
@@ -347,7 +347,7 @@ def test_context_state_defaults_to_empty_list():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k context_endpoint_returns_live_state`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k context_endpoint_returns_live_state`
 Expected: FAIL — `AttributeError: 'Connector' object has no attribute 'context'`
 
 - [ ] **Step 3: Add imports + `__init__` state**
@@ -381,14 +381,14 @@ In the `GET /connector/context` handler, add `"state"` to the returned dict (aft
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
 Expected: PASS (9 tests)
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add minder_module_sdk/minder_module_sdk/connector.py
-git add -f minder_module_sdk/tests/test_context_surface.py
+git add minder_python_sdk/minder_python_sdk/connector.py
+git add -f minder_python_sdk/tests/test_context_surface.py
 git commit -m "feat(connector): evaluate context.state live in /connector/context"
 ```
 
@@ -397,8 +397,8 @@ git commit -m "feat(connector): evaluate context.state live in /connector/contex
 ### Task 3: Surface `knowledge` + `notes` in the manifest
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (`_tool_specs`/spec helpers area ~lines 900-925; `GET /connector/manifest` handler ~lines 959-982)
-- Test: `minder_module_sdk/tests/test_context_surface.py` (append)
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py` (`_tool_specs`/spec helpers area ~lines 900-925; `GET /connector/manifest` handler ~lines 959-982)
+- Test: `minder_python_sdk/tests/test_context_surface.py` (append)
 
 **Interfaces:**
 - Consumes: `self._ctx_knowledge`, `self._ctx_notes` from Task 2.
@@ -410,7 +410,7 @@ git commit -m "feat(connector): evaluate context.state live in /connector/contex
 ```python
 def test_manifest_exposes_knowledge_and_notes():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
     conn.context.knowledge("Always check MEL before dispatch.")
@@ -423,7 +423,7 @@ def test_manifest_exposes_knowledge_and_notes():
 
 def test_manifest_context_defaults_empty():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     mani = TestClient(Connector("m").asgi()).get("/connector/manifest").json()
     assert mani["context"] == {"knowledge": [], "notes": []}
@@ -431,7 +431,7 @@ def test_manifest_context_defaults_empty():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k manifest_exposes_knowledge`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k manifest_exposes_knowledge`
 Expected: FAIL — `KeyError: 'context'`
 
 - [ ] **Step 3: Add the `_context_spec` helper**
@@ -457,14 +457,14 @@ In the `GET /connector/manifest` handler's returned dict, add after `"ui": self.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
 Expected: PASS (11 tests)
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add minder_module_sdk/minder_module_sdk/connector.py
-git add -f minder_module_sdk/tests/test_context_surface.py
+git add minder_python_sdk/minder_python_sdk/connector.py
+git add -f minder_python_sdk/tests/test_context_surface.py
 git commit -m "feat(connector): expose context knowledge+notes in manifest"
 ```
 
@@ -473,8 +473,8 @@ git commit -m "feat(connector): expose context knowledge+notes in manifest"
 ### Task 4: Enrich `@conn.tool` / `@conn.read` with `when_to_use` + `examples`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (`_Tool` dataclass ~lines 86-100; `tool()` ~lines 197-252; `read()` ~lines 254-274; `_tool_specs` ~lines 900-915)
-- Test: `minder_module_sdk/tests/test_context_surface.py` (append)
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py` (`_Tool` dataclass ~lines 86-100; `tool()` ~lines 197-252; `read()` ~lines 254-274; `_tool_specs` ~lines 900-915)
+- Test: `minder_python_sdk/tests/test_context_surface.py` (append)
 
 **Interfaces:**
 - Produces: `_Tool` gains `when_to_use: str = ""` and `examples: list = field(default_factory=list)`;
@@ -486,7 +486,7 @@ git commit -m "feat(connector): expose context knowledge+notes in manifest"
 ```python
 def test_tool_enrichment_surfaces_in_manifest():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
@@ -512,7 +512,7 @@ def test_tool_enrichment_surfaces_in_manifest():
 
 
 def test_enriched_tool_still_invokes_and_gates_normally():
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
@@ -525,7 +525,7 @@ def test_enriched_tool_still_invokes_and_gates_normally():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k tool_enrichment`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q -k tool_enrichment`
 Expected: FAIL — `TypeError: tool() got an unexpected keyword argument 'when_to_use'`
 
 - [ ] **Step 3: Extend `_Tool`**
@@ -593,19 +593,19 @@ In `_tool_specs` (~lines 900-915), add two keys to the per-tool dict (after `"id
 
 - [ ] **Step 6: Run tests to verify they pass**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/test_context_surface.py -q`
 Expected: PASS (13 tests)
 
 - [ ] **Step 7: Run the whole module_sdk suite (no regressions)**
 
-Run: `cd minder_module_sdk && ./.venv/bin/pytest tests/ -q`
+Run: `cd minder_python_sdk && ./.venv/bin/pytest tests/ -q`
 Expected: PASS (all existing + new tests)
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add minder_module_sdk/minder_module_sdk/connector.py
-git add -f minder_module_sdk/tests/test_context_surface.py
+git add minder_python_sdk/minder_python_sdk/connector.py
+git add -f minder_python_sdk/tests/test_context_surface.py
 git commit -m "feat(connector): add when_to_use/examples to tool + read"
 ```
 
@@ -662,7 +662,7 @@ def create_product(...):
 
 Run: `cd modules/module_template/backend && python -c "import app; print('tools:', 'create_product' in app.conn._tools); print('state:', list(app.conn._ctx_state))"`
 Expected: prints `tools: True` and `state: ['inventory']` with no import error.
-(If `python` is unavailable, use the module's venv or `../../../minder_module_sdk/.venv/bin/python`.)
+(If `python` is unavailable, use the module's venv or `../../../minder_python_sdk/.venv/bin/python`.)
 
 - [ ] **Step 3: Real end-to-end run**
 

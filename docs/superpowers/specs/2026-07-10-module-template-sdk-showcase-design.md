@@ -7,7 +7,7 @@
 ## Goal
 
 Ship `modules/module_template/` — a full, runnable service-module whose sole purpose
-is to **introduce itself to the agent and demonstrate every `minder_module_sdk`
+is to **introduce itself to the agent and demonstrate every `minder_python_sdk`
 capability** when asked. It doubles as the copy-me skeleton for building new modules.
 Also wire `ctx.principal` at the host so `requires_auth` works for real, and update
 `modules/module_integration.md` to match the current SDK.
@@ -109,7 +109,7 @@ in-memory data. Never imports `minder`.
 - `manifest.json` — presentation (`display_name`, `dashboard`, `remote` with browser
   `remoteEntry`), no domain corpus.
 - `icon.svg`, `Dockerfile` (multi-stage: build frontend → slim python, installs
-  `minder-module-sdk`), `docker-compose.snippet.yml` (env: `MINDER_URL`,
+  `minder-python-sdk`), `docker-compose.snippet.yml` (env: `MINDER_URL`,
   `MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`, `MODULE_PUBLIC_BASE`, Keycloak
   client creds), `README.md` mapping each SDK feature to the code that uses it.
 - `backend/tests/test_template.py` — uses `conn.invoke(...)` to exercise

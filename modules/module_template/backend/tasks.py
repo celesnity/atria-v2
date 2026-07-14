@@ -16,8 +16,8 @@ logger = logging.getLogger("module_template.tasks")
 
 def _client():
     """Build an MinderClient from env (announce config); None if unconfigured."""
-    from minder_module_sdk.announce import resolve_announce_config
-    from minder_module_sdk.client import MinderClient
+    from minder_python_sdk.announce import resolve_announce_config
+    from minder_python_sdk.client import MinderClient
 
     cfg = resolve_announce_config()
     return MinderClient("module_template", cfg) if cfg is not None else None

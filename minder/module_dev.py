@@ -84,10 +84,10 @@ def cmd_dev(args: argparse.Namespace) -> int:
         return 1
 
     port = _port_from_manifest(module_dir)
-    sdk_path = _repo_root() / "minder_module_sdk"
+    sdk_path = _repo_root() / "minder_python_sdk"
 
     env = os.environ.copy()
-    # SDK on PYTHONPATH so ``import minder_module_sdk`` works without installing;
+    # SDK on PYTHONPATH so ``import minder_python_sdk`` works without installing;
     # dashboard dist env unset in dev (frontend is served by vite, not the backend).
     env["PYTHONPATH"] = os.pathsep.join(
         [str(sdk_path), str(backend), env.get("PYTHONPATH", "")]
