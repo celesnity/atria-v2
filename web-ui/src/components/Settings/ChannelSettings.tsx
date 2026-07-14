@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import {
   listConnections,
   createConnection,
@@ -126,7 +126,11 @@ export function ChannelSettings() {
       <div>
         <h3 className="text-lg font-semibold text-gray-900">{t('channel.title')}</h3>
         <p className="text-sm text-gray-500 mt-1">
-          {t('channel.description')}
+          <Trans
+            i18nKey="channel.description"
+            ns="settings"
+            components={{ mono: <span className="font-mono" /> }}
+          />
         </p>
       </div>
 

@@ -77,6 +77,7 @@
     "loadingServers": "",
     "manualEntry": "",
     "moreActions": "",
+    "no": "",
     "noParameters": "",
     "noServersHint": "",
     "noServersTitle": "",
@@ -112,6 +113,7 @@
     "tableStatusHeader": "",
     "testButton": "",
     "testConnection": "",
+    "testSuccess": "",
     "title": "",
     "toolsAvailableCount_other": "",
     "toolsButton": "",
@@ -121,7 +123,8 @@
     "validationCommandRequired": "",
     "validationEditCommandRequired": "",
     "validationNameRequired": "",
-    "viewTools_other": ""
+    "viewTools_other": "",
+    "yes": ""
   },
   "mode": "Chế độ",
   "modeHint": "Bình thường cho agent toàn quyền truy cập công cụ. Lập kế hoạch giới hạn chỉ đọc để agent có thể phân tích mà không thay đổi bất cứ điều gì.",

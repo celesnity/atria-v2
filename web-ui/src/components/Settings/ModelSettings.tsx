@@ -1,5 +1,5 @@
 import { CircleCheck } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 
 /**
  * Model Settings Tab
@@ -25,7 +25,11 @@ export function ModelSettings() {
               {t('model.title')}
             </h3>
             <p className="text-sm text-ink/85 leading-relaxed mb-4">
-              {t('model.description')}
+              <Trans
+                i18nKey="model.description"
+                ns="settings"
+                components={{ code: <code className="font-mono bg-surface-soft px-2 py-1 rounded text-xs" /> }}
+              />
             </p>
 
             <div className="bg-surface-soft rounded p-3 mb-4">
@@ -56,15 +60,33 @@ export function ModelSettings() {
         <ul className="text-xs text-ink/70 space-y-2">
           <li className="flex gap-2">
             <span className="text-ink/50 flex-shrink-0">•</span>
-            <span>{t('model.reasonSecurity')}</span>
+            <span>
+              <Trans
+                i18nKey="model.reasonSecurity"
+                ns="settings"
+                components={{ strong: <strong /> }}
+              />
+            </span>
           </li>
           <li className="flex gap-2">
             <span className="text-ink/50 flex-shrink-0">•</span>
-            <span>{t('model.reasonFlexibility')}</span>
+            <span>
+              <Trans
+                i18nKey="model.reasonFlexibility"
+                ns="settings"
+                components={{ strong: <strong /> }}
+              />
+            </span>
           </li>
           <li className="flex gap-2">
             <span className="text-ink/50 flex-shrink-0">•</span>
-            <span>{t('model.reasonConsistency')}</span>
+            <span>
+              <Trans
+                i18nKey="model.reasonConsistency"
+                ns="settings"
+                components={{ strong: <strong /> }}
+              />
+            </span>
           </li>
         </ul>
       </div>
@@ -72,7 +94,11 @@ export function ModelSettings() {
       {/* Persona Settings Link */}
       <div className="border border-hairline rounded-md p-4 bg-canvas">
         <p className="text-sm text-ink/70 mb-3">
-          {t('model.personasLink')}
+          <Trans
+            i18nKey="model.personasLink"
+            ns="settings"
+            components={{ strong: <strong /> }}
+          />
         </p>
       </div>
     </div>

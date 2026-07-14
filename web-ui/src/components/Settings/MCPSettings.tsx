@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { CircleAlert, X, ArrowRight, Check, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 import { AddMCPServerModal } from './AddMCPServerModal';
 import { EditMCPServerModal } from './EditMCPServerModal';
@@ -119,7 +119,7 @@ export function MCPSettings() {
     setProcessingServer(name);
     try {
       const response = await testMCPServer(name);
-      alert(response.message || 'Connection test successful');
+      alert(response.message || t('mcp.testSuccess'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('mcp.errorTestFailed'));
     } finally {
@@ -230,7 +230,11 @@ export function MCPSettings() {
       {/* Footer Info */}
       <div className="pt-4 border-t border-hairline-soft">
         <p className="text-xs text-text-muted">
-          <strong>Note:</strong> {t('mcp.noteConnected')}
+          <Trans
+            i18nKey="mcp.noteConnected"
+            ns="settings"
+            components={{ strong: <strong /> }}
+          />
         </p>
       </div>
 

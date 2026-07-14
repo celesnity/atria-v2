@@ -219,7 +219,7 @@ function ServerDetails({ server }: ServerDetailsProps) {
         />
         <DetailRow
           label={t('mcp.enabledDetail')}
-          value={config.enabled ? 'Yes' : 'No'}
+          value={config.enabled ? t('mcp.yes') : t('mcp.no')}
           valueColor={config.enabled ? 'text-green-600' : 'text-text-muted'}
         />
       </div>
