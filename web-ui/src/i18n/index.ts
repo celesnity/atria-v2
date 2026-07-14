@@ -12,6 +12,7 @@ i18n
     supportedLngs: ['en', 'vi'],
     ns: ['common', 'settings'],
     defaultNS: 'common',
+    returnEmptyString: false,
     interpolation: { escapeValue: false },
     detection: { order: ['localStorage', 'navigator'], caches: ['localStorage'] },
   });
