@@ -5,7 +5,6 @@ type Sub = (env: EventEnvelope) => void;
 interface Shared {
   es: EventSource;
   subscribers: Set<Sub>;
-  refCount: number;
 }
 
 const streams = new Map<string, Shared>();
@@ -23,12 +22,13 @@ export function getSharedStream(
   let shared = streams.get(url);
   if (!shared) {
     const es = new EventSource(url);
-    const s: Shared = { es, subscribers: new Set<Sub>(), refCount: 0 };
+    const s: Shared = { es, subscribers: new Set<Sub>() };
     es.onmessage = (e: MessageEvent) => {
       let data: unknown;
       try {
         data = JSON.parse(e.data);
       } catch {
+        console.warn('[minder] dropped unparseable event frame');
         return;
       }
       const env = parseEnvelope(data);
@@ -42,14 +42,12 @@ export function getSharedStream(
     shared = s;
   }
   shared.subscribers.add(onEnvelope);
-  shared.refCount += 1;
   return {
     close() {
       const s = streams.get(url);
       if (!s) return;
       s.subscribers.delete(onEnvelope);
-      s.refCount -= 1;
-      if (s.refCount <= 0) {
+      if (s.subscribers.size === 0) {
         s.es.close();
         streams.delete(url);
       }
