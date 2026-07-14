@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, AlertTriangle } from 'lucide-react';
 import { listTools, updateDisabledTools, type ToolInfo } from '../../api/tools';
 
@@ -23,6 +24,7 @@ const CORE_TOOLS = new Set([
 ]);
 
 export function ToolsSettings() {
+  const { t } = useTranslation('settings');
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,10 +93,9 @@ export function ToolsSettings() {
       {/* Header row */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div>
-          <p className="text-sm font-medium text-ink">Agent Tools</p>
+          <p className="text-sm font-medium text-ink">{t('tools.title')}</p>
           <p className="text-xs text-text-muted mt-0.5">
-            {enabledCount}/{tools.length} enabled · disabled tools are cut from the model context on
-            the next turn
+            {t('tools.countSummary', { enabled: enabledCount, total: tools.length })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -103,14 +104,14 @@ export function ToolsSettings() {
             disabled={saving || loading}
             className="px-2.5 py-1.5 text-xs rounded-md text-text-secondary hover:text-ink hover:bg-surface-soft transition-colors disabled:opacity-40 cursor-pointer"
           >
-            Enable all
+            {t('tools.enableAll')}
           </button>
           <button
             onClick={() => setAll(false)}
             disabled={saving || loading}
             className="px-2.5 py-1.5 text-xs rounded-md text-text-secondary hover:text-ink hover:bg-surface-soft transition-colors disabled:opacity-40 cursor-pointer"
           >
-            Disable all
+            {t('tools.disableAll')}
           </button>
         </div>
       </div>
@@ -121,7 +122,7 @@ export function ToolsSettings() {
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search tools…"
+          placeholder={t('tools.searchPlaceholder')}
           className="flex-1 bg-transparent text-sm text-ink placeholder:text-text-muted outline-none min-w-0"
         />
       </div>
@@ -133,9 +134,9 @@ export function ToolsSettings() {
       )}
 
       {loading ? (
-        <p className="text-sm text-text-muted py-8 text-center">Loading tools…</p>
+        <p className="text-sm text-text-muted py-8 text-center">{t('tools.loading')}</p>
       ) : grouped.length === 0 ? (
-        <p className="text-sm text-text-muted py-8 text-center">No tools match “{query}”.</p>
+        <p className="text-sm text-text-muted py-8 text-center">{t('tools.noMatch', { query })}</p>
       ) : (
         <div className="space-y-5">
           {grouped.map(([category, items]) => (
@@ -151,7 +152,7 @@ export function ToolsSettings() {
                         <span className="text-sm font-mono text-ink truncate">{tool.name}</span>
                         {CORE_TOOLS.has(tool.name) && (
                           <span
-                            title="Core tool — disabling may break the agent"
+                            title={t('tools.coreToolWarning')}
                             className="inline-flex items-center gap-0.5 text-[10px] text-amber-500"
                           >
                             <AlertTriangle className="w-3 h-3" /> core

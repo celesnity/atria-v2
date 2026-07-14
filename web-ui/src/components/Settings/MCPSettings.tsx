@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CircleAlert, X, ArrowRight, Check, EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
 import { AddMCPServerModal } from './AddMCPServerModal';
 import { EditMCPServerModal } from './EditMCPServerModal';
@@ -25,6 +26,8 @@ import {
 } from '../../api/mcp';
 
 export function MCPSettings() {
+  const { t } = useTranslation('settings');
+
   // Server list state
   const [servers, setServers] = useState<MCPServer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,7 +97,7 @@ export function MCPSettings() {
       await connectMCPServer(name);
       await loadServers(); // Reload to update UI
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect');
+      setError(err instanceof Error ? err.message : t('mcp.errorConnect'));
     } finally {
       setProcessingServer(null);
     }
@@ -106,7 +109,7 @@ export function MCPSettings() {
       await disconnectMCPServer(name);
       await loadServers(); // Reload to update UI
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to disconnect');
+      setError(err instanceof Error ? err.message : t('mcp.errorDisconnect'));
     } finally {
       setProcessingServer(null);
     }
@@ -118,7 +121,7 @@ export function MCPSettings() {
       const response = await testMCPServer(name);
       alert(response.message || 'Connection test successful');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Test failed');
+      setError(err instanceof Error ? err.message : t('mcp.errorTestFailed'));
     } finally {
       setProcessingServer(null);
     }
@@ -131,7 +134,7 @@ export function MCPSettings() {
       setSelectedServer(servers.find(s => s.name === name) || null);
       setShowToolsModal(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tools');
+      setError(err instanceof Error ? err.message : t('mcp.errorLoadTools'));
     }
   };
 
@@ -141,13 +144,13 @@ export function MCPSettings() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Remove "${name}"? This action cannot be undone.`)) return;
+    if (!confirm(t('mcp.confirmRemove', { name }))) return;
 
     try {
       await deleteMCPServer(name);
       await loadServers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove server');
+      setError(err instanceof Error ? err.message : t('mcp.errorRemove'));
     }
   };
 
@@ -180,16 +183,16 @@ export function MCPSettings() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-ink">MCP Servers</h3>
+          <h3 className="text-lg font-semibold text-ink">{t('mcp.title')}</h3>
           <p className="text-sm text-text-muted mt-0.5">
-            Manage Model Context Protocol server connections
+            {t('mcp.subtitle')}
           </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
           className="px-5 py-2 text-sm font-[480] text-inverse-ink bg-ink rounded-pill hover:bg-ink/90 transition-colors active:scale-[0.98] whitespace-nowrap"
         >
-          Add Server
+          {t('mcp.addServer')}
         </button>
       </div>
 
@@ -227,8 +230,7 @@ export function MCPSettings() {
       {/* Footer Info */}
       <div className="pt-4 border-t border-hairline-soft">
         <p className="text-xs text-text-muted">
-          <strong>Note:</strong> Connected servers are available in both terminal and web interface.
-          Changes take effect immediately.
+          <strong>Note:</strong> {t('mcp.noteConnected')}
         </p>
       </div>
 
@@ -268,23 +270,25 @@ export function MCPSettings() {
 // ============================================================================
 
 function LoadingState() {
+  const { t } = useTranslation('settings');
   return (
     <div className="text-center py-12 bg-surface-soft rounded-md border border-hairline-soft">
       <div className="inline-flex items-center justify-center w-12 h-12 mb-3">
         <div className="w-8 h-8 border-3 border-hairline-soft border-t-gray-900 rounded-md animate-spin" />
       </div>
-      <p className="text-sm text-text-secondary">Loading MCP servers...</p>
+      <p className="text-sm text-text-secondary">{t('mcp.loadingServers')}</p>
     </div>
   );
 }
 
 function EmptyState() {
+  const { t } = useTranslation('settings');
   return (
     <div className="text-center py-12 bg-surface-soft rounded-md border-2 border-dashed border-hairline-soft">
       <ArrowRight className="w-12 h-12 mx-auto text-text-muted mb-3" />
-      <p className="text-sm text-text-secondary font-medium mb-1">No MCP servers configured</p>
+      <p className="text-sm text-text-secondary font-medium mb-1">{t('mcp.noServersTitle')}</p>
       <p className="text-xs text-text-muted">
-        Click "Add Server" above to add your first MCP server
+        {t('mcp.noServersHint')}
       </p>
     </div>
   );
@@ -311,6 +315,7 @@ function ServerTable({
   onEdit,
   onDelete,
 }: ServerTableProps) {
+  const { t } = useTranslation('settings');
   return (
     <div className="bg-canvas border border-hairline-soft rounded-md overflow-x-auto">
       <table className="w-full divide-y divide-hairline-soft">
@@ -324,19 +329,19 @@ function ServerTable({
         <thead className="bg-surface-soft">
           <tr>
             <th className="px-4 py-3 text-left text-sm font-semibold text-text-secondary uppercase whitespace-nowrap">
-              Name
+              {t('mcp.tableNameHeader')}
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-text-secondary uppercase whitespace-nowrap">
-              Status
+              {t('mcp.tableStatusHeader')}
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-text-secondary uppercase whitespace-nowrap">
-              Enabled
+              {t('mcp.tableEnabledHeader')}
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-text-secondary uppercase whitespace-nowrap">
-              Auto-start
+              {t('mcp.tableAutoStartHeader')}
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-text-secondary uppercase whitespace-nowrap">
-              Actions
+              {t('mcp.tableActionsHeader')}
             </th>
           </tr>
         </thead>
@@ -381,6 +386,7 @@ function ServerRow({
   onEdit,
   onDelete,
 }: ServerRowProps) {
+  const { t } = useTranslation('settings');
   const isConnected = server.status === 'connected';
 
   const handleTest = () => {
@@ -403,7 +409,7 @@ function ServerRow({
               disabled={isProcessing || isConnected}
               className="px-4 py-1.5 text-sm font-[480] text-inverse-ink bg-ink hover:bg-ink/90 rounded-pill transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap active:scale-[0.98]"
             >
-              Connect
+              {t('mcp.connectButton')}
             </button>
 
             {/* Disconnect Button */}
@@ -412,7 +418,7 @@ function ServerRow({
               disabled={isProcessing || !isConnected}
               className="px-3 py-1.5 text-sm font-medium text-text-secondary bg-canvas border border-hairline-soft hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              Disconnect
+              {t('mcp.disconnectButton')}
             </button>
 
             {/* Test Button */}
@@ -421,7 +427,7 @@ function ServerRow({
               disabled={isProcessing}
               className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              Test
+              {t('mcp.testButton')}
             </button>
 
             {/* Tools Button */}
@@ -430,7 +436,7 @@ function ServerRow({
               disabled={isProcessing || !isConnected}
               className="px-3 py-1.5 text-sm font-medium text-text-secondary bg-canvas border border-hairline-soft hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
-              Tools
+              {t('mcp.toolsButton')}
             </button>
           </div>
         </div>
@@ -442,11 +448,11 @@ function ServerRow({
           <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-900 rounded-md animate-spin mx-auto" />
         ) : isConnected ? (
           <div className="flex items-center justify-center gap-1.5">
-            <span className="text-sm font-medium text-green-700">On</span>
+            <span className="text-sm font-medium text-green-700">{t('mcp.statusOn')}</span>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-1.5">
-            <span className="text-sm text-text-muted">Off</span>
+            <span className="text-sm text-text-muted">{t('mcp.statusOff')}</span>
           </div>
         )}
       </td>
@@ -496,6 +502,7 @@ interface DropdownMenuProps {
 }
 
 function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuProps) {
+  const { t } = useTranslation('settings');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -520,7 +527,7 @@ function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuPr
         onClick={() => setIsOpen(!isOpen)}
         disabled={isProcessing}
         className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title="More actions"
+        title={t('mcp.moreActions')}
       >
         <EllipsisVertical className="w-5 h-5" />
       </button>
@@ -536,7 +543,7 @@ function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuPr
             className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-soft transition-colors flex items-center gap-2"
           >
             <Pencil className="w-4 h-4" />
-            Edit
+            {t('mcp.editMenuItem')}
           </button>
           <button
             onClick={() => {
@@ -546,7 +553,7 @@ function DropdownMenu({ server, isProcessing, onEdit, onDelete }: DropdownMenuPr
             className="w-full px-3 py-2 text-left text-sm text-semantic-danger hover:bg-red-50 transition-colors flex items-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
-            Remove
+            {t('mcp.removeMenuItem')}
           </button>
         </div>
       )}

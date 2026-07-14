@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { XMarkIcon, MagnifyingGlassIcon, ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/solid';
@@ -20,6 +21,7 @@ interface MCPToolsModalProps {
 }
 
 export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsModalProps) {
+  const { t } = useTranslation('settings');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTool, setSelectedTool] = useState<MCPTool | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -71,14 +73,14 @@ export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsMo
         <div className="flex items-center justify-between px-6 py-4 border-b border-hairline-soft bg-gradient-to-r from-gray-50 to-white">
           <div>
             <h2 className="text-xl font-semibold text-ink">
-              Tools from {serverName}
+              {t('mcp.toolsFromServer', { serverName })}
             </h2>
             <p className="text-sm text-text-muted mt-0.5">
-              {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'} available
+              {t('mcp.toolsAvailableCount', { count: filteredTools.length })}
             </p>
           </div>
           <button
-            aria-label="Close dialog"
+            aria-label={t('formFields.closeDialog')}
             onClick={onClose}
             className="p-2 text-text-muted hover:text-text-secondary hover:bg-surface-soft rounded-md transition-colors"
           >
@@ -94,7 +96,7 @@ export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsMo
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tools by name or description..."
+              placeholder={t('mcp.searchToolsPlaceholder')}
               className="w-full pl-10 pr-4 py-2.5 border border-hairline-soft rounded-md bg-canvas"
             />
           </div>
@@ -133,7 +135,7 @@ export function MCPToolsModal({ isOpen, serverName, tools, onClose }: MCPToolsMo
               <div className="flex items-center justify-center h-full text-text-muted">
                 <div className="text-center">
                   <WrenchScrewdriverIcon className="w-16 h-16 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Select a tool to view details</p>
+                  <p className="text-sm">{t('mcp.selectToolPrompt')}</p>
                 </div>
               </div>
             )}
@@ -153,17 +155,18 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ searchQuery }: EmptyStateProps) {
+  const { t } = useTranslation('settings');
   return (
     <div className="text-center py-12 px-4">
       <div className="text-text-muted mb-2">
         <Search className="w-12 h-12 mx-auto" />
       </div>
       <p className="text-sm text-text-secondary font-medium mb-1">
-        {searchQuery ? 'No tools found' : 'No tools available'}
+        {searchQuery ? t('mcp.noToolsFound') : t('mcp.noToolsAvailable')}
       </p>
       {searchQuery && (
         <p className="text-xs text-text-muted">
-          Try a different search term
+          {t('mcp.tryDifferentSearch')}
         </p>
       )}
     </div>
@@ -177,6 +180,7 @@ interface ToolListItemProps {
 }
 
 function ToolListItem({ tool, isSelected, onClick }: ToolListItemProps) {
+  const { t } = useTranslation('settings');
   const paramCount = tool.inputSchema?.properties ? Object.keys(tool.inputSchema.properties).length : 0;
 
   return (
@@ -204,7 +208,7 @@ function ToolListItem({ tool, isSelected, onClick }: ToolListItemProps) {
           {paramCount > 0 && (
             <div className="mt-1.5">
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-soft text-text-secondary">
-                {paramCount} {paramCount === 1 ? 'parameter' : 'parameters'}
+                {t('mcp.paramCount', { count: paramCount })}
               </span>
             </div>
           )}
@@ -222,6 +226,7 @@ interface ToolDetailsProps {
 }
 
 function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps) {
+  const { t } = useTranslation('settings');
   const fullName = `mcp__${serverName}__${tool.name}`;
   const properties = tool.inputSchema?.properties || {};
   const required = tool.inputSchema?.required || [];
@@ -243,7 +248,7 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
 
         {/* Full Tool Name */}
         <div className="mt-4">
-          <label className="block text-xs font-medium text-text-muted mb-1.5">Full Tool Name</label>
+          <label className="block text-xs font-medium text-text-muted mb-1.5">{t('mcp.fullToolName')}</label>
           <div className="flex items-center gap-2">
             <code className="flex-1 px-3 py-2.5 bg-surface-soft border border-hairline-soft rounded-md text-sm font-mono text-ink">
               {fullName}
@@ -251,7 +256,7 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
             <button
               onClick={() => onCopy(fullName)}
               className="p-2.5 text-text-secondary hover:text-ink hover:bg-surface-soft rounded-md transition-colors border border-hairline-soft"
-              title="Copy to clipboard"
+              title={t('mcp.copyToClipboard')}
             >
               {copiedText === fullName ? (
                 <CheckIcon className="w-4 h-4 text-green-600" />
@@ -265,11 +270,11 @@ function ToolDetails({ tool, serverName, copiedText, onCopy }: ToolDetailsProps)
 
       {/* Parameters Section */}
       <div className="border-t border-hairline-soft pt-6">
-        <h4 className="text-sm font-semibold text-ink mb-4">Parameters</h4>
+        <h4 className="text-sm font-semibold text-ink mb-4">{t('mcp.parametersSection')}</h4>
 
         {!hasParameters ? (
           <div className="text-center py-8 bg-surface-soft rounded-md border border-hairline-soft">
-            <p className="text-sm text-text-muted">This tool doesn't require any parameters</p>
+            <p className="text-sm text-text-muted">{t('mcp.noParameters')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -295,6 +300,8 @@ interface ParameterCardProps {
 }
 
 function ParameterCard({ name, schema, isRequired }: ParameterCardProps) {
+  const { t } = useTranslation('settings');
+
   const getTypeDisplay = (schema: any): string => {
     if (schema.enum) {
       return `enum: ${schema.enum.join(' | ')}`;
@@ -313,7 +320,7 @@ function ParameterCard({ name, schema, isRequired }: ParameterCardProps) {
           <code className="text-sm font-semibold text-ink">{name}</code>
           {isRequired && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-semantic-danger">
-              Required
+              {t('mcp.requiredBadge')}
             </span>
           )}
         </div>
@@ -328,7 +335,7 @@ function ParameterCard({ name, schema, isRequired }: ParameterCardProps) {
 
       {schema.enum && (
         <div className="mt-2 pt-2 border-t border-hairline-soft">
-          <p className="text-xs text-text-muted mb-1">Allowed values:</p>
+          <p className="text-xs text-text-muted mb-1">{t('mcp.allowedValues')}</p>
           <div className="flex flex-wrap gap-1">
             {schema.enum.map((value: string) => (
               <code key={value} className="text-xs bg-surface-soft text-text-secondary px-2 py-0.5 rounded">
