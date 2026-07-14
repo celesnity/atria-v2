@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Settings, Folder, Plus, Trash2 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 import { SettingsModal } from '../Settings/SettingsModal';
 import { NewSessionModal } from './NewSessionModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -58,8 +59,8 @@ export function SessionsSidebar() {
   const sessionListVersion = useChatStore(state => state.sessionListVersion);
   const runningSessions = useChatStore(state => state.runningSessions);
   const sessionStates = useChatStore(state => state.sessionStates);
-  const isCollapsed = useChatStore(state => state.sidebarCollapsed);
-  const toggleSidebar = useChatStore(state => state.toggleSidebar);
+  const isCollapsed = useUiStore(state => state.sidebarCollapsed);
+  const toggleSidebar = useUiStore(state => state.toggleSidebar);
 
   // Disable "New Chat" when the current session has no messages yet
   const currentSessionIsEmpty = currentSessionId !== null && (

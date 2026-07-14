@@ -19,8 +19,9 @@ import { useViewerTabsStore } from '../stores/viewerTabs';
 
 export function resetAllStores(): void {
   // Chat — clear cached per-session messages, current session, status,
-  // pending review state, running set. Keep UI prefs (sidebarCollapsed,
-  // thinkingLevel) since those are user-agnostic.
+  // pending review state, running set. Keep UI prefs (thinkingLevel)
+  // since those are user-agnostic. Layout toggles (sidebarCollapsed, etc.)
+  // now live in useUiStore and are intentionally not reset here.
   useChatStore.setState({
     sessionStates: {},
     currentSessionId: null,

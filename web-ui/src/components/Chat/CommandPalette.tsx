@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 
 interface Command {
   id: string;
@@ -24,7 +25,7 @@ export function CommandPalette({ isOpen, onClose, onOpenStatus }: CommandPalette
   const cycleThinkingLevel = useChatStore(state => state.cycleThinkingLevel);
   const clearChat = useChatStore(state => state.clearChat);
   const sendInterrupt = useChatStore(state => state.sendInterrupt);
-  const toggleSidebar = useChatStore(state => state.toggleSidebar);
+  const toggleSidebar = useUiStore(state => state.toggleSidebar);
 
   const commands: Command[] = [
     { id: 'clear', label: '/clear', description: 'Clear chat history', action: () => { clearChat(); onClose(); } },

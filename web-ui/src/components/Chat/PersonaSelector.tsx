@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, X, ChevronDown, Settings } from 'lucide-react';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 import { apiClient } from '../../api/client';
 import type { Persona } from '../../types';
 
@@ -16,7 +17,7 @@ export function PersonaSelector() {
     return sid ? state.sessionStates[sid]?.selectedPersona : null;
   });
   const setSelectedPersona = useChatStore(state => state.setSelectedPersona);
-  const openSettingsModal = useChatStore(state => state.openSettingsModal);
+  const openSettingsModal = useUiStore(state => state.openSettingsModal);
 
   // Fetch personas once per mount (lazy, cached after first open)
   useEffect(() => {

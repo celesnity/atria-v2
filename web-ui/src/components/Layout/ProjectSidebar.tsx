@@ -13,6 +13,7 @@ import { useLocalStorage, useMediaQuery } from "usehooks-ts";
 import { ResizeHandle } from "../ui/ResizeHandle";
 import { ChatInterface } from "../Chat/ChatInterface";
 import { useChatStore } from "../../stores/chat";
+import { useUiStore } from "../../stores/ui";
 import { useModulesStore } from "../../stores/modules";
 import { useProjectsStore } from "../../stores/projects";
 import type { Project } from "../../types";
@@ -92,13 +93,13 @@ export function ProjectSidebar() {
 
   const currentSessionId = useChatStore((s) => s.currentSessionId);
   const loadSession = useChatStore((s) => s.loadSession);
-  const isCollapsed = useChatStore((s) => s.sidebarCollapsed);
-  const toggleSidebar = useChatStore((s) => s.toggleSidebar);
+  const isCollapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   // Below md the sidebar becomes an off-canvas drawer instead of a static column.
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const mobileSidebarOpen = useChatStore((s) => s.mobileSidebarOpen);
-  const closeMobileSidebar = useChatStore((s) => s.closeMobileSidebar);
+  const mobileSidebarOpen = useUiStore((s) => s.mobileSidebarOpen);
+  const closeMobileSidebar = useUiStore((s) => s.closeMobileSidebar);
 
   const closeModuleDashboard = useModulesStore((s) => s.closeDashboard);
 
