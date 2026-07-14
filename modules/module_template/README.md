@@ -1,4 +1,4 @@
-# module_template — minder-module-sdk showcase
+# module_template — minder-python-sdk showcase
 
 A runnable module that exercises every SDK capability. Copy it to bootstrap a new module.
 
@@ -62,7 +62,7 @@ on the existing bus. Every panel in `frontend/src/panels/` is wrapped — Produc
 carries Page + Data + Button; the rest declare Page + Data. See
 `docs/superpowers/specs/2026-07-13-agent-declarative-ui-wrapper-design.md`.
 
-### Backend — `@conn.context.*` (from `minder_module_sdk`)
+### Backend — `@conn.context.*` (from `minder_python_sdk`)
 
 A decorator family to declare agent-facing context in `backend/app.py`:
 

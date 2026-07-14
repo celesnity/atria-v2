@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 
 # ── Layer 2: pre-cache tiktoken encodings so the container works offline ──────
-# --no-dev: the image never installs dev-only deps (e.g. the minder_module_sdk
+# --no-dev: the image never installs dev-only deps (e.g. the minder_python_sdk
 # path dep, which isn't in this layer's build context — module containers ship
 # their own copy). Without it, `uv run` re-syncs dev and fails to resolve the path.
 RUN uv run --no-dev python -c "import tiktoken; tiktoken.get_encoding('cl100k_base')"

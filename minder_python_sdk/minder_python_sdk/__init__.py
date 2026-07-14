@@ -1,4 +1,4 @@
-"""minder-module-sdk — build Minder service-module connectors.
+"""minder-python-sdk — build Minder service-module connectors.
 
 Implements the Minder connector contract v2 (docs/connector-contract.md) so a
 module's backend is a few decorated functions instead of hand-rolled FastAPI.

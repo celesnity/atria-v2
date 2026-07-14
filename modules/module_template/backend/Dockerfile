@@ -1,4 +1,4 @@
-# Build context is the REPO ROOT so the image can install the shared minder-module-sdk.
+# Build context is the REPO ROOT so the image can install the shared minder-python-sdk.
 
 # --- frontend build stage ---
 FROM node:20-slim AS fe
@@ -14,7 +14,7 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
-COPY minder_module_sdk /sdk
+COPY minder_python_sdk /sdk
 RUN pip install --no-cache-dir /sdk
 COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt

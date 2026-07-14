@@ -1,4 +1,4 @@
-# minder-module-sdk
+# minder-python-sdk
 
 Build an Minder **service-module** connector without hand-rolling FastAPI. The
 SDK generates the whole connector HTTP contract
@@ -12,16 +12,16 @@ container.
 ## Install
 
 ```bash
-pip install minder-module-sdk          # once published
+pip install minder-python-sdk          # once published
 # or, from this repo, in the module's backend image:
-pip install /path/to/minder_module_sdk
+pip install /path/to/minder_python_sdk
 ```
 
 ## Minimal connector
 
 ```python
 # backend/app.py
-from minder_module_sdk import Connector, ServiceUnavailable, card
+from minder_python_sdk import Connector, ServiceUnavailable, card
 
 conn = Connector("my_module", version="1")
 
@@ -164,7 +164,7 @@ typed **UI intents** the `minder-ui-sdk` applies to the module's real React
 components. The human fills blanks and confirms — the agent proposes and points.
 
 ```python
-from minder_module_sdk import navigate, fill, focus, request_confirm
+from minder_python_sdk import navigate, fill, focus, request_confirm
 
 conn.page("product_new", path="/products/new", label="Add product")
 conn.form(
