@@ -11,7 +11,7 @@ and its tools appear live. Stop the container and its tools disappear live. Mind
 never ships the module's code and never needs a redeploy to gain a new module.
 
 The reference implementation is [`modules/maintenance_copilot/`](./maintenance_copilot).
-The SDK lives in [`minder_module_sdk/`](../minder_module_sdk); it **never imports
+The SDK lives in [`minder_python_sdk/`](../minder_python_sdk); it **never imports
 `minder`** and runs in the module's own slim container.
 
 For a runnable example that exercises **every** SDK capability (one tool per feature), see
@@ -89,7 +89,7 @@ modules/my_module/
 ├── backend/
 │   ├── app.py                   # SDK connector — a few decorated handlers
 │   ├── service.py               # your pure logic (never imports `minder`)
-│   ├── requirements.txt         # minder-module-sdk + your heavy deps
+│   ├── requirements.txt         # minder-python-sdk + your heavy deps
 │   └── Dockerfile               # multi-stage: build frontend → slim python
 ├── frontend/                    # Module-Federation remote (React)
 │   ├── vite.config.ts           # exposes ./Dashboard (+ your chat block components)
@@ -102,10 +102,10 @@ Then wire real logic into `backend/service.py` and paste the compose snippet.
 
 ---
 
-## 3. The backend — `minder_module_sdk`
+## 3. The backend — `minder_python_sdk`
 
 The SDK generates the whole connector HTTP contract from decorated handlers, so the
-service can't drift from what it advertises. Import from `minder_module_sdk`:
+service can't drift from what it advertises. Import from `minder_python_sdk`:
 `Connector`, `card`, `block`, `ServiceUnavailable`, `Principal`,
 `unavailable_card`, `unavailable_suffix`.
 
@@ -113,7 +113,7 @@ service can't drift from what it advertises. Import from `minder_module_sdk`:
 
 ```python
 # backend/app.py
-from minder_module_sdk import Connector, ServiceUnavailable, card
+from minder_python_sdk import Connector, ServiceUnavailable, card
 import service                                   # backend/service.py — pure logic
 
 conn = Connector("my_module", version="1")
@@ -293,7 +293,7 @@ gating, and response normalisation the endpoint applies, but in-process. Ideal f
 unit tests.
 
 ```python
-from minder_module_sdk.connector import Principal
+from minder_python_sdk.connector import Principal
 import app as mt
 
 def test_typed_query_validates():
@@ -396,7 +396,7 @@ When you want a bespoke, interactive card, ship a React component from the modul
 own federation remote and return a **block descriptor**:
 
 ```python
-from minder_module_sdk import block
+from minder_python_sdk import block
 import os
 
 def _answer_block(payload: dict) -> dict:
@@ -489,7 +489,7 @@ process attaching a report. This is the reverse-push channel.
 ### Getting the client
 
 ```python
-from minder_module_sdk.client import MinderClientError
+from minder_python_sdk.client import MinderClientError
 
 client = conn.minder_client()
 ```
@@ -739,7 +739,7 @@ isolated in the module's own container, with **zero edits to Minder source**.
 
 ## Reference
 
-- SDK API: [`minder_module_sdk/README.md`](../minder_module_sdk/README.md)
+- SDK API: [`minder_python_sdk/README.md`](../minder_python_sdk/README.md)
 - Wire contract (every endpoint, header, event): [`docs/connector-contract.md`](../docs/connector-contract.md)
 - **SDK showcase (every feature, one tool each):** [`modules/module_template/`](./module_template) — for a runnable example that exercises **every** SDK capability, see this directory; `README.md` maps each feature to its handler.
 - Real-world module: [`modules/maintenance_copilot/`](./maintenance_copilot) — RAG-backed module with federated block, citations, and bridged follow-ups.

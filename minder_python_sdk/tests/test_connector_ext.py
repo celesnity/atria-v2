@@ -1,6 +1,6 @@
 import os
-from minder_module_sdk import Connector
-from minder_module_sdk.connector import Principal
+from minder_python_sdk import Connector
+from minder_python_sdk.connector import Principal
 from fastapi.testclient import TestClient
 
 

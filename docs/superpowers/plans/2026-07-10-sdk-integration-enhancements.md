@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax. **Execution mode is code-all-then-verify (user preference): implement every task in order WITHOUT running tests per-task; write each task's tests alongside its code, then run the whole suite + verification once in the final Phase V.**
 
-**Goal:** Extend `minder_module_sdk` (+ minimal Minder host support) with 10 integration enhancements: block/invoke ergonomics, readiness gating, typed params, declarative auth, identity/session forwarding, an `MinderClient` reverse-push channel (blocks + artifacts), streaming block events, and manifest enrichment.
+**Goal:** Extend `minder_python_sdk` (+ minimal Minder host support) with 10 integration enhancements: block/invoke ergonomics, readiness gating, typed params, declarative auth, identity/session forwarding, an `MinderClient` reverse-push channel (blocks + artifacts), streaming block events, and manifest enrichment.
 
 **Architecture:** Additive. The SDK gains `Connector` methods + an `MinderClient` (httpx-only, never imports `minder`). The host gains two `SkillToolContext` fields (wired like `push_block`), an identity-forwarding tweak in the tool proxy, a `_run_stream` `block` branch, a reconciler readiness check, and one new service-principal route for artifact push. Reuse the existing reverse-push ingress and federated-block machinery.
 
@@ -28,13 +28,13 @@
 ## File Structure
 
 **SDK — created:**
-- `minder_module_sdk/minder_module_sdk/client.py` — `MinderClient`, `MinderClientError`.
-- `minder_module_sdk/tests/test_connector_ext.py` — `conn.block`/`invoke`/`readiness`/`params_model`/`requires_auth`/manifest.
-- `minder_module_sdk/tests/test_client.py` — `MinderClient` (httpx MockTransport).
+- `minder_python_sdk/minder_python_sdk/client.py` — `MinderClient`, `MinderClientError`.
+- `minder_python_sdk/tests/test_connector_ext.py` — `conn.block`/`invoke`/`readiness`/`params_model`/`requires_auth`/manifest.
+- `minder_python_sdk/tests/test_client.py` — `MinderClient` (httpx MockTransport).
 
 **SDK — modified:**
-- `minder_module_sdk/minder_module_sdk/connector.py` — the `Connector` additions.
-- `minder_module_sdk/minder_module_sdk/__init__.py` — export `MinderClient`, `MinderClientError`.
+- `minder_python_sdk/minder_python_sdk/connector.py` — the `Connector` additions.
+- `minder_python_sdk/minder_python_sdk/__init__.py` — export `MinderClient`, `MinderClientError`.
 
 **Host — created:**
 - `minder/web/routes/artifacts_remote.py` — service-principal artifact push ingress.
@@ -57,8 +57,8 @@
 ### Task A1: `conn.block()` method
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: the existing free `block(component, props, *, remote_name, remote_entry, height, title)` from `.cards`.
@@ -77,11 +77,11 @@
                   remote_entry=remote_entry, height=height, title=title)
 ```
 
-- [ ] **Step 2: Test** (in `minder_module_sdk/tests/test_connector_ext.py`):
+- [ ] **Step 2: Test** (in `minder_python_sdk/tests/test_connector_ext.py`):
 
 ```python
 import os
-from minder_module_sdk import Connector
+from minder_python_sdk import Connector
 
 
 def test_conn_block_fills_name_and_remote_entry(monkeypatch):
@@ -99,8 +99,8 @@ def test_conn_block_fills_name_and_remote_entry(monkeypatch):
 ### Task A2: `conn.invoke()` public test helper
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: `Connector._call`, `Principal`.
@@ -139,8 +139,8 @@ def test_conn_invoke_runs_tool_in_process():
 ### Task A3: `@conn.readiness_probe` + health `ready`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Produces: `Connector.readiness_probe(fn)` decorator registering a `() -> bool | dict`. `/connector/health` response gains `"ready": bool` (True when no probe; a probe returning `{"ready": ...}` or a bool; a raising probe → False).
@@ -196,8 +196,8 @@ def test_readiness_probe_can_report_not_ready():
 ### Task A4: `params_model` — typed parameters
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: pydantic v2 (already an SDK dep).
@@ -278,8 +278,8 @@ def test_params_model_and_parameters_are_mutually_exclusive():
 ### Task A5: `requires_auth`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Consumes: `Principal.is_authenticated`, the `_Tool.requires_auth` field (added in A4).
@@ -296,8 +296,8 @@ def test_params_model_and_parameters_are_mutually_exclusive():
 - [ ] **Step 2: Test:**
 
 ```python
-from minder_module_sdk import Connector
-from minder_module_sdk.connector import Principal
+from minder_python_sdk import Connector
+from minder_python_sdk.connector import Principal
 
 
 def test_requires_auth_blocks_anonymous():
@@ -391,8 +391,8 @@ And in `_run_stream`/`stream_tool` (Task C2 area) pass `session_id`/`principal` 
 ### Task B4: SDK reads `X-Minder-Session`, injects `session_id`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Produces: `_call(self, tool, arguments, principal, *, session_id: Optional[str] = None)`. A handler declaring `session_id` (or `**kwargs`) receives it, like `principal`. `_principal_from_headers` unchanged; add `_session_from_headers(request) -> Optional[str]` reading `X-Minder-Session`. The `call_tool` and `stream_tool` endpoints pass the parsed session into `_call`/`_sse`.
@@ -444,9 +444,9 @@ def test_session_id_injected_into_handler():
 ### Task C1: `MinderClient` reverse-push
 
 **Files:**
-- Create: `minder_module_sdk/minder_module_sdk/client.py`
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (add `conn.minder_client()`), `minder_module_sdk/minder_module_sdk/__init__.py`
-- Test: `minder_module_sdk/tests/test_client.py`
+- Create: `minder_python_sdk/minder_python_sdk/client.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py` (add `conn.minder_client()`), `minder_python_sdk/minder_python_sdk/__init__.py`
+- Test: `minder_python_sdk/tests/test_client.py`
 
 **Interfaces:**
 - Consumes: `resolve_announce_config`, `_auth_headers` (from `announce.py`); the host ingress `/api/blocks/remote/{push,update,remove}` whose bodies are: push `{session_id, module, remote_name, remote_entry, component, props?, block_id?, api_base?, height, title, persist}`; update `{session_id, block_id, props}`; remove `{session_id, block_id}`.
@@ -473,7 +473,7 @@ import httpx
 
 from .announce import AnnounceConfig, _auth_headers
 
-logger = logging.getLogger("minder_module_sdk.client")
+logger = logging.getLogger("minder_python_sdk.client")
 
 
 class MinderClientError(RuntimeError):
@@ -531,12 +531,12 @@ class MinderClient:
 
 - [ ] **Step 3: Export** in `__init__.py`: `from .client import MinderClient, MinderClientError` and add both to `__all__`.
 
-- [ ] **Step 4: Test** (`minder_module_sdk/tests/test_client.py`, httpx MockTransport):
+- [ ] **Step 4: Test** (`minder_python_sdk/tests/test_client.py`, httpx MockTransport):
 
 ```python
 import httpx
-from minder_module_sdk.announce import AnnounceConfig
-from minder_module_sdk.client import MinderClient, MinderClientError
+from minder_python_sdk.announce import AnnounceConfig
+from minder_python_sdk.client import MinderClient, MinderClientError
 
 
 def _client(handler):
@@ -553,7 +553,7 @@ def test_push_block_posts_expected_payload(monkeypatch):
         captured["url"] = url; captured["json"] = json
         return httpx.Response(200, json={"block_id": "b1"},
                               request=httpx.Request("POST", url))
-    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_python_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     bid = c.push_block("sess", "./Job", {"pct": 0})
     assert bid == "b1"
@@ -565,7 +565,7 @@ def test_push_block_posts_expected_payload(monkeypatch):
 def test_push_error_raises(monkeypatch):
     def fake_post(url, json, headers, timeout):
         return httpx.Response(500, request=httpx.Request("POST", url))
-    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_python_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     import pytest
     with pytest.raises(MinderClientError):
@@ -624,8 +624,8 @@ def test_stream_block_event_pushes_block():
 **Files:**
 - Create: `minder/web/routes/artifacts_remote.py`
 - Modify: `minder/web/routes/__init__.py`, `minder/web/server.py`
-- Modify: `minder_module_sdk/minder_module_sdk/client.py` (`push_artifact`)
-- Test: `tests/test_artifacts_remote_route.py`, extend `minder_module_sdk/tests/test_client.py`
+- Modify: `minder_python_sdk/minder_python_sdk/client.py` (`push_artifact`)
+- Test: `tests/test_artifacts_remote_route.py`, extend `minder_python_sdk/tests/test_client.py`
 
 **Interfaces:**
 - Consumes: `require_service_principal` (role `module-push`); `ArtifactService.upload_artifact(file_content: bytes, filename, content_length, scope, conversation_id, project_id)` + `get_artifact_service` DI; the session store to resolve `session_id -> conversation_id` (`session.metadata.get("conversation_id")`, pattern from `artifacts_handler.py:70`).
@@ -700,7 +700,7 @@ async def push_artifact(body: PushArtifactBody,
 
 - [ ] **Step 4: Tests.**
   - `tests/test_artifacts_remote_route.py`: override `require_service_principal` + `get_artifact_service` (a fake service returning `{"id": 7}`), monkeypatch the session→conversation resolver, POST a small base64 blob, assert 200 + `{"artifact_id": 7}`; and a 404 when the session has no conversation.
-  - `minder_module_sdk/tests/test_client.py`: `push_artifact` base64-encodes and returns the id (httpx.post monkeypatched like C1).
+  - `minder_python_sdk/tests/test_client.py`: `push_artifact` base64-encodes and returns the id (httpx.post monkeypatched like C1).
 
 ---
 
@@ -709,8 +709,8 @@ async def push_artifact(body: PushArtifactBody,
 ### Task D1: manifest enrichment + `expose_block`
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py`
-- Test: `minder_module_sdk/tests/test_connector_ext.py`
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py`
+- Test: `minder_python_sdk/tests/test_connector_ext.py`
 
 **Interfaces:**
 - Produces: `Connector.expose_block(component_key: str) -> None` (records an extra MF exposed component). `/connector/manifest` `remote.exposed` becomes `{"dashboard": "./Dashboard", <key>: <key> for each exposed block}`; the manifest dict also gains `"card_types": [<unique card_type of tools>]`, `"contract_version": CONTRACT_VERSION`, `"min_core_version": self.min_core_version`.
@@ -839,7 +839,7 @@ def test_ready_goes_ready(monkeypatch, tmp_path):
 
 - [ ] **Step 1: SDK unit tests**
 
-Run: `uv run --no-sync pytest minder_module_sdk/tests/ -v`
+Run: `uv run --no-sync pytest minder_python_sdk/tests/ -v`
 Expected: all PASS (conn.block/invoke/readiness/params_model/requires_auth/session, MinderClient push/update/remove/push_artifact, manifest).
 
 - [ ] **Step 2: Host unit tests**
@@ -854,7 +854,7 @@ Expected: no new failures vs baseline (the pre-existing enterprise-knowledge/qdr
 
 - [ ] **Step 4: Lint**
 
-Run: `uv run --no-sync ruff check minder/ minder_module_sdk/ && uv run --no-sync black --check minder_module_sdk/`
+Run: `uv run --no-sync ruff check minder/ minder_python_sdk/ && uv run --no-sync black --check minder_python_sdk/`
 Expected: clean.
 
 - [ ] **Step 5: E2E (with `OPENAI_API_KEY`, per CLAUDE.md)**
@@ -866,8 +866,8 @@ Expected: clean.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add minder/ minder_module_sdk/ keycloak/
-git add -f minder_module_sdk/tests/ tests/test_ctx_identity_forwarding.py tests/test_stream_block_event.py tests/test_readiness_gating.py tests/test_artifacts_remote_route.py
+git add minder/ minder_python_sdk/ keycloak/
+git add -f minder_python_sdk/tests/ tests/test_ctx_identity_forwarding.py tests/test_stream_block_event.py tests/test_readiness_gating.py tests/test_artifacts_remote_route.py
 git add -f docs/superpowers/plans/2026-07-10-sdk-integration-enhancements.md
 git commit -m "feat(sdk): integration enhancements — ergonomics, identity/session, reverse-push, artifacts, manifest"
 ```

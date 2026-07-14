@@ -6,7 +6,7 @@
 
 **Architecture:** A pure browser-side registry collects `{page, data, actions}` from transparent wrapper components. An `AgentRegistryProvider` pushes a debounced snapshot to a new `POST /connector/ui/snapshot` endpoint (read path, folded into `GET /connector/context`) and, when the existing `AgentDriverProvider` delivers a new `{intent:'act', name}` intent, runs the matching action's `onAct` immediately (act path). No new transport — only one new intent variant and one snapshot endpoint.
 
-**Tech Stack:** TypeScript + React 18 (source-only SDK, Vitest + jsdom + @testing-library/react); Python FastAPI connector in `minder_module_sdk` (pytest + `fastapi.testclient.TestClient`).
+**Tech Stack:** TypeScript + React 18 (source-only SDK, Vitest + jsdom + @testing-library/react); Python FastAPI connector in `minder_python_sdk` (pytest + `fastapi.testclient.TestClient`).
 
 ## Global Constraints
 
@@ -17,7 +17,7 @@
 - Action/data names are **scoped by the enclosing `Agent.Page`**: `${page}.${name}`.
 - Each `Agent.Data` value is capped at **32768 characters** serialized; over-cap values are truncated with `truncated: true`.
 - Reuse existing transport: act via `POST /connector/ui/intent` → `push_ui_intent` → `/connector/ui/intents` SSE; read via connector snapshot cache surfaced in `/connector/context`.
-- SDK test command: `cd minder_ui_sdk && npm run test` (`vitest run`). Backend: `cd minder_module_sdk && python -m pytest tests/ -q`.
+- SDK test command: `cd minder_ui_sdk && npm run test` (`vitest run`). Backend: `cd minder_python_sdk && python -m pytest tests/ -q`.
 - Commits: no `Co-Authored-By: Claude` trailer.
 
 ---
@@ -595,9 +595,9 @@ git commit -m "test(sdk): assert debounced UI snapshot payload"
 ### Task 4: Backend — `act` intent + snapshot cache endpoint
 
 **Files:**
-- Modify: `minder_module_sdk/minder_module_sdk/ui.py` (`INTENT_TYPES` ~line 18; add `act` builder near other builders ~line 115-145)
-- Modify: `minder_module_sdk/minder_module_sdk/connector.py` (`__init__` per-session state; add `POST /connector/ui/snapshot`; fold `ui_snapshot` into `GET /connector/context` ~line 926)
-- Test: `minder_module_sdk/tests/test_agent_surface.py` (append)
+- Modify: `minder_python_sdk/minder_python_sdk/ui.py` (`INTENT_TYPES` ~line 18; add `act` builder near other builders ~line 115-145)
+- Modify: `minder_python_sdk/minder_python_sdk/connector.py` (`__init__` per-session state; add `POST /connector/ui/snapshot`; fold `ui_snapshot` into `GET /connector/context` ~line 926)
+- Test: `minder_python_sdk/tests/test_agent_surface.py` (append)
 
 **Interfaces:**
 - Consumes: existing `push_ui_intent`, `is_intent`, `_session_from_headers`, `Request`.
@@ -610,10 +610,10 @@ git commit -m "test(sdk): assert debounced UI snapshot payload"
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# minder_module_sdk/tests/test_agent_surface.py  (append; keep existing imports/tests)
+# minder_python_sdk/tests/test_agent_surface.py  (append; keep existing imports/tests)
 from fastapi.testclient import TestClient
 
-from minder_module_sdk.ui import act, is_intent
+from minder_python_sdk.ui import act, is_intent
 
 
 def test_act_is_a_recognized_intent():
@@ -629,7 +629,7 @@ def _client_with_snapshot_module():
     already has a `make_connector()`/fixture helper, call that instead of
     duplicating. This helper documents the required shape.
     """
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector(name="snap_demo")
     return TestClient(conn.asgi())
@@ -656,12 +656,12 @@ Note: `TestClient` GET `/connector/context` with no session header resolves to s
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd minder_module_sdk && python -m pytest tests/test_agent_surface.py -q`
+Run: `cd minder_python_sdk && python -m pytest tests/test_agent_surface.py -q`
 Expected: FAIL — `ImportError: cannot import name 'act'` (and later, missing endpoint)
 
 - [ ] **Step 3: Add `act` to `ui.py`**
 
-In `minder_module_sdk/minder_module_sdk/ui.py`, extend the tuple (line 18):
+In `minder_python_sdk/minder_python_sdk/ui.py`, extend the tuple (line 18):
 
 ```python
 INTENT_TYPES = ("navigate", "fill", "focus", "highlight", "request_confirm", "submit", "act")
@@ -733,18 +733,18 @@ def context(request: Request) -> dict:
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `cd minder_module_sdk && python -m pytest tests/test_agent_surface.py -q`
+Run: `cd minder_python_sdk && python -m pytest tests/test_agent_surface.py -q`
 Expected: PASS
 
 - [ ] **Step 6: Run the module_sdk suite to check no regressions**
 
-Run: `cd minder_module_sdk && python -m pytest tests/ -q`
+Run: `cd minder_python_sdk && python -m pytest tests/ -q`
 Expected: PASS
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add minder_module_sdk/minder_module_sdk/ui.py minder_module_sdk/minder_module_sdk/connector.py minder_module_sdk/tests/test_agent_surface.py
+git add minder_python_sdk/minder_python_sdk/ui.py minder_python_sdk/minder_python_sdk/connector.py minder_python_sdk/tests/test_agent_surface.py
 git commit -m "feat(connector): cache UI snapshot + accept act intent"
 ```
 
