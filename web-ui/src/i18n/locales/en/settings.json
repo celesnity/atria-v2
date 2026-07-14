@@ -1,0 +1,13 @@
+{
+  "agentBehaviour": "Agent Behaviour",
+  "agentBehaviourHint": "These settings apply to the current session and are reflected immediately in the chat pills.",
+  "approval": "Approval",
+  "approvalAutoHint": "skips every prompt and lets the agent work uninterrupted.",
+  "approvalAutoLabel": "Auto — Approve All",
+  "approvalHint": "Controls when the agent pauses for your confirmation before running a tool.",
+  "language": "Language",
+  "mode": "Mode",
+  "modeHint": "Normal gives the agent full tool access. Plan restricts it to read-only exploration so it can analyse without changing anything.",
+  "thinking": "Thinking",
+  "thinkingHint": "How much chain-of-thought reasoning the model performs before replying. Higher levels improve quality on complex tasks at the cost of latency and token usage."
+}

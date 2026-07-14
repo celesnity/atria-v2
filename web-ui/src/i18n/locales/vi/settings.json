@@ -1,0 +1,13 @@
+{
+  "agentBehaviour": "Hành vi Agent",
+  "agentBehaviourHint": "Các cài đặt này áp dụng cho phiên hiện tại và được phản ánh ngay lập tức trong các nhãn chat.",
+  "approval": "Phê duyệt",
+  "approvalAutoHint": "bỏ qua mọi lời nhắc và để agent hoạt động liên tục.",
+  "approvalAutoLabel": "Tự động — Phê duyệt tất cả",
+  "approvalHint": "Kiểm soát khi nào agent tạm dừng để xác nhận của bạn trước khi chạy công cụ.",
+  "language": "Ngôn ngữ",
+  "mode": "Chế độ",
+  "modeHint": "Bình thường cho agent toàn quyền truy cập công cụ. Lập kế hoạch giới hạn chỉ đọc để agent có thể phân tích mà không thay đổi bất cứ điều gì.",
+  "thinking": "Suy luận",
+  "thinkingHint": "Mức độ suy luận chuỗi suy nghĩ mà mô hình thực hiện trước khi trả lời. Mức cao hơn cải thiện chất lượng cho các tác vụ phức tạp với chi phí độ trễ và sử dụng token."
+}

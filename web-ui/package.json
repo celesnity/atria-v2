@@ -7,7 +7,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "i18n:extract": "i18next-cli -c i18next-cli.config.ts extract"
   },
   "dependencies": {
     "@flowgram.ai/free-layout-editor": "^1.0.12",
@@ -19,6 +20,8 @@
     "@univerjs/preset-sheets-core": "^0.25.0",
     "@univerjs/presets": "^0.25.0",
     "animejs": "^4.4.1",
+    "i18next": "^26.3.6",
+    "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^0.553.0",
     "monaco-editor": "^0.55.1",
     "motion": "^12.40.0",
@@ -28,6 +31,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^15.0.0",
+    "react-i18next": "^17.0.9",
     "react-markdown": "^9.0.1",
     "react-resizable": "^4.0.1",
     "react-router-dom": "^7.9.5",
@@ -53,6 +57,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "i18next-cli": "^1.65.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
