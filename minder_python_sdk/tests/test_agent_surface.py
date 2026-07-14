@@ -5,8 +5,8 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from minder_module_sdk import Connector, ToolError, EventEnvelope, autonomy_allows
-from minder_module_sdk.connector import Principal
+from minder_python_sdk import Connector, ToolError, EventEnvelope, autonomy_allows
+from minder_python_sdk.connector import Principal
 
 
 # --- C2: risk gate ----------------------------------------------------------
@@ -303,7 +303,7 @@ def test_http_call_gated_by_autonomy_header():
 
 
 def test_act_is_a_recognized_intent():
-    from minder_module_sdk.ui import act, is_intent
+    from minder_python_sdk.ui import act, is_intent
 
     intent = act("products.add")
     assert intent == {"intent": "act", "name": "products.add"}

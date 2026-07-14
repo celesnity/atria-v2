@@ -5,7 +5,7 @@ description: 'A runnable SDK showcase. Use it to demonstrate what an Minder serv
 
 # module_template
 
-A reference module that demonstrates every `minder_module_sdk` capability. Each tool
+A reference module that demonstrates every `minder_python_sdk` capability. Each tool
 maps to one feature — use it to learn the SDK or as a copy-me skeleton for a new module.
 
 ## When to use

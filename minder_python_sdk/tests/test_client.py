@@ -1,6 +1,6 @@
 import httpx
-from minder_module_sdk.announce import AnnounceConfig
-from minder_module_sdk.client import MinderClient, MinderClientError
+from minder_python_sdk.announce import AnnounceConfig
+from minder_python_sdk.client import MinderClient, MinderClientError
 
 
 def _client(handler):
@@ -17,7 +17,7 @@ def test_push_block_posts_expected_payload(monkeypatch):
         captured["url"] = url; captured["json"] = json
         return httpx.Response(200, json={"block_id": "b1"},
                               request=httpx.Request("POST", url))
-    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_python_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     bid = c.push_block("sess", "./Job", {"pct": 0})
     assert bid == "b1"
@@ -29,7 +29,7 @@ def test_push_block_posts_expected_payload(monkeypatch):
 def test_push_error_raises(monkeypatch):
     def fake_post(url, json, headers, timeout):
         return httpx.Response(500, request=httpx.Request("POST", url))
-    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_python_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     import pytest
     with pytest.raises(MinderClientError):
@@ -46,7 +46,7 @@ def test_push_artifact(monkeypatch):
         return httpx.Response(200, json={"artifact_id": 9},
                               request=httpx.Request("POST", url))
 
-    monkeypatch.setattr("minder_module_sdk.client.httpx.post", fake_post)
+    monkeypatch.setattr("minder_python_sdk.client.httpx.post", fake_post)
     c, _ = _client(None)
     artifact_id = c.push_artifact("sess", "report.pdf", b"hello artifact")
     assert artifact_id == 9
