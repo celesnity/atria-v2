@@ -8,6 +8,10 @@ import {
   type ReactNode,
   type ReactElement,
 } from 'react';
+import { getSharedStream } from './stream';
+import { UI_INTENT, parseUiIntent, type UiIntent, type EventEnvelope } from './events';
+
+export type { UiIntent };
 
 /**
  * The agent-drives-the-real-UI surface (declarative co-pilot). The module
@@ -17,15 +21,6 @@ import {
  * proposes, prefills, and points, but does not click "submit" on a risky action
  * by itself.
  */
-
-export type UiIntent =
-  | { intent: 'navigate'; route: string }
-  | { intent: 'fill'; form: string; values: Record<string, unknown>; partial?: boolean }
-  | { intent: 'focus'; form?: string | null; field: string }
-  | { intent: 'highlight'; control: string }
-  | { intent: 'request_confirm'; target: string; summary?: string | null }
-  | { intent: 'submit'; form: string }
-  | { intent: 'act'; name: string };
 
 /** Internal per-form handler the provider dispatches intents to. */
 interface FormController {
@@ -54,7 +49,7 @@ export interface AgentDriverProviderProps {
   apiBase: string;
   /** Session whose bus to subscribe to; matches the `session` query param. */
   sessionId?: string;
-  /** SSE path relative to `apiBase`. Defaults to `/connector/ui/intents`. */
+  /** SSE path relative to `apiBase`. Defaults to `/connector/stream`. */
   path?: string;
   /** Called on a `navigate` intent — wire this to your router. */
   onNavigate?: (route: string) => void;
@@ -70,7 +65,7 @@ export interface AgentDriverProviderProps {
 export function AgentDriverProvider({
   apiBase,
   sessionId,
-  path = '/connector/ui/intents',
+  path = '/connector/stream',
   onNavigate,
   onIntent,
   children,
@@ -94,20 +89,27 @@ export function AgentDriverProvider({
   useEffect(() => {
     if (!apiBase || typeof EventSource === 'undefined') return;
     const qs = sessionId ? `?session=${encodeURIComponent(sessionId)}` : '';
-    const es = new EventSource(`${apiBase.replace(/\/$/, '')}${path}${qs}`);
-    es.onmessage = (e: MessageEvent) => {
-      let intent: UiIntent;
-      try {
-        intent = JSON.parse(e.data) as UiIntent;
-      } catch {
+    const url = `${apiBase.replace(/\/$/, '')}${path}${qs}`;
+    const seen = new Set<string>();
+    const order: string[] = [];
+    const handle = getSharedStream(url, (env: EventEnvelope) => {
+      if (env.type !== UI_INTENT) return;
+      if (seen.has(env.event_id)) return; // drop replays after a reconnect
+      seen.add(env.event_id);
+      order.push(env.event_id);
+      if (order.length > 512) seen.delete(order.shift() as string);
+      const payload = env.payload as { intent?: unknown } | null;
+      const intent = parseUiIntent(payload?.intent);
+      if (!intent) {
+        console.warn('[minder] dropped invalid ui.intent payload');
         return;
       }
       dispatchIntent(intent, forms.current, onNavigateRef.current, setHighlighted);
       onIntentRef.current?.(intent);
       tick.current += 1;
       setActivity({ intent, tick: tick.current });
-    };
-    return () => es.close();
+    });
+    return () => handle.close();
   }, [apiBase, sessionId, path]);
 
   return (
