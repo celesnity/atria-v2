@@ -49,18 +49,19 @@ def test_navigate_tool_auto_registered_from_pages():
 
 
 def test_navigate_tool_pushes_intent_to_session_bus():
-    import queue
-
     from minder_python_sdk.connector import Principal
+    from minder_python_sdk.envelope import EventEnvelope
 
     conn = _catalog_conn()
     conn.page("metrics", path="/metrics", label="Metrics")
-    q: "queue.Queue[dict]" = queue.Queue()
-    conn._ui_bus["sess"] = [q]
+    seen: list[EventEnvelope] = []
+    conn.on_event(seen.append)
 
     res = conn._call(conn._tools["catalog_navigate"], {"page": "metrics"}, Principal(), session_id="sess")
     assert "Metrics" in res["output"]
-    assert q.get_nowait() == {"intent": "navigate", "route": "metrics"}
+    ui_intent_events = [e for e in seen if e.type == "ui.intent" and e.session_id == "sess"]
+    assert ui_intent_events, "expected a ui.intent envelope for session 'sess'"
+    assert ui_intent_events[-1].payload["intent"] == {"intent": "navigate", "route": "metrics"}
 
 
 def test_navigate_tool_rejects_unknown_page():
@@ -90,16 +91,12 @@ def test_push_ui_intent_emits_event_and_enqueues():
     conn = _catalog_conn()
     seen = []
     conn.on_event(seen.append)
-    # register a fake subscriber queue for the session
-    import queue
-
-    q: "queue.Queue[dict]" = queue.Queue()
-    conn._ui_bus["s1"] = [q]
 
     conn.push_ui_intent("s1", navigate("product_new"))
-    assert q.get_nowait()["route"] == "product_new"
     assert seen[-1].type == "ui.intent"
+    assert seen[-1].session_id == "s1"
     assert seen[-1].payload["intent"]["intent"] == "navigate"
+    assert seen[-1].payload["intent"]["route"] == "product_new"
 
 
 def test_push_ui_intent_warns_on_unknown_but_still_sends():
@@ -110,15 +107,17 @@ def test_push_ui_intent_warns_on_unknown_but_still_sends():
 
 
 def test_ui_intent_http_endpoint_routes_to_bus():
-    conn = _catalog_conn()
-    import queue
+    from minder_python_sdk.envelope import EventEnvelope
 
-    q: "queue.Queue[dict]" = queue.Queue()
-    conn._ui_bus["sess"] = [q]
+    conn = _catalog_conn()
+    seen: list[EventEnvelope] = []
+    conn.on_event(seen.append)
     client = TestClient(conn.asgi())
     r = client.post(
         "/connector/ui/intent",
         json={"session_id": "sess", "intent": fill("add_product", {"sku": "ABC"})},
     )
     assert r.json()["ok"] is True
-    assert q.get_nowait()["values"]["sku"] == "ABC"
+    ui_intent_events = [e for e in seen if e.type == "ui.intent" and e.session_id == "sess"]
+    assert ui_intent_events, "expected a ui.intent envelope for session 'sess'"
+    assert ui_intent_events[-1].payload["intent"]["values"]["sku"] == "ABC"

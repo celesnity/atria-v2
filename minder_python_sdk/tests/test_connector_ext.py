@@ -1,3 +1,4 @@
+import json
 import os
 from minder_python_sdk import Connector
 from minder_python_sdk.connector import Principal
@@ -116,3 +117,28 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
     assert mani["remote"]["exposed"] == {"dashboard": "./Dashboard", "./MyAnswer": "./MyAnswer"}
     assert mani["card_types"] == ["m_answer"]
     assert mani["contract_version"] == "3" and mani["min_core_version"] == "2"
+
+
+def test_stream_delivers_ui_intent_for_matching_session():
+    from minder_python_sdk import Connector
+    from fastapi.testclient import TestClient
+
+    conn = Connector("catalog")
+    conn.page("home", path="/", label="Home")
+    client = TestClient(conn.asgi())
+
+    with client.stream("GET", "/connector/stream?session=s1") as resp:
+        lines = resp.iter_lines()
+        assert next(lines) == ": ok"           # open marker
+        conn.push_ui_intent("s1", {"intent": "navigate", "route": "home"})
+        # advance to the data frame (skip blank separators / pings)
+        payload = None
+        for _ in range(10):
+            line = next(lines)
+            if line.startswith("data: "):
+                payload = json.loads(line[len("data: "):])
+                break
+        assert payload is not None
+        assert payload["type"] == "ui.intent"
+        assert payload["session_id"] == "s1"
+        assert payload["payload"]["intent"]["route"] == "home"
