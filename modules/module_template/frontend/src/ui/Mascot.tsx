@@ -1,20 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, useDragControls } from "motion/react";
-import { useMinderTheme, useAgentActivity, useQuickChat, type UiIntent } from "minder-ui-sdk";
+import { useMinderTheme, useAgentActivity, useQuickChat } from "minder-ui-sdk";
 import logoUrl from "./logo.png";
 
 /**
- * Pilo — the module_template mascot. It reacts to the agent driving the UI:
+ * Minder — the module_template mascot. It reacts to the agent driving the UI:
  * `useAgentActivity()` gives it the latest UI intent (navigate/fill/focus/
  * confirm/submit), and a `mt-mascot` window CustomEvent lets panels nudge its
  * mood on local actions (create/delete/restock). Pure eye-candy — it never
  * touches state.
  *
- * Beyond changing mood, Pilo physically WALKS to the on-screen element an intent
- * targets: `focus` → the `[data-agent-field]`, `fill`/`request_confirm` → the
- * `[data-agent-form]`, `submit` → the `[data-agent-control="submit"]`,
- * `highlight` → the `[data-agent-control]`. It springs beside the element,
- * points at it, then strolls back to its home corner when idle.
+ * It roams the RIGHT portion of the screen (autonomous wandering + draggable),
+ * anchored near the bottom-right corner, and never strays left over the content.
+ * Pointing at the exact on-screen element an intent targets is the ghost
+ * cursor's job (AgentPresence), so the two never fight over position.
  */
 
 type Mood = "idle" | "walk" | "type" | "point" | "ask" | "celebrate" | "nervous" | "happy";
@@ -31,53 +30,21 @@ interface Pos {
   facing: "left" | "right";
 }
 
-/** Home corner (bottom-left), recomputed from the current viewport. */
-function homePos(): Pos {
+/** The roaming pen: Minder lives in the RIGHT portion of the viewport and never
+ * strays into the left where the content/chat sits. */
+function rightBounds() {
+  const vw = typeof window === "undefined" ? 1280 : window.innerWidth;
   const vh = typeof window === "undefined" ? 800 : window.innerHeight;
-  return { x: 20, y: vh - BOX_H - 20, facing: "right" };
+  const maxX = Math.max(GAP, vw - BOX_W - GAP);
+  const minX = Math.min(maxX, Math.max(GAP, Math.round(vw * 0.62))); // right ~38%
+  const maxY = Math.max(GAP, vh - BOX_H - GAP);
+  return { minX, maxX, minY: GAP, maxY };
 }
 
-/** The DOM element an intent points at, via the `data-agent-*` marker convention. */
-function targetFor(intent: UiIntent): Element | null {
-  const q = (sel: string) => document.querySelector(sel);
-  switch (intent.intent) {
-    case "focus":
-      return q(`[data-agent-field="${CSS.escape(intent.field)}"]`);
-    case "fill":
-      return q(`[data-agent-form="${CSS.escape(intent.form)}"]`);
-    case "request_confirm":
-      return (
-        q(`[data-agent-form="${CSS.escape(intent.target)}"]`) ??
-        q(`[data-agent-control="${CSS.escape(intent.target)}"]`)
-      );
-    case "highlight":
-      return q(`[data-agent-control="${CSS.escape(intent.control)}"]`);
-    case "submit":
-      return q(`[data-agent-control="submit"]`) ?? q(`[data-agent-form="${CSS.escape(intent.form)}"]`);
-    default: // navigate → no specific element
-      return null;
-  }
-}
-
-/** Place the mascot beside an element: prefer its left, fall back to its right. */
-function poseBeside(el: Element): Pos {
-  const r = el.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  let facing: "left" | "right" = "right";
-  let x = r.left - BOX_W - GAP; // stand to the LEFT, point right at it
-  if (x < GAP) {
-    x = r.right + GAP; // no room → stand to the RIGHT, point left
-    facing = "left";
-  }
-  x = Math.max(GAP, Math.min(x, vw - BOX_W - GAP));
-
-  // Anchor the body (bottom of the box) roughly at the element's vertical center.
-  let y = r.top + r.height / 2 - BOX_H + 44;
-  y = Math.max(GAP, Math.min(y, vh - BOX_H - GAP));
-
-  return { x, y, facing };
+/** Home corner (bottom-right), recomputed from the current viewport. */
+function homePos(): Pos {
+  const { maxX, maxY } = rightBounds();
+  return { x: maxX - 12, y: maxY, facing: "left" };
 }
 
 /** Fire a mascot mood from anywhere in the module frontend. */
@@ -86,7 +53,7 @@ export function mascotSay(mood: Mood, text?: string | null, hold = 2600) {
 }
 
 /**
- * Break an agent reply into a few short speech-bubble-sized chunks so Pilo can
+ * Break an agent reply into a few short speech-bubble-sized chunks so Minder can
  * "pop" them one at a time on an interval instead of dumping a wall of text.
  * Splits on sentence enders, regroups to ~120 chars, and caps the count.
  */
@@ -140,31 +107,28 @@ export default function Mascot() {
   const [blink, setBlink] = useState(false);
   const [pos, setPos] = useState<Pos>(homePos);
   const timer = useRef<ReturnType<typeof setTimeout>>();
-  /** Element the mascot is currently escorting (for scroll/resize re-anchoring). */
-  const tracked = useRef<Element | null>(null);
 
-  // Live x/y the body is actually rendered at. Both the agent-driven `pos` spring
-  // AND the user's drag write these same values, so hand-dragging and autonomous
-  // movement never fight. `true` while a finger/pointer is dragging Pilo around.
+  // Live x/y the body is rendered at. Both the autonomous-wander `pos` spring AND
+  // the user's drag write these same values, so they never fight. `dragging` is
+  // true while a finger/pointer is moving Minder around.
   const initial = homePos();
   const mx = useMotionValue(initial.x);
   const my = useMotionValue(initial.y);
   const [dragging, setDragging] = useState(false);
-  // Drag is started manually from the robot body (not the whole 130×210 box) so
-  // the transparent speech-bubble area above it never intercepts clicks.
   const dragControls = useDragControls();
 
-  // Quick-chat: tap Pilo → a little input opens; on send the question goes to the
+  // Quick-chat: tap Minder → a little input opens; on send the question goes to the
   // host's real Minder agent (via the SDK bridge) and the answer pops back as
-  // speech bubbles. `downAt` lets us tell a tap (open chat) from a drag (move).
+  // speech bubbles. `downAt` tells a tap (open chat) from a drag (move).
   const chat = useQuickChat();
   const [chatOpen, setChatOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const downAt = useRef<{ x: number; y: number } | null>(null);
 
-  // Whenever the commanded position changes (intent walk / home / wander), spring
-  // the live values toward it — unless the user is currently dragging.
+  // Spring the live values toward the commanded position (wander target / home)
+  // whenever it changes — unless the user is currently dragging.
   useEffect(() => {
     if (dragging) return;
     const a = animate(mx, pos.x, { type: "spring", stiffness: 130, damping: 18, mass: 0.7 });
@@ -183,31 +147,12 @@ export default function Mascot() {
       timer.current = setTimeout(() => {
         setMood("idle");
         setText(null);
-        tracked.current = null; // stop escorting → stroll home
-        setPos(homePos());
       }, hold);
     }
   };
 
-  /** Walk to whatever element an intent points at (retrying once for late DOM). */
-  const walkTo = useCallback((intent: UiIntent) => {
-    const settle = (attempt: number) => {
-      const el = targetFor(intent);
-      if (el) {
-        tracked.current = el;
-        setPos(poseBeside(el));
-      } else if (attempt < 1) {
-        // Tab may have just switched (navigate→fill); let it mount, then retry.
-        setTimeout(() => settle(attempt + 1), 140);
-      } else {
-        tracked.current = null;
-        setPos(homePos());
-      }
-    };
-    settle(0);
-  }, []);
-
-  // React to agent UI intents: change mood AND travel to the targeted element.
+  // React to agent UI intents: emote in place. Pointing at the targeted element
+  // is the ghost cursor's job (AgentPresence) — the mascot stays in its corner.
   useEffect(() => {
     if (!activity) return;
     const i = activity.intent;
@@ -217,56 +162,15 @@ export default function Mascot() {
     else if (i.intent === "request_confirm") say("ask", i.summary || "Xác nhận nhé? 🤔", 8000);
     else if (i.intent === "submit") say("celebrate", "Xong! 🎉");
     else if (i.intent === "highlight") say("point", "Nhìn đây nè 👀", 5000);
-    walkTo(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.tick]);
 
-  // Keep the mascot pinned beside its target as the page scrolls / resizes.
-  // When it's NOT escorting an element we leave it wherever it wandered/was
-  // dropped — only clamp it back inside the viewport on resize.
+  // Keep the mascot pinned to its home corner as the viewport resizes.
   useEffect(() => {
-    const reanchor = () => {
-      const el = tracked.current;
-      if (el && el.isConnected) {
-        setPos(poseBeside(el));
-      } else {
-        const maxX = Math.max(GAP, window.innerWidth - BOX_W - GAP);
-        const maxY = Math.max(GAP, window.innerHeight - BOX_H - GAP);
-        if (mx.get() > maxX) animate(mx, maxX);
-        if (my.get() > maxY) animate(my, maxY);
-      }
-    };
-    window.addEventListener("scroll", reanchor, true);
+    const reanchor = () => setPos(homePos());
     window.addEventListener("resize", reanchor);
-    return () => {
-      window.removeEventListener("scroll", reanchor, true);
-      window.removeEventListener("resize", reanchor);
-    };
-  }, [mx, my]);
-
-  // Autonomous wandering: when Pilo is idle (no agent intent to escort) and not
-  // being dragged, it strolls to a random spot every few seconds. Pauses the
-  // moment an intent arrives (mood leaves "idle") or the user grabs it.
-  useEffect(() => {
-    if (mood !== "idle" || dragging || chatOpen) return;
-    let alive = true;
-    let hop: ReturnType<typeof setTimeout>;
-    const roam = () => {
-      if (!alive) return;
-      const maxX = Math.max(GAP, window.innerWidth - BOX_W - GAP);
-      const maxY = Math.max(GAP, window.innerHeight - BOX_H - GAP);
-      const nx = GAP + Math.random() * (maxX - GAP);
-      const ny = GAP + Math.random() * (maxY - GAP);
-      setPos((prev) => ({ x: nx, y: ny, facing: nx >= prev.x ? "right" : "left" }));
-      hop = setTimeout(roam, 3500 + Math.random() * 3500);
-    };
-    // Settle first so it doesn't dart off the instant you drop it or it goes idle.
-    hop = setTimeout(roam, 2500);
-    return () => {
-      alive = false;
-      clearTimeout(hop);
-    };
-  }, [mood, dragging, chatOpen]);
+    return () => window.removeEventListener("resize", reanchor);
+  }, []);
 
   // React to panel-level nudges.
   useEffect(() => {
@@ -316,7 +220,7 @@ export default function Mascot() {
   }, [chat.phase]);
 
   // When the answer is ready, reveal it one bubble at a time on an interval —
-  // Pilo "chats back" instead of dumping the whole reply at once.
+  // Minder "chats back" instead of dumping the whole reply at once.
   useEffect(() => {
     if (chat.phase !== "done") return;
     const chunks = chunkReply(chat.text);
@@ -355,27 +259,6 @@ export default function Mascot() {
 
   return (
     <motion.div
-      drag
-      dragListener={false}
-      dragControls={dragControls}
-      dragMomentum={false}
-      dragElastic={0.12}
-      dragConstraints={{
-        left: GAP,
-        top: GAP,
-        right: Math.max(GAP, (typeof window === "undefined" ? 1280 : window.innerWidth) - BOX_W - GAP),
-        bottom: Math.max(GAP, (typeof window === "undefined" ? 800 : window.innerHeight) - BOX_H - GAP),
-      }}
-      onDragStart={() => {
-        tracked.current = null; // stop escorting any element while hand-held
-        setDragging(true);
-      }}
-      onDragEnd={() => {
-        // Commit the dropped spot as the new commanded position so the follow
-        // spring doesn't yank Pilo back to where an old intent left it.
-        setPos((prev) => ({ ...prev, x: mx.get(), y: my.get() }));
-        setDragging(false);
-      }}
       style={{
         x: mx,
         y: my,
@@ -393,7 +276,7 @@ export default function Mascot() {
       }}
     >
       {/* Quick-chat input — reuses the composer feel (surface + border + focus
-          ring) in a compact bubble anchored above Pilo. */}
+          ring) in a compact bubble anchored above Minder. */}
       <AnimatePresence>
         {chatOpen && (
           <motion.form
@@ -418,10 +301,16 @@ export default function Mascot() {
               gap: 6,
               width: 232,
               background: tokens.surface,
-              border: `1px solid ${tokens.border}`,
-              boxShadow: tokens.cardShadow,
+              // Soft brand-tinted focus ring instead of the harsh global
+              // :focus-visible outline that leaks in from the host shell.
+              border: `1px solid ${inputFocused ? tokens.primary : tokens.border}`,
+              boxShadow: inputFocused
+                ? `${tokens.cardShadow}, 0 0 0 3px ${tokens.primary}29`
+                : tokens.cardShadow,
               borderRadius: 14,
               padding: "6px 6px 6px 12px",
+              transition:
+                "border-color 160ms ease, box-shadow 160ms ease",
             }}
           >
             <input
@@ -431,12 +320,17 @@ export default function Mascot() {
               onKeyDown={(e) => {
                 if (e.key === "Escape") setChatOpen(false);
               }}
-              placeholder="Hỏi Pilo bất cứ điều gì…"
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              placeholder="Hỏi Minder bất cứ điều gì…"
               style={{
                 flex: 1,
                 minWidth: 0,
                 border: "none",
                 outline: "none",
+                // Inline wins over the host's global :focus-visible rule, so
+                // the container owns the focus treatment — not a stray outline.
+                boxShadow: "none",
                 background: "transparent",
                 color: tokens.text,
                 fontSize: 12.5,
@@ -496,19 +390,8 @@ export default function Mascot() {
       <motion.div
         animate={mood}
         variants={{}}
-        onPointerDown={(e) => {
-          downAt.current = { x: e.clientX, y: e.clientY };
-          dragControls.start(e);
-        }}
-        onPointerUp={(e) => {
-          // A tap (barely moved) toggles quick-chat; a real drag just moves Pilo.
-          const d = downAt.current;
-          downAt.current = null;
-          if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) {
-            setChatOpen((v) => !v);
-          }
-        }}
-        title="Bấm để chat • kéo để di chuyển"
+        onClick={() => setChatOpen((v) => !v)}
+        title="Bấm để chat với Minder"
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 1.12 }}
         style={{
@@ -516,8 +399,7 @@ export default function Mascot() {
           height: 96,
           position: "relative",
           pointerEvents: "auto",
-          cursor: dragging ? "grabbing" : "grab",
-          touchAction: "none",
+          cursor: "pointer",
         }}
       >
         <motion.div animate={BODY[mood]} style={{ width: "100%", height: "100%" }}>

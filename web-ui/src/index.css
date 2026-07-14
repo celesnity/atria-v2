@@ -166,12 +166,17 @@
     color: hsl(var(--ink));
   }
 
-  /* Keyboard focus — never the browser-default blue. */
+  /* Keyboard focus — never the browser-default blue. A crisp thin ring with a
+     soft diffuse halo reads as premium, not a harsh solid double band. */
   :focus { outline: none; }
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px hsl(var(--canvas)), 0 0 0 4px hsl(var(--focus-ring));
+    box-shadow:
+      0 0 0 2px hsl(var(--canvas)),
+      0 0 0 3px hsl(var(--focus-ring) / 0.6),
+      0 0 0 6px hsl(var(--focus-ring) / 0.14);
     border-radius: inherit;
+    transition: box-shadow 160ms ease;
   }
 
   /* Pills never wrap — a two-line CTA reads as broken. */
