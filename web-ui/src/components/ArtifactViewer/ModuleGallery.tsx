@@ -64,7 +64,7 @@ export function ModuleGallery({ convId }: Props) {
   }, [modules, query]);
 
   const onDelete = async (name: string) => {
-    if (!window.confirm(`Delete module "${name}"? This removes the folder.`)) return;
+    if (!window.confirm(t('moduleGallery.confirmDelete', { name }))) return;
     await remove(name);
   };
 

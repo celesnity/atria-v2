@@ -39,7 +39,7 @@ export function ModuleEditor({ convId, name }: Props) {
         <Boxes className="w-4 h-4 text-accent-cobalt" />
         <span className="font-medium text-[13px]">{name}</span>
         <span className="text-[10.5px] font-mono text-ink/40">
-          {found.files.length} file{found.files.length === 1 ? '' : 's'}
+          {t('moduleEditor.fileCount', { count: found.files.length })}
         </span>
         <div className="flex-1" />
         <button

@@ -162,19 +162,19 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
       if (template === 'data') {
         const res = await ModulesApi.uploadData(name, picked, true);
         await refresh(); // pick up the regenerated SKILL/dashboard (WS also refreshes)
-        const conv = res.converted.length ? ` (${res.converted.length} sheet${res.converted.length > 1 ? 's' : ''} → CSV)` : '';
-        addToast(`Module "${name}" created with ${res.written.length} file(s)${conv}.`, 'success');
+        const suffix = res.converted.length ? ` (${res.converted.length} sheet${res.converted.length > 1 ? 's' : ''} → CSV)` : '';
+        addToast(t('newModule.createdWithFiles', { name, count: res.written.length, suffix }), 'success');
         if (res.skipped.length) {
-          addToast(`${res.skipped.length} file(s) could not be processed.`, 'warning');
+          addToast(t('newModule.filesSkipped', { count: res.skipped.length }), 'warning');
         }
       } else {
-        addToast(`Module "${name}" created.`, 'success');
+        addToast(t('newModule.created', { name }), 'success');
       }
       onCreated(name);
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      addToast(`Failed to create module: ${msg}`, 'error');
+      addToast(t('newModule.createFailed', { msg }), 'error');
       setBusy(false);
     }
   };
