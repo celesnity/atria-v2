@@ -44,11 +44,11 @@
 - `keycloak/realm-export.json` — add realm role `module-register` + a `minder-module` confidential client with service accounts.
 
 **SDK — created:**
-- `minder_module_sdk/minder_module_sdk/announce.py` — startup/shutdown announce + Keycloak client-credentials token.
+- `minder_python_sdk/minder_python_sdk/announce.py` — startup/shutdown announce + Keycloak client-credentials token.
 
 **SDK — modified:**
-- `minder_module_sdk/minder_module_sdk/connector.py` (or the module where `Connector`/`asgi()` lives) — wire announce into ASGI lifespan; add `block(...)` helper.
-- `minder_module_sdk/__init__.py` — export `block`.
+- `minder_python_sdk/minder_python_sdk/connector.py` (or the module where `Connector`/`asgi()` lives) — wire announce into ASGI lifespan; add `block(...)` helper.
+- `minder_python_sdk/__init__.py` — export `block`.
 
 **Frontend — modified:**
 - `web-ui/src/lib/cardRegistry.ts` — drop bespoke `CARD_MAPPERS` entries (generic + federated only).
@@ -641,7 +641,7 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
 ### Task 7: `announce.py` — startup/shutdown announce
 
 **Files:**
-- Create: `minder_module_sdk/minder_module_sdk/announce.py`
+- Create: `minder_python_sdk/minder_python_sdk/announce.py`
 
 **Interfaces:**
 - Produces:
@@ -651,7 +651,7 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
   - `def announce(module: str, cfg: AnnounceConfig) -> None` — `POST {minder_url}/api/modules/register` with bearer token.
   - `def deregister(module: str, cfg: AnnounceConfig) -> None` — `POST {minder_url}/api/modules/deregister`, best-effort (swallow errors).
 
-- [ ] **Step 1: Implement** `minder_module_sdk/minder_module_sdk/announce.py`:
+- [ ] **Step 1: Implement** `minder_python_sdk/minder_python_sdk/announce.py`:
 
 ```python
 """Runtime self-registration: announce this connector to Minder on startup.
@@ -667,7 +667,7 @@ from typing import Optional
 
 import httpx
 
-logger = logging.getLogger("minder_module_sdk.announce")
+logger = logging.getLogger("minder_python_sdk.announce")
 
 
 @dataclass
@@ -742,8 +742,8 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
 ### Task 8: wire announce into `Connector.asgi()` + add `block()` helper
 
 **Files:**
-- Modify: the SDK module defining `Connector` / `asgi()` / `card` (locate with `grep -rn "def asgi\|def card\|class Connector" minder_module_sdk`).
-- Modify: `minder_module_sdk/minder_module_sdk/__init__.py` (export `block`).
+- Modify: the SDK module defining `Connector` / `asgi()` / `card` (locate with `grep -rn "def asgi\|def card\|class Connector" minder_python_sdk`).
+- Modify: `minder_python_sdk/minder_python_sdk/__init__.py` (export `block`).
 
 **Interfaces:**
 - Consumes: `resolve_announce_config`, `announce`, `deregister` (Task 7).
@@ -754,7 +754,7 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
 - [ ] **Step 1: Add the announce hooks** inside `asgi()`, after the app is built and before `return app`:
 
 ```python
-        from minder_module_sdk.announce import resolve_announce_config, announce, deregister
+        from minder_python_sdk.announce import resolve_announce_config, announce, deregister
 
         @app.on_event("startup")
         def _minder_announce() -> None:
@@ -764,7 +764,7 @@ def deregister(module: str, cfg: AnnounceConfig) -> None:
                     announce(self.name, cfg)
                 except Exception as exc:  # noqa: BLE001 — don't crash the module on a flaky Minder
                     import logging
-                    logging.getLogger("minder_module_sdk").warning("announce failed: %s", exc)
+                    logging.getLogger("minder_python_sdk").warning("announce failed: %s", exc)
 
         @app.on_event("shutdown")
         def _minder_deregister() -> None:
@@ -790,7 +790,7 @@ def block(component, props=None, *, remote_name, remote_entry, height="auto", ti
     }
 ```
 
-- [ ] **Step 3: Export it** in `minder_module_sdk/__init__.py` — add `block` to the existing `from .connector import ... , card` line and to `__all__`.
+- [ ] **Step 3: Export it** in `minder_python_sdk/__init__.py` — add `block` to the existing `from .connector import ... , card` line and to `__all__`.
 
 *(No SDK unit test is mandated here — the SDK is exercised end-to-end in Phase V via `maintenance_copilot`. If the SDK has an existing test file, add a `test_block_descriptor` asserting `block("X", {"a":1}, remote_name="m", remote_entry="http://h/dashboard/remoteEntry.js")["api_base"] == "http://h"`.)*
 
@@ -880,7 +880,7 @@ Expected: PASS + clean build (no dangling `MaintenanceAnswerBlock` import).
 
 - [ ] **Step 4: SDK block descriptor sanity**
 
-Run: `uv run --no-sync python -c "from minder_module_sdk import block; d=block('X',{'a':1},remote_name='m',remote_entry='http://h/dashboard/remoteEntry.js'); assert d['render']=='remote' and d['api_base']=='http://h', d; print('ok')"`
+Run: `uv run --no-sync python -c "from minder_python_sdk import block; d=block('X',{'a':1},remote_name='m',remote_entry='http://h/dashboard/remoteEntry.js'); assert d['render']=='remote' and d['api_base']=='http://h', d; print('ok')"`
 Expected: prints `ok`.
 
 - [ ] **Step 5: End-to-end (per CLAUDE.md — real API, `OPENAI_API_KEY` set)**
@@ -894,7 +894,7 @@ Expected: prints `ok`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add minder/ minder_module_sdk/ web-ui/ modules/maintenance_copilot/ keycloak/ tests/
+git add minder/ minder_python_sdk/ web-ui/ modules/maintenance_copilot/ keycloak/ tests/
 git add -f docs/superpowers/plans/2026-07-10-sdk-self-registering-modules.md
 git commit -m "feat(modules): SDK runtime self-registration + live connector discovery; kill bespoke cards"
 ```

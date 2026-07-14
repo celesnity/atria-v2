@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-13
 **Status:** Approved (design), pending implementation plan
-**Package:** extends `minder_module_sdk`
+**Package:** extends `minder_python_sdk`
 
 ## Problem
 
@@ -137,7 +137,7 @@ No effect on invocation, validation, or gating.
 Per `CLAUDE.md`, both unit and real end-to-end are required.
 
 **Unit (pytest — `conn.invoke` / `TestClient(conn.asgi())`, matching
-`minder_module_sdk/tests/` conventions):**
+`minder_python_sdk/tests/` conventions):**
 - `@conn.context.state` registers a provider; `GET /connector/context` returns its live
   value; the provider receives `principal` when it declares that arg.
 - A state provider that raises is skipped and does not break the context response
@@ -161,4 +161,4 @@ Per `CLAUDE.md`, both unit and real end-to-end are required.
 - Exact placement of the `context` key in the manifest dict (top-level vs nested).
 - Whether `_ContextRegistrar` is a nested class or a lightweight `types.SimpleNamespace`
   of bound methods — pick whichever matches the connector's existing style.
-- Public export surface (`Note` dataclass) from `minder_module_sdk` package `__init__`.
+- Public export surface (`Note` dataclass) from `minder_python_sdk` package `__init__`.

@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_SDK = Path(__file__).resolve().parent.parent / "minder_module_sdk"
+_SDK = Path(__file__).resolve().parent.parent / "minder_python_sdk"
 if str(_SDK) not in sys.path:
     sys.path.insert(0, str(_SDK))
 
@@ -73,7 +73,7 @@ def test_make_handler_streaming_uses_stream_not_call():
 
 
 def _sdk_streaming_app():
-    from minder_module_sdk import Connector, card
+    from minder_python_sdk import Connector, card
 
     conn = Connector("demo")
 

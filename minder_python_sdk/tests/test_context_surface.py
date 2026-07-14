@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from minder_module_sdk.context import (
+from minder_python_sdk.context import (
     MAX_STATE_CHARS,
     Note,
     _ContextRegistrar,
@@ -86,14 +86,14 @@ def test_build_state_entries_flags_truncated():
 
 # Helper: construct a _StateProvider without importing its private name everywhere.
 def _StateProvider_desc(fn, description):
-    from minder_module_sdk.context import _StateProvider
+    from minder_python_sdk.context import _StateProvider
 
     return _StateProvider(description=description, fn=fn)
 
 
 def test_context_endpoint_returns_live_state_with_principal():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
@@ -113,7 +113,7 @@ def test_context_endpoint_returns_live_state_with_principal():
 
 def test_context_state_defaults_to_empty_list():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
     body = TestClient(conn.asgi()).get("/connector/context").json()
@@ -122,7 +122,7 @@ def test_context_state_defaults_to_empty_list():
 
 def test_manifest_exposes_knowledge_and_notes():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
     conn.context.knowledge("Always check MEL before dispatch.")
@@ -135,7 +135,7 @@ def test_manifest_exposes_knowledge_and_notes():
 
 def test_manifest_context_defaults_empty():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     mani = TestClient(Connector("m").asgi()).get("/connector/manifest").json()
     assert mani["context"] == {"knowledge": [], "notes": []}
@@ -143,7 +143,7 @@ def test_manifest_context_defaults_empty():
 
 def test_tool_enrichment_surfaces_in_manifest():
     from fastapi.testclient import TestClient
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
@@ -169,7 +169,7 @@ def test_tool_enrichment_surfaces_in_manifest():
 
 
 def test_enriched_tool_still_invokes_and_gates_normally():
-    from minder_module_sdk.connector import Connector
+    from minder_python_sdk.connector import Connector
 
     conn = Connector("m")
 
