@@ -17,11 +17,31 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# One pooled httpx.Client per connector base_url, shared across all
+# RemoteConnector instances. The reconciler builds a RemoteConnector every tick;
+# without this each got a fresh Client (new connection pool, never closed) —
+# losing keep-alive and leaking sockets. httpx.Client is thread-safe for
+# requests, and the pool is bounded by the number of distinct connector URLs.
+# ponytail: process-lifetime pool, never closed — fine, it's a bounded set of
+# long-lived connection pools, not per-call objects.
+_CLIENTS: dict[str, httpx.Client] = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
+def _client_for(base_url: str) -> httpx.Client:
+    with _CLIENTS_LOCK:
+        client = _CLIENTS.get(base_url)
+        if client is None:
+            client = httpx.Client(base_url=base_url)
+            _CLIENTS[base_url] = client
+        return client
 
 # Connector contract version this core speaks (docs/connector-contract.md). A
 # module can declare service.min_core_version; core warns if it needs a newer one.
@@ -149,7 +169,7 @@ class RemoteConnector:
         self.name = name
         self.base_url = connector_url.rstrip("/")
         self.health_path = health_path
-        self._client = httpx.Client(base_url=self.base_url)
+        self._client = _client_for(self.base_url)
 
     # -- health / capabilities ------------------------------------------------
 

@@ -178,13 +178,25 @@ class RunLoopMixin:
                 }
             return results_by_id
 
+        # Parse each call's arguments once for the UI callbacks (on_tool_call +
+        # on_tool_result shared the same parse). Execution parses separately in
+        # _run_one, keeping its own error handling. Defensive parse: malformed
+        # args no longer crash the whole batch dispatch.
+        def _ui_args(tc: dict) -> dict:
+            try:
+                return json.loads(tc["function"]["arguments"])
+            except (ValueError, TypeError):
+                return {}
+
+        ui_args = {tc["id"]: _ui_args(tc) for tc in tool_calls}
+
         # Fire on_tool_call for ALL tools upfront (before any execution starts)
         # This lets the UI show all tools simultaneously with spinners
         if ui_callback and hasattr(ui_callback, "on_tool_call"):
             for tc in tool_calls:
-                t_name = tc["function"]["name"]
-                t_args = json.loads(tc["function"]["arguments"])
-                ui_callback.on_tool_call(t_name, t_args, tool_call_id=tc["id"])
+                ui_callback.on_tool_call(
+                    tc["function"]["name"], ui_args[tc["id"]], tool_call_id=tc["id"]
+                )
 
         def _run_one(tc: dict) -> tuple[str, dict]:
             name = tc["function"]["name"]
@@ -219,9 +231,10 @@ class RunLoopMixin:
 
                 # Fire on_tool_result as each tool completes (real-time)
                 if ui_callback and hasattr(ui_callback, "on_tool_result"):
-                    t_name = tc["function"]["name"]
-                    t_args = json.loads(tc["function"]["arguments"])
-                    ui_callback.on_tool_result(t_name, t_args, result, tool_call_id=tc["id"])
+                    ui_callback.on_tool_result(
+                        tc["function"]["name"], ui_args[tc["id"]], result,
+                        tool_call_id=tc["id"],
+                    )
 
         return results_by_id
 

@@ -521,7 +521,10 @@ class WebState:
         try:
             session = await self.session_manager.get_current_session()
             cwd = session.working_directory if session else None
-            result = subprocess.run(
+            # git shells out — run it off the event loop so a slow repo can't
+            # stall every other request sharing this worker.
+            result = await asyncio.to_thread(
+                subprocess.run,
                 ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True,
                 text=True,
@@ -617,9 +620,11 @@ async def broadcast_to_all_clients(message: Dict[str, Any]) -> None:
 
     import json
 
+    # Serialize once, not once per client (was O(clients) redundant json.dumps).
+    payload = json.dumps(message)
     for client in clients:
         try:
-            await client.send_text(json.dumps(message))
+            await client.send_text(payload)
         except Exception:
             # Client disconnected, will be cleaned up by WebSocket handler
             pass
