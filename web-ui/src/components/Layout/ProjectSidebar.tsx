@@ -10,6 +10,7 @@ import {
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useLocalStorage, useMediaQuery } from "usehooks-ts";
+import { useTranslation } from "react-i18next";
 import { ResizeHandle } from "../ui/ResizeHandle";
 import { ChatInterface } from "../Chat/ChatInterface";
 import { useChatStore } from "../../stores/chat";
@@ -79,6 +80,7 @@ function SectionEyebrow({
 }
 
 export function ProjectSidebar() {
+  const { t } = useTranslation('layout');
   const {
     projects,
     conversations,
@@ -113,9 +115,6 @@ export function ProjectSidebar() {
   } | null>(null);
   const [creatingChat, setCreatingChat] = useState(false);
   // Persisted, drag-to-resize width for the desktop sidebar column.
-  // v4: the rail targets ~20% of the viewport (see the aside's
-  // width: clamp(240px, 20vw, 460px) below); the stored px is the resize
-  // override within those bounds.
   const [sidebarWidth, setSidebarWidth] = useLocalStorage<number>(
     "sidebar.width.v4",
     360,
@@ -126,9 +125,6 @@ export function ProjectSidebar() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
 
-  // Chat selector — the conversation list is a compact dropdown now (the chat
-  // thread itself lives beneath it in the rail), so the list of sessions folds
-  // into a menu instead of consuming the rail's vertical space.
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const chatMenuRef = useRef<HTMLDivElement>(null);
 
@@ -146,9 +142,7 @@ export function ProjectSidebar() {
     }
   }, [workspaceProjectId, activeProjectId]);
 
-  // Follow the open conversation: when a session is opened that lives in a
-  // different project (e.g. a Minder chat surfaced via the module dashboard),
-  // switch the sidebar to that project so the chat is visible/highlighted.
+  // Follow the open conversation
   useEffect(() => {
     if (!currentSessionId) return;
     for (const [pid, convs] of Object.entries(conversations)) {
@@ -189,10 +183,9 @@ export function ProjectSidebar() {
     : [];
   const activeConv =
     activeConversations.find((c) => c.id === currentSessionId) ?? null;
-  // The workspace project's name is a long filesystem path; show a friendly label instead.
   const activeProjectLabel =
     activeProjectId && activeProjectId === workspaceProjectId
-      ? "Workspace"
+      ? t('projectSidebar.workspace')
       : activeProject?.name ?? "";
 
   const selectProject = (projectId: string) => {
@@ -207,7 +200,7 @@ export function ProjectSidebar() {
     setCreatingChat(true);
     try {
       // createConversation loads the new session automatically.
-      await createConversation(pid, "New Chat");
+      await createConversation(pid, t('projectSidebar.newChatName'));
       closeModuleDashboard();
       closeMobileSidebar();
     } finally {
@@ -243,7 +236,7 @@ export function ProjectSidebar() {
         <button
           onClick={toggleSidebar}
           className="relative grid h-8 w-8 place-items-center rounded-md text-text-muted transition-colors hover:bg-surface-soft hover:text-ink"
-          title="Expand sidebar"
+          title={t('projectSidebar.expandSidebar')}
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -253,7 +246,7 @@ export function ProjectSidebar() {
             setCreateProjectOpen(true);
           }}
           className="relative grid h-9 w-9 place-items-center rounded-md bg-gradient-brand text-white shadow-glow-accent transition-transform duration-base ease-motion-spring hover:scale-105"
-          title="New project"
+          title={t('projectSidebar.newProject')}
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -263,7 +256,7 @@ export function ProjectSidebar() {
 
   const sidebarBody = (
     <>
-      {/* Ambient nebula wash — gives the panel depth instead of a flat fill. */}
+      {/* Ambient nebula wash */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-56 opacity-70"
@@ -273,33 +266,33 @@ export function ProjectSidebar() {
         }}
       />
 
-      {/* Brand header: identity on the left, project + settings controls on the right. */}
+      {/* Brand header */}
       <div className="relative flex items-center gap-2 px-3 py-3">
         <button
           onClick={() => (isMobile ? closeMobileSidebar() : toggleSidebar())}
           className="group flex min-w-0 items-center gap-2.5 text-left"
-          title="Collapse sidebar"
+          title={t('projectSidebar.collapseSidebar')}
         >
           <BrandMark />
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-semibold leading-tight tracking-tight text-ink">
-              Workspace
+              {t('projectSidebar.workspace')}
             </span>
             <span className="flex items-center gap-1 text-[10px] font-mono text-text-muted transition-colors group-hover:text-text-secondary">
               <ChevronRight className="h-2.5 w-2.5 rotate-180" />
-              Collapse
+              {t('projectSidebar.collapse')}
             </span>
           </span>
         </button>
 
         <div className="ml-auto flex items-center gap-1">
-          {/* Project switcher — pick which project's chats are listed */}
+          {/* Project switcher */}
           <div className="relative" ref={switcherRef}>
             <button
               onClick={() => setSwitcherOpen((o) => !o)}
               className="flex items-center gap-0.5 rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-soft hover:text-ink focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
-              title="Switch project"
-              aria-label="Switch project"
+              title={t('projectSidebar.switchProject')}
+              aria-label={t('projectSidebar.switchProject')}
               aria-haspopup="menu"
               aria-expanded={switcherOpen}
             >
@@ -317,7 +310,7 @@ export function ProjectSidebar() {
                 className="absolute right-0 top-full z-50 mt-2 max-h-72 w-60 overflow-y-auto rounded-md border border-hairline-soft/40 bg-bg-000/95 py-1.5 shadow-modal backdrop-blur-xl"
               >
                 <div className="px-3 pb-1 pt-0.5 text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-text-muted">
-                  Projects
+                  {t('projectSidebar.projects')}
                 </div>
                 {projects.map((project) => {
                   const isActive = project.id === activeProjectId;
@@ -348,8 +341,8 @@ export function ProjectSidebar() {
                           setConfirmDelete({ type: "project", id: project.id })
                         }
                         className="rounded p-0.5 text-text-muted opacity-0 transition-colors hover:bg-surface-soft hover:text-semantic-danger focus:outline-none focus-visible:ring-1 focus-visible:ring-semantic-danger group-hover:opacity-100"
-                        title="Delete project"
-                        aria-label={`Delete project ${project.name}`}
+                        title={t('projectSidebar.deleteProject')}
+                        aria-label={t('projectSidebar.deleteProjectNamed', { name: project.name })}
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -366,7 +359,7 @@ export function ProjectSidebar() {
                     role="menuitem"
                   >
                     <Plus className="h-3 w-3" />
-                    New project
+                    {t('projectSidebar.newProject')}
                   </button>
                 </div>
               </motion.div>
@@ -375,13 +368,13 @@ export function ProjectSidebar() {
         </div>
       </div>
 
-      {/* Primary action — promoted to a full-width gradient CTA with a nebula glow. */}
+      {/* Primary action */}
       <div className="relative px-3 pb-3">
         <button
           onClick={handleNewChat}
           disabled={creatingChat}
           className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-md bg-gradient-brand px-3 py-2.5 text-sm font-medium text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-0.5 hover:shadow-glow-nebula disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-          title="New chat in your workspace"
+          title={t('projectSidebar.newChatTitle')}
         >
           {/* Sheen sweep on hover. */}
           <span
@@ -389,13 +382,13 @@ export function ProjectSidebar() {
             className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-slow ease-motion-out group-hover:translate-x-full"
           />
           <Plus className="h-4 w-4" />
-          <span className="tracking-tight">New chat</span>
+          <span className="tracking-tight">{t('projectSidebar.newChat')}</span>
         </button>
       </div>
 
       <div className="relative space-y-1 pb-2">
         {isLoading && projects.length === 0 && (
-          <p className="px-4 py-3 font-mono text-xs text-text-muted">Loading…</p>
+          <p className="px-4 py-3 font-mono text-xs text-text-muted">{t('projectSidebar.loading')}</p>
         )}
         {!isLoading && projects.length === 0 && (
           <div className="px-4 py-8 text-center">
@@ -409,8 +402,7 @@ export function ProjectSidebar() {
               </span>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-text-secondary">
-              Start a conversation or spin up a new project to organize your
-              work.
+              {t('projectSidebar.emptyStateDescription')}
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -418,26 +410,23 @@ export function ProjectSidebar() {
                 disabled={creatingChat}
                 className="rounded-md bg-gradient-brand px-3 py-2 text-xs font-medium text-white shadow-glow-accent transition-transform duration-base ease-motion-spring hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                New chat
+                {t('projectSidebar.newChat')}
               </button>
               <button
                 onClick={() => setCreateProjectOpen(true)}
                 className="font-mono text-xs text-text-muted transition-colors hover:text-ink"
               >
-                + New project
+                {t('projectSidebar.newProjectInline')}
               </button>
             </div>
           </div>
         )}
 
-        {/* CHATS — compact dropdown selector. The active thread renders beneath
-            the rail (ChatRail stacks ChatInterface below this sidebar). */}
+        {/* CHATS — compact dropdown selector */}
         {activeProjectId && (
           <div className="px-3 pt-1" ref={chatMenuRef}>
-            {/* No "+" action here — the gradient "New chat" button above is the
-                single new-chat affordance (removed the redundant one). */}
             <SectionEyebrow
-              label="Chats"
+              label={t('projectSidebar.chats')}
               meta={activeProjectLabel ? `· ${activeProjectLabel}` : undefined}
             />
 
@@ -447,12 +436,14 @@ export function ProjectSidebar() {
                 className="flex w-full items-center gap-2 rounded-md border border-hairline-soft/40 bg-surface-soft/40 px-2.5 py-2 text-left transition-colors hover:bg-surface-soft focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt"
                 aria-haspopup="menu"
                 aria-expanded={chatMenuOpen}
-                title="Switch conversation"
+                title={t('projectSidebar.switchConversation')}
               >
                 <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-accent-cobalt" />
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink">
                   {activeConv?.name ??
-                    (activeConversations.length ? "Select a chat" : "No chats yet")}
+                    (activeConversations.length
+                      ? t('projectSidebar.selectChat')
+                      : t('projectSidebar.noChatsYet'))}
                 </span>
                 <ChevronDown
                   className={`h-3.5 w-3.5 flex-shrink-0 text-text-muted transition-transform ${chatMenuOpen ? "rotate-180" : ""}`}
@@ -475,7 +466,7 @@ export function ProjectSidebar() {
                       }}
                       className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-text-muted transition-colors hover:bg-surface-soft/70 hover:text-accent-cobalt"
                     >
-                      <Plus className="h-3.5 w-3.5" /> New conversation
+                      <Plus className="h-3.5 w-3.5" /> {t('projectSidebar.newConversation')}
                     </button>
                   )}
 
@@ -519,7 +510,7 @@ export function ProjectSidebar() {
                             });
                           }}
                           className="rounded p-0.5 text-text-muted opacity-0 transition-colors hover:bg-surface-soft hover:text-semantic-danger focus:outline-none group-hover:opacity-100"
-                          aria-label={`Delete conversation ${conv.name}`}
+                          aria-label={t('projectSidebar.deleteConversationNamed', { name: conv.name })}
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -561,12 +552,9 @@ export function ProjectSidebar() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           data-surface="dark"
-          // Responsive ~20% rail: tracks the viewport (20vw) but clamped to a
-          // sane 240–460px, and never wider than the stored resize width.
           style={{ width: `clamp(240px, min(${sidebarWidth}px, 20vw), 460px)` }}
           className="relative flex flex-shrink-0 flex-col overflow-hidden border-r border-hairline-soft/25 bg-bg-100"
         >
-          {/* Drag the right edge to resize the sidebar (kept within bounds — aside is overflow-hidden) */}
           <ResizeHandle
             side="right"
             width={sidebarWidth}
@@ -576,9 +564,6 @@ export function ProjectSidebar() {
             className="absolute bottom-0 right-0 top-0 z-30 w-2 cursor-col-resize transition-colors hover:bg-accent-cobalt/30"
           />
           {sidebarBody}
-          {/* The active conversation lives inside the rail, beneath the session
-              controls — the rail is a single narrow column (session dropdown +
-              thread + input), leaving the center free for the module UI. */}
           <div className="flex min-h-0 flex-1 flex-col border-t border-hairline-soft/20">
             <ChatInterface />
           </div>
@@ -610,24 +595,22 @@ export function ProjectSidebar() {
             className="w-80 rounded-xl border border-hairline-soft/40 bg-bg-000 p-6 shadow-modal"
           >
             <p className="mb-4 text-sm text-ink">
-              Delete this{" "}
               {confirmDelete.type === "project"
-                ? "project and all its conversations"
-                : "conversation"}
-              ? This cannot be undone.
+                ? t('projectSidebar.confirmDeleteProject')
+                : t('projectSidebar.confirmDeleteConversation')}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
                 className="rounded-md px-3 py-1.5 text-sm text-text-secondary transition-colors hover:text-ink"
               >
-                Cancel
+                {t('projectSidebar.cancel')}
               </button>
               <button
                 onClick={handleDeleteConfirmed}
                 className="rounded-md bg-semantic-danger px-3 py-1.5 text-sm text-white transition-colors hover:bg-semantic-danger/90"
               >
-                Delete
+                {t('projectSidebar.delete')}
               </button>
             </div>
           </motion.div>

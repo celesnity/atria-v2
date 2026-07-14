@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface DeleteConfirmModalProps {
 }
 
 export function DeleteConfirmModal({ isOpen, workspacePath, onConfirm, onCancel }: DeleteConfirmModalProps) {
+  const { t } = useTranslation('layout');
   const [isDeleting, setIsDeleting] = useState(false);
   const reduce = useReducedMotion();
 
@@ -45,17 +47,17 @@ export function DeleteConfirmModal({ isOpen, workspacePath, onConfirm, onCancel 
                 <AlertTriangle className="w-6 h-6 text-ink" strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className="text-headline tracking-[-0.26px] font-[540] text-ink">Delete workspace</h2>
-                <p className="text-body-sm text-ink/60">This action cannot be undone.</p>
+                <h2 className="text-headline tracking-[-0.26px] font-[540] text-ink">{t('deleteConfirmModal.title')}</h2>
+                <p className="text-body-sm text-ink/60">{t('deleteConfirmModal.cannotBeUndone')}</p>
               </div>
             </div>
 
             <div className="mb-6">
               <p className="text-body-sm text-ink mb-3">
-                Delete this workspace and all its sessions?
+                {t('deleteConfirmModal.deleteWorkspaceConfirm')}
               </p>
               <div className="px-4 py-3 bg-surface-soft border border-hairline-soft rounded-md">
-                <span className="font-mono uppercase tracking-[0.54px] text-[11px] text-ink/60 block mb-1">Workspace</span>
+                <span className="font-mono uppercase tracking-[0.54px] text-[11px] text-ink/60 block mb-1">{t('deleteConfirmModal.workspaceLabel')}</span>
                 <p className="text-[13px] text-ink font-mono break-all">{workspacePath}</p>
               </div>
             </div>
@@ -66,14 +68,14 @@ export function DeleteConfirmModal({ isOpen, workspacePath, onConfirm, onCancel 
                 disabled={isDeleting}
                 className="flex-1 px-6 py-3 rounded-pill bg-canvas text-ink border border-hairline-soft hover:border-ink text-btn disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98] whitespace-nowrap"
               >
-                Cancel
+                {t('deleteConfirmModal.cancel')}
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={isDeleting}
                 className="flex-1 px-6 py-3 rounded-pill bg-ink text-inverse-ink hover:bg-ink/90 text-btn disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-[0.98] whitespace-nowrap"
               >
-                {isDeleting ? 'Deleting…' : 'Delete'}
+                {isDeleting ? t('deleteConfirmModal.deleting') : t('deleteConfirmModal.delete')}
               </button>
             </div>
           </motion.div>
