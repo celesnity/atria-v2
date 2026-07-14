@@ -2,11 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import { useEffect, useRef, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { ChatPage } from './pages/ChatPage';
-import { BlackboardPage } from './pages/BlackboardPage';
-import './stores/solverJobs';
-import './stores/blackboardStore';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/Layout/AppShell';
+import { QuickChatBridge } from './components/QuickChatBridge';
 import { TenantsPage } from './pages/admin/TenantsPage';
 import { TenantUsersPage } from './pages/admin/TenantUsersPage';
 import { apiClient } from './api/client';
@@ -60,13 +58,11 @@ function AppRoutes() {
       {/* Primary surfaces share one persistent shell (TopBar + crossfading body) */}
       <Route element={<AuthGuard><AppShell /></AuthGuard>}>
         <Route path="/chat" element={<ChatPage />} />
-        <Route path="/blackboard" element={<BlackboardPage />} />
       </Route>
 
-      {/* The old dispatch/divide/parallel monitor is replaced by the Blackboard view */}
-      <Route path="/dispatch" element={<Navigate to="/blackboard" replace />} />
-      <Route path="/divide" element={<Navigate to="/blackboard" replace />} />
-      <Route path="/parallel" element={<Navigate to="/blackboard" replace />} />
+      {/* Old dispatch/blackboard monitor routes are gone — fall back to chat */}
+      <Route path="/dispatch" element={<Navigate to="/chat" replace />} />
+      <Route path="/blackboard" element={<Navigate to="/chat" replace />} />
       <Route path="/admin/tenants" element={<AuthGuard><TenantsPage /></AuthGuard>} />
       <Route path="/admin/tenants/:slug/users" element={<AuthGuard><TenantUsersPage /></AuthGuard>} />
       <Route path="/" element={<Navigate to="/chat" replace />} />
@@ -82,6 +78,7 @@ function App() {
       <Router>
         <AppRoutes />
       </Router>
+      <QuickChatBridge />
     </MotionConfig>
   );
 }

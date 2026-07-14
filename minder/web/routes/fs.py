@@ -1,0 +1,278 @@
+"""Filesystem browsing endpoints scoped to a conversation's working directory."""
+
+from __future__ import annotations
+
+import mimetypes
+import shutil
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+from minder.core.services.conversation_service import ConversationService
+from minder.web.dependencies.auth import require_authenticated_user
+from minder.web.dependencies.services import get_conversation_service
+from minder.web.state import broadcast_to_all_clients as _broadcast
+
+
+async def _safe_broadcast(payload: dict) -> None:
+    """Best-effort broadcast — never let WS dispatch break a write."""
+    try:
+        await _broadcast(payload)
+    except Exception:
+        pass
+
+
+router = APIRouter(
+    prefix="/api/conversations",
+    tags=["fs"],
+    dependencies=[Depends(require_authenticated_user)],
+)
+
+_DEFAULT_IGNORE: frozenset[str] = frozenset(
+    {".git", "node_modules", ".venv", "__pycache__", "dist", "build"}
+)
+_MAX_READ_BYTES: int = 25 * 1024 * 1024  # 25 MB
+
+
+def _resolve_safe(base: Path, user_path: str) -> Path:
+    if user_path.startswith(("/", "\\")):
+        raise HTTPException(status_code=400, detail="absolute path not allowed")
+    base_resolved = base.resolve(strict=True)
+    target = (base_resolved / user_path).resolve(strict=False)
+    try:
+        target.relative_to(base_resolved)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="path outside workspace") from exc
+    return target
+
+
+@router.get("/{conversation_id}/fs/list")
+async def list_dir(
+    conversation_id: int,
+    path: str = Query(""),
+    show_hidden: bool = Query(False),
+    convs: ConversationService = Depends(get_conversation_service),
+) -> dict:
+    base = await convs.working_dir(conversation_id)
+    target = _resolve_safe(base, path)
+    if not target.is_dir():
+        raise HTTPException(status_code=400, detail="not a directory")
+
+    entries: list[dict] = []
+    for child in target.iterdir():
+        name = child.name
+        _always_visible = {".artifacts"}
+        if not show_hidden and name.startswith(".") and name not in _always_visible:
+            continue
+        if name in _DEFAULT_IGNORE:
+            continue
+        try:
+            stat = child.stat()
+        except OSError:
+            continue
+        is_dir = child.is_dir()
+        entries.append(
+            {
+                "name": name,
+                "kind": "dir" if is_dir else "file",
+                "size": 0 if is_dir else stat.st_size,
+                "mtime": stat.st_mtime,
+                "ext": "" if is_dir else child.suffix.lower(),
+            }
+        )
+
+    entries.sort(key=lambda e: (e["kind"] != "dir", e["name"].lower()))
+    return {"path": path, "entries": entries}
+
+
+@router.get("/{conversation_id}/fs/read")
+async def read_file(
+    conversation_id: int,
+    path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
+) -> StreamingResponse:
+    base = await convs.working_dir(conversation_id)
+    target = _resolve_safe(base, path)
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="file not found")
+    if target.is_dir():
+        raise HTTPException(status_code=400, detail="not a file")
+
+    try:
+        size = target.stat().st_size
+    except OSError as exc:
+        raise HTTPException(status_code=404, detail="file not found") from exc
+    if size > _MAX_READ_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail={"message": "file too large", "size": size, "limit": _MAX_READ_BYTES},
+        )
+
+    mime, _ = mimetypes.guess_type(str(target))
+    if mime is None:
+        mime = "application/octet-stream"
+
+    def _iter():
+        with target.open("rb") as fh:
+            while True:
+                chunk = fh.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+
+    return StreamingResponse(
+        _iter(),
+        media_type=mime,
+        headers={
+            "Cache-Control": "no-cache",
+            "Content-Length": str(size),
+            "Content-Disposition": f'inline; filename="{target.name}"',
+        },
+    )
+
+
+class _WriteBody(BaseModel):
+    path: str = Field(..., min_length=1)
+    content: str
+
+
+_MAX_WRITE_BYTES: int = 25 * 1024 * 1024
+
+
+@router.put("/{conversation_id}/fs/write", status_code=204)
+async def write_file(
+    conversation_id: int,
+    body: _WriteBody,
+    convs: ConversationService = Depends(get_conversation_service),
+) -> None:
+    if len(body.content.encode("utf-8")) > _MAX_WRITE_BYTES:
+        raise HTTPException(status_code=413, detail="content too large")
+    base = await convs.working_dir(conversation_id)
+    base_resolved = base.resolve(strict=True)
+    if body.path.startswith(("/", "\\")):
+        raise HTTPException(status_code=400, detail="absolute path not allowed")
+    target = (base_resolved / body.path).resolve(strict=False)
+    try:
+        target.relative_to(base_resolved)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="path outside workspace") from exc
+    if target.exists() and target.is_dir():
+        raise HTTPException(status_code=400, detail="path is a directory")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(body.content, encoding="utf-8")
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": body.path,
+        }
+    )
+    return None
+
+
+@router.put("/{conversation_id}/fs/write-binary", status_code=204)
+async def write_file_binary(
+    conversation_id: int,
+    request: Request,
+    path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
+) -> None:
+    """Write raw bytes to ``path`` under the conversation's working directory.
+
+    Body is ``application/octet-stream``. Path lives in the query string because
+    the body is the file content. Same safe-path + size guards as the text
+    write endpoint. Broadcasts ``artifact.changed`` on success.
+    """
+    data = await request.body()
+    if len(data) > _MAX_WRITE_BYTES:
+        raise HTTPException(status_code=413, detail="content too large")
+    base = await convs.working_dir(conversation_id)
+    base_resolved = base.resolve(strict=True)
+    if path.startswith(("/", "\\")):
+        raise HTTPException(status_code=400, detail="absolute path not allowed")
+    target = (base_resolved / path).resolve(strict=False)
+    try:
+        target.relative_to(base_resolved)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="path outside workspace") from exc
+    if target.exists() and target.is_dir():
+        raise HTTPException(status_code=400, detail="path is a directory")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": path,
+        }
+    )
+    return None
+
+
+class _RenameBody(BaseModel):
+    from_: str = Field(..., alias="from", min_length=1)
+    to: str = Field(..., min_length=1)
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/{conversation_id}/fs/rename", status_code=204)
+async def rename_path(
+    conversation_id: int,
+    body: _RenameBody,
+    convs: ConversationService = Depends(get_conversation_service),
+) -> None:
+    """Rename/move a file or directory within the conversation's working directory."""
+    base = await convs.working_dir(conversation_id)
+    src = _resolve_safe(base, body.from_)
+    dst = _resolve_safe(base, body.to)
+    if not src.exists():
+        raise HTTPException(status_code=404, detail="source not found")
+    if dst.exists():
+        raise HTTPException(status_code=409, detail="destination already exists")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    src.rename(dst)
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": body.to,
+        }
+    )
+    return None
+
+
+@router.delete("/{conversation_id}/fs/file", status_code=204)
+async def delete_path(
+    conversation_id: int,
+    path: str = Query(..., min_length=1),
+    convs: ConversationService = Depends(get_conversation_service),
+) -> None:
+    """Delete a file (unlink) or directory (recursive) within the working directory."""
+    base = await convs.working_dir(conversation_id)
+    target = _resolve_safe(base, path)
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="not found")
+    if target.is_dir():
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+
+    await _safe_broadcast(
+        {
+            "type": "artifact.changed",
+            "scope": "conv",
+            "conversation_id": conversation_id,
+            "path": path,
+        }
+    )
+    return None

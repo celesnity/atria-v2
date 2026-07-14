@@ -1,10 +1,10 @@
 """The modules API serializes the manifest `remote` block for the web-ui."""
 from __future__ import annotations
 
-from atria.core.modules.store import (
+from minder.core.modules.store import (
     Module, ModuleManifest, ModuleRemoteManifest,
 )
-from atria.web.routes.modules import ModuleManifestOut, ModuleOut
+from minder.web.routes.modules import ModuleManifestOut, ModuleOut
 
 
 def test_module_out_serializes_remote_block(tmp_path):

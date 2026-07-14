@@ -2,7 +2,7 @@
 // opened in the right-hand ArtifactViewer via viewerTabs.openTab().
 //
 // The agent typically writes either an absolute container path
-// (e.g. /root/.atria/workspaces/user-1/new-chat/sample_accounts.csv) or a bare
+// (e.g. /root/.minder/workspaces/user-1/new-chat/sample_accounts.csv) or a bare
 // filename (sample_accounts.csv). openTab() expects a path RELATIVE to the
 // conversation workspace, so we strip the workspace prefix here.
 

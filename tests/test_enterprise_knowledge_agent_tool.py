@@ -75,7 +75,7 @@ def test_handler_output_is_string_not_dict(monkeypatch):
 
 def test_register_exposes_query_tool():
     mod = _load_agent_tools()
-    from atria.core.skill_tools import SkillToolContext, ToolSpec
+    from minder.core.skill_tools import SkillToolContext, ToolSpec
 
     specs = mod.register(SkillToolContext())
     assert isinstance(specs, list) and specs
@@ -88,7 +88,7 @@ def test_register_exposes_query_tool():
 def test_discovered_via_skill_tool_loader():
     # The module SKILL.md declares `tools: agent_tools.py`; the loader pointed at
     # the modules root must register the tool (this is the registry wiring path).
-    from atria.core.skill_tools import SkillToolContext, SkillToolLoader
+    from minder.core.skill_tools import SkillToolContext, SkillToolLoader
 
     specs = SkillToolLoader([REPO / "modules"]).discover_and_register(SkillToolContext())
     names = {s.name for s in specs}

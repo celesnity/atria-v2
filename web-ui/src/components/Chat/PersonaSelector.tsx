@@ -51,7 +51,7 @@ export function PersonaSelector() {
   };
 
   const pillBase =
-    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap';
+    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-medium cursor-pointer transition-colors select-none active:scale-[0.98] whitespace-nowrap';
   const pillStyle = 'bg-bg-400/40 text-text-200 border-hairline-soft hover:bg-bg-400/60';
 
   return (

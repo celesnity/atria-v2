@@ -1,4 +1,4 @@
-# run-backend.ps1 - Atria backend (FastAPI web server) with auto-restart.
+# run-backend.ps1 - Minder backend (FastAPI web server) with auto-restart.
 # Usage:  .\run-backend.ps1            -> binds http://127.0.0.1:8080
 #         .\run-backend.ps1 -Port 9000 -> custom port
 # Loads .env on each (re)start. Ctrl+C to stop.
@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 # Load .env into the process environment. The app reads os.environ directly
-# (e.g. DATABASE_URL, ATRIA_MODEL) and does NOT call load_dotenv itself, so we
+# (e.g. DATABASE_URL, MINDER_MODEL) and does NOT call load_dotenv itself, so we
 # must populate the environment here before launching.
 function Import-DotEnv {
     $envFile = Join-Path $PSScriptRoot '.env'
@@ -41,7 +41,7 @@ function Import-DotEnv {
     }
 }
 
-Write-Host "Atria backend -> http://${AppHost}:${Port}  (Ctrl+C to stop)" -ForegroundColor Cyan
+Write-Host "Minder backend -> http://${AppHost}:${Port}  (Ctrl+C to stop)" -ForegroundColor Cyan
 
 # Free the target port if a stale instance still holds it, so the app always
 # binds $Port. Otherwise find_available_port silently bumps to $Port+1 and the
@@ -61,8 +61,8 @@ while ($true) {
     # the python process killed - not this whole script restarted.
     Import-DotEnv
     Clear-StalePort
-    Write-Host "`n[run-backend] starting: uv run atria --host $AppHost --port $Port" -ForegroundColor DarkGray
-    uv run atria --host $AppHost --port $Port
+    Write-Host "`n[run-backend] starting: uv run minder --host $AppHost --port $Port" -ForegroundColor DarkGray
+    uv run minder --host $AppHost --port $Port
     $code = $LASTEXITCODE
     if ($code -eq 0) {
         Write-Host "[run-backend] exited cleanly (0). Stopping." -ForegroundColor Green

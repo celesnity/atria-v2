@@ -1,24 +1,16 @@
 services:
-  # Core app Postgres is external (remote) — set DATABASE_URL (default points at
-  # the remote atriadb). No in-compose `db` service; schema is created from ORM
-  # models at startup (Base.metadata.create_all).
-
-  # Dedicated PostGIS + pgvector Postgres for the tasco_jarvis_map module
-  # (GeoRAG hybrid retrieval). Separate from the core `db` so the app database
-  # stays on the plain postgres image. Host port 5433.
-  map-db:
-    build: ./modules/tasco_jarvis_map/db
+  db:
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=atria_map
-      - POSTGRES_USER=atria_map
-      - POSTGRES_PASSWORD=atria_map
-    ports:
-      - "5433:5432"
+      - POSTGRES_DB=minder
+      - POSTGRES_USER=minder
+      - POSTGRES_PASSWORD=minder
     volumes:
-      - map_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atria_map -d atria_map"]
+      test: ["CMD-SHELL", "pg_isready -U minder -d minder"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,111 +21,92 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - ADMINER_DEFAULT_SERVER=14.225.206.18
-      - ADMINER_DEFAULT_DB=atriadb
-      - ADMINER_DEFAULT_USERNAME=postgres
+      - ADMINER_DEFAULT_SERVER=db
+      - ADMINER_DEFAULT_DB=minder
+      - ADMINER_DEFAULT_USERNAME=minder
+      - ADMINER_DEFAULT_PASSWORD=minder
       - ADMINER_DESIGN=pepa-linha
 
   # Single public entry point. nginx is the only service that publishes a host
-  # port; it reverse-proxies the whole app (UI + /api + /ws) to `atria`. Change
+  # port; it reverse-proxies the whole app (UI + /api + /ws) to `minder`. Change
   # the left side of "8080:80" to move the one exposed port.
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
+      - KC_DB_USERNAME=minder
+      - KC_DB_PASSWORD=minder
+      # Full URL fixes the token issuer to http://localhost:8082/realms/minder for
+      # ALL clients (browser AND in-compose backchannel), so it matches what Minder
+      # validates (KEYCLOAK_PUBLIC_URL). Without a fixed hostname, a token fetched
+      # via keycloak:8080 gets issuer localhost:8080 → issuer-mismatch 401.
+      - KC_HOSTNAME=http://localhost:8082
+      - KC_HTTP_ENABLED=true
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Substituted into realm-export.json's minder-module client secret at
+      # --import-realm (Keycloak replaces ${VAR} via System.getenv by default).
+      # Must match MINDER_MODULE_CLIENT_SECRET on module-template-web/worker.
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
     ports:
       - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - atria
+      - minder
 
-  atria:
+  minder:
     build: .
-    # Internal-only — reached through nginx. No host port published here so the
-    # stack exposes a single port (see the nginx service above).
-    expose:
-      - "8080"
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      # vetc_copilot (VETC Auto-Pilot) Brain — override in .env
-      - VA_BRAIN_PROVIDER=${VA_BRAIN_PROVIDER:-openrouter}
-      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
-      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
-      # vetc_copilot real VETC Mini App integration (credentials from .env)
-      - VETC_ENV=${VETC_ENV:-uat}
-      - VETC_CLIENT_ID=${VETC_CLIENT_ID:-}
-      - VETC_CLIENT_SECRET=${VETC_CLIENT_SECRET:-}
-      - VETC_TERMINAL_ID=${VETC_TERMINAL_ID:-com.vetc.charging}
-      - VETC_MINI_APP_ID=${VETC_MINI_APP_ID:-}
-      - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
-      - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
-      - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
-      - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
-      - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
-      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
-      # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_QDRANT_URL=http://qdrant:6333
-      # - MC_NEO4J_URI=bolt://neo4j:7687
-      # - MC_NEO4J_USER=neo4j
-      # - MC_NEO4J_PASSWORD=atria-neo4j
-      # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
-      # synthesis; Qdrant on the compose network (override models in .env).
-      - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_INDEX_EMBED_MODEL=${EK_INDEX_EMBED_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
-      - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
-      - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
-      - EK_QDRANT_URL=${EK_QDRANT_URL:-http://14.225.206.18:6333}
-      - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
-      - QDRANT_URL=${QDRANT_URL:-http://14.225.206.18:6333}
-      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
-      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
-      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
-      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
-      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
-      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
-      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
-      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
-      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
-      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
-      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
-      - EK_BM25_K1=${EK_BM25_K1:-1.5}
-      - EK_BM25_B=${EK_BM25_B:-0.75}
+      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
+      - MINDER_MODEL=${MINDER_MODEL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
+      - MINDER_REDIS_URL=redis://redis:6379/0
+      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
       # Speech-to-text backend (voice input). Hard-coded to the internal `asr`
       # sidecar so it is correct regardless of the host-oriented value in .env.
-      - ATRIA_ASR_BASE_URL=http://asr:9000/v1
+      - MINDER_ASR_BASE_URL=http://asr:9000/v1
       # Externally-hosted Keycloak — both URLs point at the public instance
       # (browser and backend reach it over the same HTTPS endpoint). Values come
       # from .env; issuer is validated against KEYCLOAK_PUBLIC_URL.
       - AUTH_MODE=${AUTH_MODE:-keycloak}
       - KEYCLOAK_URL=${KEYCLOAK_URL}
       - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
-      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-atria}
-      - KEYCLOAK_BACKEND_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID:-atria-backend}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-minder}
+      - KEYCLOAK_BACKEND_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID:-minder-backend}
       - KEYCLOAK_BACKEND_CLIENT_SECRET=${KEYCLOAK_BACKEND_CLIENT_SECRET}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - atria_data:/home/atria/.atria
+      - minder_data:/home/minder/.minder
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
 
-  # Redis is external (remote) — set ATRIA_REDIS_URL (default points at the
-  # remote host). No in-compose redis service; it backs the TaskIQ broker, job
-  # state, blackboard, and message bus.
+  # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
+  # Loopback-published so a HOST-run backend (uvicorn on the host, not in-compose)
+  # can reach it at localhost:6379. In-compose services use redis:6379.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # CPU speech-to-text sidecar — nvidia/nemotron-3.5-asr-streaming-0.6b via HF
   # transformers, exposing an OpenAI-compatible /v1/audio/transcriptions. No GPU
-  # needed (push-to-talk latency ~2-6s per short clip). Swap ATRIA_ASR_BASE_URL
+  # needed (push-to-talk latency ~2-6s per short clip). Swap MINDER_ASR_BASE_URL
   # to a managed/GPU endpoint to replace it with zero code change. Not gated by a
   # profile, so it starts with the normal `docker compose up`.
   # asr:
@@ -150,155 +123,95 @@ services:
   #     start_period: 60s
   #   restart: unless-stopped
 
-
-  # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
-  # divide + parallel). Shares modules + ~/.atria with the web service so
-  # dispatched work and the dashboard read/write the same data.
-  atria-worker:
-    build: .
+  # ---- module_template (full-stack SDK reference) -------------------------
+  # MinIO — S3-compatible media store for module_template (own bucket).
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - ATRIA_API_BASE_URL=${ATRIA_API_BASE_URL}
-      - ATRIA_MODEL=${ATRIA_MODEL}
-      # vetc_copilot (VETC Auto-Pilot) Brain — override in .env
-      - VA_BRAIN_PROVIDER=${VA_BRAIN_PROVIDER:-openrouter}
-      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
-      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
-      # vetc_copilot real VETC Mini App integration (credentials from .env)
-      - VETC_ENV=${VETC_ENV:-uat}
-      - VETC_CLIENT_ID=${VETC_CLIENT_ID:-}
-      - VETC_CLIENT_SECRET=${VETC_CLIENT_SECRET:-}
-      - VETC_TERMINAL_ID=${VETC_TERMINAL_ID:-com.vetc.charging}
-      - VETC_MINI_APP_ID=${VETC_MINI_APP_ID:-}
-      - VETC_BASE_URL=${VETC_BASE_URL:-http://vetc-sandbox:9099/partner-gateway/v1}
-      - VETC_IPN_URL=${VETC_IPN_URL:-http://vetc-copilot:8770/ipn}
-      - VETC_IPN_SECRET=${VETC_IPN_SECRET:-sandbox-hmac-secret}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:oonzmjnltpdk7gai@14.225.206.18:5432/atriadb}
-      - MAP_DATABASE_URL=${MAP_DATABASE_URL_DOCKER:-postgresql://atria_map:atria_map@map-db:5432/atria_map}
-      - ATRIA_MAP_BACKEND=${ATRIA_MAP_BACKEND:-db}
-      - ATRIA_REDIS_URL=${ATRIA_REDIS_URL:-redis://14.225.206.18:6379/0}
-      - ATRIA_DISABLED_MODULES=${ATRIA_DISABLED_MODULES:-}
-      # enterprise_knowledge (EK) module — OpenRouter embeddings + gpt-4o-mini
-      # synthesis; Qdrant on the compose network (override models in .env).
-      - EK_INDEX_EMBED_BASE_URL=${EK_INDEX_EMBED_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_INDEX_EMBED_MODEL=${EK_INDEX_EMBED_MODEL:-nvidia/llama-nemotron-embed-vl-1b-v2:free}
-      - EK_SYNTHESIS_BASE_URL=${EK_SYNTHESIS_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_SYNTHESIS_MODEL=${EK_SYNTHESIS_MODEL:-openai/gpt-4o-mini}
-      - EK_EMBED_DIM=${EK_EMBED_DIM:-2048}
-      - EK_QDRANT_URL=${EK_QDRANT_URL:-http://14.225.206.18:6333}
-      - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
-      - QDRANT_URL=${QDRANT_URL:-http://14.225.206.18:6333}
-      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
-      # enterprise_knowledge knowledge graph — reuse the shared neo4j service.
-      - EK_NEO4J_URI=${EK_NEO4J_URI:-bolt://neo4j:7687}
-      - EK_NEO4J_USER=${EK_NEO4J_USER:-neo4j}
-      - EK_NEO4J_PASSWORD=${EK_NEO4J_PASSWORD:-atria-neo4j}
-      - EK_GRAPH_ENABLED=${EK_GRAPH_ENABLED:-0}
-      - EK_GRAPH_EXTRACT=${EK_GRAPH_EXTRACT:-0}
-      - EK_GRAPH_HOPS=${EK_GRAPH_HOPS:-1}
-      - EK_GRAPH_MAX_NEIGHBORS=${EK_GRAPH_MAX_NEIGHBORS:-20}
-      - EK_KG_EXTRACT_BASE_URL=${EK_KG_EXTRACT_BASE_URL:-https://openrouter.ai/api/v1}
-      - EK_KG_EXTRACT_MODEL=${EK_KG_EXTRACT_MODEL:-openai/gpt-4o-mini}
-      - EK_SEARCH_MODE=${EK_SEARCH_MODE:-hybrid}
-      - EK_BM25_K1=${EK_BM25_K1:-1.5}
-      - EK_BM25_B=${EK_BM25_B:-0.75}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - atria_data:/home/atria/.atria
-      - ./modules:/app/modules
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        mkdir -p /home/atria/.atria &&
-        : "$${ATRIA_MODEL:?ATRIA_MODEL must be set (add it to .env)}" &&
-        : "$${ATRIA_API_BASE_URL:?ATRIA_API_BASE_URL must be set (add it to .env)}" &&
-        printf '{"model":"%s","api_base_url":"%s"}\n'
-          "$${ATRIA_MODEL}"
-          "$${ATRIA_API_BASE_URL}"
-          > /home/atria/.atria/settings.json &&
-        exec taskiq worker atria.core.tasks.broker:broker atria.core.tasks.tasks
-
-  # Local, spec-faithful VETC partner-gateway simulator (VMA Auth + Payment).
-  # Lets vetc_copilot's real vetc_client run end-to-end without VETC creds.
-  vetc-sandbox:
-    build: .
-    entrypoint: []
-    command: ["python", "modules/vetc_copilot/tools/vetc_sandbox.py"]
-    environment:
-      - SANDBOX_CLIENT_ID=${SANDBOX_CLIENT_ID:-sandbox-client}
-      - SANDBOX_CLIENT_SECRET=${SANDBOX_CLIENT_SECRET:-sandbox-secret}
-      - SANDBOX_HMAC_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
-      - SANDBOX_AUTOCOMPLETE_SECONDS=${SANDBOX_AUTOCOMPLETE_SECONDS:-2}
-      - SANDBOX_PORT=9099
-    expose:
-      - "9099"
-    volumes:
-      - ./modules:/app/modules
-
-  # vetc_copilot module `serve`, run persistently as the /ipn receiver so the
-  # sandbox can push signed payment-completion callbacks back to the module.
-  vetc-copilot:
-    build: .
-    entrypoint: []
-    command: ["python", "modules/vetc_copilot/scripts/autopilot.py", "serve", "--port", "8770"]
-    environment:
-      - VETC_IPN_SECRET=${SANDBOX_HMAC_SECRET:-sandbox-hmac-secret}
-      - VA_BRAIN_MODEL=${VA_BRAIN_MODEL:-openai/gpt-4o-mini}
-      - VA_BRAIN_BASE_URL=${VA_BRAIN_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-    expose:
-      - "8770"
-    volumes:
-      - ./modules:/app/modules
-
-  # Opt-in only (profile "embed-tei"). Embeddings default to an external
-  # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
-  # this local embedder explicitly with `--profile embed-tei` when wanted. Note
-  # cpu-1.9 has no arm64 image, so on Apple Silicon it runs under emulation.
-  # tei:
-  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-  #   command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
-  #   profiles: ["embed-tei"]
-  #   ports:
-  #     - "8083:80"
-  #   volumes:
-  #     - tei_data:/data
-  #   restart: unless-stopped
-
-  # Qdrant is external (remote) — set EK_QDRANT_URL / MC_QDRANT_URL. No
-  # in-compose qdrant service.
-
-  neo4j:
-    image: neo4j:5
-    environment:
-      - NEO4J_AUTH=neo4j/atria-neo4j
+      - MINIO_ROOT_USER=${MT_S3_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MT_S3_SECRET_KEY:-minioadmin}
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      # Host 9002 → container 9000 (S3 API); asr already uses host 9000. In-compose
+      # services still reach MinIO at minio:9000. Console on 9001.
+      - "9002:9000"
+      - "9001:9001"
     volumes:
-      - neo4j_data:/data
+      - module_template_media:/data
     restart: unless-stopped
 
-  # GPU-dependent. On a no-GPU host, do NOT start this service; instead point
-  # MC_SYNTHESIS_BASE_URL / MC_KG_EXTRACT_BASE_URL at an external endpoint.
-  # copilot-llm:
-  #   image: vllm/vllm-openai:latest
-  #   command: ["--model", "Qwen/Qwen2.5-1.5B-Instruct", "--port", "8000"]
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - hf_cache:/root/.cache/huggingface
-  #   restart: unless-stopped
-  #   profiles: ["gpu"]
+  # module_template connector (web). Reuses the shared `db` (own mt_* tables +
+  # read-only Minder reads), `redis` (DB index /2), and `minio`. Announces to
+  # Minder on :8080 and reverse-pushes via the minder-module Keycloak client.
+  module-template-web:
+    build:
+      context: .
+      dockerfile: modules/module_template/backend/Dockerfile
+    ports:
+      - "9300:9300"
+    environment:
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - MT_PUBLIC_BASE=http://localhost:9300
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - MT_REDIS_URL=redis://redis:6379/2
+      - MT_S3_ENDPOINT=http://minio:9000
+      - MT_S3_BUCKET=module-template
+      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
+      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      # Minder's connector registry is in-memory and cleared on every Minder restart.
+      # A short heartbeat re-registers this live module quickly (<=10s) rather than
+      # leaving the dashboard's health poll 400ing for up to the 30s default.
+      - MINDER_MODULE_HEARTBEAT_SEC=10
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9300/connector/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # module_template Celery worker — runs background jobs; reverse-pushes live
+  # progress blocks + artifacts. Same DB/Redis/S3 + announce creds as the web.
+  module-template-worker:
+    build:
+      context: .
+      dockerfile: modules/module_template/worker/Dockerfile
+    environment:
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - MT_REDIS_URL=redis://redis:6379/2
+      - MT_S3_ENDPOINT=http://minio:9000
+      - MT_S3_BUCKET=module-template
+      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
+      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
-  atria_data:
-  map_postgres_data:
-  # tei_data:
-  neo4j_data:
-  # hf_cache:
-  # asr_models:
-  # mc_audit:
+  minder_data:
+  postgres_data:
+  asr_models:
+  module_template_media:

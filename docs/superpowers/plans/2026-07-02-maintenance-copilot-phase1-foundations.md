@@ -15,7 +15,7 @@
 - Line length: 100 characters (Black + Ruff).
 - Type hints on public functions; Google-style docstrings.
 - Tests run with `uv run pytest`. Module tests live at `tests/test_maintenance_copilot_*.py` and load the CLI via `importlib` (mirror `tests/test_rag_module.py`).
-- Model configuration is **module-local only** — no coupling to Atria's provider system.
+- Model configuration is **module-local only** — no coupling to Minder's provider system.
 - All models run locally; OEM content must never be sent to a third party. The synthesis/extraction roles may fall back to an external `base_url` only via config, for no-GPU machines.
 - Commits must NOT include a `Co-Authored-By: Claude` trailer (project rule).
 - Module scripts resolve paths relative to the module dir: `ROOT = Path(__file__).resolve().parent.parent`; writable state lives under `ROOT/data` (gitignored).
@@ -104,7 +104,7 @@ Expected: FAIL — `FileNotFoundError` / `spec is None` (config.py does not exis
 Maps four feature *roles* to OpenAI-compatible endpoints. Everything is read
 from ``MC_<ROLE>_<FIELD>`` environment variables with local-service defaults,
 so the module runs against the docker-compose sidecars with no configuration.
-This layer is deliberately self-contained: it does not touch Atria's global
+This layer is deliberately self-contained: it does not touch Minder's global
 provider system.
 """
 
@@ -522,7 +522,7 @@ def _build_probes() -> Dict[str, Callable[[], None]]:
 
         uri = _service_url("MC_NEO4J_URI", "bolt://localhost:7687")
         user = _env("MC_NEO4J_USER", "neo4j")
-        pwd = _env("MC_NEO4J_PASSWORD", "atria-neo4j")
+        pwd = _env("MC_NEO4J_PASSWORD", "minder-neo4j")
         driver = GraphDatabase.driver(uri, auth=(user, pwd))
         try:
             driver.verify_connectivity()
@@ -581,14 +581,14 @@ git commit -m "feat(maintenance_copilot): CLI skeleton with health command"
 ### Task 4: docker-compose sidecars + env wiring
 
 **Files:**
-- Modify: `docker-compose.dev.yml` (add `tei`, `qdrant`, `neo4j`, `copilot-llm` services + volumes; add `MC_*` env to `atria` and `atria-worker`)
+- Modify: `docker-compose.dev.yml` (add `tei`, `qdrant`, `neo4j`, `copilot-llm` services + volumes; add `MC_*` env to `minder` and `minder-worker`)
 - Modify: `docker-compose.yml` (same service additions)
 - Modify: `.env` (add `MC_*` defaults pointing at compose service DNS names)
 - Modify: `.env.example` (document the same keys)
 
 **Interfaces:**
 - Consumes: the `MC_*` env keys read by `config.load_config` (Task 1) and `_build_probes` (Task 3).
-- Produces: a running compose stack where `copilot.py health` returns all-ok from inside the `atria` container.
+- Produces: a running compose stack where `copilot.py health` returns all-ok from inside the `minder` container.
 
 - [ ] **Step 1: Add the four services + volumes to `docker-compose.dev.yml`**
 
@@ -615,7 +615,7 @@ Add these services under the top-level `services:` map (sibling of `db`, `redis`
   neo4j:
     image: neo4j:5
     environment:
-      - NEO4J_AUTH=neo4j/atria-neo4j
+      - NEO4J_AUTH=neo4j/minder-neo4j
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -636,7 +636,7 @@ Add these services under the top-level `services:` map (sibling of `db`, `redis`
     profiles: ["gpu"]
 ```
 
-Add to the bottom-level `volumes:` map (currently `atria_data`, `postgres_data`):
+Add to the bottom-level `volumes:` map (currently `minder_data`, `postgres_data`):
 
 ```yaml
   tei_data:
@@ -645,9 +645,9 @@ Add to the bottom-level `volumes:` map (currently `atria_data`, `postgres_data`)
   hf_cache:
 ```
 
-- [ ] **Step 2: Wire `MC_*` env into the `atria` and `atria-worker` services**
+- [ ] **Step 2: Wire `MC_*` env into the `minder` and `minder-worker` services**
 
-In `docker-compose.dev.yml`, in BOTH the `atria` and `atria-worker` `environment:` lists, add (right after the existing `ATRIA_DISABLED_MODULES` line added earlier):
+In `docker-compose.dev.yml`, in BOTH the `minder` and `minder-worker` `environment:` lists, add (right after the existing `MINDER_DISABLED_MODULES` line added earlier):
 
 ```yaml
       - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
@@ -657,14 +657,14 @@ In `docker-compose.dev.yml`, in BOTH the `atria` and `atria-worker` `environment
       - MC_QDRANT_URL=http://qdrant:6333
       - MC_NEO4J_URI=bolt://neo4j:7687
       - MC_NEO4J_USER=neo4j
-      - MC_NEO4J_PASSWORD=atria-neo4j
+      - MC_NEO4J_PASSWORD=minder-neo4j
 ```
 
 (The `${...:-default}` form lets a no-GPU host override the LLM endpoint via `.env` without editing compose.)
 
 - [ ] **Step 3: Apply the same service + volume additions to `docker-compose.yml`**
 
-Repeat Step 1's service and volume blocks in `docker-compose.yml`, and repeat Step 2's env additions in that file's `atria` and `atria-worker` `environment:` lists. (Use the same DNS names; the prod compose shares the network model.)
+Repeat Step 1's service and volume blocks in `docker-compose.yml`, and repeat Step 2's env additions in that file's `minder` and `minder-worker` `environment:` lists. (Use the same DNS names; the prod compose shares the network model.)
 
 - [ ] **Step 4: Add `MC_*` documentation to `.env` and `.env.example`**
 
@@ -690,7 +690,7 @@ Run (requires Docker + a GPU for `copilot-llm`; on a no-GPU host, start without 
 ```bash
 docker compose -f docker-compose.dev.yml --profile gpu up -d tei qdrant neo4j copilot-llm
 # wait for TEI to finish pulling the model, then:
-docker compose -f docker-compose.dev.yml exec atria \
+docker compose -f docker-compose.dev.yml exec minder \
     python /app/modules/maintenance_copilot/scripts/copilot.py health
 ```
 

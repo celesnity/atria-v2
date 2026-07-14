@@ -1,4 +1,4 @@
-"""Codebase indexer for generating concise ATRIA.md summaries."""
+"""Codebase indexer for generating concise MINDER.md summaries."""
 
 from __future__ import annotations
 

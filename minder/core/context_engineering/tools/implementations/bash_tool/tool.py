@@ -1,0 +1,1045 @@
+"""Main BashTool class with execute() method."""
+
+import os
+import platform
+import re
+import select
+import subprocess
+import time
+from pathlib import Path
+from typing import Any, Optional, Union
+
+from minder.models.config import AppConfig
+from minder.models.operation import BashResult, Operation
+from minder.core.context_engineering.tools.implementations.base import BaseTool
+from minder.core.context_engineering.tools.implementations.bash_tool.security import SecurityMixin
+from minder.core.context_engineering.tools.implementations.bash_tool.process import ProcessMixin
+from minder.web.ui_bridge import get_current_ui_callback
+
+# Re-exported for backwards compatibility (callers import these from this module).
+from minder.core.context_engineering.tools.implementations.bash_tool.constants import (  # noqa: F401,E501
+    SAFE_COMMANDS,
+    DANGEROUS_PATTERNS,
+    INTERACTIVE_COMMANDS,
+    IDLE_TIMEOUT,
+    MAX_TIMEOUT,
+    MAX_OUTPUT_CHARS,
+    KEEP_HEAD_CHARS,
+    KEEP_TAIL_CHARS,
+    MAX_LLM_METADATA_CHARS,
+    LLM_KEEP_HEAD_CHARS,
+    LLM_KEEP_TAIL_CHARS,
+)
+
+
+def _build_exec_env(
+    working_dir: Union[str, Path],
+    overrides: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
+    """Compose the subprocess environment for bash tool calls.
+
+    Adds Minder-specific vars (session/conversation id, project slug,
+    workspace, API base) on top of os.environ. Pre-existing values
+    in os.environ take precedence so explicit overrides win.
+
+    ``overrides`` are applied last and win unconditionally. The background
+    worker uses this to inject the session id / workspace from the task payload,
+    since it has no UI callback to read them from and mutating os.environ would
+    race across concurrently-running jobs.
+    """
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+
+    session_id: Optional[str] = None
+    try:
+        cb = get_current_ui_callback()
+        session_id = getattr(cb, "session_id", None) if cb else None
+    except Exception:  # noqa: BLE001 — best-effort env injection
+        pass
+
+    if session_id:
+        env.setdefault("MINDER_SESSION_ID", str(session_id))
+        env.setdefault("MINDER_CONVERSATION_ID", str(session_id))
+        env.setdefault("MINDER_PROJECT_SLUG", f"conv-{session_id}")
+
+    env.setdefault(
+        "MINDER_API_BASE",
+        os.environ.get("MINDER_API_BASE", "http://127.0.0.1:8080"),
+    )
+    env.setdefault("MINDER_WORKSPACE", str(working_dir))
+    env.setdefault("MINDER_SESSION_DIR", str(working_dir))
+
+    if overrides:
+        for key, value in overrides.items():
+            if value:
+                env[key] = str(value)
+    return env
+
+
+def truncate_output(
+    text: str,
+    max_chars: int = MAX_OUTPUT_CHARS,
+    for_llm: bool = False,
+) -> str:
+    """Truncate output by removing the middle when it exceeds the limit.
+
+    Keeps head and tail characters so both context and final error messages
+    are preserved.
+
+    Args:
+        text: The output text to truncate.
+        max_chars: Maximum allowed characters. Ignored when for_llm is True.
+        for_llm: If True, use the more compact LLM metadata cap (5K head + 5K tail)
+            to keep LLM context lean while the user still sees full output in the TUI.
+    """
+    if for_llm:
+        max_chars = MAX_LLM_METADATA_CHARS
+        head = LLM_KEEP_HEAD_CHARS
+        tail = LLM_KEEP_TAIL_CHARS
+    else:
+        head = KEEP_HEAD_CHARS
+        tail = KEEP_TAIL_CHARS
+
+    if len(text) <= max_chars:
+        return text
+    removed = len(text) - head - tail
+    return text[:head] + f"\n... (truncated {removed} chars) ...\n" + text[-tail:]
+
+
+class BashTool(SecurityMixin, ProcessMixin, BaseTool):
+    """Tool for executing bash commands with safety checks."""
+
+    @property
+    def name(self) -> str:
+        """Tool name."""
+        return "execute_command"
+
+    @property
+    def description(self) -> str:
+        """Tool description."""
+        return "Execute a bash command safely"
+
+    def __init__(
+        self,
+        config: AppConfig,
+        working_dir: Path,
+        task_manager: Optional[Any] = None,
+        env_overrides: Optional[dict[str, str]] = None,
+    ):
+        """Initialize bash tool.
+
+        Args:
+            config: Application configuration
+            working_dir: Working directory for command execution
+            task_manager: Optional BackgroundTaskManager for tracking background tasks
+            env_overrides: Optional env vars injected into every command's
+                subprocess environment (winning over os.environ). The background
+                worker uses this to pass the session id / workspace from the task
+                payload since it has no UI callback.
+        """
+        self.config = config
+        self.working_dir = working_dir
+        self._task_manager = task_manager
+        self._env_overrides = env_overrides or {}
+        # Track background processes: {pid: {process, command, start_time, stdout_lines, stderr_lines}}
+        self._background_processes = {}
+
+    # Server command patterns - these should run in background mode with PTY
+    _SERVER_PATTERNS = (
+        # Python web servers
+        r"flask\s+run",
+        r"python.*app\.py",
+        r"python.*manage\.py\s+runserver",
+        r"django.*runserver",
+        r"uvicorn",
+        r"gunicorn",
+        r"python.*-m\s+http\.server",
+        r"python.*-m\s+uvicorn",
+        r"python.*-m\s+gunicorn",
+        r"hypercorn",
+        r"daphne",
+        r"waitress",
+        r"tornado",
+        r"aiohttp",
+        r"sanic",
+        r"fastapi",
+        # Node.js servers
+        r"npm\s+(run\s+)?(start|dev|serve)",
+        r"yarn\s+(run\s+)?(start|dev|serve)",
+        r"pnpm\s+(run\s+)?(start|dev|serve)",
+        r"bun\s+(run\s+)?(start|dev|serve)",
+        r"node.*server",
+        r"nodemon",
+        r"next\s+(dev|start)",
+        r"nuxt\s+(dev|start)",
+        r"vite(\s+dev)?$",
+        r"webpack.*(dev.?server|serve)",
+        r"ts-node.*server",
+        # Ruby/PHP/Other
+        r"rails\s+server",
+        r"php.*artisan\s+serve",
+        r"php\s+-S\s+",
+        r"hugo\s+server",
+        r"jekyll\s+serve",
+        # Go
+        r"go\s+run.*server",
+        r"(?:^|[;&|]\s*)air\b",  # Go live reload (anchored: only as a command, not the substring "air")
+        # Rust
+        r"cargo\s+watch",
+        # Java
+        r"mvn.*spring-boot:run",
+        r"gradle.*bootRun",
+        # Generic
+        r"live-server",
+        r"http-server",
+        r"serve\s+-",
+        r"browser-sync",
+    )
+
+    def _is_server_command(self, command: str) -> bool:
+        """Check if command is a server/daemon that should run in background."""
+        return any(re.search(pattern, command, re.IGNORECASE) for pattern in self._SERVER_PATTERNS)
+
+    def _execute_foreground_windows(
+        self,
+        *,
+        exec_command: str,
+        command: str,
+        work_dir: Path,
+        exec_env: dict,
+        capture_output: bool,
+        output_callback: Optional[Any],
+        operation: Optional[Operation],
+        start_time: float,
+        use_stdin_confirm: bool,
+    ) -> BashResult:
+        """Synchronous foreground execution on Windows.
+
+        The POSIX path streams output by select()-polling pipe file descriptors,
+        which Windows does not support (select() there works only on sockets), so
+        that loop captures nothing. Foreground commands are short-lived CLIs --
+        servers already route to the background branch -- so here we capture with
+        communicate() under the same MAX_TIMEOUT, killing and draining on timeout.
+        Output is delivered to output_callback line-by-line after completion
+        (no live streaming or ESC-interrupt on Windows).
+        """
+        process = subprocess.Popen(
+            exec_command,
+            shell=True,
+            stdin=subprocess.PIPE if use_stdin_confirm else None,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.PIPE if capture_output else None,
+            text=True,
+            bufsize=1,
+            cwd=str(work_dir),
+            env=exec_env,
+        )
+
+        # Windows can't use the `yes |` wrapper; feed confirmations via stdin.
+        confirm_input = "y\ny\ny\ny\ny\n" if use_stdin_confirm else None
+
+        timed_out = False
+        try:
+            stdout_text, stderr_text = process.communicate(input=confirm_input, timeout=MAX_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.kill()
+            try:
+                stdout_text, stderr_text = process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                stdout_text, stderr_text = "", ""
+
+        stdout_text = (stdout_text or "").rstrip() if capture_output else ""
+        stderr_text = (stderr_text or "").rstrip() if capture_output else ""
+
+        # Deliver captured output post-hoc (Windows has no live streaming here).
+        if capture_output and output_callback:
+            for _line in stdout_text.splitlines():
+                try:
+                    output_callback(_line, is_stderr=False)
+                except Exception:
+                    pass
+            for _line in stderr_text.splitlines():
+                try:
+                    output_callback(_line, is_stderr=True)
+                except Exception:
+                    pass
+
+        duration = time.time() - start_time
+
+        if timed_out:
+            error = f"Command exceeded maximum runtime of {MAX_TIMEOUT} seconds"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout=stdout_text,
+                stderr=stderr_text or error,
+                duration=duration,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        success = process.returncode == 0
+        if operation:
+            if success:
+                operation.mark_success()
+            else:
+                operation.mark_failed(f"Command failed with exit code {process.returncode}")
+
+        return BashResult(
+            success=success,
+            command=command,
+            exit_code=process.returncode,
+            stdout=stdout_text,
+            stderr=stderr_text,
+            duration=duration,
+            operation_id=operation.id if operation else None,
+        )
+
+    def _execute_background_windows(
+        self,
+        *,
+        exec_command: str,
+        command: str,
+        work_dir: Path,
+        exec_env: dict,
+        capture_output: bool,
+        output_callback: Optional[Any],
+        operation: Optional[Operation],
+        start_time: float,
+    ) -> BashResult:
+        """Background execution on Windows, where pty/termios do not exist.
+
+        Mirrors the POSIX PTY branch in execute(): launch the process, capture
+        startup output for a short window, then either return the completed
+        output (fast-exiting commands such as CLI scripts) or register a
+        still-running process as a background task. A daemon drainer thread
+        feeds captured lines through a queue because select() cannot poll
+        pipes on Windows.
+        """
+        import queue as _queue
+        import threading as _threading
+
+        process = subprocess.Popen(
+            exec_command,
+            shell=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE if capture_output else None,
+            stderr=subprocess.STDOUT if capture_output else None,  # merge into stdout
+            text=True,
+            bufsize=1,
+            cwd=str(work_dir),
+            env=exec_env,
+        )
+
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []  # merged into stdout on Windows; kept for parity
+
+        if capture_output and process.stdout is not None:
+            line_q: "_queue.Queue[Optional[str]]" = _queue.Queue()
+
+            def _drain(stream: Any) -> None:
+                try:
+                    for line in stream:
+                        line_q.put(line)
+                finally:
+                    line_q.put(None)  # sentinel: stdout closed (process exited)
+
+            _threading.Thread(target=_drain, args=(process.stdout,), daemon=True).start()
+
+            max_capture_time = 20.0  # Maximum time to wait for startup output
+            idle_timeout = 3.0  # Stop if no output for this long
+            start_capture = time.time()
+            last_output_time = start_capture
+
+            while time.time() - start_capture < max_capture_time:
+                try:
+                    line = line_q.get(timeout=0.1)
+                except _queue.Empty:
+                    if process.poll() is not None:
+                        break
+                    elapsed = time.time() - start_capture
+                    idle_time = time.time() - last_output_time
+                    if elapsed > 1.0 and idle_time >= idle_timeout:
+                        break
+                    continue
+                if line is None:  # drainer sentinel: process closed stdout
+                    break
+                last_output_time = time.time()
+                stdout_lines.append(line if line.endswith("\n") else line + "\n")
+                if output_callback:
+                    try:
+                        output_callback(line.rstrip("\n"), is_stderr=False)
+                    except Exception:
+                        pass
+
+        exit_code = process.poll()
+
+        # Fast-exiting command: return its real output (e.g. inventory.py CLI).
+        if exit_code is not None and exit_code != 0:
+            if operation:
+                operation.mark_failed(f"Command failed with exit code {exit_code}")
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=exit_code,
+                stdout="".join(stdout_lines).rstrip(),
+                stderr="".join(stderr_lines).rstrip(),
+                duration=time.time() - start_time,
+                operation_id=operation.id if operation else None,
+            )
+
+        if exit_code == 0:
+            if operation:
+                operation.mark_success()
+            return BashResult(
+                success=True,
+                command=command,
+                exit_code=0,
+                stdout="".join(stdout_lines).rstrip(),
+                stderr="".join(stderr_lines).rstrip(),
+                duration=time.time() - start_time,
+                operation_id=operation.id if operation else None,
+            )
+
+        # Still running: register as a background process (real server, etc.).
+        self._background_processes[process.pid] = {
+            "process": process,
+            "command": command,
+            "start_time": start_time,
+            "stdout_lines": stdout_lines,
+            "stderr_lines": stderr_lines,
+        }
+        if operation:
+            operation.mark_success()
+
+        stdout_text = "".join(stdout_lines).rstrip()
+        background_task_id = None
+        if self._task_manager:
+            task = self._task_manager.register_task(
+                command=command,
+                pid=process.pid,
+                process=process,
+                pty_master_fd=None,  # no PTY on Windows
+                initial_output=stdout_text,
+            )
+            background_task_id = task.task_id
+
+        return BashResult(
+            success=True,
+            command=command,
+            exit_code=0,  # Process started
+            stdout=stdout_text,
+            stderr="".join(stderr_lines).rstrip(),
+            duration=time.time() - start_time,
+            operation_id=operation.id if operation else None,
+            background_task_id=background_task_id,
+        )
+
+    def execute(
+        self,
+        command: str,
+        timeout: int = 30,
+        capture_output: bool = True,
+        working_dir: Optional[str] = None,
+        env: Optional[dict] = None,
+        background: bool = False,
+        operation: Optional[Operation] = None,
+        task_monitor: Optional[Any] = None,
+        auto_confirm: bool = False,
+        output_callback: Optional[Any] = None,
+    ) -> BashResult:
+        """Execute a bash command.
+
+        Args:
+            command: Command to execute
+            timeout: Timeout in seconds
+            capture_output: Whether to capture stdout/stderr
+            working_dir: Working directory (defaults to self.working_dir)
+            env: Environment variables
+            background: Run in background (not implemented yet)
+            operation: Operation object for tracking
+            task_monitor: Optional TaskMonitor for interrupt support
+            auto_confirm: Automatically confirm y/n prompts for interactive commands
+            output_callback: Optional callback(line, is_stderr=False) for streaming output
+
+        Returns:
+            BashResult with execution details
+
+        Raises:
+            PermissionError: If command execution is not permitted
+            ValueError: If command is dangerous
+        """
+        # Check if bash execution is enabled
+        if not self.config.permissions.bash.enabled:
+            error = "Bash execution is disabled in configuration"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr=error,
+                duration=0.0,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        # Check if command is allowed
+        if not self._is_command_allowed(command):
+            error = f"Command not allowed: {command}"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr=error,
+                duration=0.0,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        # Check for dangerous patterns
+        if self._is_dangerous(command):
+            error = f"Dangerous command blocked: {command}"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr=error,
+                duration=0.0,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        # Resolve working directory
+        work_dir = Path(working_dir) if working_dir else self.working_dir
+
+        # Auto-detect server commands and run them in background mode
+        # This ensures proper PTY-based output capture for servers like Flask/Django
+        if not background and self._is_server_command(command):
+            background = True
+
+        # Build subprocess environment with Minder-specific vars injected.
+        exec_env = _build_exec_env(work_dir, getattr(self, "_env_overrides", None))
+        if env:
+            exec_env.update(env)
+
+        try:
+            # Mark operation as executing
+            if operation:
+                operation.mark_executing()
+
+            # Start timing
+            start_time = time.time()
+
+            # Force unbuffered output for Python commands by adding -u flag
+            # This is more reliable than PYTHONUNBUFFERED for capturing server output
+            exec_command = command
+            if re.match(r"^python3?\s+", command) and " -u " not in command:
+                # Insert -u flag after python/python3
+                exec_command = re.sub(r"^(python3?)\s+", r"\1 -u ", command)
+
+            # Handle background execution. Windows has no pty/termios, so it
+            # uses a pipe + drainer-thread capture path instead of a PTY.
+            if background and platform.system() == "Windows":
+                return self._execute_background_windows(
+                    exec_command=exec_command,
+                    command=command,
+                    work_dir=work_dir,
+                    exec_env=exec_env,
+                    capture_output=capture_output,
+                    output_callback=output_callback,
+                    operation=operation,
+                    start_time=start_time,
+                )
+
+            if background:
+                # Use PTY (pseudo-terminal) for background execution
+                # This makes the subprocess think it's connected to a terminal,
+                # which fixes buffering issues with servers like Flask/Django
+                import pty
+
+                master_fd, slave_fd = pty.openpty()
+
+                try:
+                    process = subprocess.Popen(
+                        exec_command,
+                        shell=True,
+                        stdin=slave_fd,
+                        stdout=slave_fd,
+                        stderr=slave_fd,
+                        cwd=str(work_dir),
+                        env=exec_env,
+                        close_fds=True,
+                    )
+                except BaseException:
+                    # Popen failed (e.g. fork error); both pty fds must be closed
+                    # to avoid leaks. master_fd is kept open on success for later reads.
+                    try:
+                        os.close(slave_fd)
+                    finally:
+                        os.close(master_fd)
+                    raise
+                os.close(slave_fd)  # Close slave in parent
+
+                # Capture initial startup output for background processes
+                # Stream output in real-time via callback, use activity-based timeout
+                stdout_lines = []
+                stderr_lines = []
+
+                if capture_output:
+                    import time as time_module
+
+                    max_capture_time = 20.0  # Maximum time to wait for startup output
+                    idle_timeout = 3.0  # Stop if no output for this long
+                    start_capture = time_module.time()
+                    last_output_time = start_capture
+                    buffer = ""
+
+                    while time_module.time() - start_capture < max_capture_time:
+                        # Check if there's data ready to read (non-blocking)
+                        ready, _, _ = select.select([master_fd], [], [], 0.1)
+
+                        if ready:
+                            try:
+                                data = os.read(master_fd, 4096).decode("utf-8", errors="replace")
+                                if data:
+                                    buffer += data
+                                    # Process complete lines
+                                    while "\n" in buffer:
+                                        line, buffer = buffer.split("\n", 1)
+                                        last_output_time = time_module.time()
+                                        stdout_lines.append(line + "\n")
+                                        # Stream output immediately via callback
+                                        if output_callback:
+                                            try:
+                                                output_callback(line, is_stderr=False)
+                                            except Exception:
+                                                pass
+                            except OSError:
+                                break
+
+                        # Stop if process died
+                        if process.poll() is not None:
+                            break
+
+                        # Activity-based timeout: stop if no output for idle_timeout seconds
+                        # But give at least 1 second before checking idle timeout
+                        elapsed = time_module.time() - start_capture
+                        idle_time = time_module.time() - last_output_time
+                        if elapsed > 1.0 and idle_time >= idle_timeout:
+                            break
+
+                    # Process any remaining buffer
+                    if buffer.strip():
+                        stdout_lines.append(buffer)
+                        if output_callback:
+                            try:
+                                output_callback(buffer.rstrip("\n"), is_stderr=False)
+                            except Exception:
+                                pass
+
+                    # Keep master_fd open for potential future reads
+                    # Store it with the process for later access
+                    process._pty_master_fd = master_fd
+
+                # Check if process exited during startup capture
+                exit_code = process.poll()
+
+                if exit_code is not None and exit_code != 0:
+                    # Process failed during startup - return failure result
+                    duration = time.time() - start_time
+                    stdout_text = "".join(stdout_lines).rstrip()
+                    stderr_text = "".join(stderr_lines).rstrip()
+
+                    if operation:
+                        operation.mark_failed(f"Command failed with exit code {exit_code}")
+
+                    return BashResult(
+                        success=False,
+                        command=command,
+                        exit_code=exit_code,
+                        stdout=stdout_text,
+                        stderr=stderr_text,
+                        duration=duration,
+                        operation_id=operation.id if operation else None,
+                    )
+
+                if exit_code is not None and exit_code == 0:
+                    # Process completed successfully during startup - return actual output
+                    duration = time.time() - start_time
+                    stdout_text = "".join(stdout_lines).rstrip()
+                    stderr_text = "".join(stderr_lines).rstrip()
+
+                    if operation:
+                        operation.mark_success()
+
+                    return BashResult(
+                        success=True,
+                        command=command,
+                        exit_code=0,
+                        stdout=stdout_text,
+                        stderr=stderr_text,
+                        duration=duration,
+                        operation_id=operation.id if operation else None,
+                    )
+
+                # Process still running - store as background process
+                self._background_processes[process.pid] = {
+                    "process": process,
+                    "command": command,
+                    "start_time": start_time,
+                    "stdout_lines": stdout_lines,
+                    "stderr_lines": stderr_lines,
+                }
+
+                # Mark operation as success (background process started)
+                if operation:
+                    operation.mark_success()
+
+                # Return captured startup output
+                stdout_text = "".join(stdout_lines).rstrip()
+                stderr_text = "".join(stderr_lines).rstrip()
+
+                # Register with task manager for UI tracking
+                background_task_id = None
+                if self._task_manager:
+                    task = self._task_manager.register_task(
+                        command=command,
+                        pid=process.pid,
+                        process=process,
+                        pty_master_fd=getattr(process, "_pty_master_fd", None),
+                        initial_output=stdout_text,
+                    )
+                    background_task_id = task.task_id
+
+                return BashResult(
+                    success=True,
+                    command=command,
+                    exit_code=0,  # Process started
+                    stdout=stdout_text,
+                    stderr=stderr_text,
+                    duration=time.time() - start_time,
+                    operation_id=operation.id if operation else None,
+                    background_task_id=background_task_id,
+                )
+
+            # Always auto-confirm known interactive commands — agent cannot interact with stdin
+            use_stdin_confirm = False
+            if self._needs_auto_confirm(exec_command):
+                if platform.system() != "Windows":
+                    # Unix: use yes | wrapper to handle multiple prompts
+                    exec_command = f"yes | {exec_command}"
+                else:
+                    # Windows: will use stdin.write() approach
+                    use_stdin_confirm = True
+
+            # Windows can't select()-poll pipe fds (the streaming loop below is a
+            # no-op there and captures nothing), so capture via communicate().
+            # Foreground commands are short-lived CLIs; servers route to background.
+            if platform.system() == "Windows":
+                return self._execute_foreground_windows(
+                    exec_command=exec_command,
+                    command=command,
+                    work_dir=work_dir,
+                    exec_env=exec_env,
+                    capture_output=capture_output,
+                    output_callback=output_callback,
+                    operation=operation,
+                    start_time=start_time,
+                    use_stdin_confirm=use_stdin_confirm,
+                )
+
+            # Regular synchronous execution with interrupt support
+            process = subprocess.Popen(
+                exec_command,
+                shell=True,
+                start_new_session=True,  # Create process group for clean interrupt
+                stdin=subprocess.PIPE if use_stdin_confirm else None,
+                stdout=subprocess.PIPE if capture_output else None,
+                stderr=subprocess.PIPE if capture_output else None,
+                text=True,
+                bufsize=1,  # Line buffered for real-time streaming
+                cwd=str(work_dir),
+                env=exec_env,
+            )
+
+            # Windows fallback: write y to stdin for interactive prompts
+            if use_stdin_confirm and process.stdin:
+                try:
+                    # Send multiple y's for commands with multiple prompts
+                    process.stdin.write("y\ny\ny\ny\ny\n")
+                    process.stdin.flush()
+                    process.stdin.close()
+                except Exception:
+                    pass
+
+            # Poll process with interrupt checking and streaming output
+            # Activity-based timeout: only timeout if no output for IDLE_TIMEOUT seconds
+            stdout_lines = []
+            stderr_lines = []
+            poll_interval = 0.1  # Check every 100ms
+            last_activity_time = start_time  # Track when we last received output
+
+            while process.poll() is None:
+                had_activity = False
+
+                # Check for output to detect activity (for activity-based timeout)
+                # Also stream output if callback is provided
+                if capture_output:
+                    try:
+                        streams_to_check = []
+                        stream_map = {}
+                        if process.stdout:
+                            fd = process.stdout.fileno()
+                            streams_to_check.append(fd)
+                            stream_map[fd] = ("stdout", process.stdout)
+                        if process.stderr:
+                            fd = process.stderr.fileno()
+                            streams_to_check.append(fd)
+                            stream_map[fd] = ("stderr", process.stderr)
+
+                        if streams_to_check:
+                            readable, _, _ = select.select(streams_to_check, [], [], 0)
+                            for fd in readable:
+                                stream_name, stream = stream_map[fd]
+                                try:
+                                    data = os.read(fd, 4096)
+                                    if data:
+                                        had_activity = True
+                                        text = data.decode("utf-8", errors="replace")
+                                        for line in text.splitlines():
+                                            if stream_name == "stderr":
+                                                stderr_lines.append(line)
+                                            else:
+                                                stdout_lines.append(line)
+                                            if output_callback:
+                                                try:
+                                                    output_callback(
+                                                        line,
+                                                        is_stderr=(stream_name == "stderr"),
+                                                    )
+                                                except Exception:
+                                                    pass
+                                except (OSError, ValueError):
+                                    pass
+                    except (ValueError, OSError):
+                        # Stream may be closed or invalid
+                        pass
+
+                # Reset activity timer if output was received
+                if had_activity:
+                    last_activity_time = time.time()
+
+                # Check for interrupt
+                if task_monitor is not None:
+                    should_interrupt = False
+                    if hasattr(task_monitor, "should_interrupt"):
+                        should_interrupt = task_monitor.should_interrupt()
+                    elif hasattr(task_monitor, "is_interrupted"):
+                        should_interrupt = task_monitor.is_interrupted()
+
+                    if should_interrupt:
+                        # User pressed ESC - kill entire process group instantly
+                        import signal as _signal
+
+                        try:
+                            os.killpg(os.getpgid(process.pid), _signal.SIGKILL)
+                        except (ProcessLookupError, PermissionError, OSError):
+                            try:
+                                process.kill()
+                            except ProcessLookupError:
+                                pass
+                        try:
+                            process.wait(timeout=1)
+                        except subprocess.TimeoutExpired:
+                            pass
+
+                        duration = time.time() - start_time
+                        error = "Command interrupted by user"
+                        if operation:
+                            operation.mark_failed(error)
+
+                        return BashResult(
+                            success=False,
+                            command=command,
+                            exit_code=-1,
+                            stdout="\n".join(stdout_lines) if stdout_lines else "",
+                            stderr=error,
+                            duration=duration,
+                            error=error,
+                            operation_id=operation.id if operation else None,
+                        )
+
+                # Check activity-based timeout
+                time.sleep(poll_interval)
+                now = time.time()
+                idle_time = now - last_activity_time
+                total_time = now - start_time
+
+                # Timeout if idle too long OR absolute max exceeded
+                if idle_time >= IDLE_TIMEOUT or total_time >= MAX_TIMEOUT:
+                    process.kill()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass  # Process stuck in uninterruptible state; abandon it
+                    duration = time.time() - start_time
+
+                    if total_time >= MAX_TIMEOUT:
+                        error = f"Command exceeded maximum runtime of {MAX_TIMEOUT} seconds"
+                    elif self._needs_auto_confirm(command):
+                        error = (
+                            "Command timed out — it appears to be waiting for interactive "
+                            "input. The command was auto-wrapped with 'yes |' but still "
+                            "stalled. Try a non-interactive alternative or pass "
+                            "'--yes'/'-y' flags."
+                        )
+                    else:
+                        error = f"Command timed out after {int(idle_time)} seconds of no output"
+
+                    if operation:
+                        operation.mark_failed(error)
+
+                    return BashResult(
+                        success=False,
+                        command=command,
+                        exit_code=-1,
+                        stdout="\n".join(stdout_lines) if stdout_lines else "",
+                        stderr="\n".join(stderr_lines) if stderr_lines else "",
+                        duration=duration,
+                        error=error,
+                        operation_id=operation.id if operation else None,
+                    )
+
+            # Process finished - collect any remaining output
+            if capture_output:
+                # Drain remaining output directly via os.read() with a short timeout.
+                # We CANNOT use communicate() here because:
+                #   1. We already consumed data via os.read() in the polling loop,
+                #      which desynchronises Python's TextIOWrapper buffer.
+                #   2. communicate() blocks until EOF on stdout/stderr. If the
+                #      command spawned child processes that inherited the pipe fds
+                #      (common with shell=True), EOF never arrives and we hang.
+                drain_deadline = time.time() + 2  # 2 seconds max to drain
+                for stream_name, stream in [
+                    ("stdout", process.stdout),
+                    ("stderr", process.stderr),
+                ]:
+                    if stream is None:
+                        continue
+                    fd = stream.fileno()
+                    while time.time() < drain_deadline:
+                        try:
+                            ready, _, _ = select.select([fd], [], [], 0.1)
+                            if not ready:
+                                break  # No more data ready
+                            data = os.read(fd, 4096)
+                            if not data:
+                                break  # EOF
+                            text = data.decode("utf-8", errors="replace")
+                            for line in text.splitlines():
+                                if stream_name == "stderr":
+                                    stderr_lines.append(line)
+                                else:
+                                    stdout_lines.append(line)
+                                if output_callback:
+                                    try:
+                                        output_callback(
+                                            line,
+                                            is_stderr=(stream_name == "stderr"),
+                                        )
+                                    except Exception:
+                                        pass
+                        except (OSError, ValueError):
+                            break
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+
+                # Wait for process with timeout (should already be done)
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        pass
+
+                stdout_text = "\n".join(stdout_lines) if stdout_lines else ""
+                stderr_text = "\n".join(stderr_lines) if stderr_lines else ""
+            else:
+                stdout_text, stderr_text = "", ""
+
+            # Calculate duration
+            duration = time.time() - start_time
+
+            # Check exit code
+            success = process.returncode == 0
+
+            # Mark operation status
+            if operation:
+                if success:
+                    operation.mark_success()
+                else:
+                    operation.mark_failed(f"Command failed with exit code {process.returncode}")
+
+            return BashResult(
+                success=success,
+                command=command,
+                exit_code=process.returncode,
+                stdout=stdout_text or "",
+                stderr=stderr_text or "",
+                duration=duration,
+                operation_id=operation.id if operation else None,
+            )
+
+        except subprocess.TimeoutExpired as e:
+            # Fallback timeout handler (shouldn't normally be reached with activity-based timeout)
+            duration = time.time() - start_time
+            error = f"Command timed out after {int(duration)} seconds"
+
+            # Extract partial output from the exception
+            partial_stdout = e.stdout if e.stdout else ""
+            partial_stderr = e.stderr if e.stderr else ""
+
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout=partial_stdout,
+                stderr=partial_stderr,
+                duration=duration,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )
+
+        except Exception as e:
+            duration = time.time() - start_time
+            error = f"Command execution failed: {str(e)}"
+            if operation:
+                operation.mark_failed(error)
+            return BashResult(
+                success=False,
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr=error,
+                duration=duration,
+                error=error,
+                operation_id=operation.id if operation else None,
+            )

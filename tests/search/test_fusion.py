@@ -1,7 +1,7 @@
 """Unit tests for the result envelope and RRF fusion utilities."""
 
-from atria.core.context_engineering.search.fusion import facet_counts, rrf_fuse, top_margin
-from atria.core.context_engineering.search.types import SearchHit, SourceResults
+from minder.core.context_engineering.search.fusion import facet_counts, rrf_fuse, top_margin
+from minder.core.context_engineering.search.types import SearchHit, SourceResults
 
 
 def test_rrf_rewards_items_ranked_high_in_both_lists():

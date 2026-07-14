@@ -38,7 +38,7 @@ The user's stated goal (chosen explicitly during brainstorming): **"Better retri
 - **Community-summary GraphRAG** (Microsoft-style community detection + LLM summaries).
   Documented as the future upgrade path; too heavy/expensive for now (YAGNI).
 - Changing the synthesis prompt, citation format, or Vietnamese-only guardrails.
-- Any change to the general Atria platform outside the EK module + its compose wiring.
+- Any change to the general Minder platform outside the EK module + its compose wiring.
 
 ## 3. Decisions (from brainstorming)
 
@@ -201,7 +201,7 @@ can only surface candidate chunk-ids faster; **it never grants access.**
 - `config.py` — add `EK_KG_EXTRACT_*` role (mirrors `EK_SYNTHESIS_*`) + `EK_GRAPH_ENABLED`,
   `EK_GRAPH_HOPS`, `EK_GRAPH_MAX_NEIGHBORS`, `EK_NEO4J_URI/USER/PASSWORD`.
 - `requirements.txt` — add `neo4j>=5.24`.
-- `docker-compose.yml` — add `EK_NEO4J_*` passthrough to `atria` + `atria-worker` (mirror the
+- `docker-compose.yml` — add `EK_NEO4J_*` passthrough to `minder` + `minder-worker` (mirror the
   `MC_NEO4J_*` block), pointing at the existing `neo4j` service (`bolt://neo4j:7687`); EK
   isolates via the `namespace="ek"` label/property (§3), not a separate database.
 - `SKILL.md` — document `--graph` and when it helps.
@@ -213,7 +213,7 @@ can only surface candidate chunk-ids faster; **it never grants access.**
 - `EK_GRAPH_EXTRACT=0` — **build-time switch** for Pass 2 LLM extraction (equivalently the
   `graph build --extract` flag). Backbone always builds regardless.
 - `EK_GRAPH_HOPS=1`, `EK_GRAPH_MAX_NEIGHBORS=20`
-- `EK_NEO4J_URI=bolt://neo4j:7687`, `EK_NEO4J_USER=neo4j`, `EK_NEO4J_PASSWORD=atria-neo4j`
+- `EK_NEO4J_URI=bolt://neo4j:7687`, `EK_NEO4J_USER=neo4j`, `EK_NEO4J_PASSWORD=minder-neo4j`
 - `EK_KG_EXTRACT_{PROVIDER,MODEL,BASE_URL,API_KEY}` (fallback key resolution as in
   `config.py`)
 

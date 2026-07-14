@@ -28,38 +28,40 @@ export function StatusBar() {
 
   if (!status) return null;
 
-  const pillBase = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium cursor-pointer transition-colors select-none hover:scale-105 active:scale-[0.98] whitespace-nowrap';
+  // Compact for the narrow rail: icon + value only (the category lives in the
+  // tooltip), tight padding so the toolbar stays on one or two rows.
+  const pillBase = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[11px] font-medium cursor-pointer transition-colors select-none active:scale-[0.98] whitespace-nowrap';
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {/* Mode pill */}
       <button
         onClick={toggleMode}
         className={`${pillBase} ${MODE_STYLES[status.mode]}`}
-        title="Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
+        title="Mode — Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
       >
         <Settings2 className="w-3 h-3" strokeWidth={2} />
-        Mode: {status.mode === 'normal' ? 'Normal' : 'Plan'}
+        {status.mode === 'normal' ? 'Normal' : 'Plan'}
       </button>
 
       {/* Autonomy pill */}
       <button
         onClick={cycleAutonomy}
         className={`${pillBase} ${AUTONOMY_STYLES[status.autonomy_level]}`}
-        title="Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
+        title="Approval — Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
       >
         <Lock className="w-3 h-3" strokeWidth={2} />
-        Approval: {status.autonomy_level}
+        {status.autonomy_level}
       </button>
 
       {/* Thinking pill */}
       <button
         onClick={cycleThinkingLevel}
         className={`${pillBase} ${THINKING_STYLES[thinkingLevel] || THINKING_STYLES['Medium']}`}
-        title="Controls how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
+        title="Thinking — how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
       >
         <Brain className="w-3 h-3" strokeWidth={2} />
-        Think: {thinkingLevel}
+        {thinkingLevel}
       </button>
     </div>
   );

@@ -10,7 +10,7 @@ type TenantState = {
   setTenants: (tenants: Tenant[]) => void;
 };
 
-const STORAGE_KEY = "atria.activeTenant";
+const STORAGE_KEY = "minder.activeTenant";
 
 export const useTenantStore = create<TenantState>((set) => ({
   active: localStorage.getItem(STORAGE_KEY),

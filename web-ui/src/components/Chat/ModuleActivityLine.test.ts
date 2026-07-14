@@ -23,7 +23,26 @@ describe('activityView', () => {
       }),
       true,
     );
-    expect(result).toEqual({ kind: 'done', text: 'Stock received' });
+    expect(result).toMatchObject({ kind: 'done', text: 'Stock received' });
+  });
+
+  it('attaches a verbose debug payload to done so successes are inspectable', () => {
+    const result = activityView(
+      msg({
+        activity: { running: 'Starting…', done: 'Job #3 queued' },
+        tool_name: 'template_start_job',
+        tool_args: { steps: 5 },
+        tool_success: true,
+        tool_result: { success: true, output: 'started job #3 (5 steps)' },
+        tool_call_id: 'call_abc',
+      }),
+      true,
+    );
+    expect(result.kind).toBe('done');
+    expect(result.debug?.tool).toBe('template_start_job');
+    expect(result.debug?.args).toEqual({ steps: 5 });
+    expect(result.debug?.result).toEqual({ success: true, output: 'started job #3 (5 steps)' });
+    expect(result.debug?.call_id).toBe('call_abc');
   });
 
   it('returns error kind when tool_success is false', () => {
@@ -77,6 +96,6 @@ describe('activityView', () => {
 
   it('falls back to generic done label with no activity and hasResult', () => {
     const result = activityView(msg({}), true);
-    expect(result).toEqual({ kind: 'done', text: 'Done' });
+    expect(result).toMatchObject({ kind: 'done', text: 'Done' });
   });
 });
