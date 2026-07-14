@@ -61,3 +61,9 @@ it('drops an invalid envelope without throwing', () => {
   FakeES.instances[0].emit({ nope: true });
   expect(seen).toEqual([]);
 });
+
+it('closes idempotently without throwing on double-close', () => {
+  const h = getSharedStream('http://m/s', () => {});
+  h.close();
+  expect(() => h.close()).not.toThrow();
+});
