@@ -99,8 +99,8 @@
     "closeLabel": ""
   },
   "quickChat": {
-    "noSessionError": "",
-    "timeoutError": ""
+    "noSessionError": "Chưa có phiên chat — mở một cuộc trò chuyện trước nhé.",
+    "timeoutError": "Hết thời gian chờ."
   },
   "skeleton": {
     "loading": ""

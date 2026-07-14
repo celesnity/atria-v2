@@ -99,8 +99,8 @@
     "closeLabel": "Close modal"
   },
   "quickChat": {
-    "noSessionError": "Chưa có phiên chat — mở một cuộc trò chuyện trước nhé.",
-    "timeoutError": "Hết thời gian chờ."
+    "noSessionError": "No chat session yet — open a conversation first.",
+    "timeoutError": "Request timed out."
   },
   "skeleton": {
     "loading": "Loading…"
