@@ -1,15 +1,16 @@
 {
   "display_name": "Optimize",
-  "tooltip": "Real-time manufacturing decision engine · detect miss, explain, forecast, evaluate recovery actions, dispatch a versioned recommendation (demo)",
+  "tooltip": "Live manufacturing fleet console · 20-machine OEE/availability/throughput/quality/health streaming from the fleet simulator, a gpt-5.4-mini Ask-AI that answers machine status with the right chart, and an AI decision loop (measure→recommend) that approves a recovery action to the simulator machine (demo)",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Optimize · Decision Engine",
-    "default_height": 900,
-    "badge_color": "danger"
+    "title": "Optimize · Fleet Console",
+    "default_height": 960,
+    "badge_color": "info"
   },
   "activity": {
     "default": { "running": "Working…", "done": "Done" },
     "actions": {
+      "status":   { "running": "Reading fleet…",     "done": "Live" },
       "save":     { "running": "Saving decision…",   "done": "Saved" },
       "get":      { "running": "Loading decision…",   "done": "Loaded" },
       "list":     { "running": "Loading history…",    "done": "Loaded" },

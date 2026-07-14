@@ -1,0 +1,130 @@
+"""ai.py — the Optimize console's AI backend (gpt-5.4-mini), called via the AtriaDash bridge.
+
+Contract (same as optimize.py / simulate.py): ``python scripts/ai.py <command>`` with a JSON
+payload on **stdin** and one JSON object printed to **stdout**. It ALWAYS exits 0 and prints
+valid JSON — on a missing key, a network error, or a bad model reply it falls back to the
+deterministic analysis in ``analysis.py`` (so the bridge, which throws on non-zero exit, always
+resolves and the demo never hard-fails).
+
+Commands:
+    ask      stdin = {question, machines:[...], scn:{...}} -> {ok, answer, table, charts, follow_ups, source}
+    analyze  stdin = {machines:[...], scn:{...}}            -> {ok, measure, explain, predict, evaluate, recommend, source}
+
+The model reuses Atria's env config: ``OPENAI_API_KEY``, ``ATRIA_MODEL`` (default gpt-5.4-mini),
+``ATRIA_API_BASE_URL`` (an OpenAI-compatible /chat/completions endpoint). Numbers are never
+invented — the dashboard passes the live telemetry it already has, the model only writes prose
+and picks the machine + chart intent, and the dashboard draws the chart from the live data.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+try:  # allow both `python scripts/ai.py` and `python -m ...`
+    from . import analysis
+except ImportError:  # pragma: no cover - direct-invocation path
+    import analysis  # type: ignore[no-redef]
+
+DEFAULT_BASE = "https://api.openai.com/v1/chat/completions"
+DEFAULT_MODEL = "gpt-5.4-mini"
+
+
+def _api_key() -> str | None:
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("IIOT_AI_API_KEY") or None
+
+
+def llm_chat(system: str, user: str, max_tokens: int = 900, timeout: float = 55.0) -> str:
+    """One OpenAI-compatible chat call via stdlib urllib. Raises on any failure."""
+    key = _api_key()
+    if not key:
+        raise RuntimeError("no API key (OPENAI_API_KEY)")
+    base = os.environ.get("ATRIA_API_BASE_URL") or DEFAULT_BASE
+    model = os.environ.get("ATRIA_MODEL") or DEFAULT_MODEL
+    # gpt-5 / o-series family: use max_completion_tokens and DO NOT send a custom temperature.
+    body = {
+        "model": model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "max_completion_tokens": max_tokens,
+    }
+    req = urllib.request.Request(
+        base,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    return data["choices"][0]["message"]["content"]
+
+
+def cmd_ask(payload: dict) -> dict:
+    question = str(payload.get("question") or "").strip()
+    machines = payload.get("machines") or []
+    scn = payload.get("scn")
+    if not question:
+        return {
+            "ok": True,
+            "answer": 'Ask about a machine (e.g. "why is M-02 degrading?") or the ' "fleet.",
+            "table": None,
+            "charts": [],
+            "follow_ups": [],
+            "source": "none",
+        }
+    try:
+        system, user = analysis.build_ask_messages(question, machines, scn)
+        obj = analysis.parse_json(llm_chat(system, user))
+        out = analysis.normalize_ask(obj, machines, scn)
+        out["source"] = os.environ.get("ATRIA_MODEL") or DEFAULT_MODEL
+    except Exception as exc:  # noqa: BLE001 - always degrade gracefully to a valid JSON reply
+        out = analysis.deterministic_ask(question, machines, scn)
+        out["source"] = "fallback"
+        out["note"] = "{}: {}".format(type(exc).__name__, exc)[:160]
+    out["ok"] = True
+    return out
+
+
+def cmd_analyze(payload: dict) -> dict:
+    machines = payload.get("machines") or []
+    scn = payload.get("scn")
+    try:
+        system, user = analysis.build_analyze_messages(machines, scn)
+        obj = analysis.parse_json(llm_chat(system, user, max_tokens=700))
+        out = analysis.normalize_analyze(obj, machines, scn)
+        out["source"] = os.environ.get("ATRIA_MODEL") or DEFAULT_MODEL
+    except Exception as exc:  # noqa: BLE001
+        out = analysis.deterministic_analyze(machines, scn)
+        out["source"] = "fallback"
+        out["note"] = "{}: {}".format(type(exc).__name__, exc)[:160]
+    out["ok"] = True
+    return out
+
+
+def handle(cmd: str, payload: dict) -> dict:
+    if cmd == "ask":
+        return cmd_ask(payload)
+    if cmd == "analyze":
+        return cmd_analyze(payload)
+    return {"ok": False, "error": "unknown command: %r (want ask|analyze)" % cmd}
+
+
+def main(argv: list[str]) -> int:
+    cmd = argv[1] if len(argv) > 1 else ""
+    raw = sys.stdin.read() if not sys.stdin.isatty() else ""
+    try:
+        payload = json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    out = handle(cmd, payload)
+    sys.stdout.write(json.dumps(out))
+    # Always exit 0 so the AtriaDash bridge resolves; errors are carried inside the JSON.
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

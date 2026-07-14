@@ -1,70 +1,85 @@
 ---
 name: optimize_demo
-description: Optimize Console demo - a real-time manufacturing decision engine that detects a production line will miss its shift target, explains the loss, forecasts the outcome, evaluates recovery actions against operational constraints, and returns a versioned, executable recommendation. Open the dashboard to run the demo; scripts/optimize.py only persists decision history + audit events.
+description: Optimize Console V2 — a manufacturing fleet console + AI decision engine over a LIVE 20-machine simulator. Fleet + Machines views stream live telemetry; an Ask-AI chat (gpt-5.4-mini) answers machine status and returns the right chart from real data; a decision loop Measures/Explains/Predicts/Evaluates/Recommends a production-recovery action and, on approval, actuates the simulator machine. Exposes agent tools (optimize_ask, optimize_analyze_fleet) that read the live fleet.
+tools: tools.py
 ---
 
 # optimize_demo
 
-**Optimize Console — a manufacturing decision engine (demo).**
+**Optimize Console V2 — a manufacturing fleet console + AI decision engine (demo).**
 
-Detects that a production line is likely to miss its shift target, quantifies
-and explains the loss, forecasts end-of-shift output, evaluates a small set of
-recovery actions against operational constraints (blocking unsafe ones even when
-they recover the most units), ranks the feasible actions with a configurable
-weighted score, and returns a **versioned JSON decision object** plus mock
-downstream commands and audit events.
-
-Core loop: **Measure → Explain → Predict → Evaluate → Recommend → Approve →
-Re-plan**, demonstrated across 5 replayable scenarios for one plant / one line /
-one work order / one shift.
+UI ported from the "Optimize Console V2" Claude Design (project
+`73b8309d-b935-460e-816a-12b69de9435b`) on the **Celesnity / Minder AI** design system (dark-first
+electric indigo). Self-contained vanilla `dashboard.html` — inline-SVG charts, no React/CDN, works
+offline in Docker. It runs against a **live, evolving 20-machine fleet simulator** (the IIOT fleet
+API) and is driven by a **real gpt-5.4-mini** brain for the Ask-AI and the decision narrative.
 
 ## When to use
 
-Demonstrating production-recovery decisioning for a single line: detect a
-forecast miss, explain the causes, compare recovery alternatives, reject
-infeasible ones, approve/dispatch a recommendation to a mock Move/Plan module,
-and track expected-vs-actual outcome. This is a self-contained demo — it does
-not connect to a real MES/PLC.
+Demonstrating live fleet monitoring + AI production-recovery decisioning: watch OEE / availability /
+throughput / quality / health stream across a 20-machine fleet; ask the AI about any machine's
+current status and get the best-fit chart; and on a line forecast to miss its shift target, have the
+AI Measure → Explain → Predict → Evaluate → Recommend a recovery action, then **approve it to the
+simulator machine** (a real control call that recovers the machine in the live views). Use the agent
+tools below to read the live fleet from a chat without opening the dashboard.
 
-## Dashboard
+## Agent tools (this skill)
 
-Open the **Optimize** tile. The demo control bar picks one of 5 scenarios and
-drives the loop: inject the scenario event → the forecast drops and a
-recommendation is generated → approve (where required) → Send to Move/Plan →
-simulate execution → expected-vs-actual outcome. The **Alternatives** tab shows
-the constraint-checked, scored comparison; **Recommendation** shows the decision
-object and lifecycle actions; **View decision JSON** opens the decision object /
-downstream command / API response / audit-event drawer. All decision math runs
-client-side; the dashboard is the source of truth.
+- **`optimize_ask(question, fleet_url?)`** — ask the live fleet a question (status, comparison, "why
+  is M-02 degrading?"). Reads real telemetry and answers with a best-fit chart suggestion.
+- **`optimize_analyze_fleet(fleet_url?)`** — run the Measure/Explain/Predict/Evaluate/Recommend loop
+  over the live fleet and return a production-recovery narrative grounded in real numbers.
 
-The 5 scenarios:
-1. Material starvation -> prioritize pallet delivery (no approval).
-2. Resource reassignment -> move an operator (supervisor approval).
-3. Sequence change -> reorder jobs (planner approval).
-4. Unsafe high-speed option -> **rejected** on the machine-health constraint.
-5. Recommendation invalidated -> **supersede** v1 and recalculate to v2.
+Both reuse Atria's configured model (gpt-5.4-mini via `ctx.llm_chat`) and fall back to deterministic
+analysis if the model or the simulator is unavailable. They require the fleet server running (below).
 
-## Runbook (scripts/optimize.py — persistence only)
+## The live fleet simulator (data source)
 
-All commands run from `modules/optimize_demo/`. Each reads a JSON payload on
-stdin and prints a JSON result on stdout (this is what the dashboard calls via
-the AtriaDash bridge). Decision history + audit events are stored under `data/`
-(JSON files, bootstrapped on first write).
+Built in `D:\[Research]_IIOT\[Project]_IOTMock` (`src/iiot_mcp/fleet/`): a responsive
+degradation simulator serving read + control HTTP JSON. Start it:
+`.venv\Scripts\python.exe scripts\run_fleet_server.py` (default `http://127.0.0.1:5050`; set
+`IIOT_FLEET_SCENARIO='Progressive Machine Aging'` for a scripted decline+recovery). Override the URL
+with env `IIOT_FLEET_URL` (or `?fleet=` in the dashboard).
 
-- Save / version a decision object — `python scripts/optimize.py save`
-  (stdin: the decision object; marks a prior version `superseded` when
-  `supersedes_version` is set; appends a `recommendation_created` audit event).
-- Get one decision — `python scripts/optimize.py get` (stdin:
-  `{"recommendation_id": "REC-...", "version": 2}`; omit version for latest).
-- List decision history — `python scripts/optimize.py list`.
-- Approve / Reject — `python scripts/optimize.py approve` /
-  `python scripts/optimize.py reject` (stdin: `{"recommendation_id", "actor"}`).
-- Dispatch to a mock module — `python scripts/optimize.py dispatch`
-  (stdin: `{"recommendation_id", "target_module", "command"}`; returns a mock
-  `{"status": "accepted", "task_id": "MOVE-TASK-..."}` and appends an audit
-  event).
-- Read the audit trail — `python scripts/optimize.py audit`.
+- Read: `GET /api/fleet/snapshot` (20 machines: live + baseline + diff), `/summary`, `/events`.
+- Control (used by Approve): `POST /api/fleet/machines/<id>/{maintenance,resolve-fault,inject-fault}`,
+  `/api/fleet/control/{start,pause,resume,step,speed,reset}`.
 
-Python never re-derives forecasts/scores/constraints — it only persists what the
-dashboard computed, so the ranking/constraint logic has a single source of truth
-in the dashboard.
+## Dashboard (4 views)
+
+Header has a **Demo / Live** toggle (defaults to **Live**) and a **☀/☾** theme toggle.
+
+1. **Fleet** — 6 KPIs, a live OEE trend (real buffered history), a 20-machine status heatmap
+   (filter by state), and a run/idle/changeover/down state-mix bar. Updates every ~4 s.
+2. **Recommendation** — the AI decision loop for the at-risk line: scenario metrics, an **AI decision
+   narrative** (gpt-5.4-mini Measure→Recommend, grounded in `simulate.build_scn` numbers), the
+   recommended-action hero, a forecast projection, a predicted-loss Pareto, a constraint-checked
+   **Alternatives** table (the +8% speed option is blocked when machine health < 0.70), the rule
+   engine, and the versioned **Decision object**. **Send to Move** approves the decision AND
+   **actuates the target machine** on the live simulator (services it), which recovers it in the
+   Fleet/Machines views on the next poll.
+3. **Machines** — per-machine analytics: metric-filtered ranked bars (availability/performance/
+   quality/health), a switchable trend/loss chart (throughput/downtime/defects/FPY), and a
+   runtime-vs-health scatter — all from live data.
+4. **Ask AI** — a gpt-5.4-mini chat (`scripts/ai.py`) that answers about any machine's current status
+   and returns tables + the best-fit chart from the 9-intent taxonomy (throughput line, cycle
+   histogram, downtime Pareto, vibration/temp dual-line, state Gantt, OEE waterfall, SPC control
+   chart, peer ranked-bars, temp-vs-defects scatter). The model picks the machine + intent; the
+   dashboard draws the chart from **live** data, so the numbers are always real.
+
+## Backend scripts (called via the AtriaDash bridge — stdin JSON → stdout JSON, always exit 0)
+
+- `scripts/simulate.py status` — read the live fleet, map to the dashboard shape, derive the
+  recommendation `scn`, and return a rolling telemetry `history`/`trends` buffer (`data/history.jsonl`)
+  so the live time-series charts move.
+- `scripts/simulate.py actuate` — `{machine, action}` → POST the approved recovery to the fleet
+  control endpoints (default: full service on the target machine). The approve-to-simulator loop.
+- `scripts/ai.py ask` — `{question, machines, scn}` → `{answer, table, charts, follow_ups}` via
+  gpt-5.4-mini (deterministic fallback on no key / error).
+- `scripts/ai.py analyze` — `{machines, scn}` → `{measure, explain, predict, evaluate, recommend}`.
+- `scripts/optimize.py {save,get,list,approve,reject,dispatch,outcome,audit}` — decision persistence
+  + audit only (never re-derives the numbers). `scripts/store.py` is the JSON persistence layer.
+
+The AI reuses Atria's env config: `OPENAI_API_KEY`, `ATRIA_MODEL` (gpt-5.4-mini), `ATRIA_API_BASE_URL`.
+Numbers are never invented by the model — the live simulator (and `simulate.build_scn`) own them; the
+model writes prose and picks the machine + chart intent.
