@@ -11,6 +11,8 @@ export {
   tokensFor,
 } from './theme';
 export type { MinderTheme, MinderTokens } from './theme';
+export { UI_INTENT, parseEnvelope, parseUiIntent } from './events';
+export { getSharedStream } from './stream';
 export { useModuleEvents, useAgentContext } from './agentContext';
 export type {
   EventEnvelope,
