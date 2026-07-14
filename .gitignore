@@ -232,3 +232,4 @@ modules/item_flow_tracking/data/flow.db-*
 plans/
 report/
 tests/
+*.deps.sha256
