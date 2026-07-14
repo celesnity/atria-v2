@@ -58,7 +58,12 @@ def _read(path: Path) -> list[dict[str, Any]]:
         return []
     if not text.strip():
         return []
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        # A truncated / concurrently-written store file must never crash a read (e.g. the Approved
+        # History view). Degrade to empty rather than propagating; the next write rewrites it cleanly.
+        return []
     return data if isinstance(data, list) else []
 
 
@@ -224,6 +229,39 @@ def dispatch(
         "task_id": task_id,
         "command": command or {},
     }
+
+
+# ── pipeline snapshots ───────────────────────────────────────────────────────
+# One live-fleet snapshot per pipeline run, keyed by execution_id, so a chained run
+# (measure -> ... -> recommend) reads the SAME numbers at every stage instead of
+# re-polling the drifting simulator. Bounded, gitignored runtime data.
+
+_SNAPSHOTS_MAX = 50
+
+
+def _snapshots_path() -> Path:
+    return data_dir() / "pipeline_runs.json"
+
+
+def save_snapshot(execution_id: str, snapshot: dict[str, Any], at: str | None = None) -> dict[str, Any]:
+    """Persist (or replace) one run snapshot by execution_id; keep the most recent N."""
+    if not execution_id:
+        raise ValueError("execution_id is required")
+    rows = _read(_snapshots_path())
+    rows = [r for r in rows if r.get("execution_id") != execution_id]
+    row = {"execution_id": execution_id, "snapshot": snapshot, "created_at": at}
+    rows.append(row)
+    _write(_snapshots_path(), rows[-_SNAPSHOTS_MAX:])
+    return row
+
+
+def get_snapshot(execution_id: str) -> dict[str, Any] | None:
+    if not execution_id:
+        return None
+    for r in _read(_snapshots_path()):
+        if r.get("execution_id") == execution_id:
+            return r.get("snapshot")
+    return None
 
 
 # ── audit ──────────────────────────────────────────────────────────────────

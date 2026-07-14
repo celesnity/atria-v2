@@ -47,7 +47,16 @@ html,body{margin:0}
 body{background:var(--bg-0);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
 a{color:var(--accent);text-decoration:none}
 a:hover{color:var(--accent-hi)}
-.oc-head{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:18px;padding:11px 20px;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+/* ---- Sidebar shell (redesign) ---- */
+.oc-shell{display:flex;min-height:100vh}
+.oc-side{position:sticky;top:0;align-self:flex-start;height:100vh;flex:none;width:212px;display:flex;flex-direction:column;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-right:1px solid var(--line);z-index:20}
+.side-brand{display:flex;align-items:center;gap:9px;font:600 15px var(--mono);letter-spacing:.14em;color:var(--text);padding:16px 18px;border-bottom:1px solid var(--line)}
+.side-brand .ver{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.12em}
+.side-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1;overflow-y:auto}
+.side-lab{font:500 9px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);padding:8px 10px 6px}
+.side-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:7px;font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute)}
+.oc-body{flex:1;min-width:0;display:flex;flex-direction:column}
+.oc-head{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:14px;padding:13px 22px;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
 .brand{display:flex;align-items:center;gap:9px;font:600 15px var(--mono);letter-spacing:.14em;color:var(--text)}
 .sq{width:15px;height:15px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-radius:4px;box-shadow:0 0 12px var(--glow-soft)}
 .ver{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.12em}
@@ -65,12 +74,12 @@ a:hover{color:var(--accent-hi)}
 .simbanner.load{background:color-mix(in srgb,var(--warn) 8%,var(--bg-1));border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
 .simbanner-t{font:500 12.5px var(--sans);color:var(--text-dim)}
 .simretry{margin-left:auto;padding:6px 12px;flex:none}
-.navbar{position:sticky;top:47px;z-index:19;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-bottom:1px solid var(--line)}
-.navwrap{display:flex;gap:2px;overflow-x:auto;max-width:1320px;margin:0 auto;padding:0 14px}
-.oc-tab{flex:none;background:none;border:none;border-bottom:2px solid transparent;color:var(--text-mute);font:500 12.5px var(--sans);letter-spacing:.01em;padding:12px 15px;cursor:pointer;white-space:nowrap;transition:color .18s var(--ease)}
-.oc-tab:hover{color:var(--text-dim)}
-.oc-tab[data-on="1"]{color:var(--text);border-bottom-color:var(--accent)}
-.oc-main{max-width:1320px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.oc-tab{display:flex;align-items:center;gap:11px;background:none;border:none;border-radius:10px;color:var(--text-mute);font:500 13px var(--sans);letter-spacing:.01em;padding:10px 12px;cursor:pointer;white-space:nowrap;text-align:left;width:100%;transition:all .16s var(--ease)}
+.oc-tab svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.oc-tab:hover{color:var(--text-dim);background:var(--surf)}
+.oc-tab[data-on="1"]{color:var(--text);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.oc-tab[data-on="1"] svg{stroke:var(--accent-hi)}
+.oc-main{max-width:1320px;width:100%;margin:0 auto;padding:22px;display:flex;flex-direction:column;gap:16px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;border:1px solid var(--line);background:var(--line);border-radius:14px;overflow:hidden}
 .kpi{background:var(--bg-1);padding:15px 18px;display:flex;flex-direction:column;gap:5px}
 .kl{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
@@ -243,10 +252,83 @@ a:hover{color:var(--accent-hi)}
 .g2>*,.g21>*,.stack>*,.oc-main>*,.navwrap>*{min-width:0}
 /* narrow screens: let the fixed-width header wrap instead of forcing page h-scroll */
 @media(max-width:640px){.oc-head{flex-wrap:wrap;gap:8px 14px}.ctx{order:4;flex-basis:100%}.hfilter{flex-wrap:wrap}}
+/* ---- Recommendation: merged forecast + read-only phase summary (redesign) ---- */
+.scn-fc{border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px;background:var(--bg-2)}
+.scn-fc-h{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.scn-fc-h .ptitle{font:500 14px var(--sans);letter-spacing:-.01em;color:var(--text)}
+.scn-fc-h .psub{margin-left:auto}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.phase{background:var(--bg-2);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.phase-h{display:flex;align-items:center;gap:8px}
+.phase-n{width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:999px;font:600 9.5px var(--mono);color:var(--accent-hi);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.phase-ph{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.phase-r{font:500 12.5px/1.4 var(--sans);color:var(--text-dim)}
+.phase-r.accent{color:var(--accent-hi)}
+.phase-r.danger{color:var(--danger)}
+/* ---- Ask Minder chatbot ---- */
+.chatlog{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto;padding:4px 2px;margin-bottom:14px;scroll-behavior:smooth}
+.cmsg{display:flex}
+.cmsg[data-who="u"]{justify-content:flex-end}
+.cbubble{max-width:78%;padding:12px 15px;border-radius:14px;font:400 13.5px/1.5 var(--sans)}
+.cbubble[data-who="u"]{background:var(--accent);color:#fff;border-radius:14px 14px 4px 14px}
+.cbubble[data-who="a"]{background:var(--surf);border:1px solid var(--line);color:var(--text-dim);border-radius:14px 14px 14px 4px}
+.cbubble[data-chart="1"]{width:100%;max-width:720px}
+.ctag{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent-hi);margin-bottom:6px}
+.tdots{display:inline-flex;gap:4px;padding:3px 0}
+.tdots span{width:6px;height:6px;border-radius:999px;background:var(--text-mute);animation:tb 1.2s infinite}
+.tdots span:nth-child(2){animation-delay:.2s}
+.tdots span:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.chat-in{display:flex;gap:8px}
+.cinput{flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text);font:400 13.5px var(--sans);padding:11px 14px;outline:none;transition:border-color .18s var(--ease)}
+.cinput:focus{border-color:var(--accent)}
+.cinput::placeholder{color:var(--text-faint)}
+/* ---- Approved history ---- */
+.ah-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ah-s{background:var(--bg-2);padding:15px 18px;display:flex;flex-direction:column;gap:5px}
+.ah-sv{font:500 27px var(--sans);letter-spacing:-.045em;color:var(--text);line-height:1}
+.ah-sv.ok{color:var(--ok)}
+.ah-sv.accent{color:var(--accent-hi)}
+.ah-sl{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.ah-list{display:flex;flex-direction:column}
+.ah-item{border-top:1px solid var(--line)}
+.ah-item[data-open="1"]{background:var(--surf)}
+.ah-row{display:grid;grid-template-columns:16px 1fr 2fr 1.1fr .9fr .9fr 1.2fr;gap:14px;align-items:center;padding:14px 6px;width:100%;background:none;border:none;text-align:left;cursor:pointer;font:inherit;transition:background .16s var(--ease)}
+.ah-row:hover{background:var(--surf)}
+.ah-caret{font-size:9px;color:var(--text-faint);transition:transform .16s var(--ease)}
+.ah-item[data-open="1"] .ah-caret{transform:rotate(180deg);color:var(--accent-hi)}
+.ah-detail{padding:4px 6px 18px}
+.ah-dl{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin:0 0 12px}
+.ah-c{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ah-time{font:500 13px var(--mono);color:var(--text)}
+.ah-id{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.04em}
+.ah-act{font:500 13px var(--sans);color:var(--text)}
+.ah-scope{font:400 11px var(--sans);color:var(--text-dim)}
+.ah-k{font:500 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.ah-v{font:500 13px var(--sans);color:var(--text)}
+.ah-end{align-items:flex-end}
+.ah-status{font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.ah-out{font:400 11px var(--sans);color:var(--text-dim)}
+.ah-what{grid-column:1/4}
+.rlog{display:flex;flex-direction:column;gap:10px}
+.rlog .cbubble{max-width:82%}
+.rlog .cbubble[data-who="a"]{max-width:100%}
+@media(max-width:720px){.ah-row{grid-template-columns:16px 1fr 1.2fr;gap:8px}.ah-end,.ah-row .ah-c:nth-child(n+4){display:none}.ah-what{grid-column:2/4}}
+/* ---- Sidebar collapse on narrow screens ---- */
+@media(max-width:820px){
+  .oc-shell{flex-direction:column}
+  .oc-side{position:sticky;top:0;height:auto;width:100%;flex-direction:row;align-items:center;border-right:none;border-bottom:1px solid var(--line);overflow-x:auto}
+  .side-brand{border-bottom:none;border-right:1px solid var(--line);white-space:nowrap;padding:12px 16px}
+  .side-nav{flex-direction:row;flex:none;padding:8px 10px;overflow-x:visible}
+  .side-lab,.side-foot{display:none}
+  .oc-tab svg{display:none}
+}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<script src="__bridge.js"></script>
+<script>window.AtriaDash = window.AtriaDash || window.MinderDash || null;</script>
 <script>
 (function () {
   "use strict";
@@ -266,7 +348,10 @@ a:hover{color:var(--accent-hi)}
     askQuestion: '', askThinking: false, askResult: null, simHistory: {},
     analysis: null, analyzing: false, analysisFor: null, actuateMsg: null,
     recStage: null, machSel: null,
+    chatMsgs: [], chatDraft: '', chatTyping: false,
+    expandHist: null, histData: null, histLoading: false, histFor: null,
     theme: readManualTheme() || (qs.get('mode') === 'light' ? 'light' : 'dark'),
+    lang: readLang(),
     // data mode: 'demo' (static) | 'sim' (live fleet). Simulation mode reads the IIOT fleet API.
     dataMode: readDataMode(), simConnected: false, simError: null, simPlant: null, simLoading: false
   };
@@ -279,6 +364,77 @@ a:hover{color:var(--accent-hi)}
   function applyTheme(mode) { state.theme = mode; try { document.documentElement.setAttribute('data-theme', mode); } catch (e) {} }
   function setThemeManual(mode) { applyTheme(mode); try { localStorage.setItem('optimize-theme', mode); } catch (e) {} render(); }
   function toggleTheme() { setThemeManual(state.theme === 'dark' ? 'light' : 'dark'); }
+
+  // ── language (English / Vietnamese) ───────────────────────────────────────
+  // Mirrors the theme/mode toggles: localStorage + a data-act button + a render().
+  // t(key) resolves a UI string; L({en,vi}) resolves an inline pair. Switching also
+  // invalidates the cached AI narrative so the next fetch re-requests prose in the new language.
+  function readLang() { try { var l = localStorage.getItem('optimize-lang'); if (l === 'en' || l === 'vi') return l; } catch (e) {} return qs.get('lang') === 'vi' ? 'vi' : 'en'; }
+  function saveLang(l) { try { localStorage.setItem('optimize-lang', l); } catch (e) {} }
+  function L(pair) { if (!pair || typeof pair !== 'object') return pair || ''; return (state.lang === 'vi' && pair.vi) ? pair.vi : (pair.en != null ? pair.en : pair.vi || ''); }
+  function t(key) { var s = STRINGS[key]; return s ? L(s) : key; }
+  function setLang(l) { if (l !== 'en' && l !== 'vi') return; state.lang = l; saveLang(l); state.analysis = null; state.analysisFor = null; state.askResult = null; render(); if (state.dataMode === 'sim') refreshSim(true); }
+
+  // ── UI string table (English / Vietnamese) ────────────────────────────────
+  // {en, vi} per key; t('key') resolves via state.lang. Numbers/telemetry are never here — only chrome.
+  var STRINGS = {
+    tab_fleet: { en: 'Fleet', vi: 'Đội máy' },
+    tab_recommendation: { en: 'Recommendation', vi: 'Khuyến nghị' },
+    tab_history: { en: 'Approved History', vi: 'Lịch sử duyệt' },
+    tab_machines: { en: 'Machines', vi: 'Máy móc' },
+    tab_ask: { en: 'Ask AI', vi: 'Hỏi AI' },
+    side_console: { en: 'Console', vi: 'Bảng điều khiển' },
+    side_foot: { en: 'All systems monitored', vi: 'Đang giám sát toàn bộ' },
+    btn_discuss: { en: 'Discuss with Minder', vi: 'Trao đổi với Minder' },
+    chat_title: { en: 'Ask Minder', vi: 'Hỏi Minder' },
+    chat_sub: { en: 'fleet & machine chatbot', vi: 'trợ lý đội máy' },
+    chat_placeholder: { en: 'Message Minder…', vi: 'Nhắn cho Minder…' },
+    chat_send: { en: 'Send', vi: 'Gửi' },
+    chat_greet: { en: 'Ask me about any machine or the fleet — I answer with live data and the right chart.', vi: 'Hỏi tôi về bất kỳ máy nào hoặc cả đội — tôi trả lời bằng dữ liệu trực tiếp và biểu đồ phù hợp.' },
+    guide_title: { en: 'Chart-selection guide', vi: 'Hướng dẫn chọn biểu đồ' },
+    hist_activity: { en: 'Approval activity', vi: 'Hoạt động phê duyệt' },
+    hist_thisshift: { en: 'this shift', vi: 'ca này' },
+    hist_title: { en: 'Approved history', vi: 'Lịch sử đã duyệt' },
+    hist_sub: { en: 'dispatched decisions · newest first', vi: 'quyết định đã điều phối · mới nhất trước' },
+    hist_approved: { en: 'Approved today', vi: 'Đã duyệt hôm nay' },
+    hist_completed: { en: 'Completed', vi: 'Hoàn thành' },
+    hist_met: { en: 'Met expected', vi: 'Đạt kỳ vọng' },
+    hist_recovered: { en: 'Units recovered', vi: 'Sản phẩm phục hồi' },
+    hist_process: { en: 'Consideration process', vi: 'Quá trình cân nhắc' },
+    hist_empty: { en: 'No dispatched decisions yet. Approve and send a recommendation to build history.', vi: 'Chưa có quyết định nào được điều phối. Duyệt và gửi một khuyến nghị để tạo lịch sử.' },
+    hist_approver: { en: 'Approver', vi: 'Người duyệt' },
+    hist_expected: { en: 'Expected', vi: 'Kỳ vọng' },
+    hist_actual: { en: 'Actual', vi: 'Thực tế' },
+    mach_analysis: { en: 'Machine analysis', vi: 'Phân tích máy' },
+    mach_analysis_sub: { en: 'AI picks the right chart', vi: 'AI chọn biểu đồ phù hợp' },
+    mode_demo: { en: 'Demo', vi: 'Demo' },
+    mode_live: { en: 'Live', vi: 'Trực tiếp' },
+    st_demo: { en: 'Demo data', vi: 'Dữ liệu demo' },
+    st_connected: { en: 'Live · connected', vi: 'Trực tiếp · đã kết nối' },
+    st_connecting: { en: 'Live · connecting', vi: 'Trực tiếp · đang kết nối' },
+    st_offline: { en: 'Live · offline', vi: 'Trực tiếp · ngoại tuyến' },
+    stage_measure: { en: 'Measure', vi: 'Đo lường' },
+    stage_explain: { en: 'Explain', vi: 'Giải thích' },
+    stage_predict: { en: 'Predict', vi: 'Dự báo' },
+    stage_evaluate: { en: 'Evaluate', vi: 'Đánh giá' },
+    stage_recommend: { en: 'Recommend', vi: 'Khuyến nghị' },
+    stage_approve: { en: 'Approve', vi: 'Phê duyệt' },
+    btn_generate: { en: 'Generate AI narrative', vi: 'Tạo diễn giải AI' },
+    btn_approve: { en: 'Approve', vi: 'Phê duyệt' },
+    btn_send_move: { en: 'Send to Move', vi: 'Gửi tới Move' },
+    btn_recalc: { en: 'Recalculate', vi: 'Tính lại' },
+    btn_decision_obj: { en: 'Decision object', vi: 'Đối tượng quyết định' },
+    ask_placeholder: { en: 'Ask about a machine or the fleet…', vi: 'Hỏi về một máy hoặc cả đội…' },
+    ask_send: { en: 'Ask', vi: 'Hỏi' },
+    mtab_avail: { en: 'Availability', vi: 'Khả dụng' },
+    mtab_perf: { en: 'Performance', vi: 'Hiệu suất' },
+    mtab_qual: { en: 'Quality', vi: 'Chất lượng' },
+    mtab_health: { en: 'Health', vi: 'Sức khỏe' },
+    ctab_thru: { en: 'Throughput', vi: 'Sản lượng' },
+    ctab_downtime: { en: 'Downtime', vi: 'Thời gian dừng' },
+    ctab_defects: { en: 'Defects', vi: 'Lỗi' },
+    ctab_fpy: { en: 'FPY', vi: 'FPY' }
+  };
 
   // ── data mode: demo (static) / sim (live IIOT fleet) ──────────────────────
   var FLEET_URL = qs.get('fleet') || 'http://127.0.0.1:5050';
@@ -320,7 +476,7 @@ a:hover{color:var(--accent-hi)}
     state.simLoading = true;
     var bridge = window.AtriaDash || null;
     if (bridge && bridge.json) {
-      bridge.json('simulate.py', ['status'], {}).then(function (resp) {
+      bridge.json('simulate.py', ['status'], { stdin: JSON.stringify({ lang: state.lang }) }).then(function (resp) {
         state.simLoading = false; applySim(resp, setScn); render(); if (state.view === 'recommendation') maybeAnalyze();
       }).catch(function (e) {
         state.simLoading = false; state.simConnected = false; state.simError = 'bridge error: ' + ((e && e.message) || e); render();
@@ -770,7 +926,7 @@ a:hover{color:var(--accent-hi)}
     state.askQuestion = question; state.askThinking = true; state.askResult = null; render();
     var b = window.AtriaDash || null;
     if (!b || !b.json) { state.askThinking = false; state.askResult = { answer: 'Ask AI runs through the Atria bridge — open the Optimize tile inside Atria.', charts: [], follow_ups: [], source: 'none' }; render(); return; }
-    b.json('ai.py', ['ask'], { stdin: JSON.stringify({ question: question, machines: M, scn: scn }), timeout_ms: 60000 })
+    b.json('ai.py', ['ask'], { stdin: JSON.stringify({ question: question, machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
       .then(function (res) { state.askThinking = false; state.askResult = res || {}; render(); })
       .catch(function (e) { state.askThinking = false; state.askResult = { answer: 'AI error: ' + ((e && e.message) || e), charts: [], follow_ups: [], source: 'error' }; render(); });
   }
@@ -811,16 +967,52 @@ a:hover{color:var(--accent-hi)}
     return null;
   }
 
+  // ── Ask Minder chatbot (ai.py ask, grounded in live data) ─────────────────
+  function scrollChat() { try { var el = document.querySelector('.chatlog'); if (el) el.scrollTop = el.scrollHeight; } catch (e) {} }
+  function chatSend(q) {
+    q = (q || '').trim(); if (!q) return;
+    state.chatDraft = '';
+    state.chatMsgs = state.chatMsgs.concat([{ who: 'u', text: q }]);
+    state.chatTyping = true; render(); scrollChat();
+    var b = window.AtriaDash || null;
+    if (!b || !b.json) {
+      state.chatTyping = false;
+      state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: L({ en: 'Ask Minder runs through the Atria bridge — open the Optimize tile inside Atria.', vi: 'Hỏi Minder chạy qua cầu nối Atria — mở thẻ Optimize trong Atria.' }) }]);
+      render(); scrollChat(); return;
+    }
+    b.json('ai.py', ['ask'], { stdin: JSON.stringify({ question: q, machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
+      .then(function (res) {
+        state.chatTyping = false;
+        var c = (res && res.charts && res.charts[0]) || null;
+        state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: (res && res.answer) || '', mId: c && c.machine, intent: c && c.intent, source: res && res.source }]);
+        render(); scrollChat();
+      })
+      .catch(function (e) {
+        state.chatTyping = false;
+        state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: 'AI error: ' + ((e && e.message) || e) }]);
+        render(); scrollChat();
+      });
+  }
+  function discussRec() {
+    var A = selAlt();
+    state.view = 'ask';
+    render();
+    chatSend(L({ en: 'Tell me about ', vi: 'Cho tôi biết về ' }) + scn.recId + ' — ' + A.type + '.');
+  }
+
   // ── Recommendation / Optimize decision loop ───────────────────────────────
   function selAlt() { return scn.alternatives.find(function (a) { return a.id === state.recAlt; }) || scn.alternatives[0]; }
   function pickAlt(id) { var a = scn.alternatives.find(function (x) { return x.id === id; }); state.recAlt = id; state.recStatus = a && a.feasible ? 'proposed' : 'prohibited'; render(); }
   function recApprove() { if (!selAlt().feasible) return; state.recStatus = 'approved'; persist('approve', { recommendation_id: scn.recId, version: 1, at: '2026-07-10T' + scn.clockLabel + ':31+07:00' }); render(); }
   function recDispatch() {
     var A = selAlt(); if (!A.feasible) return;
-    // light build: dispatch + record outcome immediately (no simulated "executing" delay)
-    persist('dispatch', { recommendation_id: scn.recId, version: 1, target_module: 'move', command: buildCommand(A) });
+    // dispatch + record the outcome (expected vs a modeled actual) + actuate the live sim.
+    var cmd = buildCommand(A);
+    state.dispatchTask = (cmd && cmd.task) || 'MOVE-TASK-7012';
+    state.actualRecovered = Math.max(0, A.recovered - 4);
+    persist('dispatch', { recommendation_id: scn.recId, version: 1, target_module: 'move', command: cmd });
     state.recStatus = 'completed';
-    persist('outcome', { recommendation_id: scn.recId, version: 1, recovered_units: 71, status: 'successful' });
+    persist('outcome', { recommendation_id: scn.recId, version: 1, recovered_units: state.actualRecovered, status: 'successful' });
     actuateSim(scn.targetMachine, A);   // push the approved decision to the live simulator
     render();
   }
@@ -829,9 +1021,11 @@ a:hover{color:var(--accent-hi)}
   function actuateSim(machine, A) {
     var b = window.AtriaDash || null;
     if (!b || !b.json || state.dataMode !== 'sim' || !machine) return;
-    var action = (A && /speed/i.test(A.type || '')) ? 'speed' : 'service';
+    var action = (A && A.kind === 'release') ? 'release' : ((A && (A.kind === 'speed' || /speed/i.test(A.type || ''))) ? 'speed' : 'service');
+    var payload = { machine: machine, action: action };
+    if (action === 'release' && typeof scn !== 'undefined' && scn && scn.intake) payload.count = scn.intake.starved_count || 1;
     state.actuateMsg = 'Sending to ' + machine + '…';
-    b.json('simulate.py', ['actuate'], { stdin: JSON.stringify({ machine: machine, action: action }), timeout_ms: 15000 })
+    b.json('simulate.py', ['actuate'], { stdin: JSON.stringify(payload), timeout_ms: 15000 })
       .then(function (res) { state.actuateMsg = (res && res.actuated) ? ('Actuated ' + machine + ' → ' + (res.endpoint || '') + '; recovering…') : ('Actuate failed: ' + ((res && res.error) || 'unreachable')); refreshSim(true); })
       .catch(function (e) { state.actuateMsg = 'Actuate error: ' + ((e && e.message) || e); render(); });
   }
@@ -840,7 +1034,7 @@ a:hover{color:var(--accent-hi)}
   function fetchAnalysis() {
     var b = window.AtriaDash || null; if (!b || !b.json || !scn) return;
     state.analyzing = true; state.analysisFor = scn.recId; render();
-    b.json('ai.py', ['analyze'], { stdin: JSON.stringify({ machines: M, scn: scn }), timeout_ms: 60000 })
+    b.json('ai.py', ['analyze'], { stdin: JSON.stringify({ machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
       .then(function (res) { state.analyzing = false; state.analysis = res || null; render(); })
       .catch(function () { state.analyzing = false; state.analysis = null; render(); });
   }
@@ -937,28 +1131,45 @@ a:hover{color:var(--accent-hi)}
   function tModeSeg() {
     var d = state.dataMode;
     return '<div class="modeseg" title="Demo (static) or Live (IIOT fleet simulator)">'
-      + '<button class="mseg" data-on="' + (d === 'demo' ? '1' : '0') + '" data-act="mode" data-mode="demo">Demo</button>'
-      + '<button class="mseg" data-on="' + (d === 'sim' ? '1' : '0') + '" data-act="mode" data-mode="sim">Live</button></div>';
+      + '<button class="mseg" data-on="' + (d === 'demo' ? '1' : '0') + '" data-act="mode" data-mode="demo">' + t('mode_demo') + '</button>'
+      + '<button class="mseg" data-on="' + (d === 'sim' ? '1' : '0') + '" data-act="mode" data-mode="sim">' + t('mode_live') + '</button></div>';
   }
   function tConnDot() {
-    if (state.dataMode !== 'sim') return '<span class="opdot"><span class="dot" style="background:var(--text-mute)"></span>Demo data</span>';
-    if (state.simConnected) return '<span class="opdot"><span class="dot livedot"></span>Live · connected</span>';
-    if (state.simLoading) return '<span class="opdot"><span class="dot" style="background:var(--warn)"></span>Live · connecting</span>';
-    return '<span class="opdot"><span class="dot" style="background:var(--danger)"></span>Live · offline</span>';
+    if (state.dataMode !== 'sim') return '<span class="opdot"><span class="dot" style="background:var(--text-mute)"></span>' + t('st_demo') + '</span>';
+    if (state.simConnected) return '<span class="opdot"><span class="dot livedot"></span>' + t('st_connected') + '</span>';
+    if (state.simLoading) return '<span class="opdot"><span class="dot" style="background:var(--warn)"></span>' + t('st_connecting') + '</span>';
+    return '<span class="opdot"><span class="dot" style="background:var(--danger)"></span>' + t('st_offline') + '</span>';
   }
-  function tHeader() {
+  // Sidebar nav icons (inline SVG, from the design's icon map).
+  var ICONS = {
+    fleet: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+    recommendation: '<svg viewBox="0 0 24 24"><path d="M12 3l2.09 5.26L20 9l-4 3.5L17 19l-5-3-5 3 1-6.5L4 9l5.91-.74z"/></svg>',
+    history: '<svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    machines: '<svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8"/><path d="M17 4h4v4"/></svg>',
+    ask: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>'
+  };
+  function tSide() {
+    var v = state.view;
+    var tabs = [['fleet', 'tab_fleet'], ['recommendation', 'tab_recommendation'], ['history', 'tab_history'], ['machines', 'tab_machines'], ['ask', 'tab_ask']];
+    var nav = tabs.map(function (tb) {
+      return '<button class="oc-tab" data-on="' + (v === tb[0] ? '1' : '0') + '" data-act="view" data-view="' + tb[0] + '">' + ICONS[tb[0]] + '<span>' + t(tb[1]) + '</span></button>';
+    }).join('');
+    return '<aside class="oc-side">'
+      + '<div class="side-brand"><span class="sq"></span>OPTIMIZE<span class="ver">V2</span></div>'
+      + '<nav class="side-nav"><div class="side-lab">' + t('side_console') + '</div>' + nav + '</nav>'
+      + '<div class="side-foot"><span class="dot livedot"></span>' + t('side_foot') + '</div>'
+      + '</aside>';
+  }
+  function tHead() {
     return '<header class="oc-head">'
-      + '<div class="brand"><span class="sq"></span>OPTIMIZE<span class="ver">V2 · FLEET</span></div>'
       + '<div class="ctx">' + escText(plantLabel()) + '</div>'
       + '<div class="head-r">' + tModeSeg() + tConnDot()
       + '<span class="clock">' + state.clock + '</span>'
+      + '<div class="modeseg" title="English / Tiếng Việt">'
+      + '<button class="mseg" data-on="' + (state.lang === 'en' ? '1' : '0') + '" data-act="lang" data-lang="en">EN</button>'
+      + '<button class="mseg" data-on="' + (state.lang === 'vi' ? '1' : '0') + '" data-act="lang" data-lang="vi">VI</button></div>'
       + '<button class="theme-btn" data-act="theme" title="Switch light / dark theme" aria-label="Switch light or dark theme">' + (state.theme === 'dark' ? '☀' : '☾') + '</button>'
       + '</div></header>';
-  }
-  function tNav() {
-    var v = state.view;
-    var tabs = [['fleet', 'Fleet'], ['recommendation', 'Recommendation'], ['machines', 'Machines'], ['ask', 'Ask AI']];
-    return '<nav class="navbar"><div class="navwrap">' + tabs.map(function (t) { return '<button class="oc-tab" data-on="' + (v === t[0] ? '1' : '0') + '" data-act="view" data-view="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div></nav>';
   }
   function tKpis(v) {
     return '<div class="kpis">' + kpisFor(v).map(function (k) { return '<div class="kpi"><div class="kl">' + k.kl + '</div><div class="kv ' + (k.red ? 'red' : '') + '">' + k.kv + '</div><div class="ks">' + k.ks + '</div></div>'; }).join('') + '</div>';
@@ -976,7 +1187,7 @@ a:hover{color:var(--accent-hi)}
   // A clickable stage's detail card — live scn numbers + that stage's gpt-5.4-mini sentence.
   function stageCard(i) {
     var s = scn, A = selAlt(), an = state.analysis || {};
-    var names = ['Measure', 'Explain', 'Predict', 'Evaluate', 'Recommend', 'Approve'];
+    var names = [t('stage_measure'), t('stage_explain'), t('stage_predict'), t('stage_evaluate'), t('stage_recommend'), t('stage_approve')];
     var keys = ['measure', 'explain', 'predict', 'evaluate', 'recommend', null];
     var pctv = function (x) { return Math.round((x || 0) * 100) + '%'; };
     function rows(pairs) { return '<div class="stg-rows">' + pairs.map(function (p) { return '<div class="stg-row"><span class="stg-k">' + p[0] + '</span><span class="stg-v ' + (p[2] ? 'red' : '') + '">' + escText(String(p[1])) + '</span></div>'; }).join('') + '</div>'; }
@@ -1014,98 +1225,106 @@ a:hover{color:var(--accent-hi)}
     }
     var ai = keys[i] ? (an[keys[i]] || (state.analyzing ? 'Analyzing live telemetry…' : '')) : '';
     var aiBlock = ai ? '<div class="stg-ai"><span class="stg-ai-tag">gpt-5.4-mini</span>' + escText(ai) + '</div>'
-      : (keys[i] ? '<div class="stg-ai"><button class="btn-ghost" data-act="reexplain">Generate AI narrative</button></div>' : '');
+      : (keys[i] ? '<div class="stg-ai"><button class="btn-ghost" data-act="reexplain">' + t('btn_generate') + '</button></div>' : '');
     return '<div class="panel stage-d"><div class="panel-h"><span class="pnum">' + (i + 1) + '</span><span class="ptitle">' + names[i] + '</span><span class="psub" style="margin-left:auto">stage ' + (i + 1) + ' of 6</span></div>' + aiBlock + body + '</div>';
   }
+  // The read-only 5-phase result summary — one deterministic line per phase from the LIVE scn
+  // (matches the design's phase templates). The 5th line is dynamic on the selected alternative.
+  function recPhases(s, A) {
+    var feas = s.alternatives.filter(function (a) { return a.feasible; }).length;
+    var blocked = s.alternatives.length - feas;
+    var top = (s.losses && s.losses[0]) || {};
+    var p5;
+    if (!A.feasible) p5 = { ph: L({ en: 'Blocked', vi: 'Bị chặn' }), r: A.id + ' ' + L({ en: 'fails the health constraint', vi: 'vi phạm ràng buộc sức khỏe máy' }), cls: 'danger' };
+    else if (A.id === 'ACT-000') p5 = { ph: L({ en: 'Act', vi: 'Hành động' }), r: L({ en: 'No action · drifts to ', vi: 'Không hành động · trôi về ' }) + kfmt(A.forecastAfter), cls: '' };
+    else p5 = { ph: t('stage_recommend'), r: A.id + ' · +' + A.recovered + ' ' + L({ en: 'units · ', vi: 'sản phẩm · ' }) + Math.round(A.attainAfter * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'accent' };
+    return [
+      { ph: t('stage_measure'), r: kfmt(s.current) + ' / ' + kfmt(s.target) + ' ' + L({ en: 'units · cycle ', vi: 'sản phẩm · chu kỳ ' }) + s.cycleActual + 's vs ' + s.cycleExpected + 's', cls: '' },
+      { ph: t('stage_explain'), r: (top.type || '—') + ' — ' + (top.units || 0) + ' ' + L({ en: 'units, top of ', vi: 'sản phẩm, đứng đầu ' }) + s.losses.length + L({ en: ' causes', vi: ' nguyên nhân' }), cls: '' },
+      { ph: t('stage_predict'), r: L({ en: 'Forecast ', vi: 'Dự báo ' }) + kfmt(s.forecastBase) + ' · ' + s.gap + ' ' + L({ en: 'gap · ', vi: 'thiếu · ' }) + Math.round(s.attainBefore * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'danger' },
+      { ph: t('stage_evaluate'), r: s.alternatives.length + ' ' + L({ en: 'candidates · ', vi: 'phương án · ' }) + blocked + ' ' + L({ en: 'blocked · ', vi: 'bị chặn · ' }) + feas + ' ' + L({ en: 'feasible', vi: 'khả thi' }), cls: '' },
+      p5
+    ];
+  }
+
   function viewRec() {
     var s = scn, A = selAlt(), st = state.recStatus;
-    var statusMap = { proposed: ['Proposed', 'var(--accent)'], approved: ['Approved', 'var(--ok)'], dispatched: ['Dispatched · executing', 'var(--warn)'], completed: ['Completed', 'var(--ok)'], prohibited: ['Blocked', 'var(--danger)'] };
+    var statusMap = { proposed: [L({ en: 'Proposed', vi: 'Đề xuất' }), 'var(--accent)'], approved: [L({ en: 'Approved', vi: 'Đã duyệt' }), 'var(--ok)'], dispatched: [L({ en: 'Dispatched · executing', vi: 'Đã điều phối · đang chạy' }), 'var(--warn)'], completed: [L({ en: 'Completed', vi: 'Hoàn thành' }), 'var(--ok)'], prohibited: [L({ en: 'Blocked', vi: 'Bị chặn' }), 'var(--danger)'] };
     var done = st === 'dispatched' || st === 'completed';
     var scnMetrics = [
-      { l: 'Target', v: kfmt(s.target), t: 'units this shift' },
-      { l: 'Current', v: kfmt(s.current), t: 'good output @ ' + s.clockLabel },
-      { l: 'Forecast', v: kfmt(s.forecastBase), t: 'end of shift, no action' },
-      { l: 'Gap', v: s.gap, t: 'units short of target', red: true },
-      { l: 'Attainment', v: Math.round(s.attainBefore * 100) + '%', t: 'probability of hitting target', red: true }
+      { l: L({ en: 'Target', vi: 'Mục tiêu' }), v: kfmt(s.target), t: L({ en: 'units this shift', vi: 'sản phẩm ca này' }) },
+      { l: L({ en: 'Current', vi: 'Hiện tại' }), v: kfmt(s.current), t: L({ en: 'good output @ ', vi: 'sản lượng tốt @ ' }) + s.clockLabel },
+      { l: L({ en: 'Forecast', vi: 'Dự báo' }), v: kfmt(s.forecastBase), t: L({ en: 'end of shift, no action', vi: 'cuối ca, không hành động' }) },
+      { l: L({ en: 'Gap', vi: 'Chênh lệch' }), v: s.gap, t: L({ en: 'units short of target', vi: 'sản phẩm thiếu' }), red: true },
+      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '%', t: L({ en: 'probability of hitting target', vi: 'xác suất đạt mục tiêu' }), red: true }
     ];
-    var stageDefs = ['Measure', 'Explain', 'Predict', 'Evaluate', 'Recommend', 'Approve'];
-    var activeStage = done ? 5 : 4;
     var recMetrics = [
-      { l: 'Recovered', v: (A.recovered > 0 ? '+' : '') + A.recovered, u: 'units', cls: A.recovered > 0 ? 'accent' : '' },
-      { l: 'Attainment', v: Math.round(s.attainBefore * 100) + '→' + Math.round(A.attainAfter * 100) + '%', u: 'target prob', cls: '' },
-      { l: 'Risk', v: A.risk.charAt(0).toUpperCase() + A.risk.slice(1), u: 'operational', cls: A.risk === 'high' ? 'danger' : '' },
-      { l: 'Confidence', v: Math.round(A.confidence * 100) + '%', u: 'overall', cls: '' },
-      { l: 'Approval', v: A.approval || 'None', u: A.approval ? 'required' : 'not required', cls: '' }
+      { l: L({ en: 'Recovered', vi: 'Phục hồi' }), v: (A.recovered > 0 ? '+' : '') + A.recovered, u: L({ en: 'units', vi: 'sản phẩm' }), cls: A.recovered > 0 ? 'accent' : '' },
+      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '→' + Math.round(A.attainAfter * 100) + '%', u: L({ en: 'target prob', vi: 'xác suất' }), cls: '' },
+      { l: L({ en: 'Risk', vi: 'Rủi ro' }), v: A.risk.charAt(0).toUpperCase() + A.risk.slice(1), u: L({ en: 'operational', vi: 'vận hành' }), cls: A.risk === 'high' ? 'danger' : '' },
+      { l: L({ en: 'Confidence', vi: 'Tin cậy' }), v: Math.round(A.confidence * 100) + '%', u: L({ en: 'overall', vi: 'tổng thể' }), cls: '' },
+      { l: L({ en: 'Approval', vi: 'Phê duyệt' }), v: A.approval || L({ en: 'None', vi: 'Không' }), u: A.approval ? L({ en: 'required', vi: 'bắt buộc' }) : L({ en: 'not required', vi: 'không cần' }), cls: '' }
     ];
     var canApprove = A.feasible && !!A.approval && st === 'proposed';
     var canDispatch = A.feasible && (st === 'proposed' || st === 'approved');
+    var sitRisk = s.attainBefore < 0.4 ? 'high' : (s.attainBefore < 0.7 ? 'medium' : 'low');
 
     var scnPanel = '<div class="panel scn">'
-      + '<div class="scn-top"><div class="scn-id"><span class="scn-live"><span class="dot livedot"></span>Optimize · live decision</span><span class="scn-rec">' + s.recId + '</span></div>'
-      + '<div class="scn-head">' + s.line + ' · ' + s.wo + ' · ' + s.shift + '</div>'
-      + '<div class="scn-r"><span class="risk-pill">Risk: high</span><span class="scn-clock">' + s.clockLabel + '</span></div></div>'
+      + '<div class="scn-top"><div class="scn-id"><span class="scn-live"><span class="dot livedot"></span>' + L({ en: 'Optimize · live decision', vi: 'Optimize · quyết định trực tiếp' }) + '</span><span class="scn-rec">' + escText(s.recId) + '</span></div>'
+      + '<div class="scn-head">' + escText(s.line + ' · ' + s.wo + ' · ' + s.shift) + '</div>'
+      + '<div class="scn-r"><span class="risk-pill">' + L({ en: 'Risk: ', vi: 'Rủi ro: ' }) + sitRisk + '</span><span class="scn-clock">' + s.clockLabel + '</span></div></div>'
       + '<div class="scn-metrics">' + scnMetrics.map(function (m) { return '<div class="scn-m"><div class="scn-ml">' + m.l + '</div><div class="scn-mv ' + (m.red ? 'red' : '') + '">' + m.v + '</div><div class="scn-mt">' + m.t + '</div></div>'; }).join('') + '</div>'
-      + '<div class="loop">' + stageDefs.map(function (name, i) { var sState = i < activeStage ? 'done' : (i === activeStage ? 'active' : 'todo'); return '<button class="loop-step" data-act="stage" data-si="' + i + '" data-s="' + sState + '"' + (i === state.recStage ? ' data-open="1"' : '') + '><span class="loop-n">' + (i + 1) + '</span><span class="loop-name">' + name + '</span></button>'; }).join('') + '</div>'
-      + (state.recStage != null ? stageCard(state.recStage) : '')
+      + '<div class="phases">' + recPhases(s, A).map(function (p, i) { return '<div class="phase"><div class="phase-h"><span class="phase-n">' + (i + 1) + '</span><span class="phase-ph">' + p.ph + '</span></div><div class="phase-r ' + p.cls + '">' + escText(p.r) + '</div></div>'; }).join('') + '</div>'
+      + '<div class="scn-fc"><div class="scn-fc-h"><span class="ptitle">' + L({ en: 'Forecast projection', vi: 'Dự báo sản lượng' }) + '</span><span class="psub">' + L({ en: 'no action vs recommended', vi: 'không hành động vs khuyến nghị' }) + '</span></div>'
+      + chartDiv('recFc', recForecastChart(A))
+      + '<div class="fc-legend"><span class="fc-lg"><span class="fc-swatch" style="background:var(--accent)"></span>' + L({ en: 'With action', vi: 'Có hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch dash"></span>' + L({ en: 'No action', vi: 'Không hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch warn"></span>' + L({ en: 'Target', vi: 'Mục tiêu' }) + '</span></div></div>'
       + '</div>';
 
     var actions = '';
-    if (canApprove) actions += '<button class="btn-2" data-act="approve">Approve</button>';
-    if (canDispatch) actions += '<button class="btn-1" data-act="dispatch">Send to Move</button>';
-    actions += '<button class="btn-ghost" data-act="recalc">Recalculate</button>';
-    actions += '<button class="btn-ghost" data-act="toggle-json">Decision object</button>';
+    if (canApprove) actions += '<button class="btn-2" data-act="approve">' + t('btn_approve') + '</button>';
+    if (canDispatch) actions += '<button class="btn-1" data-act="dispatch">' + t('btn_send_move') + '</button>';
+    actions += '<button class="btn-ghost" data-act="recalc">' + t('btn_recalc') + '</button>';
+    actions += '<button class="btn-ghost" data-act="toggle-json">' + t('btn_decision_obj') + '</button>';
+    actions += '<button class="btn-2" data-act="discuss">' + t('btn_discuss') + '</button>';
 
     var outcome = '';
     if (done) {
-      outcome = '<div class="rh-outcome"><div class="rh-oc-row"><span class="rh-oc-k">Move task</span><span class="rh-oc-v">MOVE-TASK-7012 · accepted</span></div>';
-      if (st === 'completed') outcome += '<div class="rh-oc-grid"><div><div class="rh-oc-num">75</div><div class="rh-oc-lab">expected units</div></div><div><div class="rh-oc-num">71</div><div class="rh-oc-lab">actual units</div></div><div><div class="rh-oc-num ok">Successful</div><div class="rh-oc-lab">outcome</div></div></div>';
+      var taskId = state.dispatchTask || 'MOVE-TASK-7012';
+      outcome = '<div class="rh-outcome"><div class="rh-oc-row"><span class="rh-oc-k">' + L({ en: 'Move task', vi: 'Tác vụ Move' }) + '</span><span class="rh-oc-v">' + escText(taskId) + ' · ' + L({ en: 'accepted', vi: 'đã nhận' }) + '</span></div>';
+      if (st === 'completed') { var actu = state.actualRecovered != null ? state.actualRecovered : Math.max(0, A.recovered - 4); outcome += '<div class="rh-oc-grid"><div><div class="rh-oc-num">' + A.recovered + '</div><div class="rh-oc-lab">' + L({ en: 'expected units', vi: 'sản phẩm kỳ vọng' }) + '</div></div><div><div class="rh-oc-num">' + actu + '</div><div class="rh-oc-lab">' + L({ en: 'actual units', vi: 'sản phẩm thực tế' }) + '</div></div><div><div class="rh-oc-num ok">' + L({ en: 'Successful', vi: 'Thành công' }) + '</div><div class="rh-oc-lab">' + L({ en: 'outcome', vi: 'kết quả' }) + '</div></div></div>'; }
       outcome += '</div>';
     }
 
     var hero = '<div class="panel rec-hero" data-blocked="' + (!A.feasible) + '">'
-      + '<div class="rh-top"><span class="rh-eyebrow">Recommended action</span><span class="rh-status" style="color:' + statusMap[st][1] + ';border-color:' + statusMap[st][1] + '">' + statusMap[st][0] + '</span></div>'
-      + '<h2 class="rh-head">' + A.headPre + ' <em>' + A.headEm + '</em> ' + A.headPost + '</h2>'
-      + '<div class="rh-detail">' + A.detail + '</div>'
+      + '<div class="rh-top"><span class="rh-eyebrow">' + L({ en: 'Recommended action', vi: 'Hành động khuyến nghị' }) + '</span><span class="rh-status" style="color:' + statusMap[st][1] + ';border-color:' + statusMap[st][1] + '">' + statusMap[st][0] + '</span></div>'
+      + '<h2 class="rh-head">' + escText(A.headPre) + ' <em>' + escText(A.headEm) + '</em> ' + escText(A.headPost) + '</h2>'
+      + '<div class="rh-detail">' + escText(A.detail) + '</div>'
       + '<div class="rh-metrics">' + recMetrics.map(function (m) { return '<div class="rh-m"><div class="rh-mv ' + m.cls + '">' + m.v + '</div><div class="rh-ml">' + m.l + '</div><div class="rh-mu">' + m.u + '</div></div>'; }).join('') + '</div>'
-      + '<div class="rh-why"><span class="rh-why-lab">Why</span>' + (A.feasible ? A.why : A.rejection) + '</div>'
+      + '<div class="rh-why"><span class="rh-why-lab">' + L({ en: 'Why', vi: 'Vì sao' }) + '</span>' + escText(A.feasible ? A.why : A.rejection) + '</div>'
       + '<div class="rh-actions">' + actions + '</div>'
       + outcome
       + '</div>';
 
-    var fcPanel = '<div class="panel"><div class="panel-h"><span class="pnum">▲</span><span class="ptitle">Forecast projection</span><span class="psub">no action vs recommended</span></div>'
-      + chartDiv('recFc', recForecastChart(A))
-      + '<div class="fc-legend"><span class="fc-lg"><span class="fc-swatch" style="background:var(--accent)"></span>With action</span><span class="fc-lg"><span class="fc-swatch dash"></span>No action</span><span class="fc-lg"><span class="fc-swatch warn"></span>Target</span></div></div>';
-
-    var lossPanel = '<div class="panel"><div class="panel-h"><span class="pnum">◆</span><span class="ptitle">Why we’re behind</span><span class="psub">predicted loss · units</span></div>'
-      + chartDiv('recLoss', recLossChart())
-      + '<div class="losslist">' + s.losses.map(function (l) { return '<div class="loss-row"><span class="loss-t">' + l.type + '</span><span class="loss-min">' + l.min + 'm</span><span class="loss-u">' + l.units + ' units</span></div>'; }).join('') + '</div></div>';
-
-    var altPanel = '<div class="panel"><div class="panel-h"><span class="pnum">≡</span><span class="ptitle">Alternatives evaluated</span><span class="psub">select to inspect</span></div>'
-      + '<div class="alt-table"><div class="alt-h"><span>Action</span><span>Units</span><span>Risk</span><span>Feasible</span><span>Approval</span></div>'
+    var altPanel = '<div class="panel"><div class="panel-h"><span class="pnum">≡</span><span class="ptitle">' + L({ en: 'Alternatives evaluated', vi: 'Phương án đã đánh giá' }) + '</span><span class="psub">' + L({ en: 'select to re-rank', vi: 'chọn để xếp lại' }) + '</span></div>'
+      + '<div class="alt-table"><div class="alt-h"><span>' + L({ en: 'Action', vi: 'Hành động' }) + '</span><span>' + L({ en: 'Units', vi: 'SP' }) + '</span><span>' + L({ en: 'Risk', vi: 'Rủi ro' }) + '</span><span>' + L({ en: 'Feasible', vi: 'Khả thi' }) + '</span><span>' + L({ en: 'Approval', vi: 'Duyệt' }) + '</span></div>'
       + s.alternatives.map(function (a) {
         var riskColor = a.risk === 'high' ? 'var(--danger)' : (a.risk === 'medium' ? 'var(--warn)' : 'var(--ok)');
         var feasColor = a.feasible ? 'var(--ok)' : 'var(--danger)';
         return '<button class="alt-row" data-on="' + (a.id === state.recAlt ? '1' : '0') + '" data-act="pick-alt" data-id="' + a.id + '">'
-          + '<span class="alt-type">' + a.type + '</span>'
+          + '<span class="alt-type">' + escText(a.type) + '</span>'
           + '<span class="alt-units">' + (a.feasible ? '+' + a.recovered : a.recovered) + '</span>'
           + '<span class="alt-risk" style="color:' + riskColor + '">' + (a.risk.charAt(0).toUpperCase() + a.risk.slice(1)) + '</span>'
-          + '<span class="alt-feas" style="color:' + feasColor + '">' + (a.feasible ? 'Feasible' : 'Blocked') + '</span>'
-          + '<span class="alt-appr">' + (a.approval || '—') + '</span></button>';
+          + '<span class="alt-feas" style="color:' + feasColor + '">' + (a.feasible ? L({ en: 'Feasible', vi: 'Khả thi' }) : L({ en: 'Blocked', vi: 'Chặn' })) + '</span>'
+          + '<span class="alt-appr">' + escText(a.approval || '—') + '</span></button>';
       }).join('') + '</div></div>';
 
-    var conPanel = '<div class="panel"><div class="panel-h"><span class="pnum">✓</span><span class="ptitle">Constraints checked</span><span class="psub">rule engine</span></div>'
-      + '<div class="constraints">' + s.constraints.map(function (c) { return '<div class="con-row"><span class="con-ok">✓</span><span class="con-c">' + c.c + '</span><span class="con-r">' + c.r + '</span></div>'; }).join('') + '</div>'
-      + '<div class="evidence"><span class="ev-lab">Evidence events</span>' + s.evidence.join(' · ') + '</div></div>';
+    var jsonPanel = state.showJson ? '<div class="panel"><div class="panel-h"><span class="pnum">{ }</span><span class="ptitle">' + t('btn_decision_obj') + '</span><span class="psub">versioned · executable</span></div><pre class="jsonbox">' + escText(recDecisionJson()) + '</pre></div>' : '';
 
-    var jsonPanel = state.showJson ? '<div class="panel"><div class="panel-h"><span class="pnum">{ }</span><span class="ptitle">Decision object</span><span class="psub">versioned · executable</span></div><pre class="jsonbox">' + escText(recDecisionJson()) + '</pre></div>' : '';
-
-    var hint = state.recStage == null ? '<div class="panel" style="border-style:dashed"><div class="body-sm" style="color:var(--text-mute)">Click a stage in the loop above to open its detail — each card carries the live numbers and the gpt-5.4-mini narrative for that step.</div></div>' : '';
     var actMsg = state.actuateMsg ? '<div class="panel" style="border-color:var(--accent-lo)"><div class="body-sm" style="color:var(--accent-hi)">' + escText(state.actuateMsg) + '</div></div>' : '';
-    return '<div class="stack">' + scnPanel + hint
-      + '<div class="g21">' + hero + fcPanel + '</div>'
+    return '<div class="stack">' + scnPanel
+      + '<div class="g21">' + hero + altPanel + '</div>'
       + actMsg
-      + '<div class="g2">' + lossPanel + altPanel + '</div>'
-      + '<div class="g2">' + conPanel + jsonPanel + '</div>'
+      + jsonPanel
       + '</div>';
   }
 
@@ -1139,11 +1358,11 @@ a:hover{color:var(--accent-hi)}
   // switchable trend/loss chart, and the runtime-vs-health scatter. All fed by the live fleet.
   function viewMachines() {
     var metric = state.machMetric || 'avail', mchart = state.machChart || 'thru';
-    var mtabs = [['avail', 'Availability'], ['perf', 'Performance'], ['qual', 'Quality'], ['health', 'Health']];
-    var mf = '<div class="hfilter">' + mtabs.map(function (t) { return '<button class="hf" data-on="' + (metric === t[0] ? '1' : '0') + '" data-act="mach-metric" data-id="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    var mtabs = [['avail', 'mtab_avail'], ['perf', 'mtab_perf'], ['qual', 'mtab_qual'], ['health', 'mtab_health']];
+    var mf = '<div class="hfilter">' + mtabs.map(function (tb) { return '<button class="hf" data-on="' + (metric === tb[0] ? '1' : '0') + '" data-act="mach-metric" data-id="' + tb[0] + '">' + t(tb[1]) + '</button>'; }).join('') + '</div>';
     var rb = metric === 'perf' ? rankedPerf() : metric === 'qual' ? rankedQual() : metric === 'health' ? rankedHealth() : rankedAvail();
-    var ctabs = [['thru', 'Throughput'], ['downtime', 'Downtime'], ['defects', 'Defects'], ['fpy', 'FPY']];
-    var cf = '<div class="hfilter">' + ctabs.map(function (t) { return '<button class="hf" data-on="' + (mchart === t[0] ? '1' : '0') + '" data-act="mach-chart" data-id="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    var ctabs = [['thru', 'ctab_thru'], ['downtime', 'ctab_downtime'], ['defects', 'ctab_defects'], ['fpy', 'ctab_fpy']];
+    var cf = '<div class="hfilter">' + ctabs.map(function (tb) { return '<button class="hf" data-on="' + (mchart === tb[0] ? '1' : '0') + '" data-act="mach-chart" data-id="' + tb[0] + '">' + t(tb[1]) + '</button>'; }).join('') + '</div>';
     var chart = mchart === 'downtime' ? chartDiv('mChart', chartDtPareto()) : mchart === 'defects' ? chartDiv('mChart', chartDefPareto()) : mchart === 'fpy' ? chartDiv('mChart', chartFpyTrend()) : chartDiv('mChart', chartThruTrend());
     return '<div class="stack">'
       + '<div class="panel"><div class="panel-h"><span class="pnum">a</span><span class="ptitle">By machine</span><span class="psub">ranked · red below threshold</span>' + mf + '</div>' + H(rb) + '</div>'
@@ -1152,7 +1371,26 @@ a:hover{color:var(--accent-hi)}
       + panel('c', 'Runtime vs health', 'red = at-risk', chartDiv('mScatter', chartHealthScatter()))
       + '</div>'
       + machineDetail()
+      + machineAnalysis()
       + '</div>';
+  }
+  // "Machine analysis" — AI picks the best-fit chart for a machine + intent (relocated from Ask AI).
+  function machineAnalysis() {
+    var mId = state.askMachine, m = M.find(function (x) { return x.id === mId; }) || M[0];
+    var control = '<div class="mrow"><span class="mlab">' + L({ en: 'Machine', vi: 'Máy' }) + '</span><select class="msel" data-act="machine">'
+      + M.map(function (x) { return '<option value="' + x.id + '"' + (x.id === mId ? ' selected' : '') + '>' + x.id + '  ·  ' + x.cell + '  ·  ' + x.type + '</option>'; }).join('')
+      + '</select></div>'
+      + '<div class="chips">' + INTENTS.map(function (it) { return '<button class="chip" data-on="' + (state.askIntent === it.id ? '1' : '0') + '" data-act="intent" data-id="' + it.id + '">' + it.label + '</button>'; }).join('') + '</div>';
+    var body;
+    if (state.asking) body = '<div class="gen"><span class="spin"></span>' + L({ en: 'Generating chart…', vi: 'Đang tạo biểu đồ…' }) + '</div>';
+    else if (state.askIntent && m) {
+      var it = INTENTS.find(function (x) { return x.id === state.askIntent; });
+      body = '<div class="g21" style="margin-top:14px"><div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">' + m.id + ' · ' + it.chart + '</span><span class="psub">' + it.label + '</span></div>'
+        + chartDiv('askchart', buildAskChart(m, state.askIntent)) + '</div>'
+        + '<div class="panel why"><div><div class="why-eyebrow"><span class="dot" style="background:var(--accent)"></span>' + L({ en: 'Why this chart', vi: 'Vì sao biểu đồ này' }) + '</div><p class="why-body">' + it.why + '</p></div>'
+        + '<div class="why-ctx">' + escText(m.type + ' · ' + m.cell + ' · ' + m.state) + '</div></div></div>';
+    } else body = '<div class="empty" style="padding:24px">' + L({ en: 'Pick a machine + intent — Minder draws the best-fit chart.', vi: 'Chọn máy + mục đích — Minder vẽ biểu đồ phù hợp.' }) + '</div>';
+    return '<div class="panel"><div class="panel-h"><span class="pnum">d</span><span class="ptitle">' + t('mach_analysis') + '</span><span class="psub">' + t('mach_analysis_sub') + '</span></div>' + control + body + '</div>';
   }
   // Per-machine live detail: current telemetry + a baseline-vs-live comparison (from the sim's
   // baseline/diff) + a live vibration/temperature chart for the picked machine.
@@ -1185,43 +1423,117 @@ a:hover{color:var(--accent-hi)}
       + warn + telHtml
       + '<div class="g2" style="margin-top:12px"><div>' + cmp + '</div>' + chartDiv('mdetChart', buildAskChart(m, 'vibtemp')) + '</div></div>';
   }
+  // One chat message bubble; assistant messages with a chart intent embed the best-fit chart.
+  function chatBubble(mm, i) {
+    if (mm.who === 'u') return '<div class="cmsg" data-who="u"><div class="cbubble" data-who="u">' + escText(mm.text) + '</div></div>';
+    var chartMachine = mm.mId ? M.find(function (x) { return x.id === mm.mId; }) : null;
+    var it = mm.intent ? INTENTS.find(function (x) { return x.id === mm.intent; }) : null;
+    var hasChart = chartMachine && it;
+    var inner = '';
+    if (hasChart) inner += '<div class="ctag">' + chartMachine.id + ' · ' + it.chart + '</div>';
+    inner += '<div class="ctext">' + escText(mm.text) + '</div>';
+    if (hasChart) inner += chartDiv('chatchart' + i, buildAskChart(chartMachine, mm.intent));
+    return '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a"' + (hasChart ? ' data-chart="1"' : '') + '>' + inner + '</div></div>';
+  }
   function viewAsk() {
-    var mId = state.askMachine, m = M.find(function (x) { return x.id === mId; });
-    var suggestions = ['Why is M-02 degrading?', 'Compare M-12 to the fleet', 'Which machine needs attention?', 'Is any machine overheating?'];
-    var chat = '<div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">Ask AI</span><span class="psub">gpt-5.4-mini · grounded in live data</span></div>'
-      + '<div style="display:flex;gap:8px;margin-bottom:10px"><input id="askq" class="askq" placeholder="Ask about a machine or the fleet…" value="' + escAttr(state.askQuestion || '') + '" style="flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:500 13px var(--sans);outline:none"><button class="btn-1" data-act="ask-send">Ask</button></div>'
-      + '<div class="chips">' + suggestions.map(function (q) { return '<button class="chip" data-act="ask-suggest" data-q="' + escAttr(q) + '">' + escText(q) + '</button>'; }).join('') + '</div></div>'
-      + askResultBlock();
-    var control = '<div class="panel"><div class="panel-h"><span class="pnum">◇</span><span class="ptitle">Chart explorer</span><span class="psub">pick a machine + intent manually</span></div>'
-      + '<div class="mrow"><span class="mlab">Machine</span><select class="msel" data-act="machine">'
-      + M.map(function (x) { return '<option value="' + x.id + '"' + (x.id === mId ? ' selected' : '') + '>' + x.id + '  ·  ' + x.cell + '  ·  ' + x.type + '</option>'; }).join('')
-      + '</select></div>'
-      + '<div class="chips">' + INTENTS.map(function (it) { return '<button class="chip" data-on="' + (state.askIntent === it.id ? '1' : '0') + '" data-act="intent" data-id="' + it.id + '">' + it.label + '</button>'; }).join('') + '</div></div>';
-
-    var body = '';
-    if (!state.asking && !state.askIntent) body = '<div class="panel"><div class="empty">Select a machine or an intent above — Minder picks the best-fit chart.</div></div>';
-    else if (state.asking) body = '<div class="panel"><div class="gen"><span class="spin"></span>Generating chart…</div></div>';
-    else {
-      var it = INTENTS.find(function (x) { return x.id === state.askIntent; });
-      var followups = INTENTS.filter(function (x) { return x.id !== state.askIntent; }).slice(0, 3);
-      body = '<div class="g21"><div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">' + m.id + ' · ' + it.chart + '</span><span class="psub">' + it.label + '</span></div>'
-        + chartDiv('askchart', buildAskChart(m, state.askIntent)) + '</div>'
-        + '<div class="panel why"><div><div class="why-eyebrow"><span class="dot" style="background:var(--accent)"></span>Why this chart</div><p class="why-body">' + it.why + '</p></div>'
-        + '<div class="why-ctx">' + m.type + ' · ' + m.cell + ' cell · state: ' + m.state + '</div>'
-        + '<div><div class="fu-lab">Follow up</div><div class="chips">' + followups.map(function (o) { return '<button class="chip" data-act="intent" data-id="' + o.id + '">' + o.label + '</button>'; }).join('') + '</div></div></div></div>';
-    }
+    var suggestions = [
+      L({ en: 'Why is M-04 down?', vi: 'Vì sao M-04 dừng?' }),
+      L({ en: 'Compare M-12 to the fleet', vi: 'So sánh M-12 với cả đội' }),
+      L({ en: 'Is M-17 overheating?', vi: 'M-17 có quá nhiệt không?' }),
+      L({ en: 'OEE breakdown for M-13', vi: 'Phân rã OEE cho M-13' })
+    ];
+    var log = state.chatMsgs.length
+      ? state.chatMsgs.map(function (mm, i) { return chatBubble(mm, i); }).join('')
+      : '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a">' + escText(t('chat_greet')) + '</div></div>';
+    if (state.chatTyping) log += '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a"><span class="tdots"><span></span><span></span><span></span></span></div></div>';
+    var chat = '<div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">' + t('chat_title') + '</span><span class="psub">' + t('chat_sub') + '</span></div>'
+      + '<div class="chatlog">' + log + '</div>'
+      + '<div class="chips" style="margin-bottom:10px">' + suggestions.map(function (q) { return '<button class="chip" data-act="chat-suggest" data-q="' + escAttr(q) + '">' + escText(q) + '</button>'; }).join('') + '</div>'
+      + '<div class="chat-in"><input id="chatq" class="cinput" placeholder="' + escAttr(t('chat_placeholder')) + '" value="' + escAttr(state.chatDraft || '') + '"><button class="btn-1" data-act="chat-send">' + t('chat_send') + '</button></div></div>';
 
     var guide = '';
-    if (guideOn()) guide = '<div class="panel"><div class="panel-h"><span class="pnum">◇</span><span class="ptitle">Chart-selection guide</span><span class="psub">the research behind the picks</span></div>'
+    if (guideOn()) guide = '<div class="panel"><div class="panel-h"><span class="pnum">◇</span><span class="ptitle">' + t('guide_title') + '</span><span class="psub">' + L({ en: 'the research behind the picks', vi: 'cơ sở lựa chọn biểu đồ' }) + '</span></div>'
       + '<div class="guide">' + INTENTS.map(function (g) { return '<div class="grow"><span class="gintent">' + g.label + '</span><span class="gchart">' + g.chart + '</span><span class="gwhy">' + g.why + '</span></div>'; }).join('') + '</div></div>';
 
-    return '<div class="stack">' + chat + control + body + guide + '</div>';
+    return '<div class="stack">' + chat + guide + '</div>';
+  }
+
+  // ── Approved History (Demo: canned; Live: reads the decision store back) ───
+  function ahStat(v, l, cls) { return '<div class="ah-s"><div class="ah-sv ' + (cls || '') + '">' + v + '</div><div class="ah-sl">' + l + '</div></div>'; }
+  function histStatusColor(st) { return /complet/i.test(st) ? 'var(--ok)' : /dispatch/i.test(st) ? 'var(--warn)' : /block|reject|prohibit/i.test(st) ? 'var(--danger)' : 'var(--accent)'; }
+  function liveHistRow(d) {
+    if (!d || !d.recommendation_id) return null;
+    var ra = d.recommended_action || {}, ee = d.expected_effect || {}, sc = d.scope || {}, ap = d.approval || {};
+    var sm = { awaiting_approval: 'Awaiting', approved: 'Approved', dispatched: 'Dispatched', completed: 'Completed', rejected: 'Rejected', superseded: 'Superseded' };
+    return {
+      time: (ap.approved_at || '').slice(11, 16) || '—', id: d.recommendation_id,
+      action: ra.type || '—', scope: [sc.line, sc.work_order].filter(Boolean).join(' · '),
+      approver: ap.approved_by || (d.status === 'completed' || d.status === 'dispatched' ? 'Auto-dispatch' : '—'),
+      expected: ee.recovered_units, actual: d.status === 'completed' ? ee.recovered_units : null,
+      status: sm[d.status] || d.status,
+      outcome: d.status === 'completed' ? 'Successful' : (d.status === 'dispatched' ? 'Executing' : (d.status === 'awaiting_approval' ? 'Awaiting approval' : '')),
+      ok: true, _decision: d
+    };
+  }
+  function histTranscript(h, demo) {
+    if (!demo && h._decision && h._decision.consideration_log) {
+      var log = h._decision.consideration_log.map(function (e) { return { who: 'a', tag: e.stage, text: e.text }; });
+      log.push({ who: 'a', tag: 'Act · ' + h.status, text: h.outcome || (h.action + ' — ' + h.status) });
+      return log;
+    }
+    var cap = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
+    return [
+      { who: 'a', tag: 'Measure · ' + (h.time || ''), text: (h.scope || '') + ' — ' + h.measure + '.' },
+      { who: 'u', text: L({ en: 'Why are we behind?', vi: 'Vì sao chúng ta chậm?' }) },
+      { who: 'a', tag: 'Explain', text: L({ en: 'Primary cause: ', vi: 'Nguyên nhân chính: ' }) + h.cause + '.' },
+      { who: 'a', tag: 'Predict', text: cap(h.predict) + '.' },
+      { who: 'u', text: L({ en: 'What are my options?', vi: 'Có những lựa chọn nào?' }) },
+      { who: 'a', tag: 'Evaluate', text: cap(h.evaluate) + '.' },
+      { who: 'a', tag: 'Recommend · ' + h.id, text: L({ en: 'Chose to ', vi: 'Đã chọn ' }) + h.recommend + '.' },
+      { who: 'u', text: (h.approver && h.approver.indexOf('Auto') >= 0) ? L({ en: 'Auto-dispatched.', vi: 'Tự động điều phối.' }) : (L({ en: 'Approved — ', vi: 'Đã duyệt — ' }) + h.approver + '.') },
+      { who: 'a', tag: 'Act · ' + h.status, text: cap(h.act) + '.' }
+    ];
+  }
+  function ahRow(h, demo) {
+    var open = state.expandHist === h.id;
+    var actualColor = h.ok === false ? 'var(--warn)' : (h.ok ? 'var(--ok)' : 'var(--text)');
+    var sc = histStatusColor(h.status);
+    var row = '<button class="ah-row" data-act="hist-toggle" data-id="' + escAttr(h.id) + '">'
+      + '<span class="ah-caret">▾</span>'
+      + '<span class="ah-c"><span class="ah-time">' + escText(h.time || '') + '</span><span class="ah-id">' + escText(h.id) + '</span></span>'
+      + '<span class="ah-c ah-what"><span class="ah-act">' + escText(h.action) + '</span><span class="ah-scope">' + escText(h.scope || '') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_approver') + '</span><span class="ah-v">' + escText(h.approver || '—') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_expected') + '</span><span class="ah-v">' + (h.expected != null ? '+' + h.expected : '—') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_actual') + '</span><span class="ah-v" style="color:' + actualColor + '">' + (h.actual != null ? '+' + h.actual : '—') + '</span></span>'
+      + '<span class="ah-c ah-end"><span class="ah-status" style="color:' + sc + ';border-color:' + sc + '">' + escText(h.status) + '</span><span class="ah-out">' + escText(h.outcome || '') + '</span></span>'
+      + '</button>';
+    var detail = open ? '<div class="ah-detail"><div class="ah-dl">' + t('hist_process') + '</div><div class="rlog">' + histTranscript(h, demo).map(function (e) { return '<div class="cmsg" data-who="' + e.who + '"><div class="cbubble" data-who="' + e.who + '">' + (e.tag ? '<div class="ctag">' + escText(e.tag) + '</div>' : '') + escText(e.text) + '</div></div>'; }).join('') + '</div></div>' : '';
+    return '<div class="ah-item" data-open="' + (open ? '1' : '0') + '">' + row + detail + '</div>';
+  }
+  function viewHistory() {
+    if (state.dataMode === 'sim' && !state.histData && !state.histLoading) loadHistory();
+    if (state.histLoading) return '<div class="panel"><div class="gen"><span class="spin"></span>' + L({ en: 'Loading history…', vi: 'Đang tải lịch sử…' }) + '</div></div>';
+    var data = state.histData;
+    var demo = !data || data.demo;
+    var recs = demo ? DEMO_HISTORY : ((data && data.decisions) || []).map(liveHistRow).filter(Boolean);
+    var rows = demo ? recs : recs.slice().reverse();
+    var completed = rows.filter(function (h) { return /complet/i.test(h.status); });
+    var good = completed.filter(function (h) { return h.ok; }).length;
+    var approvedToday = rows.filter(function (h) { return /dispatch|complet|approv/i.test(h.status); }).length;
+    var recovered = completed.reduce(function (s, h) { return s + (h.actual != null ? h.actual : (h.expected || 0)); }, 0);
+    var summary = '<div class="panel"><div class="panel-h"><span class="pnum">a</span><span class="ptitle">' + t('hist_activity') + '</span><span class="psub">' + t('hist_thisshift') + '</span></div>'
+      + '<div class="ah-summary">' + ahStat(approvedToday, t('hist_approved'), '') + ahStat(completed.length + ' / ' + rows.length, t('hist_completed'), '') + ahStat(good + ' / ' + (completed.length || 0), t('hist_met'), 'ok') + ahStat('+' + recovered, t('hist_recovered'), 'accent') + '</div></div>';
+    var list = rows.length
+      ? '<div class="panel"><div class="panel-h"><span class="pnum">b</span><span class="ptitle">' + t('hist_title') + '</span><span class="psub">' + t('hist_sub') + '</span></div><div class="ah-list">' + rows.map(function (h) { return ahRow(h, demo); }).join('') + '</div></div>'
+      : '<div class="panel"><div class="empty">' + escText(t('hist_empty')) + '</div></div>';
+    return '<div class="stack">' + summary + list + '</div>';
   }
 
   function screen() {
     var v = state.view;
     if (v === 'fleet') return viewFleet();
     if (v === 'recommendation') return viewRec();
+    if (v === 'history') return viewHistory();
     if (v === 'machines') return viewMachines();
     if (v === 'ask') return viewAsk();
     return '';
@@ -1239,8 +1551,11 @@ a:hover{color:var(--accent-hi)}
   }
   function render() {
     var v = state.view;
-    var showKpis = v !== 'ask' && v !== 'recommendation';
-    app.innerHTML = tHeader() + tNav() + '<main class="oc-main">' + tSimBanner() + (showKpis ? tKpis(v) : '') + screen() + '</main>';
+    var showKpis = v !== 'ask' && v !== 'recommendation' && v !== 'history';
+    app.innerHTML = '<div class="oc-shell">' + tSide()
+      + '<div class="oc-body">' + tHead()
+      + '<main class="oc-main">' + tSimBanner() + (showKpis ? tKpis(v) : '') + screen() + '</main>'
+      + '</div></div>';
     measureCharts();
   }
   function measureCharts() {
@@ -1260,9 +1575,12 @@ a:hover{color:var(--accent-hi)}
     var el = e.target.closest ? e.target.closest('[data-act]') : null;
     if (!el) return;
     var a = el.getAttribute('data-act');
-    if (a === 'view') { state.view = el.getAttribute('data-view'); render(); if (state.view === 'recommendation') maybeAnalyze(); }
+    if (a === 'view') { state.view = el.getAttribute('data-view'); render(); if (state.view === 'history') loadHistory(); }
     else if (a === 'reexplain') { state.analysisFor = null; fetchAnalysis(); }
-    else if (a === 'stage') { var si = +el.getAttribute('data-si'); state.recStage = (state.recStage === si ? null : si); render(); }
+    else if (a === 'discuss') discussRec();
+    else if (a === 'chat-send') { var ci = document.getElementById('chatq'); chatSend(ci ? ci.value : ''); }
+    else if (a === 'chat-suggest') chatSend(el.getAttribute('data-q'));
+    else if (a === 'hist-toggle') { var hid = el.getAttribute('data-id'); state.expandHist = (state.expandHist === hid ? null : hid); render(); }
     else if (a === 'heatfilter') { state.heatFilter = el.getAttribute('data-id'); render(); }
     else if (a === 'pick-alt') pickAlt(el.getAttribute('data-id'));
     else if (a === 'approve') recApprove();
@@ -1270,6 +1588,7 @@ a:hover{color:var(--accent-hi)}
     else if (a === 'recalc') recRecalc();
     else if (a === 'toggle-json') { state.showJson = !state.showJson; render(); }
     else if (a === 'theme') toggleTheme();
+    else if (a === 'lang') setLang(el.getAttribute('data-lang'));
     else if (a === 'mode') setDataMode(el.getAttribute('data-mode'));
     else if (a === 'sim-retry') refreshSim(true);
     else if (a === 'intent') generate(state.askMachine, el.getAttribute('data-id'));
@@ -1287,7 +1606,11 @@ a:hover{color:var(--accent-hi)}
   }
   app.addEventListener('click', onClick);
   app.addEventListener('change', onChange);
-  app.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'askq') { e.preventDefault(); askAI(e.target.value); } });
+  app.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target) return;
+    if (e.target.id === 'askq') { e.preventDefault(); askAI(e.target.value); }
+    else if (e.target.id === 'chatq') { e.preventDefault(); chatSend(e.target.value); }
+  });
 
   var _rz = null;
   window.addEventListener('resize', function () {
@@ -1301,6 +1624,30 @@ a:hover{color:var(--accent-hi)}
     if (!bridge || !bridge.json) return;
     try { bridge.json('optimize.py', [cmd], { stdin: JSON.stringify(payload) }).catch(function () {}); }
     catch (e) {}
+  }
+  // Read helper (Promise) — persist() is fire-and-forget; Approved History needs to read back.
+  function bridgeRead(script, args, stdin) {
+    var b = window.AtriaDash || null;
+    if (!b || !b.json) return Promise.reject(new Error('no bridge'));
+    var opt = { timeout_ms: 20000 };
+    if (stdin != null) opt.stdin = JSON.stringify(stdin);
+    return b.json(script, args || [], opt);
+  }
+  // Demo Approved-History (from MACHINES_SIM_SPEC) — shown in Demo mode; Live mode reads the store.
+  var DEMO_HISTORY = [
+    { time: '11:06', id: 'REC-2026-00452', action: 'Prioritize pallet P-104', scope: 'Line-2 · WO-4521', approver: 'Auto-dispatch', expected: 75, actual: 71, status: 'Dispatched', outcome: 'Executing — actuating Forklift F07', ok: true, measure: 'produced 530 / 1,000 units, cycle 14.8s vs 12s', cause: 'material starvation (96 units)', predict: 'forecast 820 · 18% attainment without action', evaluate: '5 candidates, 1 blocked on health, 4 feasible', recommend: 'prioritize pallet P-104 (+75 units)', act: 'dispatched to Move · MOVE-TASK-7012 accepted' },
+    { time: '10:12', id: 'REC-2026-00447', action: 'Resequence Job C ahead of Job B', scope: 'Line-2 · WO-4519', approver: 'A. Planner', expected: 62, actual: 64, status: 'Completed', outcome: 'Successful — target recovered', ok: true, measure: 'produced 410 / 900 units', cause: 'job sequencing loss (58 units)', predict: 'forecast 812 · 41% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'resequence Job C ahead of Job B (+62 units)', act: 'completed · 64 units recovered' },
+    { time: '09:03', id: 'REC-2026-00441', action: 'Move operator from Line 1', scope: 'Line-4 · WO-4510', approver: 'S. Supervisor', expected: 48, actual: 45, status: 'Completed', outcome: 'Successful', ok: true, measure: 'produced 360 / 820 units', cause: 'operator unavailable (44 units)', predict: 'forecast 790 · 38% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'move a certified operator from Line 1 (+48 units)', act: 'completed · 45 units recovered' },
+    { time: '07:41', id: 'REC-2026-00436', action: 'Prioritize maintenance inspection', scope: 'Line-3 · WO-4502', approver: 'Auto-dispatch', expected: 30, actual: 33, status: 'Completed', outcome: 'Successful — machine stabilized', ok: true, measure: 'produced 210 / 700 units', cause: 'equipment degradation (28 units)', predict: 'forecast 660 · 31% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'raise a maintenance inspection task (+30 units)', act: 'completed · 33 units recovered' },
+    { time: '06:20', id: 'REC-2026-00431', action: 'Reduce line speed (quality hold)', scope: 'Line-5 · WO-4498', approver: 'Q. Lead', expected: 40, actual: 22, status: 'Completed', outcome: 'Partial — quality recovered, output short', ok: false, measure: 'produced 180 / 650 units', cause: 'process drift raising scrap (36 units)', predict: 'forecast 600 · 24% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'reduce line speed to hold quality (+40 units)', act: 'completed · 22 units recovered (below expected)' }
+  ];
+  function loadHistory() {
+    if (state.dataMode !== 'sim') { state.histData = { decisions: DEMO_HISTORY, demo: true }; render(); return; }
+    if (state.histLoading) return;
+    state.histLoading = true; state.histFor = 'sim'; render();
+    bridgeRead('optimize.py', ['list'], {})
+      .then(function (res) { state.histLoading = false; state.histData = { decisions: (res && res.decisions) || [], demo: false }; render(); })
+      .catch(function () { state.histLoading = false; state.histData = { decisions: [], demo: false }; render(); });
   }
 
   // light build: static clock (set once at mount, no per-second timer)
