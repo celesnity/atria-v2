@@ -295,12 +295,25 @@ _ANALYZE_SYSTEM = (
 )
 
 
-def build_ask_messages(question: str, machines: list, scn: dict | None) -> tuple[str, str]:
-    return _ASK_SYSTEM, f"Question: {question}\n\n{fleet_context(machines, scn)}"
+def _lang_suffix(lang: str | None) -> str:
+    # Keep JSON keys English (so normalize_* still parses) but write the prose values in Vietnamese.
+    return (
+        "\nWrite all prose values in Vietnamese (Tieng Viet); keep the JSON keys in English."
+        if lang == "vi"
+        else ""
+    )
 
 
-def build_analyze_messages(machines: list, scn: dict | None) -> tuple[str, str]:
-    return _ANALYZE_SYSTEM, fleet_context(machines, scn)
+def build_ask_messages(
+    question: str, machines: list, scn: dict | None, lang: str | None = "en"
+) -> tuple[str, str]:
+    return _ASK_SYSTEM + _lang_suffix(lang), f"Question: {question}\n\n{fleet_context(machines, scn)}"
+
+
+def build_analyze_messages(
+    machines: list, scn: dict | None, lang: str | None = "en"
+) -> tuple[str, str]:
+    return _ANALYZE_SYSTEM + _lang_suffix(lang), fleet_context(machines, scn)
 
 
 def parse_json(content: str) -> dict:

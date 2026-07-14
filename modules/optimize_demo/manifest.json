@@ -11,11 +11,20 @@
     "default": { "running": "Working…", "done": "Done" },
     "actions": {
       "status":   { "running": "Reading fleet…",     "done": "Live" },
+      "analyze":  { "running": "Running the loop…",   "done": "Analyzed" },
+      "measure":  { "running": "Measuring…",          "done": "Measured" },
+      "explain":  { "running": "Explaining…",         "done": "Explained" },
+      "predict":  { "running": "Predicting…",         "done": "Predicted" },
+      "evaluate": { "running": "Evaluating options…", "done": "Evaluated" },
+      "recommend":{ "running": "Recommending…",       "done": "Recommended" },
+      "replan":   { "running": "Dispatching…",        "done": "Dispatched" },
+      "actuate":  { "running": "Actuating machine…",  "done": "Actuated" },
       "save":     { "running": "Saving decision…",   "done": "Saved" },
       "get":      { "running": "Loading decision…",   "done": "Loaded" },
       "list":     { "running": "Loading history…",    "done": "Loaded" },
       "approve":  { "running": "Approving…",          "done": "Approved" },
       "reject":   { "running": "Rejecting…",          "done": "Rejected" },
+      "outcome":  { "running": "Recording outcome…",  "done": "Recorded" },
       "dispatch": { "running": "Dispatching…",        "done": "Dispatched" }
     }
   },

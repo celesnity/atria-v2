@@ -1,6 +1,6 @@
 ---
 name: optimize_demo
-description: Optimize Console V2 — a manufacturing fleet console + AI decision engine over a LIVE 20-machine simulator. Fleet + Machines views stream live telemetry; an Ask-AI chat (gpt-5.4-mini) answers machine status and returns the right chart from real data; a decision loop Measures/Explains/Predicts/Evaluates/Recommends a production-recovery action and, on approval, actuates the simulator machine. Exposes agent tools (optimize_ask, optimize_analyze_fleet) that read the live fleet.
+description: Optimize Console V2 — a manufacturing fleet console + AI decision engine over a LIVE 20-machine simulator. The core agent runs the operational decision loop as SIX separate, routable skills — measure_operational_performance, explain_performance_loss, predict_operational_risk, evaluate_operational_alternatives, recommend_operational_action, replan_and_dispatch_operations — selecting the right stage per question and chaining them for compound asks. Recommend prepares a decision that a human approves before Re-plan actuates the simulator. Also exposes optimize_analyze_fleet (whole loop) and optimize_ask (targeted Q&A). English/Vietnamese via a lang param.
 tools: tools.py
 ---
 
@@ -23,15 +23,52 @@ AI Measure → Explain → Predict → Evaluate → Recommend a recovery action,
 simulator machine** (a real control call that recovers the machine in the live views). Use the agent
 tools below to read the live fleet from a chat without opening the dashboard.
 
-## Agent tools (this skill)
+## Agent tools — the 6-stage decision pipeline (this skill)
 
-- **`optimize_ask(question, fleet_url?)`** — ask the live fleet a question (status, comparison, "why
-  is M-02 degrading?"). Reads real telemetry and answers with a best-fit chart suggestion.
-- **`optimize_analyze_fleet(fleet_url?)`** — run the Measure/Explain/Predict/Evaluate/Recommend loop
-  over the live fleet and return a production-recovery narrative grounded in real numbers.
+Do **not** answer an operational question with one general-purpose prompt. Select and execute the
+stage skill that fits the question; for a compound ask, chain them in order. Routing:
 
-Both reuse Atria's configured model (gpt-5.4-mini via `ctx.llm_chat`) and fall back to deterministic
-analysis if the model or the simulator is unavailable. They require the fleet server running (below).
+- "What is happening / are we on target?" → **`measure_operational_performance`**
+- "Why did we miss / what caused the loss?" → **`explain_performance_loss`**
+- "What will happen next / will we hit target?" → **`predict_operational_risk`**
+- "What are our options?" → **`evaluate_operational_alternatives`**
+- "What should we do?" → **`recommend_operational_action`**
+- "Apply / dispatch the decision." → **`replan_and_dispatch_operations`**
+
+For a compound ask ("why are we behind and what should we do?"), run measure → explain → predict →
+evaluate → recommend in order. **Thread the handoff**: the first stage returns `audit.execution_id`;
+pass that same `execution_id` to every later stage so they all read ONE shared live snapshot and the
+numbers stay coherent (target machine, gap and losses match across stages). Each stage takes an
+optional `lang` (`en` default, `vi` for Vietnamese) and `fleet_url`.
+
+Every stage returns a standard response object: `skill`, `status`, `scope`, `summary` (the prose),
+`observations` / `calculations` / `findings` (each item tagged Observed / Calculated / Inferred /
+Predicted / Recommended / Executed), `assumptions`, `constraints`, `recommended_next_skill`,
+`data_quality` (completeness, latest_timestamp, warnings) and `confidence` (level, score,
+explanation), `sources`, and `audit`. Confidence and data-quality are computed by code from the live
+signals — never invented by the model, which only writes `summary`.
+
+**Approval-required execution (safety).** `recommend_operational_action` NEVER actuates: it prepares
+a decision packet persisted with status `awaiting_approval`. A human approves it (the dashboard
+"Approve", or `scripts/optimize.py approve`) before `replan_and_dispatch_operations` will dispatch
+and actuate the machine — that stage refuses to actuate an unapproved decision and returns
+`awaiting_approval` instead.
+
+Convenience tools:
+
+- **`optimize_analyze_fleet(lang?, fleet_url?)`** — run the whole loop (Measure → Recommend) over one
+  snapshot in a single call; stops before actuation.
+- **`optimize_ask(question, fleet_url?)`** — targeted Q&A about a machine/the fleet with a best-fit
+  chart suggestion.
+
+All reuse Minder's configured model (gpt-5.4-mini via `ctx.llm_chat`) for the prose and fall back to
+deterministic sentences if the model or simulator is unavailable. They require the fleet server
+running (below).
+
+Honest data sources: the only system of record is the live IIOT fleet simulator (`/api/fleet/*`) plus
+the decision store (`data/*.json`). The professional roles named per stage (Production Performance
+Analyst, Reliability Engineer, Operations Research Analyst, …) are analogies; each response's
+`sources[]` lists the real endpoints queried.
 
 ## The live fleet simulator (data source)
 
@@ -74,9 +111,12 @@ Header has a **Demo / Live** toggle (defaults to **Live**) and a **☀/☾** the
   so the live time-series charts move.
 - `scripts/simulate.py actuate` — `{machine, action}` → POST the approved recovery to the fleet
   control endpoints (default: full service on the target machine). The approve-to-simulator loop.
-- `scripts/ai.py ask` — `{question, machines, scn}` → `{answer, table, charts, follow_ups}` via
+- `scripts/ai.py ask` — `{question, machines, scn, lang?}` → `{answer, table, charts, follow_ups}` via
   gpt-5.4-mini (deterministic fallback on no key / error).
-- `scripts/ai.py analyze` — `{machines, scn}` → `{measure, explain, predict, evaluate, recommend}`.
+- `scripts/ai.py analyze` — `{machines, scn | execution_id, lang?}` → the whole loop (flat
+  `measure/explain/predict/evaluate/recommend` prose + a per-stage `stages` map).
+- `scripts/ai.py {measure|explain|predict|evaluate|recommend|replan}` — one stage's standard response
+  object (same 6-stage `pipeline.py` the agent skills use). Pass `execution_id` to share one snapshot.
 - `scripts/optimize.py {save,get,list,approve,reject,dispatch,outcome,audit}` — decision persistence
   + audit only (never re-derives the numbers). `scripts/store.py` is the JSON persistence layer.
 
