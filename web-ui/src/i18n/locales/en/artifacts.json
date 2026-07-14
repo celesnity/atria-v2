@@ -1,0 +1,186 @@
+{
+  "binaryFallback": {
+    "download": "Download"
+  },
+  "csvViewer": {
+    "done": "Done",
+    "edit": "Edit",
+    "loadingEditor": "Loading…",
+    "parseFailed": "Parse failed: {{msg}}",
+    "parsing": "Parsing CSV…"
+  },
+  "dataTable": {
+    "truncated": "Showing {{shown}} of {{total}} rows",
+    "truncatedEditWarning": " — edits apply to visible rows only"
+  },
+  "deleteDialog": {
+    "cancel": "Cancel",
+    "working": "Working…"
+  },
+  "excelViewer": {
+    "cancel": "Cancel",
+    "dontShowAgain": "Don't show again",
+    "label": "Excel",
+    "largeWarning": "Large file — performance may be limited",
+    "lossyWarning": "Saving will preserve cells, formulas, and basic formatting. Charts, images, pivot tables, conditional formatting, and data-validation rules in this file will be removed.",
+    "parsing": "Parsing…",
+    "reload": "Reload",
+    "remoteChanged": "File changed externally.",
+    "saveAnyway": "Save anyway",
+    "statusAwaiting": "awaiting confirmation…",
+    "statusEditing": "editing…",
+    "statusSaved": "saved",
+    "statusSaving": "saving…"
+  },
+  "fileTree": {
+    "actionsFor": "Actions for {{name}}",
+    "deleteFileMessage": "Delete \"{{name}}\"? This cannot be undone.",
+    "deleteFileTitle": "Delete file",
+    "deleteFolderMessage": "Delete folder \"{{name}}\" and all its contents? This cannot be undone.",
+    "deleteFolderTitle": "Delete folder",
+    "downloadFile": "Download {{name}}",
+    "hideDotfiles": "Hide dot files",
+    "loading": "Loading…",
+    "menuDelete": "Delete",
+    "menuDownload": "Download",
+    "menuNewFile": "New file",
+    "menuNewFolder": "New folder",
+    "menuOpen": "fileTree.menuOpen",
+    "menuRename": "Rename",
+    "moreActions": "More actions",
+    "newFile": "fileTree.newFile",
+    "newFileIn": "New file in {{name}}",
+    "newFileTitle": "New file",
+    "newFolder": "fileTree.newFolder",
+    "newFolderIn": "New folder in {{name}}",
+    "newFolderTitle": "New folder",
+    "noFiles": "No files",
+    "refresh": "fileTree.refresh",
+    "refreshTree": "Refresh",
+    "searchPlaceholder": "Search files…",
+    "showDotfiles": "Show dot files"
+  },
+  "htmlViewer": {
+    "htmlPreviewTitle": "HTML preview",
+    "loadError": "Failed to load file: {{error}}",
+    "loading": "Loading…",
+    "loadingEditor": "Loading editor…",
+    "openNewTab": "Open in new tab",
+    "preview": "Preview",
+    "previewTitle": "Switch to preview",
+    "reloadPreview": "Reload preview",
+    "source": "Source",
+    "sourceTitle": "Switch to source",
+    "viewMode": "View mode"
+  },
+  "imageViewer": {
+    "resetZoom": "Reset zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  },
+  "leftPane": {
+    "files": "Files",
+    "modules": "Modules"
+  },
+  "markdownViewer": {
+    "loadError": "Failed to load file: {{error}}",
+    "loading": "Loading…",
+    "loadingEditor": "Loading editor…",
+    "preview": "Preview",
+    "source": "Source"
+  },
+  "moduleEditor": {
+    "deleteDialogMessage": "Delete module \"{{name}}\" and all of its files? This cannot be undone.",
+    "deleteDialogTitle": "Delete module",
+    "deleteModuleLabel": "Delete module {{name}}",
+    "deleteModuleTitle": "Delete module",
+    "loading": "Loading module {{name}}…",
+    "skillEmpty": "SKILL.md is empty",
+    "skillEmptyHint": "Open it from the tree to add content."
+  },
+  "moduleGallery": {
+    "active": "moduleGallery.active",
+    "createOne": "Create one",
+    "draft": "moduleGallery.draft",
+    "emptyDesc": "Modules bundle files and skills for the agent.",
+    "emptyState": "No modules yet",
+    "loading": "Loading…",
+    "newModule": "moduleGallery.newModule",
+    "noMatches": "No modules match",
+    "searchPlaceholder": "Search modules…",
+    "title": "Modules"
+  },
+  "monacoViewer": {
+    "loadError": "Failed to load file: {{error}}",
+    "loading": "Loading…",
+    "save": "Save",
+    "saved": "saved",
+    "unsaved": "unsaved · ⌘S"
+  },
+  "newModule": {
+    "addFiles": "Add files",
+    "addFolder": "Add folder",
+    "cancel": "Cancel",
+    "clearAll": "Clear all",
+    "close": "newModule.close",
+    "create": "Create",
+    "creating": "Creating…",
+    "dataFiles": "Data files",
+    "dataHint": "Files will be copied into the module.",
+    "filesSelectedCount_one": "{{count}} file selected · .xlsx auto-converts to CSV",
+    "filesSelectedCount_other": "{{count}} files selected · .xlsx auto-converts to CSV",
+    "nameHint": "Lowercase letters, numbers, hyphens.",
+    "nameLabelText": "newModule.nameLabelText",
+    "namePlaceholder": "my-module",
+    "optional": "(optional)",
+    "startFrom": "Start from data files",
+    "summaryHint": "Shown to the agent when selecting modules.",
+    "summaryLabel": "Summary",
+    "summaryPlaceholder": "What does this module do?",
+    "title": "New module"
+  },
+  "panel": {
+    "artifact": "panel.artifact",
+    "deleteArtifact": "Delete artifact",
+    "emptySearch": "No artifacts match your search",
+    "emptyState": "No artifacts yet",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "loading": "Loading…",
+    "scopeAll": "All",
+    "scopeConversation": "Conversation",
+    "scopeProject": "Project",
+    "searchPlaceholder": "Search artifacts…",
+    "title": "Artifacts",
+    "untitled": "Untitled"
+  },
+  "panes": {
+    "noConversation": "No conversation selected",
+    "selectFile": "panes.selectFile"
+  },
+  "pendingRow": {
+    "newFileName": "New file name",
+    "newFolderName": "New folder name"
+  },
+  "tabBar": {
+    "noFileOpen": "No file open",
+    "unsavedChanges": "Unsaved changes"
+  },
+  "thumbnail": {
+    "altDefault": "thumbnail.altDefault",
+    "confirmDelete": "Delete this artifact?",
+    "confirmNo": "thumbnail.confirmNo",
+    "confirmYes": "thumbnail.confirmYes",
+    "deleteArtifact": "thumbnail.deleteArtifact",
+    "unknownSize": "Unknown size"
+  },
+  "viewer": {
+    "closeViewer": "Close viewer",
+    "collapsePanel": "Collapse panel",
+    "loadingViewer": "Loading viewer…",
+    "openArtifactViewer": "Open artifact viewer",
+    "selectFile": "Select a file to preview",
+    "showFiles": "Show files",
+    "showViewer": "Show viewer"
+  }
+}

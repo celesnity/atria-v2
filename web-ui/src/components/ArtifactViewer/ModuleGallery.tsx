@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Search, Boxes } from 'lucide-react';
 import { useModulesStore } from '../../stores/modules';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
@@ -41,6 +42,7 @@ function relativeTime(mtimeSec: number): string {
 }
 
 export function ModuleGallery({ convId }: Props) {
+  const { t } = useTranslation('artifacts');
   const { modules, loading, error, refresh, remove } = useModulesStore();
   const openModuleTab = useViewerTabsStore(s => s.openModuleTab);
   const [query, setQuery] = useState('');
@@ -70,7 +72,7 @@ export function ModuleGallery({ convId }: Props) {
     <div className="relative flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-2 py-1.5 border-b border-hairline-soft/60 flex-shrink-0">
-        <span className="text-[11px] uppercase tracking-wide text-ink/50">Modules</span>
+        <span className="text-[11px] uppercase tracking-wide text-ink/50">{t('moduleGallery.title')}</span>
         <span className="text-[10px] text-ink/35">
           {filtered.length}
           {query && filtered.length !== modules.length ? ` / ${modules.length}` : ''}
@@ -78,8 +80,8 @@ export function ModuleGallery({ convId }: Props) {
         <div className="flex-1" />
         <button
           onClick={() => setSheetOpen(true)}
-          aria-label="New module"
-          title="New module"
+          aria-label={t('moduleGallery.newModule')}
+          title={t('moduleGallery.newModule')}
           className="p-1 rounded text-ink/55 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -94,7 +96,7 @@ export function ModuleGallery({ convId }: Props) {
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search modules…"
+              placeholder={t('moduleGallery.searchPlaceholder')}
               className="w-full pl-6 pr-2 py-1 text-xs rounded bg-canvas border border-hairline-soft"
             />
           </div>
@@ -104,7 +106,7 @@ export function ModuleGallery({ convId }: Props) {
       {/* List */}
       <div className="flex-1 overflow-y-auto">
         {loading && modules.length === 0 && (
-          <div className="px-2 py-3 text-[11px] text-ink/40">Loading…</div>
+          <div className="px-2 py-3 text-[11px] text-ink/40">{t('moduleGallery.loading')}</div>
         )}
         {error && <div className="px-2 py-3 text-[11px] text-semantic-danger">{error}</div>}
 
@@ -113,22 +115,22 @@ export function ModuleGallery({ convId }: Props) {
             <div className="w-10 h-10 rounded-md border border-hairline-soft flex items-center justify-center text-ink/25">
               <Boxes className="w-4 h-4" />
             </div>
-            <div className="text-[12px] text-ink/55">No modules yet</div>
+            <div className="text-[12px] text-ink/55">{t('moduleGallery.emptyState')}</div>
             <div className="text-[11px] text-ink/40 leading-snug max-w-[180px]">
-              Modules add reusable skill prompts and python helpers to the agent.
+              {t('moduleGallery.emptyDesc')}
             </div>
             <button
               onClick={() => setSheetOpen(true)}
               className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-md bg-gradient-brand text-white shadow-glow-accent hover:-translate-y-px active:scale-[0.98] whitespace-nowrap cursor-pointer transition-all duration-base ease-motion-spring"
             >
-              <Plus className="w-3 h-3" /> Create one
+              <Plus className="w-3 h-3" /> {t('moduleGallery.createOne')}
             </button>
           </div>
         )}
 
         {modules.length > 0 && filtered.length === 0 && (
           <div className="px-2 py-4 text-center text-[11px] text-ink/40">
-            No matches for “{query}”.
+            {t('moduleGallery.noMatches', { query })}
           </div>
         )}
 
@@ -145,7 +147,7 @@ export function ModuleGallery({ convId }: Props) {
                 <div className="flex items-center gap-1.5">
                   <div
                     className={`font-medium text-[12.5px] truncate ${hasBody ? '' : 'text-ink/50'}`}
-                    title={hasBody ? 'Active' : 'Draft (empty)'}
+                    title={hasBody ? t('moduleGallery.active') : t('moduleGallery.draft')}
                   >
                     {m.name}
                   </div>

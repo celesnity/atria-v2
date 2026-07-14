@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, Trash2 } from 'lucide-react';
 import type { Artifact } from '../types';
 import { formatFileSize, isImageFile } from '../utils/fileUtils';
@@ -16,6 +17,7 @@ export function ArtifactThumbnail({
   onPreview,
   className = '',
 }: ArtifactThumbnailProps) {
+  const { t } = useTranslation('artifacts');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -25,7 +27,7 @@ export function ArtifactThumbnail({
   const scopeColor = isConversation
     ? 'bg-accent-cobalt/12 text-accent-cobalt'
     : 'bg-accent-violet/12 text-accent-violet';
-  const scopeLabel = isConversation ? 'Conversation' : 'Project';
+  const scopeLabel = isConversation ? t('panel.scopeConversation') : t('panel.scopeProject');
 
   const handleDelete = () => {
     onDelete?.(artifact.id);
@@ -45,7 +47,7 @@ export function ArtifactThumbnail({
         {isImage && artifact.preview && !imageError ? (
           <img
             src={artifact.preview}
-            alt={artifact.title || 'Artifact'}
+            alt={artifact.title || t('thumbnail.altDefault')}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
@@ -60,10 +62,10 @@ export function ArtifactThumbnail({
       <div className="p-2.5 border-t border-hairline-soft/60">
         <div className="min-w-0 mb-2">
           <h3 className="text-[13px] font-medium text-ink truncate">
-            {artifact.title || 'Untitled'}
+            {artifact.title || t('panel.untitled')}
           </h3>
           <p className="text-[10px] font-mono text-text-muted mt-0.5">
-            {artifact.size ? formatFileSize(artifact.size) : 'Unknown size'}
+            {artifact.size ? formatFileSize(artifact.size) : t('thumbnail.unknownSize')}
           </p>
         </div>
 
@@ -84,26 +86,26 @@ export function ArtifactThumbnail({
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="p-1.5 bg-canvas/90 backdrop-blur-sm border border-hairline-soft/60 text-ink/50 hover:text-semantic-danger hover:border-semantic-danger/40 rounded-md shadow-soft transition-colors duration-fast cursor-pointer"
-            title="Delete artifact"
-            aria-label="Delete artifact"
+            title={t('thumbnail.deleteArtifact')}
+            aria-label={t('thumbnail.deleteArtifact')}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         ) : (
           <div className="absolute top-0 right-0 bg-canvas border border-semantic-danger/50 rounded-md shadow-modal p-2 whitespace-nowrap">
-            <p className="text-[11px] font-mono text-text-secondary mb-2">Delete?</p>
+            <p className="text-[11px] font-mono text-text-secondary mb-2">{t('thumbnail.confirmDelete')}</p>
             <div className="flex gap-1">
               <button
                 onClick={handleDelete}
                 className="px-2 py-1 text-[11px] font-mono bg-semantic-danger text-white rounded hover:opacity-90 cursor-pointer transition-opacity"
               >
-                Yes
+                {t('thumbnail.confirmYes')}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-2 py-1 text-[11px] font-mono border border-hairline-soft text-text-secondary rounded hover:bg-surface-soft cursor-pointer transition-colors"
               >
-                No
+                {t('thumbnail.confirmNo')}
               </button>
             </div>
           </div>

@@ -10,7 +10,7 @@ i18n
     resources,
     fallbackLng: 'en',
     supportedLngs: ['en', 'vi'],
-    ns: ['common', 'settings', 'layout', 'chat'],
+    ns: ['common', 'settings', 'layout', 'chat', 'artifacts'],
     defaultNS: 'common',
     returnEmptyString: false,
     interpolation: { escapeValue: false },

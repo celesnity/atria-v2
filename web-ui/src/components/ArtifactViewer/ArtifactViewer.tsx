@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocalStorage, useMediaQuery } from 'usehooks-ts';
 import { PanelRightOpen, PanelRightClose, FolderTree, X } from 'lucide-react';
 import { Resizable, type ResizeCallbackData } from 'react-resizable';
@@ -24,6 +25,7 @@ const MAX_TOP = 720;      // fallback cap before the container height is measure
 const MIN_BOTTOM = 140;   // editor min height (keeps the bottom zone from collapsing)
 
 export function ArtifactViewer() {
+  const { t } = useTranslation('artifacts');
   const currentSessionId = useChatStore(s => s.currentSessionId);
 
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(KEY_COLLAPSED, true);
@@ -102,8 +104,8 @@ export function ArtifactViewer() {
       return (
         <button
           onClick={() => setCollapsed(false)}
-          aria-label="Open artifact viewer"
-          title="Open artifact viewer"
+          aria-label={t('viewer.openArtifactViewer')}
+          title={t('viewer.openArtifactViewer')}
           className="fixed bottom-24 right-3 z-30 p-2.5 rounded-md bg-canvas border border-hairline-soft text-ink/70 hover:text-ink shadow-modal cursor-pointer transition-colors"
         >
           <PanelRightOpen className="w-5 h-5" />
@@ -113,8 +115,8 @@ export function ArtifactViewer() {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        aria-label="Open artifact viewer"
-        title="Open artifact viewer"
+        aria-label={t('viewer.openArtifactViewer')}
+        title={t('viewer.openArtifactViewer')}
         className="self-start mt-2 mr-1 p-1.5 rounded text-ink/65 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors"
       >
         <PanelRightOpen className="w-5 h-5" />
@@ -130,8 +132,8 @@ export function ArtifactViewer() {
         <div className="flex items-center gap-1 border-b border-hairline-soft/60 bg-surface-soft/30 px-2 py-1.5 flex-shrink-0">
           <button
             onClick={() => setMobileShowTree(v => !v)}
-            aria-label={showTree ? 'Show viewer' : 'Show files'}
-            title={showTree ? 'Show viewer' : 'Show files'}
+            aria-label={showTree ? t('viewer.showViewer') : t('viewer.showFiles')}
+            title={showTree ? t('viewer.showViewer') : t('viewer.showFiles')}
             className={`flex-shrink-0 p-2 rounded-md transition-colors ${
               showTree ? 'text-accent-cobalt bg-accent-cobalt/12' : 'text-ink/50 hover:text-ink hover:bg-ink/6'
             }`}
@@ -143,8 +145,8 @@ export function ArtifactViewer() {
           </div>
           <button
             onClick={() => setCollapsed(true)}
-            aria-label="Close viewer"
-            title="Close viewer"
+            aria-label={t('viewer.closeViewer')}
+            title={t('viewer.closeViewer')}
             className="flex-shrink-0 p-2 rounded text-ink/45 hover:text-ink hover:bg-ink/6 cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
@@ -234,8 +236,8 @@ export function ArtifactViewer() {
             <TabBar convId={currentSessionId} />
             <button
               onClick={() => setCollapsed(true)}
-              aria-label="Collapse panel"
-              title="Collapse panel"
+              aria-label={t('viewer.collapsePanel')}
+              title={t('viewer.collapsePanel')}
               className="flex-shrink-0 p-1.5 mr-1 rounded text-ink/35 hover:text-ink/70 hover:bg-ink/6 cursor-pointer transition-colors"
             >
               <PanelRightClose className="w-3.5 h-3.5" />
@@ -260,7 +262,7 @@ export function ArtifactViewer() {
                     <PanelRightOpen className="w-4 h-4" />
                   </span>
                 </div>
-                <p className="text-[12px] font-mono text-text-muted">Select a file to preview</p>
+                <p className="text-[12px] font-mono text-text-muted">{t('viewer.selectFile')}</p>
               </div>
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { apiClient } from '../../../api/client';
 import { BinaryFallback } from './BinaryFallback';
@@ -29,6 +30,7 @@ function lossyAckKey(scope: FsScope, path: string): string {
 }
 
 export function ExcelViewer({ scope, path, convId, tabId }: Props) {
+  const { t } = useTranslation('artifacts');
   const scopeKey = useMemo(() => fsScopeKey(scope), [scope]);
   const markDirty = useViewerTabsStore(s => s.markDirty);
   const markClean = useViewerTabsStore(s => s.markClean);
@@ -211,17 +213,17 @@ export function ExcelViewer({ scope, path, convId, tabId }: Props) {
 
   const statusLabel: Record<SaveStatus, string> = {
     idle: '',
-    pending: 'editing…',
-    confirming: 'awaiting confirmation',
-    saving: 'saving…',
-    saved: 'saved',
+    pending: t('excelViewer.statusEditing'),
+    confirming: t('excelViewer.statusAwaiting'),
+    saving: t('excelViewer.statusSaving'),
+    saved: t('excelViewer.statusSaved'),
     error: saveError ? `error: ${saveError}` : 'error',
   };
 
   return (
     <div className="flex flex-col h-full relative">
       <div className="flex items-center gap-3 px-3 py-1.5 text-[12px] font-mono border-b border-hairline-soft bg-surface-soft/70">
-        <span className="text-ink/65">Excel</span>
+        <span className="text-ink/65">{t('excelViewer.label')}</span>
         <span
           className={
             saveStatus === 'error'
@@ -234,24 +236,24 @@ export function ExcelViewer({ scope, path, convId, tabId }: Props) {
           {statusLabel[saveStatus]}
         </span>
         {largeWarning && (
-          <span className="text-ink/45">Large workbook — saving may stutter.</span>
+          <span className="text-ink/45">{t('excelViewer.largeWarning')}</span>
         )}
         {remoteChange && (
           <span className="ml-auto flex items-center gap-2 text-ink/65">
-            File changed elsewhere.
+            {t('excelViewer.remoteChanged')}
             <button
               type="button"
               onClick={handleReloadRemote}
               className="px-2 py-0.5 rounded border border-hairline-soft hover:bg-canvas"
             >
-              Reload
+              {t('excelViewer.reload')}
             </button>
           </span>
         )}
       </div>
 
       {parsing && (
-        <div className="p-4 text-xs font-mono text-ink/45">Parsing workbook…</div>
+        <div className="p-4 text-xs font-mono text-ink/45">{t('excelViewer.parsing')}</div>
       )}
 
       <div ref={containerRef} className="flex-1 min-h-0" />
@@ -260,9 +262,7 @@ export function ExcelViewer({ scope, path, convId, tabId }: Props) {
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/30">
           <div className="max-w-md rounded border border-hairline-soft bg-canvas p-4 text-[13px] font-mono shadow-lg">
             <p className="mb-3 text-ink">
-              Saving will preserve cells, formulas, and basic formatting. Charts,
-              images, pivot tables, conditional formatting, and data-validation
-              rules in this file will be removed.
+              {t('excelViewer.lossyWarning')}
             </p>
             <label className="mb-3 flex items-center gap-2 text-ink/70">
               <input
@@ -270,7 +270,7 @@ export function ExcelViewer({ scope, path, convId, tabId }: Props) {
                 checked={dontShowAgain}
                 onChange={(e) => setDontShowAgain(e.target.checked)}
               />
-              Don&apos;t show again for this file
+              {t('excelViewer.dontShowAgain')}
             </label>
             <div className="flex justify-end gap-2">
               <button
@@ -278,14 +278,14 @@ export function ExcelViewer({ scope, path, convId, tabId }: Props) {
                 onClick={handleCancelLossySave}
                 className="px-3 py-1 rounded border border-hairline-soft hover:bg-surface-soft"
               >
-                Cancel
+                {t('excelViewer.cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmLossySave}
                 className="px-3 py-1 rounded bg-ink/85 text-canvas hover:bg-ink"
               >
-                Save anyway
+                {t('excelViewer.saveAnyway')}
               </button>
             </div>
           </div>

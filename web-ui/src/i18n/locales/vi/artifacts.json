@@ -1,0 +1,185 @@
+{
+  "binaryFallback": {
+    "download": ""
+  },
+  "csvViewer": {
+    "done": "",
+    "edit": "",
+    "loadingEditor": "",
+    "parseFailed": "",
+    "parsing": ""
+  },
+  "dataTable": {
+    "truncated": "",
+    "truncatedEditWarning": ""
+  },
+  "deleteDialog": {
+    "cancel": "",
+    "working": ""
+  },
+  "excelViewer": {
+    "cancel": "",
+    "dontShowAgain": "",
+    "label": "",
+    "largeWarning": "",
+    "lossyWarning": "",
+    "parsing": "",
+    "reload": "",
+    "remoteChanged": "",
+    "saveAnyway": "",
+    "statusAwaiting": "",
+    "statusEditing": "",
+    "statusSaved": "",
+    "statusSaving": ""
+  },
+  "fileTree": {
+    "actionsFor": "",
+    "deleteFileMessage": "",
+    "deleteFileTitle": "",
+    "deleteFolderMessage": "",
+    "deleteFolderTitle": "",
+    "downloadFile": "",
+    "hideDotfiles": "",
+    "loading": "",
+    "menuDelete": "",
+    "menuDownload": "",
+    "menuNewFile": "",
+    "menuNewFolder": "",
+    "menuOpen": "",
+    "menuRename": "",
+    "moreActions": "",
+    "newFile": "",
+    "newFileIn": "",
+    "newFileTitle": "",
+    "newFolder": "",
+    "newFolderIn": "",
+    "newFolderTitle": "",
+    "noFiles": "",
+    "refresh": "",
+    "refreshTree": "",
+    "searchPlaceholder": "",
+    "showDotfiles": ""
+  },
+  "htmlViewer": {
+    "htmlPreviewTitle": "",
+    "loadError": "",
+    "loading": "",
+    "loadingEditor": "",
+    "openNewTab": "",
+    "preview": "",
+    "previewTitle": "",
+    "reloadPreview": "",
+    "source": "",
+    "sourceTitle": "",
+    "viewMode": ""
+  },
+  "imageViewer": {
+    "resetZoom": "",
+    "zoomIn": "",
+    "zoomOut": ""
+  },
+  "leftPane": {
+    "files": "",
+    "modules": ""
+  },
+  "markdownViewer": {
+    "loadError": "",
+    "loading": "",
+    "loadingEditor": "",
+    "preview": "",
+    "source": ""
+  },
+  "moduleEditor": {
+    "deleteDialogMessage": "",
+    "deleteDialogTitle": "",
+    "deleteModuleLabel": "",
+    "deleteModuleTitle": "",
+    "loading": "",
+    "skillEmpty": "",
+    "skillEmptyHint": ""
+  },
+  "moduleGallery": {
+    "active": "",
+    "createOne": "",
+    "draft": "",
+    "emptyDesc": "",
+    "emptyState": "",
+    "loading": "",
+    "newModule": "",
+    "noMatches": "",
+    "searchPlaceholder": "",
+    "title": ""
+  },
+  "monacoViewer": {
+    "loadError": "",
+    "loading": "",
+    "save": "",
+    "saved": "",
+    "unsaved": ""
+  },
+  "newModule": {
+    "addFiles": "",
+    "addFolder": "",
+    "cancel": "",
+    "clearAll": "",
+    "close": "",
+    "create": "",
+    "creating": "",
+    "dataFiles": "",
+    "dataHint": "",
+    "filesSelectedCount_other": "",
+    "nameHint": "",
+    "nameLabelText": "",
+    "namePlaceholder": "",
+    "optional": "",
+    "startFrom": "",
+    "summaryHint": "",
+    "summaryLabel": "",
+    "summaryPlaceholder": "",
+    "title": ""
+  },
+  "panel": {
+    "artifact": "",
+    "deleteArtifact": "",
+    "emptySearch": "",
+    "emptyState": "",
+    "gridView": "",
+    "listView": "",
+    "loading": "",
+    "scopeAll": "",
+    "scopeConversation": "",
+    "scopeProject": "",
+    "searchPlaceholder": "",
+    "title": "",
+    "untitled": ""
+  },
+  "panes": {
+    "noConversation": "",
+    "selectFile": ""
+  },
+  "pendingRow": {
+    "newFileName": "",
+    "newFolderName": ""
+  },
+  "tabBar": {
+    "noFileOpen": "",
+    "unsavedChanges": ""
+  },
+  "thumbnail": {
+    "altDefault": "",
+    "confirmDelete": "",
+    "confirmNo": "",
+    "confirmYes": "",
+    "deleteArtifact": "",
+    "unknownSize": ""
+  },
+  "viewer": {
+    "closeViewer": "",
+    "collapsePanel": "",
+    "loadingViewer": "",
+    "openArtifactViewer": "",
+    "selectFile": "",
+    "showFiles": "",
+    "showViewer": ""
+  }
+}

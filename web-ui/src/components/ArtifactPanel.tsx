@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LayoutGrid, Rows3, FileText, Trash2, Loader2, Search } from 'lucide-react';
 import type { Artifact } from '../types';
 import { ArtifactThumbnail } from './ArtifactThumbnail';
@@ -14,10 +15,10 @@ interface ArtifactPanelProps {
   className?: string;
 }
 
-const SCOPES: { key: ScopeFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'conversation', label: 'Conversation' },
-  { key: 'project', label: 'Project' },
+const SCOPES: { key: ScopeFilter }[] = [
+  { key: 'all' },
+  { key: 'conversation' },
+  { key: 'project' },
 ];
 
 export function ArtifactPanel({
@@ -27,9 +28,16 @@ export function ArtifactPanel({
   onPreview,
   className = '',
 }: ArtifactPanelProps) {
+  const { t } = useTranslation('artifacts');
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+
+  const scopeLabels: Record<ScopeFilter, string> = {
+    all: t('panel.scopeAll'),
+    conversation: t('panel.scopeConversation'),
+    project: t('panel.scopeProject'),
+  };
 
   // Filter and search artifacts
   const filteredArtifacts = useMemo(() => {
@@ -53,7 +61,7 @@ export function ArtifactPanel({
       {/* Header */}
       <div className="flex-shrink-0 border-b border-hairline-soft/60 px-3 pt-3 pb-2.5">
         <div className="flex items-baseline gap-2 mb-3">
-          <h2 className="text-[13px] font-mono uppercase tracking-wide text-ink/70">Artifacts</h2>
+          <h2 className="text-[13px] font-mono uppercase tracking-wide text-ink/70">{t('panel.title')}</h2>
           <span className="text-[11px] font-mono text-ink/35">{artifacts.length}</span>
         </div>
 
@@ -65,7 +73,7 @@ export function ArtifactPanel({
           />
           <input
             type="text"
-            placeholder="Search artifacts…"
+            placeholder={t('panel.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded-md bg-surface-soft/40 border border-hairline-soft/60 text-ink placeholder:text-ink/35 transition-colors duration-fast focus:outline-none focus:border-accent-cobalt/60 focus:bg-canvas focus-visible:ring-1 focus-visible:ring-accent-cobalt/40"
@@ -77,7 +85,7 @@ export function ArtifactPanel({
           {/* Scope Filter — segmented control on the brand surface */}
           {hasBothScopes ? (
             <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
-              {SCOPES.map(({ key, label }) => (
+              {SCOPES.map(({ key }) => (
                 <button
                   key={key}
                   onClick={() => setScopeFilter(key)}
@@ -88,7 +96,7 @@ export function ArtifactPanel({
                       : 'text-text-muted hover:text-ink',
                   ].join(' ')}
                 >
-                  {label}
+                  {scopeLabels[key]}
                 </button>
               ))}
             </div>
@@ -105,8 +113,8 @@ export function ArtifactPanel({
                   ? 'bg-canvas text-accent-cobalt shadow-soft'
                   : 'text-ink/40 hover:text-ink'
               }`}
-              title="Grid view"
-              aria-label="Grid view"
+              title={t('panel.gridView')}
+              aria-label={t('panel.gridView')}
               aria-pressed={viewMode === 'grid'}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -118,8 +126,8 @@ export function ArtifactPanel({
                   ? 'bg-canvas text-accent-cobalt shadow-soft'
                   : 'text-ink/40 hover:text-ink'
               }`}
-              title="List view"
-              aria-label="List view"
+              title={t('panel.listView')}
+              aria-label={t('panel.listView')}
               aria-pressed={viewMode === 'list'}
             >
               <Rows3 className="w-3.5 h-3.5" />
@@ -134,7 +142,7 @@ export function ArtifactPanel({
           <div className="flex items-center justify-center h-full">
             <div className="text-text-muted flex flex-col items-center">
               <Loader2 className="w-5 h-5 animate-spin text-accent-cobalt" strokeWidth={2} aria-hidden="true" />
-              <p className="mt-2 text-[12px] font-mono text-text-muted">Loading artifacts…</p>
+              <p className="mt-2 text-[12px] font-mono text-text-muted">{t('panel.loading')}</p>
             </div>
           </div>
         )}
@@ -152,8 +160,8 @@ export function ArtifactPanel({
             </div>
             <p className="text-[12px] font-mono text-text-muted text-center">
               {artifacts.length === 0
-                ? 'No artifacts yet'
-                : 'No artifacts match your search'}
+                ? t('panel.emptyState')
+                : t('panel.emptySearch')}
             </p>
           </div>
         )}
@@ -182,7 +190,7 @@ export function ArtifactPanel({
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-[13px] font-medium text-ink truncate">
-                      {artifact.title || 'Untitled'}
+                      {artifact.title || t('panel.untitled')}
                     </h3>
                     <div className="flex items-center gap-1.5 mt-1">
                       <ScopeBadge isConversation={!!artifact.conversation_id} />
@@ -199,7 +207,7 @@ export function ArtifactPanel({
                       e.stopPropagation();
                       onDelete?.(artifact.id);
                     }}
-                    aria-label={`Delete ${artifact.title || 'artifact'}`}
+                    aria-label={t('panel.deleteArtifact', { name: artifact.title || t('panel.artifact') })}
                     className="flex-shrink-0 p-1.5 rounded-md text-ink/35 opacity-0 group-hover:opacity-100 hover:text-semantic-danger hover:bg-semantic-danger/10 transition-all duration-fast cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -223,6 +231,7 @@ export function ArtifactPanel({
 
 /** Scope pill using the brand accent spine: cobalt = conversation, violet = project. */
 function ScopeBadge({ isConversation }: { isConversation: boolean }) {
+  const { t } = useTranslation('artifacts');
   return (
     <span
       className={[
@@ -232,7 +241,7 @@ function ScopeBadge({ isConversation }: { isConversation: boolean }) {
           : 'bg-accent-violet/12 text-accent-violet',
       ].join(' ')}
     >
-      {isConversation ? 'Conversation' : 'Project'}
+      {isConversation ? t('panel.scopeConversation') : t('panel.scopeProject')}
     </span>
   );
 }
