@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Check, ArrowLeft, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import type { AskUserQuestion } from '../../types';
 
 export function AskUserDialog() {
+  const { t } = useTranslation('chat');
   const pendingAskUser = useChatStore(state => {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.pendingAskUser ?? null : null;
@@ -276,7 +278,7 @@ export function AskUserDialog() {
                 <span className="flex items-center gap-2">
                   <kbd className="rounded-[4px] bg-surface-soft px-1.5 py-0.5 font-mono text-[10px] font-[600] text-text-muted">O</kbd>
                   <span className={`text-sm font-[540] ${showOther ? 'text-ink' : 'text-text-secondary'}`}>
-                    Something else
+                    {t('askUserDialog.somethingElse')}
                   </span>
                 </span>
               </button>
@@ -288,7 +290,7 @@ export function AskUserDialog() {
                   type="text"
                   value={otherText}
                   onChange={e => setOtherText(e.target.value)}
-                  placeholder="Type your answer..."
+                  placeholder={t('askUserDialog.typeYourAnswer')}
                   className="w-full rounded-md border border-hairline-soft bg-surface-soft/50 px-4 py-2.5 text-sm text-ink outline-none transition-colors placeholder:text-text-muted focus:border-accent-cobalt/50 focus:bg-canvas"
                   autoFocus
                 />
@@ -303,7 +305,7 @@ export function AskUserDialog() {
             onClick={handleCancel}
             className="text-sm font-[500] text-text-muted transition-colors hover:text-ink"
           >
-            Cancel
+            {t('askUserDialog.cancel')}
           </button>
 
           <div className="flex items-center gap-2">
@@ -313,7 +315,7 @@ export function AskUserDialog() {
                 className="flex items-center gap-1.5 rounded-pill border border-hairline-soft bg-canvas px-3.5 py-2 text-sm font-[540] text-text-secondary transition-all hover:border-hairline hover:text-ink active:scale-[0.97]"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                {t('askUserDialog.back')}
               </button>
             )}
             <button
@@ -321,7 +323,7 @@ export function AskUserDialog() {
               disabled={!canAdvance}
               className="flex items-center gap-1.5 rounded-pill bg-gradient-brand px-4 py-2 text-sm font-[540] text-white shadow-glow-nebula transition-all hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:opacity-70 disabled:shadow-none"
             >
-              {isLastQuestion ? 'Submit' : 'Next'}
+              {isLastQuestion ? t('askUserDialog.submit') : t('askUserDialog.next')}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -333,15 +335,15 @@ export function AskUserDialog() {
             <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">1</kbd>
             <span className="text-text-muted/60">–</span>
             <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">{currentQuestion.options.length}</kbd>
-            select
+            {t('askUserDialog.hintSelect')}
           </span>
           <span className="flex items-center gap-1.5">
             <kbd className="flex items-center gap-1 rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]"><CornerDownLeft className="h-3 w-3" /></kbd>
-            confirm
+            {t('askUserDialog.hintConfirm')}
           </span>
           <span className="flex items-center gap-1.5">
             <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd>
-            cancel
+            {t('askUserDialog.hintCancel')}
           </span>
         </div>
       </motion.div>

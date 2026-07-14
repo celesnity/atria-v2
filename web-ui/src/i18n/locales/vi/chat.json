@@ -1,0 +1,200 @@
+{
+  "activityLine": {
+    "detailPayload": "",
+    "details": "",
+    "hide": "",
+    "hideDetail": "",
+    "showDetail": ""
+  },
+  "askUserDialog": {
+    "back": "",
+    "cancel": "",
+    "hintCancel": "",
+    "hintConfirm": "",
+    "hintSelect": "",
+    "next": "",
+    "somethingElse": "",
+    "submit": "",
+    "typeYourAnswer": ""
+  },
+  "chatInterface": {
+    "dropFiles": "",
+    "errorHeading": "",
+    "filesUploaded_other": "",
+    "fileUploaded": "",
+    "uploading": ""
+  },
+  "commandPalette": {
+    "clearDesc": "",
+    "cycleAutonomy": "",
+    "cycleAutonomyDesc": "",
+    "cycleThinking": "",
+    "cycleThinkingDesc": "",
+    "hintClose": "",
+    "hintNavigate": "",
+    "hintSelect": "",
+    "interruptDesc": "",
+    "modeDesc": "",
+    "noMatch": "",
+    "placeholder": "",
+    "statusDesc": "",
+    "toggleSidebar": "",
+    "toggleSidebarDesc": ""
+  },
+  "deepResearch": {
+    "applyChanges": "",
+    "applyHint": "",
+    "label": "",
+    "regenerate": "",
+    "regenerating": "",
+    "requestChanges": "",
+    "requestChangesPlaceholder": "",
+    "researchDepth": "",
+    "researchPlan": "",
+    "saved": "",
+    "sectionsCompleted_other": "",
+    "starting": "",
+    "startResearch": "",
+    "status": {
+      "*": ""
+    },
+    "taxonomySummary": ""
+  },
+  "fileLink": {
+    "open": ""
+  },
+  "imageMessage": {
+    "altDefault": ""
+  },
+  "inputBox": {
+    "noFilesFound": "",
+    "placeholder": "",
+    "placeholderDisconnected": "",
+    "placeholderLocked": "",
+    "placeholderNoSession": "",
+    "placeholderQueued": "",
+    "sendEnter": "",
+    "stopEsc": "",
+    "stopTranscribe": "",
+    "uploadFile": "",
+    "voiceInput": ""
+  },
+  "landingPage": {
+    "attachFiles": "",
+    "composerPlaceholder": "",
+    "eyebrow": "",
+    "failedToLoad": "",
+    "headline": "",
+    "hintNewLine": "",
+    "hintSend": "",
+    "removeFile": "",
+    "send": "",
+    "sendEnter": "",
+    "uploadDocument": "",
+    "uploadImage": ""
+  },
+  "messageActions": {
+    "cancel": "",
+    "cancelDelete": "",
+    "confirm": "",
+    "confirmDelete": "",
+    "copyMessage": "",
+    "copyTurn": "",
+    "deleteTurn": ""
+  },
+  "messageList": {
+    "activity": "",
+    "activityProcessing": "",
+    "activityRunningTool": "",
+    "activityThinking": "",
+    "chipCommands": "",
+    "chipEdits": "",
+    "chipReads": "",
+    "chipThinking": "",
+    "entries_other": "",
+    "jumpToLatest": "",
+    "latencyTooltip": "",
+    "latest": "",
+    "steps_other": "",
+    "thinking": "",
+    "welcomeEyebrow": "",
+    "welcomeHeadline": "",
+    "welcomeSubtext": ""
+  },
+  "moduleProgress": {
+    "working": ""
+  },
+  "personaSelector": {
+    "clearPersona": "",
+    "currentPersona": "",
+    "loadError": "",
+    "noPersonas": "",
+    "openSettings": "",
+    "persona": "",
+    "selectPersona": ""
+  },
+  "planApproval": {
+    "approveAutoDesc": "",
+    "approveAutoLabel": "",
+    "approveDesc": "",
+    "approveLabel": "",
+    "feedbackPlaceholder": "",
+    "hintConfirm": "",
+    "hintPress": "",
+    "hintRevise": "",
+    "hintSelect": "",
+    "modifyDesc": "",
+    "modifyLabel": "",
+    "submitFeedback": "",
+    "title": ""
+  },
+  "queueBar": {
+    "queued_other": ""
+  },
+  "remoteBlock": {
+    "failed": "",
+    "loading": ""
+  },
+  "searchResult": {
+    "results_other": "",
+    "searched": ""
+  },
+  "statusBar": {
+    "autonomyTitle": "",
+    "modeNormal": "",
+    "modePlan": "",
+    "modeTitle": "",
+    "thinkingTitle": ""
+  },
+  "statusDialog": {
+    "autonomy": "",
+    "branch": "",
+    "close": "",
+    "contextUsage": "",
+    "cost": "",
+    "loading": "",
+    "mcpConnected_other": "",
+    "mcpDisconnected": "",
+    "messages": "",
+    "mode": "",
+    "model": "",
+    "noMcpServers": "",
+    "sectionMcp": "",
+    "sectionModel": "",
+    "sectionSession": "",
+    "sectionWorkingDir": "",
+    "sessionId": "",
+    "title": ""
+  },
+  "thinkingBlock": {
+    "collapse": "",
+    "critique": "",
+    "expand": "",
+    "thought": ""
+  },
+  "todoListCard": {
+    "ariaLabel": "",
+    "doneCount": "",
+    "tasks": ""
+  }
+}

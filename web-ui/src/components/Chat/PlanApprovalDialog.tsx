@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import ReactMarkdown from 'react-markdown';
 
 export function PlanApprovalDialog() {
+  const { t } = useTranslation('chat');
   const pendingPlanApproval = useChatStore(state => {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.pendingPlanApproval ?? null : null;
@@ -15,18 +17,18 @@ export function PlanApprovalDialog() {
 
   const options = [
     {
-      label: 'Start implementation',
-      description: 'Auto-approve file edits during implementation.',
+      label: t('planApproval.approveAutoLabel'),
+      description: t('planApproval.approveAutoDesc'),
       action: 'approve_auto',
     },
     {
-      label: 'Start implementation (review edits)',
-      description: 'Review each file edit before it\'s applied.',
+      label: t('planApproval.approveLabel'),
+      description: t('planApproval.approveDesc'),
       action: 'approve',
     },
     {
-      label: 'Revise plan',
-      description: 'Stay in plan mode and provide feedback.',
+      label: t('planApproval.modifyLabel'),
+      description: t('planApproval.modifyDesc'),
       action: 'modify',
     },
   ];
@@ -111,7 +113,7 @@ export function PlanApprovalDialog() {
         {/* Header */}
         <div className="border-b border-border-300/15 px-6 py-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-text-000">Plan Ready for Review</h2>
+            <h2 className="text-lg font-semibold text-text-000">{t('planApproval.title')}</h2>
           </div>
         </div>
 
@@ -163,7 +165,7 @@ export function PlanApprovalDialog() {
               <textarea
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
-                placeholder="What changes would you like? (optional)"
+                placeholder={t('planApproval.feedbackPlaceholder')}
                 className="w-full px-4 py-2.5 border border-border-300/20 rounded-md text-sm text-text-000 bg-bg-000 focus:border-accent-secondary-100 placeholder-text-500 resize-none"
                 rows={3}
                 autoFocus
@@ -172,7 +174,7 @@ export function PlanApprovalDialog() {
                 onClick={() => respondToPlanApproval(pendingPlanApproval.request_id, 'modify', feedback)}
                 className="px-4 py-2 text-sm font-medium text-white bg-accent-secondary-100 rounded-md hover:bg-accent-secondary-100/90 transition-colors"
               >
-                Submit Feedback
+                {t('planApproval.submitFeedback')}
               </button>
             </div>
           )}
@@ -181,14 +183,14 @@ export function PlanApprovalDialog() {
         {/* Keyboard hints */}
         <div className="text-center pb-3 flex-shrink-0">
           <p className="text-xs text-text-500">
-            Press{' '}
+            {t('planApproval.hintPress')}{' '}
             <kbd className="px-1 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">1</kbd>-
             <kbd className="px-1 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">3</kbd>{' '}
-            to select,{' '}
+            {t('planApproval.hintSelect')}{' '}
             <kbd className="px-1 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">Enter</kbd>{' '}
-            to confirm,{' '}
+            {t('planApproval.hintConfirm')}{' '}
             <kbd className="px-1 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">Esc</kbd>{' '}
-            to revise
+            {t('planApproval.hintRevise')}
           </p>
         </div>
       </div>
