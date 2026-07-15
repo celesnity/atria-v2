@@ -33,47 +33,58 @@ from domain.report import routes as report_routes
 
 logger = logging.getLogger("produce")
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    db.init_db()
-    yield
+
+def _build_track_a_app() -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        db.init_db()
+        yield
+
+    app = FastAPI(title="Produce", version="0.1.0", lifespan=lifespan)
+
+    # Track A is standalone software; the UI (served from frontend_dist or a dev
+    # vite server) is the only client. Permissive CORS keeps local dev simple.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # E11 nền tảng trước, rồi các epic phụ thuộc.
+    for mod in (
+        config_routes,
+        work_routes,
+        sop_routes,
+        wip_routes,
+        downtime_routes,
+        scrap_routes,
+        oee_routes,
+        setup_routes,
+        handover_routes,
+        exception_routes,
+        report_routes,
+    ):
+        app.include_router(mod.router)
+
+    @app.get("/health")
+    def health() -> dict:
+        return {"status": "ok", "module": "produce"}
+
+    # Serve the built React dashboard as a standalone SPA when it has been built
+    # into ./frontend_dist (Docker copies it there). No-op in a bare checkout.
+    _DIST = os.environ.get("PR_DASHBOARD_DIST", os.path.join(os.path.dirname(__file__), "frontend_dist"))
+    if os.path.isdir(_DIST):
+        app.mount("/", StaticFiles(directory=_DIST, html=True), name="ui")
+
+    return app
 
 
-app = FastAPI(title="Produce", version="0.1.0", lifespan=lifespan)
+_AGENT_ENABLED = os.environ.get("PR_AGENT_ENABLED", "0") not in ("", "0", "false", "False")
 
-# Track A is standalone software; the UI (served from frontend_dist or a dev
-# vite server) is the only client. Permissive CORS keeps local dev simple.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if _AGENT_ENABLED:
+    from agent.connector import build_app
 
-# E11 nền tảng trước, rồi các epic phụ thuộc.
-for mod in (
-    config_routes,
-    work_routes,
-    sop_routes,
-    wip_routes,
-    downtime_routes,
-    scrap_routes,
-    oee_routes,
-    setup_routes,
-    handover_routes,
-    exception_routes,
-    report_routes,
-):
-    app.include_router(mod.router)
-
-
-@app.get("/health")
-def health() -> dict:
-    return {"status": "ok", "module": "produce"}
-
-
-# Serve the built React dashboard as a standalone SPA when it has been built
-# into ./frontend_dist (Docker copies it there). No-op in a bare checkout.
-_DIST = os.environ.get("PR_DASHBOARD_DIST", os.path.join(os.path.dirname(__file__), "frontend_dist"))
-if os.path.isdir(_DIST):
-    app.mount("/", StaticFiles(directory=_DIST, html=True), name="ui")
+    app = build_app()
+else:
+    app = _build_track_a_app()
