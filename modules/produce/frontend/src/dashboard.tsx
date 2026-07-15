@@ -1,4 +1,8 @@
 import { useEffect, useState, type ReactNode, type CSSProperties } from 'react';
+import '@mantine/core/styles.css';
+import '@mantine/charts/styles.css';
+import { MantineProvider, SegmentedControl } from '@mantine/core';
+import { produceTheme } from './theme.mantine';
 import {
   MinderThemeProvider,
   useMinderTheme,
@@ -77,39 +81,15 @@ function Surface({ children }: { children: ReactNode }) {
 // Minder host, the host top bar already provides the persona tabs and passes
 // `activeTab`, so this stays hidden — no duplicate header.
 function PersonaSwitch({ tab, setTab }: { tab: string; setTab: (t: string) => void }) {
-  const { tokens } = useMinderTheme();
   return (
-    <div
-      style={{
-        display: 'inline-flex',
-        gap: 2,
-        padding: 4,
-        marginBottom: 20,
-        background: tokens.surfaceAlt,
-        border: `1px solid ${tokens.border}`,
-        borderRadius: 999,
-      }}
-    >
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          className="pr-btn"
-          onClick={() => setTab(t.id)}
-          style={{
-            background: tab === t.id ? tokens.primary : 'transparent',
-            color: tab === t.id ? '#fff' : tokens.textMuted,
-            border: 'none',
-            borderRadius: 999,
-            padding: '6px 16px',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      value={tab}
+      onChange={setTab}
+      data={TABS.map((t) => ({ value: t.id, label: t.label }))}
+      radius="xl"
+      size="sm"
+      mb="lg"
+    />
   );
 }
 
@@ -141,20 +121,24 @@ export default function Dashboard({
   // Non-agent path: byte-identical behavior to Track A.
   if (!agentEnabled) {
     return (
-      <MinderThemeProvider theme={theme}>
-        <ToastProvider>{body}</ToastProvider>
-      </MinderThemeProvider>
+      <MantineProvider theme={produceTheme} cssVariablesSelector="[data-produce-dashboard]" getRootElement={() => (document.querySelector('[data-produce-dashboard]') as HTMLElement) ?? undefined}>
+        <MinderThemeProvider theme={theme}>
+          <ToastProvider>{body}</ToastProvider>
+        </MinderThemeProvider>
+      </MantineProvider>
     );
   }
 
   // Agent path: wrap the same subtree in the co-work providers (additive).
   return (
-    <MinderThemeProvider theme={theme}>
-      <ToastProvider>
-        <AgentDriverProvider apiBase={connectorBase}>
-          <AgentRegistryProvider apiBase={connectorBase}>{body}</AgentRegistryProvider>
-        </AgentDriverProvider>
-      </ToastProvider>
-    </MinderThemeProvider>
+    <MantineProvider theme={produceTheme} cssVariablesSelector="[data-produce-dashboard]" getRootElement={() => (document.querySelector('[data-produce-dashboard]') as HTMLElement) ?? undefined}>
+      <MinderThemeProvider theme={theme}>
+        <ToastProvider>
+          <AgentDriverProvider apiBase={connectorBase}>
+            <AgentRegistryProvider apiBase={connectorBase}>{body}</AgentRegistryProvider>
+          </AgentDriverProvider>
+        </ToastProvider>
+      </MinderThemeProvider>
+    </MantineProvider>
   );
 }
