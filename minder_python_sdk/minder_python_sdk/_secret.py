@@ -79,6 +79,15 @@ def resolve_secret_value(name: str, headers: Optional[Mapping[str, str]]) -> Opt
     return os.environ.get(name.upper())
 
 
+def unwrap_annotated(annotation: Any) -> Any:
+    """Strip a single ``Annotated[T, ...]`` layer, returning the wrapped ``T``.
+    ``Secret``/``OAuth2Secret`` may be wrapped in ``Annotated`` (e.g. with a
+    ``SecretSpec`` marker); detection and construction must see through it."""
+    if hasattr(annotation, "__metadata__"):
+        return annotation.__origin__
+    return annotation
+
+
 def _literals(tp: Any) -> list[str]:
     """Flatten ``Literal[...]`` args (used to read OAuth2Secret provider/scopes)."""
     out: list[str] = []
@@ -93,6 +102,7 @@ def _literals(tp: Any) -> list[str]:
 
 def build_secret(annotation: Any, raw: str) -> Any:
     """Wrap a resolved raw value into its declared Secret/OAuth2Secret type."""
+    annotation = unwrap_annotated(annotation)
     origin = getattr(annotation, "__origin__", None) or annotation
     if isinstance(origin, type) and issubclass(origin, OAuth2Secret):
         type_args = get_args(annotation)

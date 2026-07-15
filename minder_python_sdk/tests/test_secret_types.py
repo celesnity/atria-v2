@@ -1,5 +1,7 @@
 from typing import Literal
 
+from typing_extensions import Annotated
+
 from minder_python_sdk._secret import (
     OAuth2Secret,
     Secret,
@@ -43,3 +45,27 @@ def test_build_oauth2_secret_reads_generic_args():
 
 def test_secret_spec_tag():
     assert SecretSpec(tag="global").tag == "global"
+
+
+def test_build_annotated_oauth2_secret_not_downgraded():
+    # SecretSpec is documented for exactly this Annotated wrapping; build_secret
+    # must see through Annotated and still produce an OAuth2Secret (not a Secret).
+    ann = Annotated[
+        OAuth2Secret[Literal["google"], list[Literal["scope.a"]]], SecretSpec("global")
+    ]
+    tok = build_secret(ann, "ya29.token")
+    assert isinstance(tok, OAuth2Secret)
+    assert tok.access_token == "ya29.token"
+    assert tok.provider == "google"
+    assert "scope.a" in tok.scopes
+
+
+def test_annotated_secret_detected_and_excluded():
+    from minder_python_sdk._schema import build_params_model, secret_params
+
+    def handler(query: str, token: Annotated[Secret, SecretSpec("global")]):
+        ...
+
+    schema = build_params_model(handler).model_json_schema()
+    assert "token" not in schema["properties"]
+    assert "token" in secret_params(handler)
