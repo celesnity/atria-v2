@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, X, ChevronDown, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 import { apiClient } from '../../api/client';
 import type { Persona } from '../../types';
 
 export function PersonaSelector() {
+  const { t } = useTranslation('chat');
   const [open, setOpen] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [fetchError, setFetchError] = useState(false);
@@ -16,7 +19,7 @@ export function PersonaSelector() {
     return sid ? state.sessionStates[sid]?.selectedPersona : null;
   });
   const setSelectedPersona = useChatStore(state => state.setSelectedPersona);
-  const openSettingsModal = useChatStore(state => state.openSettingsModal);
+  const openSettingsModal = useUiStore(state => state.openSettingsModal);
 
   // Fetch personas once per mount (lazy, cached after first open)
   useEffect(() => {
@@ -59,7 +62,7 @@ export function PersonaSelector() {
       <button
         onClick={() => setOpen(prev => !prev)}
         className={`${pillBase} ${pillStyle}`}
-        title={selectedPersona ? `Current persona: ${selectedPersona}` : 'Select a persona'}
+        title={selectedPersona ? t('personaSelector.currentPersona', { name: selectedPersona }) : t('personaSelector.selectPersona')}
       >
         <User className="w-3 h-3" strokeWidth={2} />
         {selectedPersona ? (
@@ -68,14 +71,14 @@ export function PersonaSelector() {
             <button
               onClick={handleClear}
               className="ml-1 text-text-200/60 hover:text-text-200 transition-colors"
-              title="Clear persona"
+              title={t('personaSelector.clearPersona')}
             >
               <X className="w-3 h-3" strokeWidth={2} />
             </button>
           </>
         ) : (
           <>
-            <span>Persona</span>
+            <span>{t('personaSelector.persona')}</span>
             <ChevronDown className="w-3 h-3" strokeWidth={2} />
           </>
         )}
@@ -84,16 +87,16 @@ export function PersonaSelector() {
       {open && (
         <div className="absolute bottom-full mb-2 left-0 z-50 min-w-[180px] max-h-64 overflow-y-auto rounded-md border border-hairline-soft bg-bg-300 shadow-soft py-1">
           {fetchError ? (
-            <p className="px-3 py-2 text-xs text-semantic-danger">Could not load personas</p>
+            <p className="px-3 py-2 text-xs text-semantic-danger">{t('personaSelector.loadError')}</p>
           ) : personas.length === 0 ? (
             <div className="px-3 py-2 text-xs text-text-200/60">
-              <p>No personas yet</p>
+              <p>{t('personaSelector.noPersonas')}</p>
               <button
                 onClick={() => { openSettingsModal(); setOpen(false); }}
                 className="mt-1 flex items-center gap-1 text-text-200 hover:underline"
               >
                 <Settings className="w-3 h-3" />
-                Open Settings
+                {t('personaSelector.openSettings')}
               </button>
             </div>
           ) : (

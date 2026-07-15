@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, type ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
 import { registerRemote, loadRemoteComponent } from '../../lib/federation';
 import { useChatStore } from '../../stores/chat';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
@@ -18,6 +19,7 @@ interface RemoteBlockProps {
  * `props` plus `apiBase` so it can call its own connector directly.
  */
 export function RemoteBlock({ remoteName, remoteEntry, component, props = {}, apiBase = '' }: RemoteBlockProps) {
+  const { t } = useTranslation('chat');
   const [Comp, setComp] = useState<ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +63,7 @@ export function RemoteBlock({ remoteName, remoteEntry, component, props = {}, ap
     return () => { alive = false; };
   }, [remoteName, remoteEntry, component]);
 
-  if (error) return <div className="p-4 text-sm text-red-400">Block failed: {error}</div>;
-  if (!Comp) return <div className="p-4 text-sm text-text-300">Loading…</div>;
+  if (error) return <div className="p-4 text-sm text-red-400">{t('remoteBlock.failed', { error })}</div>;
+  if (!Comp) return <div className="p-4 text-sm text-text-300">{t('remoteBlock.loading')}</div>;
   return <Comp {...props} apiBase={apiBase} bridge={bridge} />;
 }

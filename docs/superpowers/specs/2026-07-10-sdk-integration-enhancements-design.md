@@ -4,12 +4,12 @@
 **Status:** Approved (design), pending implementation plan
 **Builds on:** `feat/federated-chat-blocks` — the SDK self-registering-modules work
 (runtime announce, connector-liveness reconciler, federated chat blocks, host
-`ctx.push_block`). This spec extends `minder_module_sdk` and adds minimal host
+`ctx.push_block`). This spec extends `minder_python_sdk` and adds minimal host
 support to complete the inbound + **bidirectional** integration surface.
 
 ## Goal
 
-Extend `minder_module_sdk` (and the minimal Minder host support it needs) so a module
+Extend `minder_python_sdk` (and the minimal Minder host support it needs) so a module
 author gets: (1) less boilerplate and in-process testability, (2) a readiness gate,
 (3) a proactive **reverse-push** channel (blocks + artifacts) so a module can update
 the chat outside a tool call, (4) identity/session on the agent-tool path, (5)
@@ -74,7 +74,7 @@ section reverses that (first-party trust) to enable A5 and C1.
 
 ### C. Bidirectional outbound (SDK + one new host ingress)
 
-- **C1 — `MinderClient` (`minder_module_sdk/client.py`).** `conn.minder_client()` builds
+- **C1 — `MinderClient` (`minder_python_sdk/client.py`).** `conn.minder_client()` builds
   a client from `MINDER_URL` + client-credentials (role `module-push`). Methods wrap
   the existing reverse-push ingress `/api/blocks/remote/{push,update,remove}`:
   - `push_block(session_id, component, props=None, *, remote_entry=None, height="auto", title=None, block_id=None) -> str` (returns `block_id`)
@@ -117,7 +117,7 @@ section reverses that (first-party trust) to enable A5 and C1.
   on network/HTTP error they log and raise `MinderClientError` (distinct from
   announce's swallow-all — the module author decides how to handle a failed push).
 - **D4 — Testing.**
-  - SDK unit (`minder_module_sdk/tests/`): `conn.invoke` + `requires_auth`;
+  - SDK unit (`minder_python_sdk/tests/`): `conn.invoke` + `requires_auth`;
     `params_model` schema + validation; `conn.block` env fill; `readiness` in health;
     `MinderClient` push/update/remove/push_artifact (httpx `MockTransport`); manifest
     enrichment shape.
@@ -131,8 +131,8 @@ section reverses that (first-party trust) to enable A5 and C1.
 
 ## Architecture / file structure
 
-**SDK — created:** `minder_module_sdk/minder_module_sdk/client.py` (`MinderClient`,
-`MinderClientError`); `minder_module_sdk/tests/` (new test suite).
+**SDK — created:** `minder_python_sdk/minder_python_sdk/client.py` (`MinderClient`,
+`MinderClientError`); `minder_python_sdk/tests/` (new test suite).
 
 **SDK — modified:** `connector.py` (`conn.block`, `conn.invoke`, `readiness_probe`,
 `params_model` + `requires_auth` on `tool`, `expose_block`, manifest enrichment,

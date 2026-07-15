@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import Papa from 'papaparse';
 import { apiClient } from '../../../api/client';
 import { DataTable } from './DataTable';
@@ -23,6 +24,7 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 const SAVE_DEBOUNCE_MS = 500;
 
 export function CsvViewer({ scope, path, convId, tabId }: Props) {
+  const { t } = useTranslation('artifacts');
   const scopeKey = useMemo(() => fsScopeKey(scope), [scope]);
   const markDirty = useViewerTabsStore(s => s.markDirty);
   const markClean = useViewerTabsStore(s => s.markClean);
@@ -121,16 +123,16 @@ export function CsvViewer({ scope, path, convId, tabId }: Props) {
   }, []);
 
   if (state.kind === 'loading') {
-    return <div className="p-4 text-xs font-mono text-ink/45">Parsing CSV…</div>;
+    return <div className="p-4 text-xs font-mono text-ink/45">{t('csvViewer.parsing')}</div>;
   }
   if (state.kind === 'error') {
     return (
       <div className="flex flex-col h-full">
         <div className="px-3 py-1.5 text-[13px] font-mono text-block-coral border-b border-hairline-soft bg-surface-soft/70">
-          CSV parse failed: {state.msg}. Showing raw text.
+          {t('csvViewer.parseFailed', { msg: state.msg })}
         </div>
         <div className="flex-1">
-          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading…</div>}>
+          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">{t('csvViewer.loadingEditor')}</div>}>
             <MonacoViewer scope={scope} path={path} />
           </Suspense>
         </div>
@@ -154,7 +156,7 @@ export function CsvViewer({ scope, path, convId, tabId }: Props) {
           onClick={() => setEditing(v => !v)}
           className="px-2 py-0.5 rounded border border-hairline-soft hover:bg-canvas transition-colors"
         >
-          {editing ? 'Done' : 'Edit'}
+          {editing ? t('csvViewer.done') : t('csvViewer.edit')}
         </button>
         {editing && (
           <span

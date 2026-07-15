@@ -30,6 +30,11 @@ class AgentExecutor:
         self.executor = ThreadPoolExecutor(max_workers=4)
         # Lock protecting session_manager.current_session mutation
         self._session_lock = __import__("threading").Lock()
+        from minder.web.suite_cache import SuiteCache
+
+        # Cross-request RuntimeSuite cache — skips skill discovery + agent/prompt/
+        # schema construction on repeat same-key requests (see suite_cache.py).
+        self._suite_cache = SuiteCache(maxsize=8)
         atexit.register(self.executor.shutdown, wait=False)
 
         # Shared thread pool for parallel tool execution across sessions
@@ -242,8 +247,6 @@ class AgentExecutor:
         from minder.core.runtime.services import RuntimeService
         from minder.core.context_engineering.tools.implementations import (
             FileOperations,
-            WriteTool,
-            EditTool,
             BashTool,
         )
         from minder.core.context_engineering.tools.implementations.notebook_edit_tool import (
@@ -259,13 +262,16 @@ class AgentExecutor:
         # Clear any previous interrupt flags
         self.state.clear_interrupt()
 
+        # Always-safe release handle; reassigned once the suite is acquired so the
+        # cleanup path never references an unbound name if setup fails early.
+        def _release_suite() -> None:
+            return None
+
         # Resolve config/working directory from session (no mutation of current_session)
         config_manager, config, working_dir = self._resolve_runtime_context_for_session(session)
 
         # Initialize tools
         file_ops = FileOperations(config, working_dir)
-        write_tool = WriteTool(config, working_dir)
-        edit_tool = EditTool(config, working_dir)
         bash_tool = BashTool(config, working_dir)
         notebook_edit_tool = NotebookEditTool(working_dir)
         # Create web-based ask-user manager with session_id
@@ -279,23 +285,52 @@ class AgentExecutor:
         web_ui_callback = WebUICallback(ws_manager, loop, session_id, self.state)
         web_ui_callback.query_started_at = query_started_at
 
+        # TTFT phase profiler (opt-in via MINDER_TTFT_PROFILE). Logs elapsed-since-
+        # query-arrival at each setup boundary so we can see where pre-action time
+        # goes. Zero cost when the env var is unset.
+        import os as _os
+
+        _ttft_profile = _os.environ.get("MINDER_TTFT_PROFILE")
+        _ttft_base = query_started_at if query_started_at is not None else time.monotonic()
+        _ck_prev = [_ttft_base]
+
+        def _ck(label: str) -> None:
+            if not _ttft_profile:
+                return
+            now = time.monotonic()
+            step = (now - _ck_prev[0]) * 1000
+            total = (now - _ttft_base) * 1000
+            _ck_prev[0] = now
+            logger.info("TTFT-PROFILE %-28s +%7.1fms  (total %7.1fms)", label, step, total)
+
+        _ck("setup:tools+managers")
+
         # Register the callback so module code (push_block, etc.) can reach it
         # via session_id or the contextvar. Cleared in the run-cleanup path.
         from minder.web.ui_bridge import set_current_ui_callback
 
         set_current_ui_callback(web_ui_callback)
 
-        # Build runtime suite
+        # Build (or reuse) the runtime suite. Caching skips skill discovery +
+        # agent/prompt/schema construction on repeat same-key requests.
+        from minder.web.suite_cache import make_suite_cache_key
+
         runtime_service = RuntimeService(config_manager, self.state.mode_manager)
-        runtime_suite = runtime_service.build_suite(
-            file_ops=file_ops,
-            write_tool=write_tool,
-            edit_tool=edit_tool,
-            bash_tool=bash_tool,
-            notebook_edit_tool=notebook_edit_tool,
-            ask_user_tool=ask_user_tool,
-            mcp_manager=self.state.mcp_manager,
-        )
+
+        def _build_suite():
+            return runtime_service.build_suite(
+                file_ops=file_ops,
+                bash_tool=bash_tool,
+                notebook_edit_tool=notebook_edit_tool,
+                ask_user_tool=ask_user_tool,
+                mcp_manager=self.state.mcp_manager,
+            )
+
+        _suite_key = make_suite_cache_key(working_dir, config, self.state.mcp_manager)
+        runtime_suite, _release_suite = self._suite_cache.acquire(_suite_key, _build_suite)
+        # Reset session-scoped mutable state before this run reuses the suite.
+        runtime_suite.tool_registry.reset_per_run_state()
+        _ck("suite:acquire+reset")
 
         # Wire hooks system (4-point wiring, matching TUI's repl.py)
         hook_manager = None
@@ -308,25 +343,11 @@ class AgentExecutor:
                 hook_manager = HookManager(
                     hooks_config, session_id=session_id, cwd=str(working_dir)
                 )
-                # 1. Tool registry
+                # Tool registry
                 runtime_suite.tool_registry.set_hook_manager(hook_manager)
-                # 2. Subagent manager
-                subagent_mgr = runtime_suite.tool_registry.get_subagent_manager()
-                if subagent_mgr and hasattr(subagent_mgr, "set_hook_manager"):
-                    subagent_mgr.set_hook_manager(hook_manager)
         except Exception as e:
             logger.warning(f"Failed to wire hooks: {e}")
-
-        # Wire the background task client so spawn_subagent(run_in_background=True) works.
-        # The subagent manager is built per-run here; attach the server's client to it.
-        try:
-            from minder.core.tasks.lifecycle import attach_task_client
-
-            attach_task_client(
-                runtime_suite.tool_registry, getattr(self.state, "task_client", None)
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Failed to wire task client: {e}")
+        _ck("hooks:load+wire")
 
         # Set thinking level from web state
         from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingLevel
@@ -385,25 +406,6 @@ class AgentExecutor:
         agent.tool_registry = wrapped_registry
         agent._cost_tracker = cost_tracker
 
-        # Blackboard: provision a per-run handle (flag-gated; None when disabled).
-        # Set on the agent BEFORE the system prompt is consumed below so the
-        # Shared Lessons section can be injected; also set on the react_executor
-        # (created later) so tool execution sees it.
-        from minder.core.blackboard.provision import (
-            make_run_blackboard,
-            teardown_run_blackboard,
-        )
-
-        bb_handle = make_run_blackboard(
-            config=config,
-            task_id=session_id or "",
-            owner_id=getattr(session, "owner_id", "") or "",
-        )
-        if bb_handle is not None:
-            agent._blackboard_handle = bb_handle
-            # Rebuild so the dynamic Shared Lessons section is included in the prompt.
-            agent.system_prompt = agent.build_system_prompt()
-
         # Point session manager at the right session for this execution.
         # Protected by lock to avoid race conditions with concurrent requests.
         with self._session_lock:
@@ -411,6 +413,7 @@ class AgentExecutor:
 
         # Prepare messages for the ReAct loop
         message_history = session.to_api_messages()
+        _ck("history:to_api_messages")
 
         # Inject system prompt (TUI path does this via query_enhancer.prepare_messages)
         # Append working directory context so the agent knows where to write files.
@@ -438,12 +441,8 @@ class AgentExecutor:
         # the registry version bumps (i.e. when files change on disk).
         #
         # Skip entirely for assistant deployments: AssistantAgent.build_system_prompt
-        # already embeds its own SKILL block (built with
-        # include_subagent_delegation=False) directly into system_content above. The
-        # block built here always defaults to include_subagent_delegation=True, so it
-        # is a *different* string (once any module manifest sets
-        # subagent.enabled: true, the two no longer coincidentally match) and must
-        # never be appended on top of the assistant's prompt.
+        # already embeds its own SKILL block directly into system_content above, so
+        # appending another copy here would duplicate it.
         if not assistant_selected:
             try:
                 from minder.core.modules.prompt import build_skill_block
@@ -459,6 +458,7 @@ class AgentExecutor:
                 system_content += skill_block
                 if hasattr(agent, "_system_stable") and agent._system_stable:
                     agent._system_stable += skill_block
+        _ck("modules:build_skill_block")
 
         if not message_history or message_history[0].get("role") != "system":
             message_history.insert(0, {"role": "system", "content": system_content})
@@ -494,11 +494,6 @@ class AgentExecutor:
         # Wire injection queue for mid-execution user messages
         react_executor._injection_queue = self.state.get_injection_queue(session_id)
 
-        # Blackboard: expose the per-run handle to tool execution (tool_processing
-        # reads self._blackboard_handle on the react_executor).
-        if bb_handle is not None:
-            react_executor._blackboard_handle = bb_handle
-
         # Store for interrupt bridging
         self._current_react_executors[session_id] = react_executor
 
@@ -514,6 +509,7 @@ class AgentExecutor:
             import re as _re
             from minder.core.agents.execution.file_content_injector import FileContentInjector
 
+            _ck("react_executor:constructed")
             _injector = FileContentInjector(file_ops, config, working_dir)
             _injection = _injector.inject_content(message)
             if _injection.text_content:
@@ -527,6 +523,7 @@ class AgentExecutor:
                 query = _clean_msg + "\n\n" + _injection.text_content
             else:
                 query = message
+            _ck("file_injection:done -> execute()")
 
             summary, error, latency_ms = react_executor.execute(
                 query=query,
@@ -550,8 +547,12 @@ class AgentExecutor:
             logger.error(traceback.format_exc())
             return {"summary": None, "error": str(e), "latency_ms": 0}
         finally:
-            # Blackboard: archive (best-effort) + shut down the per-run handle.
-            teardown_run_blackboard(bb_handle)
+            # Release the cached runtime suite so a later same-key request can
+            # reuse it (no-op for an ephemeral copy-on-contention build).
+            try:
+                _release_suite()
+            except Exception:
+                pass
 
             # Fire SESSION_END hook (matches TUI's repl.py:690)
             if hook_manager:

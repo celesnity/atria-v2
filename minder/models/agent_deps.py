@@ -27,6 +27,3 @@ class AgentDependencies(BaseModel):
 
     # Config
     config: Any  # AppConfig
-
-    # Blackboard (None when disabled)
-    blackboard: Any = None

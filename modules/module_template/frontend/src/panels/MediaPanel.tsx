@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, DragEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Film, Upload } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "minder-ui-sdk";
 import { useToast } from "../ui/Toast";
 import { variants } from "../theme";
 
@@ -67,9 +67,11 @@ export default function MediaPanel({ apiBase }: { apiBase: string }) {
   };
 
   return (
+    <Agent.Page name="media" description="Uploaded media assets">
     <div style={{ padding: 20 }}>
       <h3 style={{ margin: "0 0 16px", color: tokens.text, fontSize: 16, fontWeight: 600 }}>Media</h3>
 
+      <Agent.Button name="upload" description="Open the file picker to upload media" onAct={() => inputRef.current?.click()}>
       <motion.div
         animate={{ scale: dragging ? 1.02 : 1, borderColor: dragging ? tokens.primary : tokens.border }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -93,7 +95,9 @@ export default function MediaPanel({ apiBase }: { apiBase: string }) {
         </div>
         <input ref={inputRef} type="file" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} />
       </motion.div>
+      </Agent.Button>
 
+      <Agent.Data name="list" description="Uploaded files" value={media}>
       {media.length === 0 ? (
         <div style={{ color: tokens.textMuted, textAlign: "center", padding: "20px 0", fontSize: 13 }}>No media files yet</div>
       ) : (
@@ -134,6 +138,8 @@ export default function MediaPanel({ apiBase }: { apiBase: string }) {
           </AnimatePresence>
         </motion.div>
       )}
+      </Agent.Data>
     </div>
+    </Agent.Page>
   );
 }

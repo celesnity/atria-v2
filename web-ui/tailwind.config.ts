@@ -160,7 +160,7 @@ export default {
         'glow-accent':  '0 10px 40px rgba(37, 99, 235, 0.35)',
         'glow-nebula':  '0 14px 48px rgba(46, 107, 246, 0.38)',
         'glow-magenta': '0 12px 44px rgba(90, 166, 255, 0.30)',
-        'focus-ring': '0 0 0 3px hsl(var(--focus-ring) / 0.55)',
+        'focus-ring': '0 0 0 1px hsl(var(--focus-ring) / 0.65), 0 0 0 4px hsl(var(--focus-ring) / 0.14)',
       },
       transitionDuration: {
         // Per DESIGN.md Motion tokens.

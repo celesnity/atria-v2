@@ -50,6 +50,11 @@ from minder.core.modules.watcher import (
     stop_global_watcher,
     start_connector_reconciler,
     stop_connector_reconciler,
+    kick_reconcile,
+)
+from minder.core.modules.liveness import (
+    start_liveness_subscriber,
+    stop_liveness_subscriber,
 )
 from minder.web.state import init_state, get_state
 from minder.core.runtime import ConfigManager, ModeManager
@@ -123,7 +128,16 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
-    start_connector_reconciler(on_change=lambda: _broadcast_modules_changed("*"))
+    # Realtime liveness comes from a per-connector SSE stream (push). The polling
+    # reconciler stays on only as a slow safety-net: it bootstraps tools/manifest
+    # and covers the gap before a stream first connects or while it reconnects.
+    start_connector_reconciler(
+        on_change=lambda: _broadcast_modules_changed("*"), interval_sec=60.0
+    )
+    # Each connector's ``/connector/stream`` is held open; an open stream
+    # is proof of life, so the host no longer HTTP-polls ``/health`` every tick.
+    # ``kick_reconcile`` (re)loads the manifest/tools on each (re)connect.
+    start_liveness_subscriber(bootstrap=kick_reconcile)
 
     # Start the cross-process message bus.
     from minder.web.bus import make_bus, set_bus
@@ -164,57 +178,6 @@ async def lifespan(app: FastAPI):
 
         logging.getLogger(__name__).exception("Connect: start_all failed")
 
-    # Start the TaskIQ client for background subagents (server side only).
-    from minder.core.tasks.broker import broker as _task_broker
-    from minder.core.tasks.lifecycle import make_task_client
-
-    tasks_cfg = getattr(cfg, "tasks", None) if cfg else None
-    state.task_client = None
-    if not _task_broker.is_worker_process:
-        try:
-            client = make_task_client(
-                tasks_cfg.redis_url if tasks_cfg else "redis://localhost:6379/0",
-                tasks_cfg.orphan_after if tasks_cfg else 1800,
-            )
-            client.startup()
-            state.task_client = client
-            app.state.task_client = client
-        except Exception as exc:  # noqa: BLE001
-            import logging as _logging
-
-            _logging.getLogger(__name__).warning(
-                "TaskIQ client unavailable (%s); background subagents disabled.", exc
-            )
-            state.task_client = None
-            app.state.task_client = None
-
-    # Start the blackboard subscriber (Redis pub/sub → WebSocket bridge).
-    from redis.asyncio import Redis as AsyncRedis
-    from minder.web.blackboard_subscriber import BlackboardSubscriber
-    from minder.web.websocket import ws_manager as _ws_manager
-
-    bb_redis_url = (
-        tasks_cfg.redis_url
-        if tasks_cfg and hasattr(tasks_cfg, "redis_url")
-        else "redis://localhost:6379/0"
-    )
-    try:
-        bb_redis = AsyncRedis.from_url(bb_redis_url)
-        bb_subscriber = BlackboardSubscriber(bb_redis, _ws_manager)
-        bb_task = asyncio.create_task(bb_subscriber.run())
-        app.state.bb_redis = bb_redis
-        app.state.bb_subscriber = bb_subscriber
-        app.state.bb_subscriber_task = bb_task
-    except Exception as exc:  # noqa: BLE001
-        import logging as _logging
-
-        _logging.getLogger(__name__).warning(
-            "Blackboard subscriber startup failed (%s); blackboard WS events disabled.", exc
-        )
-        app.state.bb_redis = None
-        app.state.bb_subscriber = None
-        app.state.bb_subscriber_task = None
-
     # Signal that the server is ready (event loop + ws_manager are set)
     ready_event = getattr(app.state, "_ready_event", None)
     if ready_event is not None:
@@ -224,6 +187,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
+        stop_liveness_subscriber()
         stop_connector_reconciler()
         try:
             from minder.web.connect_runtime import get_connect_manager
@@ -231,12 +195,6 @@ async def lifespan(app: FastAPI):
             await get_connect_manager().stop_all()
         except Exception:
             pass
-        _task_client = getattr(app.state, "task_client", None)
-        if _task_client is not None:
-            try:
-                _task_client.shutdown()
-            except Exception:  # noqa: BLE001
-                pass
         active_bus = getattr(app.state, "bus", None)
         if active_bus is not None:
             try:
@@ -244,19 +202,6 @@ async def lifespan(app: FastAPI):
             except Exception:  # noqa: BLE001
                 pass
         set_bus(None)
-        _bb_subscriber = getattr(app.state, "bb_subscriber", None)
-        if _bb_subscriber is not None:
-            try:
-                _bb_subscriber.stop()
-                await asyncio.wait_for(app.state.bb_subscriber_task, timeout=2.0)
-            except Exception:  # noqa: BLE001
-                pass
-        _bb_redis = getattr(app.state, "bb_redis", None)
-        if _bb_redis is not None:
-            try:
-                await _bb_redis.aclose()
-            except Exception:  # noqa: BLE001
-                pass
 
 
 def create_app() -> FastAPI:
@@ -355,9 +300,12 @@ def create_app() -> FastAPI:
                     from fastapi.responses import FileResponse
 
                     return FileResponse(str(file_path))
-                # Read index.html on each request so a UI rebuild takes effect
-                # without restarting the server (the file is tiny).
-                return HTMLResponse(index_file.read_text())
+                # FileResponse streams the file off the event loop and adds
+                # ETag/Last-Modified (so an unchanged index.html 304s), while a
+                # UI rebuild still takes effect — the file is re-read per request.
+                from fastapi.responses import FileResponse
+
+                return FileResponse(str(index_file), media_type="text/html")
 
     else:
         # Development: Return placeholder HTML

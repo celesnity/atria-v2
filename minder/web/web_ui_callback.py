@@ -186,10 +186,6 @@ class WebUICallback(BaseUICallback):
                 }
             )
 
-    # ------------------------------------------------------------------
-    # Subagent lifecycle (used by SubAgentManager)
-    # ------------------------------------------------------------------
-
     def on_todos_updated(self, todos: list) -> None:
         """Broadcast the current structured todo list to the client."""
         self._broadcast(

@@ -19,6 +19,18 @@ from minder.core.utils.tool_display import (
 )
 
 
+def _session_autonomy() -> Optional[str]:
+    """Current session autonomy mode ("Manual"/"Semi-Auto"/"Auto") for module
+    connectors. Best-effort: returns None if state isn't available so the module
+    falls back to its own default."""
+    try:
+        from minder.web.state import get_state
+
+        return get_state().get_autonomy_level()
+    except Exception:  # noqa: BLE001 — autonomy read must never break tool wiring
+        return None
+
+
 class WebSocketToolBroadcaster:
     """Wraps tool registry to broadcast tool execution events via WebSocket."""
 
@@ -30,7 +42,6 @@ class WebSocketToolBroadcaster:
             "edit_file",
             "read_file",
             "list_files",
-            "search",
         }
     )
 
@@ -43,7 +54,6 @@ class WebSocketToolBroadcaster:
         "edit_file": "file_path",
         "read_file": "file_path",
         "list_files": "path",
-        "search": "path",
     }
 
     def __init__(
@@ -81,6 +91,10 @@ class WebSocketToolBroadcaster:
             skill_ctx.push_block = self._push_remote_block
             skill_ctx.session_id = self.session_id
             skill_ctx.principal = self.principal
+            # Forward the session's live autonomy mode to module connectors so they
+            # gate by the caller's real authority (read at call time — /mode can
+            # change it mid-session).
+            skill_ctx.autonomy_provider = _session_autonomy
 
     def execute_tool(self, tool_name: str, arguments: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Execute tool with WebSocket broadcasting.
@@ -95,7 +109,12 @@ class WebSocketToolBroadcaster:
         Returns:
             Tool execution result
         """
-        call_id = uuid.uuid4().hex
+        # Reuse the LLM's tool_call_id (passed through by the executor) so the
+        # broadcast tool_call/tool_result land on the SAME activity row the
+        # streaming `on_tool_call_pending` event already created. Falling back to
+        # a fresh uuid would spawn a second row that never resolves ("Working…"
+        # forever) while a duplicate "Done" row appears beside it.
+        call_id = kwargs.get("tool_call_id") or uuid.uuid4().hex
         arguments = arguments or {}
         normalized_args = self._normalize_arguments(arguments) or {}
         display = format_tool_call(tool_name, normalized_args)
@@ -399,23 +418,6 @@ class WebSocketToolBroadcaster:
             return str(value)
         except Exception:  # noqa: BLE001
             return "<unserializable>"
-
-    def set_subagent_manager(self, manager: Any) -> None:
-        """Set the subagent manager, delegating to the underlying registry.
-
-        This preserves the subagent manager reference when the tool registry
-        is wrapped with the WebSocket broadcaster.
-
-        Args:
-            manager: SubAgentManager instance
-        """
-        if hasattr(self.tool_registry, "set_subagent_manager"):
-            self.tool_registry.set_subagent_manager(manager)
-
-    @property
-    def _subagent_manager(self) -> Any:
-        """Get subagent manager from the underlying registry."""
-        return getattr(self.tool_registry, "_subagent_manager", None)
 
     def __getattr__(self, name: str) -> Any:
         """Delegate all other attributes to the wrapped tool registry."""

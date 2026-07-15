@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax. **Execution mode is code-all-then-verify (user preference): implement every task in order WITHOUT running tests per-task; write each task's tests alongside its code, then run the whole suite + verification once in the final Phase V.**
 
-**Goal:** Ship `modules/module_template/` — a runnable service-module that demonstrates every `minder_module_sdk` capability — plus wire `ctx.principal` at the host so `requires_auth` works for real, and refresh `modules/module_integration.md`.
+**Goal:** Ship `modules/module_template/` — a runnable service-module that demonstrates every `minder_python_sdk` capability — plus wire `ctx.principal` at the host so `requires_auth` works for real, and refresh `modules/module_integration.md`.
 
 **Architecture:** One host change (principal wiring in the tool broadcaster, fed from the session owner). One new module: a pure-Python SDK connector (fake data, no `minder` import) whose 7 tools each demo one SDK feature, plus a Module-Federation frontend (a showcase block + dashboard), Docker/compose, SKILL.md, manifest, README, and `conn.invoke`-based tests.
 
-**Tech Stack:** Python 3.12 + `minder_module_sdk` (FastAPI/pydantic/httpx) for the module; React 18 + Vite 5 + `@module-federation/vite` for the frontend; pytest.
+**Tech Stack:** Python 3.12 + `minder_python_sdk` (FastAPI/pydantic/httpx) for the module; React 18 + Vite 5 + `@module-federation/vite` for the frontend; pytest.
 
 ## Global Constraints
 
@@ -162,13 +162,13 @@ def report_markdown(topic: str = "demo") -> str:
 - Create: `modules/module_template/backend/app.py`
 
 **Interfaces:**
-- Consumes: `minder_module_sdk` (`Connector`, `card`); `service` (Task B1); `MinderClientError` for the async-job guard.
+- Consumes: `minder_python_sdk` (`Connector`, `card`); `service` (Task B1); `MinderClientError` for the async-job guard.
 - Produces: `conn` (a `Connector`), the 7 tools, lifecycle hooks, `app = conn.asgi()`.
 
 - [ ] **Step 1: Implement** `modules/module_template/backend/app.py`:
 
 ```python
-"""module_template — a runnable showcase of the minder-module-sdk surface.
+"""module_template — a runnable showcase of the minder-python-sdk surface.
 
 Each tool demonstrates exactly one SDK capability. Pure/fake logic; never imports
 ``minder``. Ask the agent to "show what the module SDK can do" and it will call these.
@@ -180,8 +180,8 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from minder_module_sdk import Connector, card
-from minder_module_sdk.client import MinderClientError
+from minder_python_sdk import Connector, card
+from minder_python_sdk.client import MinderClientError
 
 import service
 
@@ -342,7 +342,7 @@ app = conn.asgi()
 - Create: `modules/module_template/backend/tests/test_template.py`, `modules/module_template/backend/tests/__init__.py`
 
 **Interfaces:**
-- Consumes: `conn`, `Principal` from `minder_module_sdk`.
+- Consumes: `conn`, `Principal` from `minder_python_sdk`.
 
 - [ ] **Step 1: Implement** `modules/module_template/backend/tests/test_template.py`:
 
@@ -356,7 +356,7 @@ import sys
 # Make the backend package importable (app.py imports `service` as a top-level module).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from minder_module_sdk.connector import Principal  # noqa: E402
+from minder_python_sdk.connector import Principal  # noqa: E402
 import app as mt  # noqa: E402
 
 
@@ -552,7 +552,7 @@ description: A runnable SDK showcase. Use it to demonstrate what an Minder servi
 
 # module_template
 
-A reference module that demonstrates every `minder_module_sdk` capability. Each tool
+A reference module that demonstrates every `minder_python_sdk` capability. Each tool
 maps to one feature — use it to learn the SDK or as a copy-me skeleton for a new module.
 
 ## When to use
@@ -576,7 +576,7 @@ The dashboard lists the tools and pings the connector.
 ```json
 {
   "display_name": "Module Template",
-  "tooltip": "SDK showcase — every minder-module-sdk capability",
+  "tooltip": "SDK showcase — every minder-python-sdk capability",
   "icon": "icon.svg",
   "dashboard": { "title": "Module Template · SDK showcase", "default_height": 640, "badge_color": "info" },
   "remote": {
@@ -596,7 +596,7 @@ The dashboard lists the tools and pings the connector.
 - [ ] **Step 4: `backend/Dockerfile`** (multi-stage; build context is the repo root, mirroring `maintenance_copilot`):
 
 ```dockerfile
-# Build context is the REPO ROOT so the image can install the shared minder-module-sdk.
+# Build context is the REPO ROOT so the image can install the shared minder-python-sdk.
 
 # --- frontend build stage ---
 FROM node:20-slim AS fe
@@ -609,7 +609,7 @@ RUN npm run build
 # --- python service stage ---
 FROM python:3.12-slim
 WORKDIR /app
-COPY minder_module_sdk /sdk
+COPY minder_python_sdk /sdk
 RUN pip install --no-cache-dir /sdk
 COPY modules/module_template/backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt || true
@@ -651,7 +651,7 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]
 - [ ] **Step 6: `README.md`** — map each SDK feature to the code:
 
 ```markdown
-# module_template — minder-module-sdk showcase
+# module_template — minder-python-sdk showcase
 
 A runnable module that exercises every SDK capability. Copy it to bootstrap a new module.
 
@@ -742,6 +742,6 @@ git commit -m "chore(module_template): Phase V verification fixups"
 ## Self-Review Notes
 
 - **Spec coverage:** Part 1 host principal wiring → Task H1. Part 2 module: service (B1), all 7 tools + lifecycle (B2), tests (B3), frontend (F1), metadata/deploy (M1). Part 3 docs → D1. Every SDK feature in the spec maps to a tool/hook in B2 and a doc section in D1.
-- **Type/name consistency:** tool names (`template_typed_query/card/block/stream/secure/async_job/export`) are identical across B2, B3, D1, F1(DashboardApp list), M1(SKILL/README). `conn.block("./ShowcaseBlock", …)` component key matches the vite `exposes` key and the manifest `remote.exposed`. `MinderClientError` imported from `minder_module_sdk.client` (real module). `conn.invoke(...)` signature matches the SDK. `params_model=TemplateQuery` with `limit ≤ 5` matches the test's invalid case (`limit=99`).
+- **Type/name consistency:** tool names (`template_typed_query/card/block/stream/secure/async_job/export`) are identical across B2, B3, D1, F1(DashboardApp list), M1(SKILL/README). `conn.block("./ShowcaseBlock", …)` component key matches the vite `exposes` key and the manifest `remote.exposed`. `MinderClientError` imported from `minder_python_sdk.client` (real module). `conn.invoke(...)` signature matches the SDK. `params_model=TemplateQuery` with `limit ≤ 5` matches the test's invalid case (`limit=99`).
 - **Reconcile-against-reality (flagged inline):** H1 Step-4 test may need the real minimal `WebSocketToolBroadcaster.__init__` args — the implementer reads the constructor and adapts. The Dockerfile uses `|| true` on requirements install because `requirements.txt` is intentionally empty.
-- **No-minder-import:** B2 imports only `minder_module_sdk` + `service` + stdlib/pydantic — no `minder`.
+- **No-minder-import:** B2 imports only `minder_python_sdk` + `service` + stdlib/pydantic — no `minder`.

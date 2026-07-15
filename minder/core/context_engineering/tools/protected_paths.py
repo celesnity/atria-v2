@@ -34,22 +34,14 @@ _GENERIC_MESSAGE = (
 # list_files/search) is deliberately absent from param_normalizer._PATH_PARAMS,
 # so the guard resolves it itself.
 PROTECTED_PATH_PARAMS: dict[str, tuple[str, ...]] = {
-    "read_file": ("file_path",),
     "read_pdf": ("file_path",),
-    "list_files": ("path",),
-    "search": ("path",),
     "notebook_edit": ("notebook_path",),
     # Corpus integrity: writes are denied too.
-    "write_file": ("file_path",),
-    "edit_file": ("file_path",),
-    "apply_patch": ("file_path",),
 }
 
 # Tool → free-text params (command lines, glob patterns) checked by substring.
 PROTECTED_TEXT_PARAMS: dict[str, tuple[str, ...]] = {
     "run_command": ("command",),
-    "list_files": ("pattern",),
-    "search": ("pattern", "include_glob"),
 }
 
 

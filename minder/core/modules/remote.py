@@ -17,11 +17,31 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# One pooled httpx.Client per connector base_url, shared across all
+# RemoteConnector instances. The reconciler builds a RemoteConnector every tick;
+# without this each got a fresh Client (new connection pool, never closed) —
+# losing keep-alive and leaking sockets. httpx.Client is thread-safe for
+# requests, and the pool is bounded by the number of distinct connector URLs.
+# ponytail: process-lifetime pool, never closed — fine, it's a bounded set of
+# long-lived connection pools, not per-call objects.
+_CLIENTS: dict[str, httpx.Client] = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
+def _client_for(base_url: str) -> httpx.Client:
+    with _CLIENTS_LOCK:
+        client = _CLIENTS.get(base_url)
+        if client is None:
+            client = httpx.Client(base_url=base_url)
+            _CLIENTS[base_url] = client
+        return client
 
 # Connector contract version this core speaks (docs/connector-contract.md). A
 # module can declare service.min_core_version; core warns if it needs a newer one.
@@ -59,6 +79,18 @@ _UNAVAILABLE_ANSWER = (
     "request cannot be completed right now. Please retry once the service is restored."
 )
 
+# A gated action needs human approval, shown as an on-screen decision card. The
+# agent must present it and stop — approval happens on the card in the web UI, not
+# through any message/notification channel.
+APPROVAL_SUFFIX = (
+    "\n\n[SYSTEM: This action was NOT executed — it needs human approval and exceeds "
+    "the current autonomy. A decision card is already on the user's screen; they "
+    "approve or reject it there. Tell the user it is awaiting their approval on that "
+    "card and STOP. Do NOT send a message, notification, webhook, or email, and do NOT "
+    "use any channel or other tool to request approval — the on-screen card IS the "
+    "approval. Do not claim it is done.]"
+)
+
 
 def unavailable_card(query: str, connector_name: str) -> dict:
     """A deps-free, fail-closed card. Generic across modules."""
@@ -91,8 +123,26 @@ def _module_token(name: str) -> Optional[str]:
     )
 
 
-def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str] = None) -> dict:
-    """Best-effort identity + secret headers for a connector call (v2)."""
+# Map the core session's autonomy mode onto the connector contract's risk ladder
+# (none|low|medium|high|critical). The module gates any action whose risk exceeds
+# this. Tuned to only prompt for genuinely risky/irreversible actions, so routine
+# low/medium work (create, restock, edit) doesn't nag the user: Manual auto-runs
+# up to medium and gates high+critical (e.g. delete); Semi-Auto gates only
+# critical; Auto runs everything. Reads (risk none) are never gated in any mode.
+_AUTONOMY_LADDER = {"Manual": "medium", "Semi-Auto": "high", "Auto": "critical"}
+
+
+def _ladder_autonomy(level: Optional[str]) -> Optional[str]:
+    """Core autonomy mode → connector risk-ladder autonomy (None if unknown, so the
+    module falls back to its own default)."""
+    return _AUTONOMY_LADDER.get(level or "") if level else None
+
+
+def _auth_headers(
+    name: str, principal: Optional[dict], session_id: Optional[str] = None,
+    autonomy: Optional[str] = None,
+) -> dict:
+    """Best-effort identity + secret headers for a connector call (v2 + v3 autonomy)."""
     headers: dict[str, str] = {}
     token = _module_token(name)
     if token:
@@ -104,6 +154,9 @@ def _auth_headers(name: str, principal: Optional[dict], session_id: Optional[str
             pass
     if session_id:
         headers["X-Minder-Session"] = session_id
+    ladder = _ladder_autonomy(autonomy)
+    if ladder:
+        headers["X-Minder-Autonomy"] = ladder
     return headers
 
 
@@ -116,7 +169,7 @@ class RemoteConnector:
         self.name = name
         self.base_url = connector_url.rstrip("/")
         self.health_path = health_path
-        self._client = httpx.Client(base_url=self.base_url)
+        self._client = _client_for(self.base_url)
 
     # -- health / capabilities ------------------------------------------------
 
@@ -142,13 +195,14 @@ class RemoteConnector:
 
     def call_tool(
         self, tool: str, arguments: dict, timeout: float = 110.0,
-        principal: Optional[dict] = None, session_id: Optional[str] = None
+        principal: Optional[dict] = None, session_id: Optional[str] = None,
+        autonomy: Optional[str] = None,
     ) -> dict:
         try:
             r = self._client.post(
                 f"/connector/tools/{tool}",
                 json={"arguments": arguments},
-                headers=_auth_headers(self.name, principal, session_id),
+                headers=_auth_headers(self.name, principal, session_id, autonomy),
                 timeout=timeout,
             )
             r.raise_for_status()
@@ -160,7 +214,8 @@ class RemoteConnector:
     # ponytail: no Minder-side stream client — the ReAct tool loop is sync
     def stream_tool(self, tool: str, arguments: dict,
                     timeout: float = 300.0, principal: Optional[dict] = None,
-                    session_id: Optional[str] = None) -> "Iterator[dict]":
+                    session_id: Optional[str] = None,
+                    autonomy: Optional[str] = None) -> "Iterator[dict]":
         """Yield decoded SSE events from ``/connector/tools/{tool}/stream``.
 
         The tool handler consumes these synchronously (pumping progress/card
@@ -171,7 +226,8 @@ class RemoteConnector:
         try:
             with self._client.stream("POST", f"/connector/tools/{tool}/stream",
                                      json={"arguments": arguments},
-                                     headers={**_auth_headers(self.name, principal, session_id),
+                                     headers={**_auth_headers(self.name, principal, session_id,
+                                                              autonomy),
                                               "Accept": "text/event-stream"},
                                      timeout=timeout) as r:
                 r.raise_for_status()
@@ -226,6 +282,24 @@ class RemoteConnector:
         except (httpx.HTTPError, ValueError):
             return None
 
+    def fetch_context(
+        self, timeout: float = 5.0, principal: Optional[dict] = None,
+        session_id: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Fetch the live ``/connector/context`` (autonomy, actions, live
+        ``state`` and the current ``ui_snapshot``), or None if unreachable."""
+        try:
+            r = self._client.get(
+                "/connector/context",
+                headers=_auth_headers(self.name, principal, session_id),
+                timeout=timeout,
+            )
+            r.raise_for_status()
+            data = r.json()
+            return data if isinstance(data, dict) else None
+        except (httpx.HTTPError, ValueError):
+            return None
+
 
 if TYPE_CHECKING:  # avoid import cycles / heavy imports at module load
     from minder.core.modules.store import Module
@@ -271,6 +345,14 @@ def _emit_response(ctx: "SkillToolContext", conn: "RemoteConnector", resp: dict)
     out: dict = {"success": bool(resp.get("success", True)), "output": resp.get("output")}
     if resp.get("llm_suffix"):
         out["_llm_suffix"] = resp["llm_suffix"]
+    # A gated action returns a decision packet, not a result. The human approves
+    # it on the on-screen card (web UI DecisionPacket → /connector/decision), so
+    # the agent must present it and stop — never route approval through a channel
+    # (send_message/webhook/email). Flag it and enforce that even for modules
+    # built against an older SDK whose own suffix is weaker or absent.
+    if resp.get("requires_approval"):
+        out["requires_approval"] = True
+        out["_llm_suffix"] = APPROVAL_SUFFIX
     return out
 
 
@@ -281,6 +363,18 @@ def _unavailable_result(ctx: "SkillToolContext", conn: "RemoteConnector", query:
             "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
 
 
+def _ctx_autonomy(ctx: "SkillToolContext") -> Optional[str]:
+    """The session's current autonomy mode (read at call time — it can change
+    mid-session via /mode). None when the host wired no provider."""
+    provider = getattr(ctx, "autonomy_provider", None)
+    if provider is None:
+        return None
+    try:
+        return provider()
+    except Exception:  # noqa: BLE001 — never fail a tool call over autonomy read
+        return None
+
+
 def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
                 tool_name: str, kwargs: dict, query: str) -> dict:
     """Consume the tool's SSE stream: pump progress/card events to the UI live,
@@ -289,7 +383,8 @@ def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
     final: Optional[dict] = None
     try:
         for evt in conn.stream_tool(tool_name, kwargs,
-                                    principal=ctx.principal, session_id=ctx.session_id):
+                                    principal=ctx.principal, session_id=ctx.session_id,
+                                    autonomy=_ctx_autonomy(ctx)):
             etype = evt.get("event")
             if etype == "card":
                 _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
@@ -326,7 +421,8 @@ def _make_handler(
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
             resp = conn.call_tool(tool_name, kwargs,
-                                  principal=ctx.principal, session_id=ctx.session_id)
+                                  principal=ctx.principal, session_id=ctx.session_id,
+                                  autonomy=_ctx_autonomy(ctx))
         except ConnectorUnreachable:
             return _unavailable_result(ctx, conn, query)
         return _emit_response(ctx, conn, resp)
@@ -362,6 +458,76 @@ def reconcile_manifest(module: "Module", conn: "RemoteConnector") -> None:
         )
 
 
+def _enrich_description(tool: dict) -> str:
+    """Fold a tool's ``when_to_use`` + ``examples`` into the description the LLM
+    sees, so the agent picks and understands the tool better."""
+    desc = (tool.get("description") or "").strip()
+    parts = [desc] if desc else []
+    when = (tool.get("when_to_use") or "").strip()
+    if when:
+        parts.append(f"When to use: {when}")
+    examples = tool.get("examples") or []
+    if examples:
+        try:
+            rendered = "; ".join(json.dumps(e, separators=(",", ":")) for e in examples)
+        except (TypeError, ValueError):
+            rendered = ""
+        if rendered:
+            parts.append(f"Examples: {rendered}")
+    return "\n\n".join(parts)
+
+
+def build_module_context_spec(ctx: "SkillToolContext") -> "ToolSpec":
+    """A single agent tool that reads a module's LIVE state + on-screen snapshot
+    (from /connector/context) merged with its static knowledge/notes (from the
+    connector record). The agent calls this when asked what a module shows."""
+    from minder.core.skill_tools import ToolSpec  # local import: avoid cycle
+
+    def handler(**kwargs: Any) -> dict:
+        name = str(kwargs.get("module_name") or "").strip()
+        if not name:
+            return {"success": False, "output": "module_name is required"}
+        from minder.core.modules.registry import ConnectorState, get_registry
+
+        rec = get_registry().connector(name)
+        if rec is None or rec.state is not ConnectorState.READY:
+            return {"success": False, "output": f"module {name!r} is not reachable"}
+        conn = RemoteConnector(rec.name, rec.connector_url)
+        data = conn.fetch_context(principal=ctx.principal, session_id=ctx.session_id)
+        if data is None:
+            return {"success": False, "output": f"module {name!r} is not reachable"}
+        static = rec.context or {}
+        return {
+            "success": True,
+            "output": {
+                "state": data.get("state", []),
+                "ui_snapshot": data.get("ui_snapshot"),
+                "knowledge": static.get("knowledge", []),
+                "notes": static.get("notes", []),
+            },
+        }
+
+    return ToolSpec(
+        name="read_module_context",
+        description=(
+            "Read a module's live state, current on-screen snapshot, domain "
+            "knowledge, and area notes. Call this when the user asks what a module "
+            "currently shows or contains."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "module_name": {
+                    "type": "string",
+                    "description": "The module to inspect, e.g. 'module_template'.",
+                }
+            },
+            "required": ["module_name"],
+        },
+        handler=handler,
+    )
+
+
 def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -> "list[ToolSpec]":
     """Build proxy ToolSpecs for every READY service-module connector, from its
     live ``/connector/manifest`` tool schemas (not the committed manifest).
@@ -383,9 +549,13 @@ def build_remote_tool_specs(ctx: "SkillToolContext", _modules: "list[Module]") -
             specs.append(
                 ToolSpec(
                     name=name,
-                    description=tool.get("description", ""),
+                    description=_enrich_description(tool),
                     parameters=tool.get("parameters", {"type": "object", "properties": {}}),
                     handler=_make_handler(ctx, conn, name, bool(tool.get("streaming"))),
                 )
             )
+    # Offer the module-context reader only when there is at least one live
+    # module to inspect — it is useless with no connectors.
+    if specs:
+        specs.append(build_module_context_spec(ctx))
     return specs

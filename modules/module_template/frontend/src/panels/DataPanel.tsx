@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Database, RefreshCw, MessageSquare } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "minder-ui-sdk";
 import StatCard from "../ui/StatCard";
 import { variants } from "../theme";
 
@@ -30,9 +30,11 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
   useEffect(() => { fetchData(); }, [apiBase]);
 
   return (
+    <Agent.Page name="data" description="Raw data tables and records">
     <div style={{ padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <h3 style={{ margin: 0, color: tokens.text, fontSize: 16, fontWeight: 600 }}>Data Overview</h3>
+        <Agent.Button name="refresh" description="Reload data" onAct={fetchData}>
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
@@ -43,8 +45,10 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
             <RefreshCw size={15} />
           </motion.div>
         </motion.button>
+        </Agent.Button>
       </div>
 
+      <Agent.Data name="overview" description="Module DB counts and recent conversations" value={data}>
       {data && (
         <>
           <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
@@ -92,6 +96,8 @@ export default function DataPanel({ apiBase }: { apiBase: string }) {
           )}
         </>
       )}
+      </Agent.Data>
     </div>
+    </Agent.Page>
   );
 }

@@ -1,13 +1,7 @@
 import { MessageSquare, Package, FolderTree, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export type MobilePanel = 'chat' | 'module' | 'files' | 'editor';
-
-const TABS: { id: MobilePanel; label: string; Icon: typeof MessageSquare }[] = [
-  { id: 'chat', label: 'Chat', Icon: MessageSquare },
-  { id: 'module', label: 'Module', Icon: Package },
-  { id: 'files', label: 'Files', Icon: FolderTree },
-  { id: 'editor', label: 'Editor', Icon: FileText },
-];
 
 /**
  * MobileTabBar — the phone bottom navigation. On small screens the desktop's
@@ -21,12 +15,21 @@ export function MobileTabBar({
   active: MobilePanel;
   onChange: (panel: MobilePanel) => void;
 }) {
+  const { t } = useTranslation('layout');
+
+  const TABS: { id: MobilePanel; labelKey: string; Icon: typeof MessageSquare }[] = [
+    { id: 'chat', labelKey: 'mobileTabBar.chat', Icon: MessageSquare },
+    { id: 'module', labelKey: 'mobileTabBar.module', Icon: Package },
+    { id: 'files', labelKey: 'mobileTabBar.files', Icon: FolderTree },
+    { id: 'editor', labelKey: 'mobileTabBar.editor', Icon: FileText },
+  ];
+
   return (
     <nav
-      aria-label="Panels"
+      aria-label={t('mobileTabBar.ariaLabel')}
       className="flex-shrink-0 flex border-t border-hairline-soft bg-canvas pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
-      {TABS.map(({ id, label, Icon }) => {
+      {TABS.map(({ id, labelKey, Icon }) => {
         const isActive = active === id;
         return (
           <button
@@ -41,7 +44,7 @@ export function MobileTabBar({
             }`}
           >
             <Icon className="w-5 h-5" strokeWidth={1.75} />
-            {label}
+            {t(labelKey)}
           </button>
         );
       })}

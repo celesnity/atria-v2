@@ -112,16 +112,8 @@ class IterationMixin:
     # Tools that don't change state — no need to re-plan after these
     _READONLY_TOOLS = frozenset(
         {
-            "read_file",
-            "list_files",
-            "search",
             "list_todos",
-            "search_tools",
-            "list_processes",
-            "get_process_output",
             "read_pdf",
-            "list_subagents",
-            "list_agents",
         }
     )
 
@@ -391,6 +383,20 @@ class IterationMixin:
             and hasattr(_cb, "on_tool_call_pending")
         ):
             on_tool_call_start = _cb.on_tool_call_pending
+
+        import os as _os
+
+        if _os.environ.get("MINDER_TTFT_PROFILE"):
+            _q0 = getattr(ctx.ui_callback, "query_started_at", None)
+            if _q0 is not None:
+                import time as _t
+
+                logging.getLogger("minder.web").info(
+                    "TTFT-PROFILE %-28s (total %7.1fms) msgs=%d",
+                    "action_llm:dispatch",
+                    (_t.monotonic() - _q0) * 1000,
+                    len(ctx.messages),
+                )
 
         response, latency_ms = self._call_action_llm(
             ctx.agent,

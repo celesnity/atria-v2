@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Diamond } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ThinkingBlockProps {
   content: string;
@@ -8,6 +9,7 @@ interface ThinkingBlockProps {
 }
 
 export function ThinkingBlock({ content, level, isActive }: ThinkingBlockProps) {
+  const { t } = useTranslation('chat');
   const [isExpanded, setIsExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
@@ -26,7 +28,7 @@ export function ThinkingBlock({ content, level, isActive }: ThinkingBlockProps) 
     <div className="animate-slide-up pl-[26px]">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        aria-label={isExpanded ? 'Collapse thinking' : 'Expand thinking'}
+        aria-label={isExpanded ? t('thinkingBlock.collapse') : t('thinkingBlock.expand')}
         className={`flex items-center gap-1.5 py-0.5 text-left cursor-pointer rounded transition-colors ${isActive ? 'thinking-shimmer' : ''}`}
       >
         <Diamond
@@ -36,7 +38,7 @@ export function ThinkingBlock({ content, level, isActive }: ThinkingBlockProps) 
           aria-hidden="true"
         />
         <span className="text-[13px] text-ink/50 font-medium">
-          {isCritique ? 'Critique' : 'Thought'}
+          {isCritique ? t('thinkingBlock.critique') : t('thinkingBlock.thought')}
         </span>
         {level && (
           <span className="text-[11px] text-ink/30 font-mono">· {level}</span>

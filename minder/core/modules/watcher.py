@@ -18,7 +18,7 @@ from typing import Callable, Dict, Optional
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from minder.core.modules.registry import ModuleRegistry, get_registry
+from minder.core.modules.registry import ConnectorState, ModuleRegistry, get_registry
 from minder.core.modules.remote import RemoteConnector
 
 logger = logging.getLogger(__name__)
@@ -168,16 +168,21 @@ def stop_global_watcher() -> None:
         _WATCHER = None
 
 
-RECONCILE_INTERVAL_SEC = 5.0
+RECONCILE_INTERVAL_SEC = 15.0
 
 
 class ConnectorReconciler:
     """Poll every registered connector: refresh live tool schemas + liveness."""
 
-    def __init__(self, on_change: Optional[Callable[[], None]] = None) -> None:
+    def __init__(
+        self,
+        on_change: Optional[Callable[[], None]] = None,
+        interval_sec: float = RECONCILE_INTERVAL_SEC,
+    ) -> None:
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._on_change = on_change
+        self._interval = interval_sec
 
     def reconcile_once(self, name: Optional[str] = None) -> None:
         reg = get_registry()
@@ -186,14 +191,13 @@ class ConnectorReconciler:
             if name is not None and rec.name != name:
                 continue
             conn = RemoteConnector(rec.name, rec.connector_url)
-            manifest = None
-            try:
-                manifest = conn.fetch_manifest()
-            except Exception:  # noqa: BLE001 — network failure == unhealthy
-                manifest = None
-            if manifest is None:
-                reg.record_health_failure(rec.name)
-                continue
+            # Liveness first: a cheap ``/health`` probe every tick. The heavier
+            # ``/manifest`` (full tool specs) is only refetched when we don't yet
+            # know this connector's catalog — first sighting or recovery from
+            # DOWN. A steady, already-READY module is left untouched: we just
+            # refresh its liveness, so the loop makes ONE cheap request and emits
+            # no ``modules.changed`` broadcast. This is what keeps the reconcile
+            # from spamming ``/manifest`` + broadcasts every tick.
             health = conn.health()
             if not health.get("ok", False):
                 # Unreachable / error payload — count it a liveness failure.
@@ -203,8 +207,24 @@ class ConnectorReconciler:
                 # Alive but not serving yet — keep tools out of the catalog,
                 # but do NOT count it a health failure.
                 continue
+            need_manifest = rec.state != ConnectorState.READY or not rec.tools
+            if not need_manifest:
+                # Known-good catalog: just refresh liveness (resets fail_count /
+                # last_seen). ``mark_connector_ready`` no-ops the version when the
+                # tools/context are unchanged, so no spurious broadcast.
+                reg.mark_connector_ready(rec.name, rec.tools, context=rec.context)
+                continue
+            manifest = None
+            try:
+                manifest = conn.fetch_manifest()
+            except Exception:  # noqa: BLE001 — network failure == unhealthy
+                manifest = None
+            if manifest is None:
+                reg.record_health_failure(rec.name)
+                continue
             tools = manifest.get("tools") or []
-            reg.mark_connector_ready(rec.name, tools)
+            context = manifest.get("context") if isinstance(manifest.get("context"), dict) else {}
+            reg.mark_connector_ready(rec.name, tools, context=context)
         if reg.version != before and self._on_change is not None:
             try:
                 self._on_change()
@@ -212,7 +232,7 @@ class ConnectorReconciler:
                 logger.warning("ConnectorReconciler on_change callback failed")
 
     def _run(self) -> None:
-        while not self._stop.wait(RECONCILE_INTERVAL_SEC):
+        while not self._stop.wait(self._interval):
             try:
                 self.reconcile_once()
             except Exception:  # noqa: BLE001 — never let the loop die
@@ -235,10 +255,13 @@ class ConnectorReconciler:
 _RECONCILER: Optional[ConnectorReconciler] = None
 
 
-def start_connector_reconciler(on_change: Optional[Callable[[], None]] = None) -> None:
+def start_connector_reconciler(
+    on_change: Optional[Callable[[], None]] = None,
+    interval_sec: float = RECONCILE_INTERVAL_SEC,
+) -> None:
     global _RECONCILER
     if _RECONCILER is None:
-        _RECONCILER = ConnectorReconciler(on_change=on_change)
+        _RECONCILER = ConnectorReconciler(on_change=on_change, interval_sec=interval_sec)
         _RECONCILER.start()
 
 

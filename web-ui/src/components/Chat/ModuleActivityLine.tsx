@@ -98,8 +98,10 @@ export function activityView(message: Message, hasResult: boolean): ActivityView
  * language with a spinner while running and a quiet checkmark when done.
  */
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export function ModuleActivityLine({ message, hasResult }: Props) {
+  const { t } = useTranslation('chat');
   const view = activityView(message, hasResult);
   const [expanded, setExpanded] = useState(false);
 
@@ -145,14 +147,14 @@ export function ModuleActivityLine({ message, hasResult }: Props) {
             type="button"
             onClick={() => setExpanded((e) => !e)}
             className="text-[11px] font-mono opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
-            aria-label={expanded ? 'Hide detail' : 'Show detail'}
+            aria-label={expanded ? t('activityLine.hideDetail') : t('activityLine.showDetail')}
           >
-            {expanded ? '− hide' : '+ details'}
+            {expanded ? t('activityLine.hide') : t('activityLine.details')}
           </button>
         )}
       </div>
       {hasDetail && expanded && (
-        <div className="ml-6 max-h-80 overflow-auto" aria-label="Activity detail payload">
+        <div className="ml-6 max-h-80 overflow-auto" aria-label={t('activityLine.detailPayload')}>
           {debugObj ? (
             <JsonView data={debugObj} />
           ) : (

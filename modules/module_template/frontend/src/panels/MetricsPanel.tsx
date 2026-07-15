@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "minder-ui-sdk";
 import AnimatedNumber from "../ui/AnimatedNumber";
 import { statusColor } from "../theme";
 
@@ -30,6 +30,8 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
   const pieData = barData;
 
   return (
+    <Agent.Page name="metrics" description="Dashboard metrics and charts">
+    <Agent.Data name="metrics" description="Jobs-by-status and storage metrics" value={metrics}>
     <div style={{ padding: 20 }}>
       <h3 style={{ margin: "0 0 20px", color: tokens.text, fontSize: 16, fontWeight: 600 }}>Metrics</h3>
 
@@ -105,5 +107,7 @@ export default function MetricsPanel({ apiBase }: { apiBase: string }) {
         </div>
       </motion.div>
     </div>
+    </Agent.Data>
+    </Agent.Page>
   );
 }

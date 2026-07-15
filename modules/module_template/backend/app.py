@@ -1,4 +1,4 @@
-"""module_template — a runnable showcase of the minder-module-sdk surface.
+"""module_template — a runnable showcase of the minder-python-sdk surface.
 
 Each tool demonstrates exactly one SDK capability. Pure/fake logic; never imports
 ``minder``. Ask the agent to "show what the module SDK can do" and it will call these.
@@ -11,13 +11,22 @@ import threading
 
 from pydantic import BaseModel, Field
 
-from minder_module_sdk import Connector, card
-from minder_module_sdk.client import MinderClientError
+from minder_python_sdk import (
+    Connector,
+    ToolError,
+    card,
+    fill,
+    focus,
+    navigate,
+    request_confirm,
+)
+from minder_python_sdk.client import MinderClientError
 
 import service
 import db
 import media
 import tasks
+import products
 
 logger = logging.getLogger("module_template")
 
@@ -28,6 +37,9 @@ conn = Connector(
     public_base_env="MT_PUBLIC_BASE",
     dashboard_dist_env="MT_DASHBOARD_DIST",
     min_core_version="2",
+    # Demo the safety gate out of the box: high/critical actions need approval
+    # unless Minder core raises the caller's autonomy above "medium".
+    default_autonomy="medium",
 )
 
 conn.expose_block("./ShowcaseBlock")
@@ -49,6 +61,9 @@ class TemplateQuery(BaseModel):
     description="Demo: pydantic params_model — typed, schema-validated input.",
     params_model=TemplateQuery,
     card_type="template_card",
+    when_to_use="When you need to search the demo corpus with typed, validated params "
+    "(topic string + bounded limit).",
+    examples=[{"topic": "pumps", "limit": 3}, {"topic": "valves", "limit": 1}],
 )
 def template_typed_query(topic: str, limit: int = 3):
     res = service.search(topic, limit)
@@ -67,6 +82,9 @@ def template_typed_query(topic: str, limit: int = 3):
     "template_card",
     description="Demo: return a generic card().",
     parameters={"type": "object", "properties": {"note": {"type": "string"}}},
+    when_to_use="When you want to surface a short freeform message to the user as a "
+    "rendered card rather than plain text.",
+    examples=[{"note": "inventory looks healthy"}, {}],
 )
 def template_card(note: str = "hello from module_template"):
     return {
@@ -85,6 +103,9 @@ def template_card(note: str = "hello from module_template"):
     "template_block",
     description="Demo: render the module's own federated React block.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When results are best shown in the module's rich federated React "
+    "block instead of as text or a card.",
+    examples=[{"topic": "demo"}, {"topic": "gaskets"}],
 )
 def template_block(topic: str = "demo"):
     res = service.search(topic, 3)
@@ -100,6 +121,9 @@ def template_block(topic: str = "demo"):
     streaming=True,
     description="Demo: a streaming tool — progress events, a mid-stream block, a final.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When a search takes noticeable time and you want to stream progress "
+    "and a mid-stream block to the user before the final result.",
+    examples=[{"topic": "demo"}, {"topic": "bearings"}],
 )
 def template_stream(topic: str = "demo"):
     yield {"event": "progress", "message": "searching…", "pct": 30}
@@ -117,6 +141,9 @@ def template_stream(topic: str = "demo"):
     "template_secure",
     requires_auth=True,
     description="Demo: requires_auth — only runs for an authenticated user.",
+    when_to_use="When an action must be attributed to a signed-in principal; it fails "
+    "for anonymous callers.",
+    examples=[{}],
 )
 def template_secure(principal=None):
     who = getattr(principal, "username", "unknown")
@@ -131,6 +158,9 @@ def template_secure(principal=None):
     "template_async_job",
     description="Demo: start a background job that reverse-pushes a live progress block.",
     parameters={"type": "object", "properties": {"steps": {"type": "integer"}}},
+    when_to_use="When you want to demo a long-running job that reverse-pushes a live, "
+    "self-updating progress block into the current session.",
+    examples=[{"steps": 3}, {"steps": 5}],
 )
 def template_async_job(steps: int = 3, session_id=None):
     if not session_id:
@@ -165,6 +195,9 @@ def template_async_job(steps: int = 3, session_id=None):
     "template_export",
     description="Demo: push_artifact — attach a generated report to the conversation.",
     parameters={"type": "object", "properties": {"topic": {"type": "string"}}},
+    when_to_use="When the user wants a generated report saved as a downloadable "
+    "artifact attached to the conversation, not just shown inline.",
+    examples=[{"topic": "demo"}, {"topic": "quarterly"}],
 )
 def template_export(topic: str = "demo", session_id=None):
     if not session_id:
@@ -184,6 +217,9 @@ def template_export(topic: str = "demo", session_id=None):
     "template_start_job",
     description="Start a background job (Celery). Watch a live progress block update.",
     parameters={"type": "object", "properties": {"steps": {"type": "integer"}}},
+    when_to_use="When the user asks to kick off real background work (a Celery job) and "
+    "track it via a live progress block.",
+    examples=[{"steps": 3}, {"steps": 10}],
 )
 def template_start_job(steps: int = 3, session_id=None):
     with db.db_session() as s:
@@ -198,7 +234,12 @@ def template_start_job(steps: int = 3, session_id=None):
     }
 
 
-@conn.tool("template_list_jobs", description="List recent background jobs.")
+@conn.tool(
+    "template_list_jobs",
+    description="List recent background jobs.",
+    when_to_use="When the user asks what jobs are running, queued, or recently finished.",
+    examples=[{}],
+)
 def template_list_jobs():
     with db.db_session() as s:
         rows = [j.as_dict() for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(10)]
@@ -208,6 +249,9 @@ def template_list_jobs():
 @conn.tool(
     "template_db_overview",
     description="Module DB counts + read-only Minder aggregates (shared database).",
+    when_to_use="When the user wants a high-level snapshot of module data (job/media "
+    "counts) plus read-only Minder aggregates.",
+    examples=[{}],
 )
 def template_db_overview():
     with db.db_session() as s:
@@ -221,6 +265,283 @@ def template_db_overview():
             "minder_artifacts_count": db.count_artifacts(),
         }
     }
+
+
+# --- 9. AGENT SURFACE DEMO: products catalog (risk gate + events + UI driving) --
+# The Products tab is a small CRUD surface wired to the v3 agent-facing SDK:
+#   • create_product  — medium risk, runs; emits a product.created event
+#   • delete_product  — high risk, GATED below "high" autonomy → decision packet
+#   • restock_product — low risk
+#   • list_products   — a typed read (never gated)
+#   • assist_add_product — co-pilot: drives the REAL Add Product form via UI intents
+# Declare every dashboard screen so the auto ``<module>_navigate`` tool can move
+# the user between them (ids match the frontend TABS in dashboard.tabs.ts).
+conn.page("products", path="/products", label="Products",
+          description="Product catalog — add, restock, delete.")
+conn.page("jobs", path="/jobs", label="Jobs",
+          description="Background jobs and their status.")
+conn.page("media", path="/media", label="Media",
+          description="Uploaded media assets.")
+conn.page("data", path="/data", label="Data",
+          description="Raw data tables and records.")
+conn.page("metrics", path="/metrics", label="Metrics",
+          description="Dashboard metrics and charts.")
+conn.page("graph", path="/graph", label="Graph",
+          description="Operational Graph — products linked to their categories.")
+conn.form(
+    "add_product",
+    route="products",
+    fields=[
+        {"name": "sku", "type": "string", "label": "SKU", "required": True},
+        {"name": "name", "type": "string", "label": "Name", "required": True},
+        {"name": "price", "type": "number", "label": "Price", "required": True},
+        {"name": "category", "type": "enum", "label": "Category",
+         "options": ["A", "B", "C"], "required": False},
+    ],
+    submit_tool="create_product",
+    risk="medium",
+    reversible=True,
+    undo="delete_product(product_id) removes the product this form created",
+    instructions="Fill sku, name, price. Category is optional. Ask the user to "
+    "confirm before submitting.",
+)
+
+
+# --- Declarative agent context (mirror of the frontend Agent.* layer) ---
+@conn.context.state("inventory", "Live catalog summary: total products and low stock")
+def inventory_state(principal=None):
+    items = products.list_products()
+    return {"total": len(items), "skus": [p["sku"] for p in items][:20]}
+
+
+@conn.context.state("jobs", "Live background-job summary")
+def jobs_state(principal=None):
+    """Summarize recent background jobs for the agent's live context.
+
+    Reads the most recent ``MtJob`` rows via the same accessor ``template_list_jobs``
+    uses. Defensive by design: any DB failure yields an empty, well-formed summary.
+
+    Returns:
+        A dict ``{"recent": [...], "count": N}`` where ``recent`` holds up to five
+        recent job dicts and ``count`` is how many were read.
+    """
+    try:
+        with db.db_session() as s:
+            rows = [
+                j.as_dict()
+                for j in s.query(db.MtJob).order_by(db.MtJob.id.desc()).limit(5)
+            ]
+        return {"recent": rows, "count": len(rows)}
+    except Exception:  # noqa: BLE001 — showcase fallback; SDK is already fail-closed
+        return {"recent": [], "count": 0}
+
+
+conn.context.knowledge(
+    "Confirm SKU and price with the user before creating a product; SKUs are unique."
+)
+conn.context.knowledge(
+    "Deleting a product is irreversible and high-risk; it is gated below 'high' "
+    "autonomy and requires explicit human approval before it runs."
+)
+conn.context.note("products", "Product catalog area — add, restock, and delete products.")
+conn.context.note("jobs", "Background jobs and their status.")
+conn.context.note("media", "Uploaded media assets.")
+conn.context.note("data", "Raw data tables and records.")
+conn.context.note("metrics", "Dashboard metrics and charts.")
+conn.context.note("graph", "Operational Graph — products linked to their categories.")
+
+
+# --- BE-SDK-10: Operational Graph — linked context around a node ---------------
+@conn.graph
+def product_graph(node=None, depth: int = 1):
+    """Answer a linked-context query over the catalog. Ask for a product or
+    category node (e.g. ``product:1`` / ``category:A``) to get its neighbourhood,
+    or omit ``node`` for the whole graph."""
+    return products.graph(node, depth)
+
+
+conn.event(
+    "product.created",
+    description="Emitted when a product is added to the catalog.",
+    schema={"type": "object", "properties": {"product": {"type": "object"}}},
+)
+
+
+@conn.read("list_products", description="List every product in the catalog (typed read).")
+def list_products():
+    return {"output": {"products": products.list_products()}}
+
+
+@conn.tool(
+    "create_product",
+    risk="medium",
+    reversible=True,
+    undo="delete_product(product_id) — removes the product just created",
+    description="Create a product. This is the Add Product form's submit action.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "price": {"type": "number"},
+            "category": {"type": "string"},
+        },
+        "required": ["sku", "name", "price"],
+    },
+    card_type="template_card",
+    when_to_use="When the user asks to add a new product and has provided SKU and price.",
+    examples=[{"sku": "A-1", "name": "Pump", "price": 9.9, "category": "A"}],
+)
+def create_product(sku: str, name: str, price: float, category: str = "", session_id=None, **kw):
+    if not sku or not name:
+        raise ToolError("missing_fields", "sku and name are required", retryable=False)
+    p = products.create(sku, name, price, category)
+    conn.emit_event("product.created", {"product": p}, session_id=session_id)
+    return {
+        "output": f"created product #{p['id']} ({sku})",
+        "card": card(
+            f"Created {name} ({sku}) at ${p['price']:.2f}.",
+            card_type="template_card",
+            confidence=0.95,
+        ),
+    }
+
+
+@conn.tool(
+    "restock_product",
+    risk="low",
+    description="Add stock to a product.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}, "qty": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+    when_to_use="When the user wants to add units to an existing product's stock.",
+    examples=[{"product_id": 1, "qty": 10}, {"product_id": 2}],
+)
+def restock_product(product_id: int, qty: int = 10, **kw):
+    p = products.restock(int(product_id), int(qty))
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"restocked #{product_id} → {p['stock']} in stock"}
+
+
+@conn.tool(
+    "delete_product",
+    risk="high",
+    reversible=False,
+    idempotent=True,
+    description="Delete a product. HIGH risk — gated below 'high' autonomy, so it "
+    "returns a decision packet for approval instead of deleting.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+    when_to_use="Only when the user explicitly asks to permanently remove a product — "
+    "HIGH risk and irreversible, so it is gated below 'high' autonomy and returns a "
+    "decision packet for human approval instead of deleting outright.",
+    examples=[{"product_id": 1}],
+)
+def delete_product(product_id: int, **kw):
+    p = products.delete(int(product_id))
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"deleted product #{product_id} ({p['sku']})"}
+
+
+@conn.tool(
+    "assist_add_product",
+    risk="low",
+    description="Co-pilot: open the Add Product form in the UI, prefill what you "
+    "know, leave blanks for the user, and ask them to confirm. Does NOT create the "
+    "product itself — the human confirms in the form.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "sku": {"type": "string"},
+            "name": {"type": "string"},
+            "price": {"type": "number"},
+            "category": {"type": "string"},
+        },
+        "required": ["sku", "name"],
+    },
+    when_to_use="When the user wants help filling in the Add Product form — prefill what "
+    "you know and let the human confirm; use create_product only for direct creation.",
+    examples=[
+        {"sku": "A-1", "name": "Pump"},
+        {"sku": "B-2", "name": "Valve", "price": 12.5, "category": "B"},
+    ],
+)
+def assist_add_product(sku, name, price=None, category=None, session_id=None, **kw):
+    values: dict = {"sku": sku, "name": name}
+    if price is not None:
+        values["price"] = price
+    if category:
+        values["category"] = category
+    # Push to the demo session "default" (the mounted dashboard subscribes there)
+    # and to the chat session if one was provided.
+    for sid in {"default", session_id} - {None}:
+        conn.push_ui_intent(sid, navigate("products"))
+        conn.push_ui_intent(sid, fill("add_product", values, partial=True))
+        if not category:
+            conn.push_ui_intent(sid, focus("category", form="add_product"))
+        conn.push_ui_intent(
+            sid, request_confirm("add_product", summary=f"Create product {name} ({sku})?")
+        )
+    return {
+        "output": f"Opened the Add Product form and prefilled {sku!r}; asked the user "
+        "to review the blanks and confirm."
+    }
+
+
+@conn.tool(
+    "duplicate_product",
+    risk="low",
+    description="Duplicate a product (new SKU suffixed -COPY).",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}},
+        "required": ["product_id"],
+    },
+    when_to_use="When the user wants a copy of an existing product as a starting point "
+    "for a variant (the copy gets a '-COPY' SKU suffix).",
+    examples=[{"product_id": 1}],
+)
+def duplicate_product(product_id: int, session_id=None, **kw):
+    src = products.get(int(product_id))
+    if src is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    p = products.create(f"{src['sku']}-COPY", src["name"], src["price"], src["category"], src["stock"])
+    conn.emit_event("product.created", {"product": p}, session_id=session_id)
+    return {"output": f"duplicated #{product_id} → #{p['id']} ({p['sku']})"}
+
+
+@conn.tool(
+    "update_price",
+    risk="medium",
+    reversible=True,
+    undo="update_price(product_id, <previous price>) — set the price back",
+    description="Change a product's price.",
+    parameters={
+        "type": "object",
+        "properties": {"product_id": {"type": "integer"}, "price": {"type": "number"}},
+        "required": ["product_id", "price"],
+    },
+    when_to_use="When the user wants to change an existing product's price; reversible "
+    "by setting the price back.",
+    examples=[{"product_id": 1, "price": 19.99}],
+)
+def update_price(product_id: int, price: float, **kw):
+    p = products.set_price(int(product_id), price)
+    if p is None:
+        raise ToolError("not_found", f"no product #{product_id}", retryable=False)
+    return {"output": f"set #{product_id} price → ${p['price']:.2f}"}
+
+
+@conn.route("/products", methods=["GET"])
+def route_products():
+    return {"products": products.list_products()}
 
 
 # --- lifecycle & extra endpoints -----------------------------------------------

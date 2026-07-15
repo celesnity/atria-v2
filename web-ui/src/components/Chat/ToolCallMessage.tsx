@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Network, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import type { Message } from '../../types';
 import { JsonView } from './JsonView';
 
@@ -593,19 +592,6 @@ export function ToolCallMessage({ message, hasResult }: ToolCallMessageExtProps)
           </div>
         )}
 
-        {/* Blackboard affordance — jump from chat to the live monitor */}
-        {(toolName === 'request_help' || toolName === 'get_help_responses') && (
-          <div className="px-3 pb-2 pl-5">
-            <Link
-              to="/blackboard"
-              className="inline-flex items-center gap-1.5 text-[12px] font-[450] text-semantic-success hover:underline cursor-pointer focus-visible:outline-none focus-visible:shadow-focus-ring rounded"
-            >
-              <Network className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-              Mở Blackboard để theo dõi
-              <ArrowRight className="w-3 h-3" strokeWidth={1.75} aria-hidden="true" />
-            </Link>
-          </div>
-        )}
 
         {/* Expanded raw output */}
         {hasExpandableContent && (

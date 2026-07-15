@@ -67,9 +67,6 @@ class Session(BaseModel):
     workspace_confirmed: bool = False  # Has user selected workspace for this channel session?
     owner_id: Optional[str] = None
     parent_id: Optional[str] = None  # ID of parent session (if forked)
-    subagent_sessions: dict[str, str] = Field(
-        default_factory=dict
-    )  # tool_call_id -> child session_id
     time_archived: Optional[datetime] = None
     slug: Optional[str] = None
 

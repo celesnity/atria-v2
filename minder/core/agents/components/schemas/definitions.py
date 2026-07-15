@@ -11,31 +11,7 @@ Tool descriptions are loaded from markdown templates in
 from __future__ import annotations
 
 from minder.core.agents.components.schemas.builtin import BUILTIN_TOOL_SCHEMAS
-from minder.core.blackboard.note_rules import NOTE_RULES_BLOCK
 
 _BUILTIN_TOOL_SCHEMAS = BUILTIN_TOOL_SCHEMAS
 
-# ===== NOTE tool schema (shared blackboard) =====
-# This schema is intentionally NOT part of _BUILTIN_TOOL_SCHEMAS.
-# It is appended by ToolSchemaBuilder.build() only when
-# config.blackboard.enabled is True, so that the tool is a true no-op
-# (zero tokens, zero model calls) when the blackboard is disabled.
-NOTE_SCHEMA: dict = {
-    "type": "function",
-    "function": {
-        "name": "NOTE",
-        "description": NOTE_RULES_BLOCK,
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "body": {
-                    "type": "string",
-                    "description": "One to three typed note lines (or the literal `(none)`).",
-                },
-            },
-            "required": ["body"],
-        },
-    },
-}
-
-__all__ = ["_BUILTIN_TOOL_SCHEMAS", "NOTE_SCHEMA"]
+__all__ = ["_BUILTIN_TOOL_SCHEMAS"]

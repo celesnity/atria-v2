@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 
 export function QueueBar() {
+  const { t } = useTranslation('chat');
   const [expanded, setExpanded] = useState(false);
 
   const queuedMessages = useChatStore(state => {
@@ -21,7 +23,7 @@ export function QueueBar() {
         >
           <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
           <span>
-            {queuedMessages.length} message{queuedMessages.length !== 1 ? 's' : ''} queued
+            {t('queueBar.queued', { count: queuedMessages.length })}
           </span>
         </button>
 

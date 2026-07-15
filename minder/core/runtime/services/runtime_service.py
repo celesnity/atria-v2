@@ -60,8 +60,6 @@ class RuntimeService:
         self,
         *,
         file_ops: Union[Any, None],
-        write_tool: Union[Any, None],
-        edit_tool: Union[Any, None],
         bash_tool: Union[Any, None],
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
@@ -81,8 +79,6 @@ class RuntimeService:
         tool_factory = ToolFactory(
             ToolDependencies(
                 file_ops=file_ops,
-                write_tool=write_tool,
-                edit_tool=edit_tool,
                 bash_tool=bash_tool,
                 notebook_edit_tool=notebook_edit_tool,
                 ask_user_tool=ask_user_tool,

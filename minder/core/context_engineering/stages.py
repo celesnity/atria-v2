@@ -17,7 +17,7 @@ STAGE_COMPACT = 0.99
 PRUNE_PROTECTED_TOKENS = 40_000
 
 # Tool types whose outputs survive compaction pruning
-PROTECTED_TOOL_TYPES = {"skill", "present_plan", "read_file"}
+PROTECTED_TOOL_TYPES = {"skill", "present_plan"}
 
 
 class OptimizationLevel:

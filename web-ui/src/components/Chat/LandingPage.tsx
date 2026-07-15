@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import TextareaAutosize from "react-textarea-autosize";
 import { useChatStore } from "../../stores/chat";
 import { useProjectsStore } from "../../stores/projects";
@@ -20,30 +21,33 @@ import { transitions } from "../ui/motion";
 
 // Prompt starters — a gapless 2x2 bento. Concrete brainstorming asks (no cliches).
 // Each fills the composer so the first keystroke is optional, not required.
-const STARTERS: { kind: string; title: string; prompt: string }[] = [
+// NOTE: `prompt` values are left as English literals — they are sent to the backend
+// as persistent conversation data, so locale-resolving them would persist translated text.
+const STARTERS: { kindKey: string; titleKey: string; prompt: string }[] = [
   {
-    kind: "Brainstorm",
-    title: "Explore ideas",
+    kindKey: "landingPage.starterKind.brainstorm",
+    titleKey: "landingPage.starterTitle.brainstorm",
     prompt: "Help me brainstorm ideas. Ask me about the goal and any constraints first, then lay out a few directions worth exploring.",
   },
   {
-    kind: "Plan",
-    title: "Think through a plan",
+    kindKey: "landingPage.starterKind.plan",
+    titleKey: "landingPage.starterTitle.plan",
     prompt: "Help me plan this out. Ask what I'm trying to achieve first, then break it into clear steps and milestones.",
   },
   {
-    kind: "Draft",
-    title: "Write something",
+    kindKey: "landingPage.starterKind.draft",
+    titleKey: "landingPage.starterTitle.draft",
     prompt: "Help me draft this. Ask about the audience and tone first, then propose an outline before we write.",
   },
   {
-    kind: "Research",
-    title: "Compare options",
+    kindKey: "landingPage.starterKind.research",
+    titleKey: "landingPage.starterTitle.research",
     prompt: "Research two or three ways to approach this and lay out the tradeoffs with sources before recommending one.",
   },
 ];
 
 export function LandingPage() {
+  const { t } = useTranslation('chat');
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,11 +84,11 @@ export function LandingPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await createWorkspaceConversation("New Chat");
+      await createWorkspaceConversation("New Chat"); // backend name — not translated
       sendMessage(input.trim());
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to load conversation",
+        err instanceof Error ? err.message : t('landingPage.failedToLoad'),
       );
       setIsLoading(false);
     }
@@ -143,11 +147,11 @@ export function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={transitions.chrome}
           >
-            <Eyebrow className="text-text-secondary">New conversation</Eyebrow>
+            <Eyebrow className="text-text-secondary">{t('landingPage.eyebrow')}</Eyebrow>
           </motion.div>
           <AnimatedHeadline
             as="h2"
-            text={"What should we think through?"}
+            text={t('landingPage.headline')}
             className="mx-auto mt-2.5 max-w-xl text-[28px] md:text-[38px] font-sans font-[600] leading-[1.08] tracking-[-0.03em] text-gradient-brand"
           />
         </div>
@@ -165,7 +169,7 @@ export function LandingPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe what's on your mind, or pick a starting point below."
+              placeholder={t('landingPage.composerPlaceholder')}
               disabled={isLoading || !isConnected}
               className="w-full resize-none border-0 bg-transparent text-base leading-relaxed text-ink placeholder-text-muted outline-none disabled:cursor-not-allowed disabled:opacity-50"
               minRows={2}
@@ -184,7 +188,7 @@ export function LandingPage() {
                     <button
                       onClick={() => removeFile(i)}
                       className="ml-0.5 text-text-muted hover:text-block-coral"
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={t('landingPage.removeFile', { name: file.name })}
                     >
                       <X className="h-3 w-3" strokeWidth={2.5} />
                     </button>
@@ -200,8 +204,8 @@ export function LandingPage() {
               <button
                 onClick={() => setShowPlusMenu(!showPlusMenu)}
                 className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-soft text-text-secondary transition-colors hover:bg-hairline-soft hover:text-ink"
-                title="Attach files"
-                aria-label="Attach files"
+                title={t('landingPage.attachFiles')}
+                aria-label={t('landingPage.attachFiles')}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -213,14 +217,14 @@ export function LandingPage() {
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-soft"
                   >
                     <Image className="h-4 w-4 text-text-muted" />
-                    Upload image
+                    {t('landingPage.uploadImage')}
                   </button>
                   <button
                     onClick={() => handleFileUpload(".pdf,.docx")}
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-soft"
                   >
                     <FileText className="h-4 w-4 text-text-muted" />
-                    Upload document
+                    {t('landingPage.uploadDocument')}
                   </button>
                 </div>
               )}
@@ -230,13 +234,13 @@ export function LandingPage() {
               onClick={handleSend}
               disabled={!input.trim() || isLoading || !isConnected}
               className="flex h-9 items-center gap-2 rounded-pill bg-gradient-brand px-4 text-btn text-[15px] text-white shadow-glow-nebula transition-all hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:opacity-60 disabled:shadow-none"
-              title="Send (Enter)"
+              title={t('landingPage.sendEnter')}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <span className="hidden sm:inline">Send</span>
+                  <span className="hidden sm:inline">{t('landingPage.send')}</span>
                   <SendHorizontal className="h-4 w-4" />
                 </>
               )}
@@ -254,7 +258,7 @@ export function LandingPage() {
         <div className="mt-4 grid grid-flow-dense grid-cols-1 gap-2 sm:grid-cols-2">
           {STARTERS.map((s, i) => (
             <motion.button
-              key={s.title}
+              key={s.titleKey}
               type="button"
               onClick={() => applyStarter(s.prompt)}
               initial={reduce ? false : { opacity: 0, y: 10 }}
@@ -263,11 +267,11 @@ export function LandingPage() {
               className="group flex flex-col items-start gap-1.5 rounded-md border border-hairline-soft bg-surface-soft/50 p-3.5 text-left transition-all duration-base hover:border-ink/20 hover:bg-surface-soft hover:-translate-y-0.5"
             >
               <div className="flex w-full items-center justify-between">
-                <span className="eyebrow-mono text-text-muted">{s.kind}</span>
+                <span className="eyebrow-mono text-text-muted">{t(s.kindKey)}</span>
                 <ArrowUpRight className="h-4 w-4 text-text-muted opacity-0 transition-all duration-base group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
               </div>
               <span className="text-[15px] font-[540] tracking-[-0.01em] text-ink">
-                {s.title}
+                {t(s.titleKey)}
               </span>
             </motion.button>
           ))}
@@ -277,11 +281,11 @@ export function LandingPage() {
           <kbd className="rounded border border-hairline-soft bg-surface-soft px-1.5 py-0.5 text-xs">
             Enter
           </kbd>{" "}
-          to send &middot;{" "}
+          {t('landingPage.hintSend')}{" "}
           <kbd className="rounded border border-hairline-soft bg-surface-soft px-1.5 py-0.5 text-xs">
             Shift + Enter
           </kbd>{" "}
-          for a new line
+          {t('landingPage.hintNewLine')}
         </p>
       </div>
 

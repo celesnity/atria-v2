@@ -36,6 +36,7 @@ class ConnectorRecord:
     api_base: Optional[str] = None
     state: ConnectorState = ConnectorState.PENDING
     tools: List[dict] = field(default_factory=list)
+    context: dict = field(default_factory=dict)
     fail_count: int = 0
     last_seen: float = 0.0
 
@@ -178,14 +179,22 @@ class ModuleRegistry:
             rec.last_seen = time.time()
             self._version += 1
 
-    def mark_connector_ready(self, name: str, tools: List[dict]) -> None:
+    def mark_connector_ready(
+        self, name: str, tools: List[dict], context: Optional[dict] = None
+    ) -> None:
         with self._lock:
             rec = self._connectors.get(name)
             if rec is None:
                 return
-            changed = rec.state != ConnectorState.READY or rec.tools != tools
+            ctx_block = context if isinstance(context, dict) else {}
+            changed = (
+                rec.state != ConnectorState.READY
+                or rec.tools != tools
+                or rec.context != ctx_block
+            )
             rec.state = ConnectorState.READY
             rec.tools = list(tools)
+            rec.context = ctx_block
             rec.fail_count = 0
             rec.last_seen = time.time()
             if changed:
@@ -208,6 +217,24 @@ class ModuleRegistry:
             over_limit = rec.fail_count >= RECONCILE_FAIL_LIMIT
         if over_limit:
             self.mark_connector_down(name)
+
+    def touch_connector(self, name: str) -> bool:
+        """Mark a connector alive without any state/catalog change.
+
+        Pure in-memory liveness heartbeat: resets ``fail_count`` and refreshes
+        ``last_seen``, but never bumps ``version`` (so it triggers no
+        ``modules.changed`` broadcast). Used by the SSE liveness subscriber —
+        an open ``/connector/stream`` stream is itself the proof of life, so the
+        host doesn't need to HTTP-poll ``/health``. Returns ``False`` if the
+        connector is unknown (e.g. deregistered while its stream was draining).
+        """
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None:
+                return False
+            rec.fail_count = 0
+            rec.last_seen = time.time()
+            return True
 
     def connector(self, name: str) -> Optional[ConnectorRecord]:
         """Return the runtime connector record for ``name`` (or ``None``).

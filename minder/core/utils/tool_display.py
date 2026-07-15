@@ -24,22 +24,13 @@ PATH_ARG_KEYS: set[str] = {
 }
 
 _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
-    "read_file": ("Read", "file"),
     "read_pdf": ("Read", "pdf"),
-    "write_file": ("Write", "file"),
-    "edit_file": ("Edit", "file"),
-    "list_files": ("List", "files"),
-    "search": ("Search", "project"),
     "run_command": ("Bash", "command"),
-    "get_process_output": ("Get Process Output", "process"),
-    "list_processes": ("List Processes", "processes"),
-    "kill_process": ("Kill Process", "process"),
     "write_todos": ("Create", "todos"),
     "update_todo": ("Update_Todos", "todo"),
     "complete_todo": ("Complete_Todos", "todo"),
     "list_todos": ("List_Todos", "todos"),
     "clear_todos": ("Clear_Todos", "todos"),
-    "request_help": ("Request help", "helpers"),
     "docker_start": ("Starting", "Docker container"),
     "docker_stop": ("Stopping", "Docker container"),
     "docker_copy": ("Copying", "file to Docker"),
@@ -59,15 +50,8 @@ _TOOL_DISPLAY_PARTS: dict[str, tuple[str, str]] = {
 _PATH_HINT_KEYS = {"file_path", "path", "directory", "dir", "image_path", "working_dir", "target"}
 
 _PRIMARY_ARG_MAP: dict[str, tuple[str, ...]] = {
-    "read_file": ("file_path",),
     "read_pdf": ("file_path",),
-    "write_file": ("file_path", "path"),
-    "edit_file": ("file_path", "path"),
-    "list_files": ("path", "directory"),
-    "search": ("pattern", "query"),
     "run_command": ("command",),
-    "get_process_output": ("pid", "command"),
-    "kill_process": ("pid",),
 }
 
 _MAX_SUMMARY_LEN = 150
@@ -276,11 +260,6 @@ def format_tool_call(tool_name: str, tool_args: Mapping[str, Any]) -> str:
 
         if params:
             return f"Search({', '.join(params)})"
-
-    # Enhanced formatting for the request_help tool (broadcast blackboard)
-    elif tool_name == "request_help" and tool_args:
-        prompt = tool_args.get("prompt", "")
-        return f"Request help({prompt})" if prompt else "Request help"
 
     # Docker container startup
     elif tool_name == "docker_start" and tool_args:

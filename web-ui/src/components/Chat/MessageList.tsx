@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useRef, useState, useMemo } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { ChevronDown, ChevronRight, Loader2, FileText, Pencil, TerminalSquare, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -8,9 +9,7 @@ import type { Message } from '../../types';
 import { useChatStore } from '../../stores/chat';
 import { ToolCallMessage } from './ToolCallMessage';
 import { ModuleActivityLine } from './ModuleActivityLine';
-import { SolveDispatchCard } from './SolveDispatchCard';
 import { TodoListCard } from './TodoListCard';
-import { SubagentCard } from './SubagentCard';
 import { groupActivity, summarizeActivity, type RenderItem } from '../../lib/activityGroups';
 import { ThinkingBlock } from './ThinkingBlock';
 import { SearchResultBlock } from './SearchResultBlock';
@@ -42,7 +41,7 @@ function wrapCitations(children: React.ReactNode): React.ReactNode {
         <span
           key={`${part.cite}-${i}`}
           className="mx-0.5 inline-block rounded-sm border border-hairline-soft bg-canvas/60 px-1 py-0.5 align-baseline font-mono text-[11px] font-[540] text-ink/80"
-          title="Trích dẫn tài liệu"
+          title="Document citation"
         >
           [{part.cite}]
         </span>
@@ -175,6 +174,7 @@ const AssistantMarkdown = memo(function AssistantMarkdown({
   content: string;
   metrics?: Message['metrics'];
 }) {
+  const { t } = useTranslation('chat');
   const latency = latencySummary(metrics);
   return (
     <div>
@@ -188,7 +188,7 @@ const AssistantMarkdown = memo(function AssistantMarkdown({
         </ReactMarkdown>
       </div>
       {latency && (
-        <div className="mt-1.5 font-mono text-[10px] text-ink/30" title="Đo từ lúc gửi tin nhắn">
+        <div className="mt-1.5 font-mono text-[10px] text-ink/30" title={t('messageList.latencyTooltip')}>
           ⚡ {latency}
         </div>
       )}
@@ -232,6 +232,7 @@ function ThinkingSpinner() {
 }
 
 function WelcomeScreen() {
+  const { t } = useTranslation('chat');
   return (
     <div className="relative flex h-full items-center justify-center overflow-hidden bg-canvas px-4">
       <CosmicField count={18} className="opacity-60" />
@@ -242,12 +243,12 @@ function WelcomeScreen() {
           className="mx-auto mb-3 h-12 w-12 select-none"
           draggable={false}
         />
-        <Eyebrow className="mb-1.5 block text-text-muted">Welcome</Eyebrow>
+        <Eyebrow className="mb-1.5 block text-text-muted">{t('messageList.welcomeEyebrow')}</Eyebrow>
         <h2 className="text-balance text-[19px] font-sans font-[600] leading-[1.15] tracking-[-0.02em] text-gradient-brand">
-          Let&rsquo;s get to work.
+          {t('messageList.welcomeHeadline')}
         </h2>
         <p className="mt-2 text-balance text-[12.5px] leading-[1.5] text-text-secondary">
-          Start a conversation with Minder.
+          {t('messageList.welcomeSubtext')}
         </p>
       </div>
     </div>
@@ -281,14 +282,6 @@ function MessageBody({
   if (message.role === 'todos') return <TodoListCard message={message} />;
   if (message.role === 'tool_call') {
     const hasResult = message.tool_result != null && Object.keys(message.tool_result).length > 0;
-    if (message.tool_name === 'solve') {
-      // Dispatch card: request text + strategy + live job progress.
-      return <SolveDispatchCard message={message} />;
-    }
-    if (message.tool_name === 'spawn_subagent') {
-      // Always show subagents as a distinct card, even in Simple Mode.
-      return <SubagentCard message={message} hasResult={hasResult} />;
-    }
     return simpleMode
       ? <ModuleActivityLine message={message} hasResult={hasResult} />
       : <ToolCallMessage message={message} hasResult={hasResult} />;
@@ -363,11 +356,12 @@ const MessageItem = memo(function MessageItem({
 // Iconised, single-line activity breakdown — compact enough to sit on one row
 // in the ~20vw rail (icon + count chips) instead of a text list that wraps.
 function ActivityMeta({ s }: { s: ReturnType<typeof summarizeActivity> }) {
+  const { t } = useTranslation('chat');
   const chips: Array<{ icon: typeof FileText; n: number; title: string }> = [];
-  if (s.reads) chips.push({ icon: FileText, n: s.reads, title: 'đọc' });
-  if (s.edits) chips.push({ icon: Pencil, n: s.edits, title: 'sửa' });
-  if (s.commands) chips.push({ icon: TerminalSquare, n: s.commands, title: 'lệnh' });
-  if (s.thinking) chips.push({ icon: Sparkles, n: s.thinking, title: 'suy nghĩ' });
+  if (s.reads) chips.push({ icon: FileText, n: s.reads, title: t('messageList.chipReads') });
+  if (s.edits) chips.push({ icon: Pencil, n: s.edits, title: t('messageList.chipEdits') });
+  if (s.commands) chips.push({ icon: TerminalSquare, n: s.commands, title: t('messageList.chipCommands') });
+  if (s.thinking) chips.push({ icon: Sparkles, n: s.thinking, title: t('messageList.chipThinking') });
   if (!chips.length) return null;
   return (
     <span className="flex items-center gap-1.5">
@@ -390,6 +384,7 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
   context: ListContext;
   isTail: boolean;
 }) {
+  const { t } = useTranslation('chat');
   const running = isTail && context.isLoading;
   // Collapsed by default once finished; while running, stay collapsed but show a
   // live status line so the user sees progress without the wall of steps.
@@ -402,8 +397,8 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
   const last = entries[entries.length - 1]?.message;
   const liveLabel =
     last?.role === 'thinking'
-      ? 'Đang suy nghĩ…'
-      : last?.activity?.running || (last?.tool_name ? `Đang chạy ${last.tool_name}…` : 'Đang xử lý…');
+      ? t('messageList.activityThinking')
+      : last?.activity?.running || (last?.tool_name ? t('messageList.activityRunningTool', { tool: last.tool_name }) : t('messageList.activityProcessing'));
 
   return (
     <div className="rounded-md border border-hairline-soft/40 bg-surface-soft/20 overflow-hidden">
@@ -411,7 +406,7 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
         type="button"
         onClick={() => setExpanded(v => !v)}
         aria-expanded={expanded}
-        aria-label={running ? liveLabel : 'Activity'}
+        aria-label={running ? liveLabel : t('messageList.activity')}
         className="w-full flex items-center gap-1.5 px-2.5 py-1.5 cursor-pointer select-none hover:bg-surface-soft/40 transition-colors text-left focus-visible:outline-none focus-visible:shadow-focus-ring min-w-0"
       >
         {running ? (
@@ -420,12 +415,12 @@ const ActivityGroupItem = memo(function ActivityGroupItem({
           <ChevronRight className={`w-3.5 h-3.5 text-ink/35 flex-shrink-0 transition-transform duration-fast ${expanded ? 'rotate-90' : ''}`} aria-hidden="true" />
         )}
         <span className="text-[12.5px] font-[500] text-ink/60 flex-shrink-0 truncate max-w-[52%]">
-          {running ? liveLabel : 'Activity'}
+          {running ? liveLabel : t('messageList.activity')}
         </span>
         {/* Meta: step count + iconised breakdown, clipped (never wrapped) in the rail. */}
         <span className="ml-auto flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[11px] text-ink/35 font-mono">
           <span className="flex-shrink-0 tabular-nums">
-            {stepCount > 0 ? `${stepCount} bước` : `${entries.length} mục`}
+            {stepCount > 0 ? t('messageList.steps', { count: stepCount }) : t('messageList.entries', { count: entries.length })}
           </span>
           {!running && <ActivityMeta s={summary} />}
         </span>
@@ -464,6 +459,7 @@ function ListFooter({ context }: { context?: ListContext }) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function MessageList() {
+  const { t } = useTranslation('chat');
   const currentSessionId = useChatStore(state => state.currentSessionId);
   const allMessages = useChatStore(state => {
     const sid = state.currentSessionId;
@@ -605,7 +601,7 @@ export function MessageList() {
       {thinkingIndicator && (
         <div className="animate-fade-in flex items-center gap-2.5 px-3 py-1.5">
           <span className="thinking-orb" aria-hidden="true" />
-          <span className="thinking-sweep text-xs font-medium tracking-tight">Thinking…</span>
+          <span className="thinking-sweep text-xs font-medium tracking-tight">{t('messageList.thinking')}</span>
         </div>
       )}
 
@@ -615,10 +611,10 @@ export function MessageList() {
           onClick={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })}
           data-surface="dark"
           className="animate-scale-in absolute bottom-4 right-6 z-10 flex items-center gap-1.5 whitespace-nowrap rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-inverse-ink shadow-hover transition-all hover:-translate-y-0.5 hover:bg-ink/85 hover:shadow-modal active:scale-[0.98]"
-          aria-label="Jump to latest message"
+          aria-label={t('messageList.jumpToLatest')}
         >
           <ChevronDown className="w-3.5 h-3.5" />
-          Latest
+          {t('messageList.latest')}
         </button>
       )}
     </div>

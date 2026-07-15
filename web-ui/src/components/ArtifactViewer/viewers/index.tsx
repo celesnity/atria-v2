@@ -1,4 +1,5 @@
 import { Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../../api/client';
 import { pickRenderer } from './extensions';
 import { BinaryFallback } from './BinaryFallback';
@@ -23,7 +24,8 @@ interface Props {
 }
 
 function Fallback() {
-  return <div className="p-4 text-xs font-mono text-ink/45">Loading viewer…</div>;
+  const { t } = useTranslation('artifacts');
+  return <div className="p-4 text-xs font-mono text-ink/45">{t('viewer.loadingViewer')}</div>;
 }
 
 export function ViewerDispatcher({ convId, tab }: Props) {

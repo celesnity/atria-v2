@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { apiFetch } from "@/auth/apiClient";
 import { useAuth } from "@/auth/AuthProvider";
 
 type TenantUser = { user_id: string; username: string; email: string; role: string };
 
 export function TenantUsersPage() {
+  const { t } = useTranslation('common');
   const { slug = "" } = useParams();
   const { me } = useAuth();
   const [users, setUsers] = useState<TenantUser[]>([]);
@@ -23,7 +25,7 @@ export function TenantUsersPage() {
   }, [slug]);
 
   const canAdmin = me?.is_platform_admin || (me?.active_tenant === slug && me?.active_role === "admin");
-  if (!canAdmin) return <div className="p-4">Tenant admin access required.</div>;
+  if (!canAdmin) return <div className="p-4">{t('admin.users.accessRequired')}</div>;
 
   async function invite(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +53,7 @@ export function TenantUsersPage() {
   }
 
   async function remove(user_id: string) {
-    if (!confirm("Remove user from tenant?")) return;
+    if (!confirm(t('admin.users.removeConfirm'))) return;
     const r = await apiFetch(`/api/admin/tenants/${slug}/users/${user_id}`, { method: "DELETE" });
     if (!r.ok) setErr(await r.text());
     load();
@@ -59,11 +61,11 @@ export function TenantUsersPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-xl font-semibold mb-4">{slug} — users</h1>
+      <h1 className="text-xl font-semibold mb-4">{slug} — {t('admin.users.title')}</h1>
       <form onSubmit={invite} className="flex gap-2 mb-4">
         <input
           className="border rounded px-2 py-1 flex-1"
-          placeholder="email@example.com"
+          placeholder={t('admin.users.emailPlaceholder')}
           value={inviteEmail}
           onChange={(e) => setInviteEmail(e.target.value)}
         />
@@ -72,20 +74,20 @@ export function TenantUsersPage() {
           value={inviteRole}
           onChange={(e) => setInviteRole(e.target.value as "admin" | "member")}
         >
-          <option value="member">member</option>
-          <option value="admin">admin</option>
+          <option value="member">{t('admin.users.roleMember')}</option>
+          <option value="admin">{t('admin.users.roleAdmin')}</option>
         </select>
         <button type="submit" className="border rounded px-3 py-1">
-          Invite
+          {t('admin.users.inviteButton')}
         </button>
       </form>
       {err && <div className="text-red-600 mb-3">{err}</div>}
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left border-b">
-            <th>User</th>
-            <th>Email</th>
-            <th>Role</th>
+            <th>{t('admin.users.colUser')}</th>
+            <th>{t('admin.users.colEmail')}</th>
+            <th>{t('admin.users.colRole')}</th>
             <th />
           </tr>
         </thead>
@@ -99,13 +101,13 @@ export function TenantUsersPage() {
                   value={u.role}
                   onChange={(e) => changeRole(u.user_id, e.target.value as "admin" | "member")}
                 >
-                  <option value="member">member</option>
-                  <option value="admin">admin</option>
+                  <option value="member">{t('admin.users.roleMember')}</option>
+                  <option value="admin">{t('admin.users.roleAdmin')}</option>
                 </select>
               </td>
               <td className="text-right">
                 <button onClick={() => remove(u.user_id)} className="text-red-600">
-                  Remove
+                  {t('admin.users.removeButton')}
                 </button>
               </td>
             </tr>

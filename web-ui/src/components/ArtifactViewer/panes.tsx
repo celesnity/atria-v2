@@ -1,4 +1,5 @@
 import { PanelRightOpen } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
 import { TabBar } from './TabBar';
@@ -18,11 +19,12 @@ import { ModuleGallery } from './ModuleGallery';
 
 /** File explorer: [Files | Modules] tabs + the tree / module gallery. */
 export function ExplorerPane() {
+  const { t } = useTranslation('artifacts');
   const currentSessionId = useChatStore(s => s.currentSessionId);
   const [leftMode, setLeftMode] = useLeftMode();
   const convInt = currentSessionId ? parseInt(currentSessionId, 10) : NaN;
   if (!currentSessionId || Number.isNaN(convInt)) {
-    return <PaneEmpty label="No conversation open" />;
+    return <PaneEmpty label={t('panes.noConversation')} />;
   }
   return (
     <div className="flex flex-col h-full min-h-0 bg-bg-100">
@@ -44,6 +46,7 @@ export function ExplorerPane() {
 
 /** Editor: open-file tab bar + the active viewer (or an empty state). */
 export function EditorPane() {
+  const { t } = useTranslation('artifacts');
   const currentSessionId = useChatStore(s => s.currentSessionId);
   const activeTab = useViewerTabsStore(s => {
     if (!currentSessionId) return null;
@@ -53,7 +56,7 @@ export function EditorPane() {
   });
   const convInt = currentSessionId ? parseInt(currentSessionId, 10) : NaN;
   if (!currentSessionId || Number.isNaN(convInt)) {
-    return <PaneEmpty label="No conversation open" />;
+    return <PaneEmpty label={t('panes.noConversation')} />;
   }
   return (
     <div className="flex flex-col h-full min-h-0 bg-canvas">
@@ -64,7 +67,7 @@ export function EditorPane() {
         {activeTab ? (
           <ViewerDispatcher convId={convInt} tab={activeTab} />
         ) : (
-          <PaneEmpty label="Select a file to preview" icon />
+          <PaneEmpty label={t('panes.selectFile')} icon />
         )}
       </div>
     </div>

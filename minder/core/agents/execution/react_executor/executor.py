@@ -108,7 +108,7 @@ class IterationContext:
 class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin, IterationMixin):
     """Executes ReAct loop (Reasoning -> Acting -> Observing)."""
 
-    READ_OPERATIONS = {"read_file", "list_files", "search"}
+    READ_OPERATIONS: set[str] = set()
     MAX_NUDGE_ATTEMPTS = 3
     MAX_TODO_NUDGES = 4  # After this many nudges, allow completion anyway
     DOOM_LOOP_THRESHOLD = 3  # Same tool+args N times -> doom loop
@@ -117,13 +117,7 @@ class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin,
     # Tools safe for silent parallel execution (read-only, no approval needed)
     PARALLELIZABLE_TOOLS = frozenset(
         {
-            "read_file",
-            "list_files",
-            "search",
-            "list_processes",
-            "get_process_output",
             "list_todos",
-            "search_tools",
         }
     )
 
@@ -418,17 +412,6 @@ class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin,
                 f"Processing query: {query[:50]}{'...' if len(query) > 50 else ''}", "QUERY"
             )
 
-        # Blackboard: provision a per-run handle (flag-gated; None when disabled).
-        # Tool execution reads it from self._blackboard_handle in tool_processing.
-        from minder.core.blackboard.provision import make_run_blackboard, teardown_run_blackboard
-
-        sess = getattr(self.session_manager, "current_session", None)
-        self._blackboard_handle = make_run_blackboard(
-            config=self.config,
-            task_id=getattr(sess, "id", "") or "",
-            owner_id=getattr(sess, "owner_id", "") or "",
-        )
-
         try:
             while True:
                 # Drain any injected user messages before this iteration
@@ -502,10 +485,6 @@ class ReactExecutor(ThinkingMixin, ToolProcessingMixin, SessionPersistenceMixin,
                     app._interrupt_manager.clear_interrupt_token()
 
             self._active_interrupt_token = None
-
-            # Blackboard: archive (best-effort) + shut down the per-run handle.
-            teardown_run_blackboard(getattr(self, "_blackboard_handle", None))
-            self._blackboard_handle = None
 
         # Final drain: re-queue or persist any late-arriving injected messages (EC1)
         while True:

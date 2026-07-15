@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Settings, Folder, Plus, Trash2 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 import { SettingsModal } from '../Settings/SettingsModal';
 import { NewSessionModal } from './NewSessionModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -10,6 +11,8 @@ import { SessionModelModal } from './SessionModelModal';
 import { apiClient } from '../../api/client';
 import { SkeletonList } from '../ui/Skeleton';
 import { EmptyState } from '../ui/EmptyState';
+import { useTranslation } from 'react-i18next';
+import { Trans } from 'react-i18next';
 
 interface Session {
   id: string;
@@ -38,6 +41,7 @@ const getProjectName = (path: string): string => {
 };
 
 export function SessionsSidebar() {
+  const { t } = useTranslation('layout');
   const reduceMotion = useReducedMotion();
   const [_sessions, setSessions] = useState<Session[]>([]);
   const [workspaces, setWorkspaces] = useState<WorkspaceGroup[]>([]);
@@ -58,8 +62,8 @@ export function SessionsSidebar() {
   const sessionListVersion = useChatStore(state => state.sessionListVersion);
   const runningSessions = useChatStore(state => state.runningSessions);
   const sessionStates = useChatStore(state => state.sessionStates);
-  const isCollapsed = useChatStore(state => state.sidebarCollapsed);
-  const toggleSidebar = useChatStore(state => state.toggleSidebar);
+  const isCollapsed = useUiStore(state => state.sidebarCollapsed);
+  const toggleSidebar = useUiStore(state => state.toggleSidebar);
 
   // Disable "New Chat" when the current session has no messages yet
   const currentSessionIsEmpty = currentSessionId !== null && (
@@ -149,10 +153,10 @@ export function SessionsSidebar() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return t('sessionsSidebar.justNow');
+    if (diffMins < 60) return t('sessionsSidebar.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('sessionsSidebar.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('sessionsSidebar.daysAgo', { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -193,7 +197,7 @@ export function SessionsSidebar() {
       }
     } catch (error) {
       console.error('[SessionsSidebar] Failed to create session:', error);
-      alert('Failed to create new session');
+      alert(t('sessionsSidebar.failedToCreateSession'));
     }
   };
 
@@ -230,7 +234,7 @@ export function SessionsSidebar() {
       setDeleteSessionId(null);
     } catch (error) {
       console.error('Failed to delete session:', error);
-      alert('Failed to delete session');
+      alert(t('sessionsSidebar.failedToDeleteSession'));
     }
   };
 
@@ -273,13 +277,15 @@ export function SessionsSidebar() {
       setDeleteWorkspace(null);
     } catch (error) {
       console.error('Failed to delete workspace:', error);
-      alert('Failed to delete workspace');
+      alert(t('sessionsSidebar.failedToDeleteWorkspace'));
     }
   };
 
   const getSessionLabel = (session: Session): string => {
     return session.title || session.id.substring(0, 8);
   };
+
+  const newSessionDisabledTitle = t('sessionsSidebar.sendMessageFirst');
 
   return (
     <motion.aside
@@ -305,7 +311,7 @@ export function SessionsSidebar() {
                 <div
                   key={workspace.path}
                   className="relative group"
-                  title={`${projectName} (${workspace.sessions.length} sessions)`}
+                  title={t('sessionsSidebar.workspaceTooltip', { name: projectName, count: workspace.sessions.length })}
                 >
                   <button
                     onClick={() => {
@@ -329,8 +335,8 @@ export function SessionsSidebar() {
                   {/* Tooltip */}
                   <div data-surface="dark" className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white text-xs rounded-md px-3 py-2 whitespace-nowrap opacity-60 group-hover:opacity-100 pointer-events-none z-50 shadow-soft">
                     <div className="font-medium text-sm mb-1">{projectName}</div>
-                    <div className="text-gray-300 text-xs">{workspace.sessions.length} session{workspace.sessions.length !== 1 ? 's' : ''}</div>
-                    {hasActiveSession && <div className="text-amber-300 text-xs mt-1">Active</div>}
+                    <div className="text-gray-300 text-xs">{t('sessionsSidebar.sessionCount', { count: workspace.sessions.length })}</div>
+                    {hasActiveSession && <div className="text-amber-300 text-xs mt-1">{t('sessionsSidebar.active')}</div>}
                     <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
                   </div>
                 </div>
@@ -350,7 +356,7 @@ export function SessionsSidebar() {
                   ? 'bg-gray-300 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-br from-accent-cobalt to-accent-violet hover:from-accent-cobalt hover:to-accent-violet hover:shadow-lg'
               }`}
-              title={currentSessionIsEmpty ? 'Send a message before starting a new session' : 'Start Conversation'}
+              title={currentSessionIsEmpty ? newSessionDisabledTitle : t('sessionsSidebar.startConversation')}
             >
               <Plus className="w-5 h-5" />
             </button>
@@ -361,7 +367,7 @@ export function SessionsSidebar() {
             <button
               onClick={() => setIsSettingsOpen(true)}
               className="w-full p-2 text-text-secondary hover:text-ink bg-canvas hover:bg-amber-50/30 border border-hairline-soft hover:border-amber-300 rounded-xl flex items-center justify-center"
-              title="Settings"
+              title={t('sessionsSidebar.settings')}
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -374,7 +380,7 @@ export function SessionsSidebar() {
             <button
               onClick={currentSessionIsEmpty ? undefined : handleNewWorkspace}
               disabled={currentSessionIsEmpty}
-              title={currentSessionIsEmpty ? 'Send a message before starting a new session' : undefined}
+              title={currentSessionIsEmpty ? newSessionDisabledTitle : undefined}
               className={`flex-1 px-3 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${
                 currentSessionIsEmpty
                   ? 'bg-gray-200 text-text-muted cursor-not-allowed'
@@ -382,24 +388,24 @@ export function SessionsSidebar() {
               }`}
             >
               <Plus className="w-4 h-4" />
-              <span>New Chat</span>
+              <span>{t('sessionsSidebar.newChat')}</span>
             </button>
           </div>
 
           {/* Workspaces Header */}
           <div className="px-5 py-4 border-b border-hairline-soft">
-            <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Workspaces</h2>
+            <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('sessionsSidebar.workspaces')}</h2>
           </div>
 
           {/* Workspaces List */}
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {isLoading ? (
-              <SkeletonList count={3} className="px-0 py-3" label="Loading workspaces…" />
+              <SkeletonList count={3} className="px-0 py-3" label={t('sessionsSidebar.loadingWorkspaces')} />
             ) : workspaces.length === 0 ? (
               <EmptyState
                 Icon={Folder}
-                title="No workspaces yet"
-                description="Start a conversation to create your first workspace"
+                title={t('sessionsSidebar.noWorkspacesTitle')}
+                description={t('sessionsSidebar.noWorkspacesDescription')}
               />
             ) : (
               <div className="space-y-3 animate-fade-in">
@@ -460,7 +466,7 @@ export function SessionsSidebar() {
                           handleDeleteWorkspace(workspace, e);
                         }}
                         className="absolute top-3.5 right-3 w-7 h-7 rounded-md flex items-center justify-center hover:bg-red-100 text-text-muted hover:text-red-600 bg-surface-soft shadow-sm z-10 delete-glow"
-                        title="Delete workspace"
+                        title={t('sessionsSidebar.deleteWorkspace')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -478,7 +484,7 @@ export function SessionsSidebar() {
                           <button
                             onClick={currentSessionIsEmpty ? undefined : (e) => handleNewSessionInWorkspace(workspace.path, e)}
                             disabled={currentSessionIsEmpty}
-                            title={currentSessionIsEmpty ? 'Send a message before starting a new session' : undefined}
+                            title={currentSessionIsEmpty ? newSessionDisabledTitle : undefined}
                             className={`w-full px-4 py-3 rounded-md text-left border-2 border-dashed flex items-center gap-2 ${
                               currentSessionIsEmpty
                                 ? 'bg-surface-soft border-hairline-soft text-text-muted cursor-not-allowed'
@@ -486,7 +492,7 @@ export function SessionsSidebar() {
                             }`}
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span className="text-xs font-medium">New Session</span>
+                            <span className="text-xs font-medium">{t('sessionsSidebar.newSession')}</span>
                           </button>
 
                           {/* Sessions List */}
@@ -520,7 +526,7 @@ export function SessionsSidebar() {
                                       {sessionLabel}
                                     </div>
                                     {session.has_session_model && (
-                                      <span className="text-[9px] font-medium text-purple-400 flex-shrink-0" title="Custom model">model</span>
+                                      <span className="text-[9px] font-medium text-purple-400 flex-shrink-0" title={t('sessionsSidebar.customModel')}>{t('sessionsSidebar.modelBadge')}</span>
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between text-xs mt-1">
@@ -532,7 +538,7 @@ export function SessionsSidebar() {
                                     <span className={`${
                                       isActiveSession ? 'text-amber-600' : 'text-text-muted'
                                     }`}>
-                                      {session.message_count} msgs
+                                      {t('sessionsSidebar.msgCount', { count: session.message_count })}
                                     </span>
                                   </div>
                                 </button>
@@ -547,7 +553,7 @@ export function SessionsSidebar() {
                                       setSessionModelLabel(getSessionLabel(session));
                                     }}
                                     className="w-6 h-6 rounded flex items-center justify-center hover:bg-amber-100 text-text-muted hover:text-amber-600"
-                                    title="Session models"
+                                    title={t('sessionsSidebar.sessionModels')}
                                   >
                                     <Settings className="w-3.5 h-3.5" />
                                   </button>
@@ -555,7 +561,7 @@ export function SessionsSidebar() {
                                   <button
                                     onClick={(e) => handleDeleteSession(session.id, e)}
                                     className="w-6 h-6 rounded flex items-center justify-center hover:bg-red-100 text-text-muted hover:text-red-600 delete-glow"
-                                    title="Delete session"
+                                    title={t('sessionsSidebar.deleteSession')}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -579,7 +585,7 @@ export function SessionsSidebar() {
               className="w-full px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-ink bg-canvas hover:bg-amber-50/30 border border-hairline-soft hover:border-amber-300 rounded-xl flex items-center justify-center gap-2"
             >
               <Settings className="w-4 h-4" />
-              <span>Settings</span>
+              <span>{t('sessionsSidebar.settings')}</span>
             </button>
           </div>
         </div>
@@ -622,25 +628,30 @@ export function SessionsSidebar() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-ink mb-3">
-              Delete Session
+              {t('sessionsSidebar.deleteSessionTitle')}
             </h3>
             <p className="text-sm text-text-muted mb-5">
-              Are you sure you want to delete session <strong className="text-text-secondary">{deleteSessionId.substring(0, 8)}</strong>?
+              <Trans
+                i18nKey="sessionsSidebar.deleteSessionConfirm"
+                ns="layout"
+                values={{ id: deleteSessionId.substring(0, 8) }}
+                components={{ strong: <strong className="text-text-secondary" /> }}
+              />
               <br />
-              This action cannot be undone.
+              {t('sessionsSidebar.cannotBeUndone')}
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteSessionId(null)}
                 className="px-4 py-2 border border-hairline-soft bg-canvas rounded-md text-sm font-medium text-text-secondary hover:bg-surface-soft transition-colors"
               >
-                Cancel
+                {t('sessionsSidebar.cancel')}
               </button>
               <button
                 onClick={confirmDeleteSession}
                 className="px-4 py-2 bg-semantic-danger hover:bg-semantic-danger/90 text-white rounded-md text-sm font-medium transition-colors"
               >
-                Delete
+                {t('sessionsSidebar.delete')}
               </button>
             </div>
           </div>

@@ -15,13 +15,7 @@ from minder.core.utils.sound import play_finish_sound
 
 PARALLELIZABLE_TOOLS = frozenset(
     {
-        "read_file",
-        "list_files",
-        "search",
-        "list_processes",
-        "get_process_output",
         "list_todos",
-        "search_tools",
     }
 )
 
@@ -184,13 +178,25 @@ class RunLoopMixin:
                 }
             return results_by_id
 
+        # Parse each call's arguments once for the UI callbacks (on_tool_call +
+        # on_tool_result shared the same parse). Execution parses separately in
+        # _run_one, keeping its own error handling. Defensive parse: malformed
+        # args no longer crash the whole batch dispatch.
+        def _ui_args(tc: dict) -> dict:
+            try:
+                return json.loads(tc["function"]["arguments"])
+            except (ValueError, TypeError):
+                return {}
+
+        ui_args = {tc["id"]: _ui_args(tc) for tc in tool_calls}
+
         # Fire on_tool_call for ALL tools upfront (before any execution starts)
         # This lets the UI show all tools simultaneously with spinners
         if ui_callback and hasattr(ui_callback, "on_tool_call"):
             for tc in tool_calls:
-                t_name = tc["function"]["name"]
-                t_args = json.loads(tc["function"]["arguments"])
-                ui_callback.on_tool_call(t_name, t_args, tool_call_id=tc["id"])
+                ui_callback.on_tool_call(
+                    tc["function"]["name"], ui_args[tc["id"]], tool_call_id=tc["id"]
+                )
 
         def _run_one(tc: dict) -> tuple[str, dict]:
             name = tc["function"]["name"]
@@ -207,7 +213,6 @@ class RunLoopMixin:
                     task_monitor=task_monitor,
                     is_subagent=is_subagent,
                     ui_callback=ui_callback,
-                    blackboard=deps.blackboard,
                 )
             except Exception as e:
                 result = {"success": False, "error": str(e)}
@@ -226,9 +231,10 @@ class RunLoopMixin:
 
                 # Fire on_tool_result as each tool completes (real-time)
                 if ui_callback and hasattr(ui_callback, "on_tool_result"):
-                    t_name = tc["function"]["name"]
-                    t_args = json.loads(tc["function"]["arguments"])
-                    ui_callback.on_tool_result(t_name, t_args, result, tool_call_id=tc["id"])
+                    ui_callback.on_tool_result(
+                        tc["function"]["name"], ui_args[tc["id"]], result,
+                        tool_call_id=tc["id"],
+                    )
 
         return results_by_id
 
@@ -574,12 +580,6 @@ class RunLoopMixin:
                     continue  # Next iteration of outer while loop
 
                 # Sequential path (original logic)
-                # NOTE: The broadcast paradigm removed caller-chosen subagent types,
-                # so the old explore-first gate (which keyed on request_help's
-                # subagent_type == "Code-Explorer") no longer applies — a request_help
-                # is an un-addressed broadcast and is never blocked on a specific
-                # helper having run first.
-
                 for tool_call in tool_calls:
                     tool_name = tool_call["function"]["name"]
                     tool_args = json.loads(tool_call["function"]["arguments"])
@@ -636,7 +636,6 @@ class RunLoopMixin:
                         task_monitor=task_monitor,
                         is_subagent=is_subagent,
                         ui_callback=ui_callback,
-                        blackboard=deps.blackboard,
                     )
 
                     # Notify UI callback after tool execution

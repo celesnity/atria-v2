@@ -1,7 +1,7 @@
 """Starter files for the ``service`` module template.
 
 Scaffolds a complete, runnable service-module (connector backend + Module
-Federation dashboard + manifest + compose snippet) built on ``minder-module-sdk``.
+Federation dashboard + manifest + compose snippet) built on ``minder-python-sdk``.
 Kept out of ``store.py`` so the (large) starter strings don't bury the CRUD.
 
 See docs/connector-contract.md and docs/module_integration guide.
@@ -77,12 +77,12 @@ def manifest_json(name: str, port: int) -> str:
 
 def backend_app_py(name: str) -> str:
     return (
-        '"""Connector service for the {name} module — built on minder-module-sdk.\n\n'
+        '"""Connector service for the {name} module — built on minder-python-sdk.\n\n'
         "The SDK generates the whole /connector/* contract from the decorated\n"
         "handlers below; this file never imports ``minder``.\n"
         '"""\n'
         "from __future__ import annotations\n\n"
-        "from minder_module_sdk import Connector, ServiceUnavailable, card\n\n"
+        "from minder_python_sdk import Connector, ServiceUnavailable, card\n\n"
         "import service  # backend/service.py — your pure business logic\n\n"
         'conn = Connector("{name}", version="1")\n\n\n'
         '@conn.tool(\n'
@@ -123,7 +123,7 @@ def backend_service_py(name: str) -> str:
 def backend_requirements() -> str:
     return (
         "# fastapi + pydantic + the whole /connector/* contract come from\n"
-        "# minder-module-sdk (installed from the repo root in the Dockerfile).\n"
+        "# minder-python-sdk (installed from the repo root in the Dockerfile).\n"
         "# Add the module's own heavy deps below.\n"
         "uvicorn[standard]>=0.29\n"
     )
@@ -132,7 +132,7 @@ def backend_requirements() -> str:
 def backend_dockerfile(name: str, port: int) -> str:
     return (
         "# Build context is the REPO ROOT (see docker-compose.snippet.yml) so the\n"
-        "# image can install the shared minder_module_sdk from the repo root.\n\n"
+        "# image can install the shared minder_python_sdk from the repo root.\n\n"
         "# --- frontend build stage ---\n"
         "FROM node:20-slim AS fe\n"
         "WORKDIR /fe\n"
@@ -146,7 +146,7 @@ def backend_dockerfile(name: str, port: int) -> str:
         "FROM python:3.12-slim\n"
         "WORKDIR /app\n\n"
         "# Shared connector SDK first (own layer, rarely changes).\n"
-        "COPY minder_module_sdk /sdk\n"
+        "COPY minder_python_sdk /sdk\n"
         "RUN pip install --no-cache-dir /sdk\n\n"
         "# Module's own heavy deps.\n"
         f"COPY modules/{name}/backend/requirements.txt ./\n"
@@ -309,7 +309,7 @@ def compose_snippet(name: str, port: int) -> str:
         f"#   docker compose up -d --build {svc}\n"
         f"  {svc}:\n"
         f"    build:\n"
-        f"      # Repo-root context so the image can install the shared minder_module_sdk.\n"
+        f"      # Repo-root context so the image can install the shared minder_python_sdk.\n"
         f"      context: .\n"
         f"      dockerfile: modules/{name}/backend/Dockerfile\n"
         f"    ports:\n"

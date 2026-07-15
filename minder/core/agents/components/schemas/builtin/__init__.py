@@ -10,10 +10,8 @@ from __future__ import annotations
 from typing import Any
 
 from .agent_tools import SCHEMAS as _AGENT
-from .artifact_tools import SCHEMAS as _ARTIFACT
 from .file_tools import SCHEMAS as _FILE
 from .interaction_tools import SCHEMAS as _INTERACTION
-from .knowledge_tools import SCHEMAS as _KNOWLEDGE
 from .orchestration_tools import SCHEMAS as _ORCHESTRATION
 from .process_tools import SCHEMAS as _PROCESS
 from .system_tools import SCHEMAS as _SYSTEM
@@ -26,10 +24,8 @@ BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
     *_WEB,
     *_INTERACTION,
     *_SYSTEM,
-    *_KNOWLEDGE,
     *_AGENT,
     *_ORCHESTRATION,
-    *_ARTIFACT,
 ]
 
 __all__ = ["BUILTIN_TOOL_SCHEMAS"]

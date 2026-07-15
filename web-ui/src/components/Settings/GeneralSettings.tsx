@@ -1,5 +1,7 @@
-import { Settings2, Lock, Brain } from 'lucide-react';
+import { Settings2, Lock, Brain, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
+import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 
 type SegmentedOption<T extends string> = {
   value: T;
@@ -102,6 +104,7 @@ const THINKING_OPTIONS: SegmentedOption<'Off' | 'Low' | 'Medium' | 'High'>[] = [
 ];
 
 export function GeneralSettings() {
+  const { t } = useTranslation('settings');
   const status = useChatStore(state => state.status);
   const thinkingLevel = useChatStore(state => state.thinkingLevel);
   const toggleMode = useChatStore(state => state.toggleMode);
@@ -118,7 +121,7 @@ export function GeneralSettings() {
 
   function setAutonomy(v: 'Manual' | 'Semi-Auto' | 'Auto') {
     const CYCLE = ['Manual', 'Semi-Auto', 'Auto'] as const;
-    const steps = (CYCLE.indexOf(v) - CYCLE.indexOf(currentAutonomy as any) + 3) % 3;
+    const steps = (CYCLE.indexOf(v) - CYCLE.indexOf(currentAutonomy as never) + 3) % 3;
     for (let i = 0; i < steps; i++) cycleAutonomy();
   }
 
@@ -136,9 +139,9 @@ export function GeneralSettings() {
     <div className="max-w-2xl divide-y divide-hairline-soft">
       {/* Section header */}
       <div className="pb-5">
-        <h3 className="text-[15px] font-[600] text-ink">Agent Behaviour</h3>
+        <h3 className="text-[15px] font-[600] text-ink">{t('agentBehaviour')}</h3>
         <p className="mt-1 text-xs text-text-muted">
-          These settings apply to the current session and are reflected immediately in the chat pills.
+          {t('agentBehaviourHint')}
         </p>
       </div>
 
@@ -147,11 +150,10 @@ export function GeneralSettings() {
         <div>
           <p className={label}>
             <Settings2 className="w-4 h-4 text-accent-cobalt" strokeWidth={2} />
-            Mode
+            {t('mode')}
           </p>
           <p className={`mt-1 ${hint}`}>
-            Normal gives the agent full tool access. Plan restricts it to read-only exploration so it
-            can analyse without changing anything.
+            {t('modeHint')}
           </p>
         </div>
         <SegmentedControl value={currentMode} options={MODE_OPTIONS} onChange={setMode} />
@@ -162,12 +164,10 @@ export function GeneralSettings() {
         <div>
           <p className={label}>
             <Lock className="w-4 h-4 text-accent-cobalt" strokeWidth={2} />
-            Approval
+            {t('approval')}
           </p>
           <p className={`mt-1 ${hint}`}>
-            Controls when the agent pauses for your confirmation before running a tool.{' '}
-            <strong>Auto — Approve All</strong> skips every prompt and lets the agent work
-            uninterrupted.
+            {t('approvalHint')} <strong>{t('approvalAutoLabel')}</strong> {t('approvalAutoHint')}
           </p>
         </div>
         <SegmentedControl value={currentAutonomy} options={AUTONOMY_OPTIONS} onChange={setAutonomy} />
@@ -178,14 +178,24 @@ export function GeneralSettings() {
         <div>
           <p className={label}>
             <Brain className="w-4 h-4 text-accent-cobalt" strokeWidth={2} />
-            Thinking
+            {t('thinking')}
           </p>
           <p className={`mt-1 ${hint}`}>
-            How much chain-of-thought reasoning the model performs before replying. Higher levels
-            improve quality on complex tasks at the cost of latency and token usage.
+            {t('thinkingHint')}
           </p>
         </div>
         <SegmentedControl value={currentThinking} options={THINKING_OPTIONS} onChange={setThinking} />
+      </div>
+
+      {/* Language */}
+      <div className={row}>
+        <div>
+          <p className={label}>
+            <Globe className="w-4 h-4 text-accent-cobalt" strokeWidth={2} />
+            {t('language')}
+          </p>
+        </div>
+        <LanguageSwitcher />
       </div>
     </div>
   );

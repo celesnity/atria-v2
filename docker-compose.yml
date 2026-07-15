@@ -26,9 +26,6 @@ services:
       - ADMINER_DEFAULT_USERNAME=minder
       - ADMINER_DEFAULT_PASSWORD=minder
       - ADMINER_DESIGN=pepa-linha
-    depends_on:
-      db:
-        condition: service_healthy
 
   # Single public entry point. nginx is the only service that publishes a host
   # port; it reverse-proxies the whole app (UI + /api + /ws) to `minder`. Change
@@ -92,11 +89,6 @@ services:
       - minder_data:/home/minder/.minder
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   # Redis — backs the TaskIQ broker, job state, blackboard, and message bus.
   # Loopback-published so a HOST-run backend (uvicorn on the host, not in-compose)
@@ -130,42 +122,6 @@ services:
   #     retries: 5
   #     start_period: 60s
   #   restart: unless-stopped
-
-  # TaskIQ worker — consumes dispatched subagent tasks (the `solve` tool:
-  # divide + parallel). Shares modules + ~/.minder with the web service so
-  # dispatched work and the dashboard read/write the same data.
-  minder-worker:
-    build: .
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
-      - MINDER_MODEL=${MINDER_MODEL}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
-      - MINDER_REDIS_URL=redis://redis:6379/0
-      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - minder_data:/home/minder/.minder
-      - ./modules:/app/modules
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        mkdir -p /home/minder/.minder &&
-        : "$${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}" &&
-        : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}" &&
-        printf '{"model":"%s","api_base_url":"%s"}\n'
-          "$${MINDER_MODEL}"
-          "$${MINDER_API_BASE_URL}"
-          > /home/minder/.minder/settings.json &&
-        exec taskiq worker minder.core.tasks.broker:broker minder.core.tasks.tasks
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   # ---- module_template (full-stack SDK reference) -------------------------
   # MinIO — S3-compatible media store for module_template (own bucket).

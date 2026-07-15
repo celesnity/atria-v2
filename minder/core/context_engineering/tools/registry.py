@@ -13,7 +13,6 @@ import logging
 if TYPE_CHECKING:
     from minder.core.hooks.manager import HookManager
 
-from minder.core.context_engineering.tools.handlers.file_handlers import FileToolHandler
 from minder.core.context_engineering.mcp.handler import McpToolHandler
 from minder.core.context_engineering.tools.handlers.process_handlers import ProcessToolHandler
 from minder.core.context_engineering.tools.handlers.notebook_edit_handler import (
@@ -24,25 +23,14 @@ from minder.core.context_engineering.tools.handlers.todo_handler import TodoHand
 from minder.core.context_engineering.tools.handlers.thinking_handler import ThinkingHandler
 from minder.core.context_engineering.tools.handlers.search_tools_handler import SearchToolsHandler
 from minder.core.context_engineering.tools.handlers.batch_handler import BatchToolHandler
-from minder.core.context_engineering.tools.implementations.note_tool import execute_note
-from minder.core.context_engineering.tools.handlers.session_handlers import SessionToolHandler
-from minder.core.context_engineering.tools.handlers.schedule_handlers import ScheduleToolHandler
 from minder.core.context_engineering.tools.handlers.message_handlers import MessageToolHandler
 from minder.core.context_engineering.tools.implementations.send_image_tool import SendImageHandler
-from minder.core.context_engineering.tools.implementations.md_to_pdf_tool import (
-    MarkdownToPdfHandler,
-)
-from minder.core.context_engineering.tools.handlers.md_to_pdf_handler import MdToPdfHandler
-from minder.core.context_engineering.tools.implementations.md_to_pdf_tool import MdToPdfTool
-from minder.core.context_engineering.tools.handlers.artifacts_handler import ArtifactsToolHandler
 
 if TYPE_CHECKING:
     from minder.core.skills import SkillLoader
 
 logger = logging.getLogger(__name__)
 
-from minder.core.context_engineering.tools.implementations.agents_tool import AgentsTool
-from minder.core.context_engineering.tools.implementations.patch_tool import PatchTool
 from minder.core.context_engineering.tools.implementations.pdf_tool import PDFTool
 from minder.core.context_engineering.tools.implementations.task_complete_tool import (
     TaskCompleteTool,
@@ -53,19 +41,16 @@ from minder.core.context_engineering.tools.implementations.present_plan_tool imp
 
 from minder.core.context_engineering.tools.registry_mixins import (
     InlineToolsMixin,
-    OrchestrationOpsMixin,
 )
 from minder.core.context_engineering.tools.registry_mixins.llm_wiring import _wire_llm_into_ctx
 
 
-class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
+class ToolRegistry(InlineToolsMixin):
     """Dispatches tool invocations to dedicated handlers."""
 
     def __init__(
         self,
         file_ops: Union[Any, None] = None,
-        write_tool: Union[Any, None] = None,
-        edit_tool: Union[Any, None] = None,
         bash_tool: Union[Any, None] = None,
         notebook_edit_tool: Union[Any, None] = None,
         ask_user_tool: Union[Any, None] = None,
@@ -75,14 +60,11 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
     ) -> None:
         self.file_ops = file_ops
         self._app_config = app_config  # for per-run parallel orchestrator wiring
-        self.write_tool = write_tool
-        self.edit_tool = edit_tool
         self.bash_tool = bash_tool
         self.notebook_edit_tool = notebook_edit_tool
         self.ask_user_tool = ask_user_tool
         self.vlm_tool = vlm_tool
 
-        self._file_handler = FileToolHandler(file_ops, write_tool, edit_tool)
         self._process_handler = ProcessToolHandler(bash_tool)
         _skill_working_dir = (
             str(file_ops.working_dir)
@@ -165,20 +147,14 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
                 file_ops.protected_roots = self._protected_guard.roots
             except Exception:  # noqa: BLE001 — guard wiring must never block init
                 pass
-        self._md_to_pdf_tool = MdToPdfTool()
-        self._md_to_pdf_handler_new = MdToPdfHandler(self._md_to_pdf_tool)
         self._notebook_edit_handler = NotebookEditHandler(notebook_edit_tool)
         self._ask_user_handler = AskUserHandler(ask_user_tool)
         self._mcp_handler = McpToolHandler(mcp_manager)
         self.todo_handler = TodoHandler()
         self.thinking_handler = ThinkingHandler()
         self._pdf_tool = PDFTool()
-        self._agents_tool = AgentsTool()
-        self._patch_tool = PatchTool()
         self._task_complete_tool = TaskCompleteTool()
         self._present_plan_tool = PresentPlanTool()
-        self._subagent_manager: Union[Any, None] = None
-        self._subagent_orchestrator: Union[Any, None] = None  # built lazily per run
         self._hook_manager: Union["HookManager", None] = None
         self._skill_loader: Union["SkillLoader", None] = None
 
@@ -195,69 +171,32 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             mcp_manager=mcp_manager,
             on_discover=self.discover_mcp_tool,
         )
-        self._schedule_handler = ScheduleToolHandler()
         self._message_handler = MessageToolHandler()
         self._send_image_handler = SendImageHandler()
-        self._markdown_to_pdf_handler = MarkdownToPdfHandler()
-        self._session_handler = SessionToolHandler()
-        self._artifacts_handler = ArtifactsToolHandler()
         self._batch_handler: Union[BatchToolHandler, None] = None  # Lazy init after registry ready
 
         self.set_mcp_manager(mcp_manager)
 
         self._handlers: dict[str, Any] = {
-            "write_file": self._file_handler.write_file,
-            "edit_file": self._file_handler.edit_file,
-            "read_file": self._file_handler.read_file,
-            "list_files": self._file_handler.list_files,
-            "search": self._file_handler.search,  # Unified: type="text" (default) or "ast"
             "run_command": self._process_handler.run_command,
-            "list_processes": lambda args, ctx: self._process_handler.list_processes(),
-            "get_process_output": self._process_handler.get_process_output,
-            "kill_process": self._process_handler.kill_process,
-            "md_to_pdf": self._md_to_pdf_handler_new.md_to_pdf,
-            "notebook_edit": self._notebook_edit_handler.edit_cell,
             "ask_user": self._ask_user_handler.ask_questions,
             "write_todos": self._write_todos,
             "update_todo": self._update_todo,
             "complete_todo": self._complete_todo,
             "list_todos": lambda args, ctx=None: self.todo_handler.list_todos(),
             "clear_todos": self._clear_todos,
-            # Broadcast blackboard: un-addressed request + voluntary response
-            "request_help": self._execute_request_help,
-            "get_help_responses": self._execute_get_help_responses,
             # PDF extraction tool
             "read_pdf": self._read_pdf,
-            # MCP tool discovery (token-efficient)
-            "search_tools": self._search_tools_handler.search_tools,
             # Task completion tool
             "task_complete": self._execute_task_complete,
             # Plan presentation tool
             "present_plan": self._execute_present_plan,
-            # Skills system tool
-            "invoke_skill": self._handle_invoke_skill,
-            # Schedule tool
-            "schedule": self._schedule_handler.handle,
             # Message tool
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
-            "markdown_to_pdf": self._markdown_to_pdf_handler.convert,
-            # Session inspection tools
-            "list_subagents": self._session_handler.list_subagents,
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
-            # Agents listing
-            "list_agents": self._handle_list_agents,
-            # Apply patch
-            "apply_patch": self._handle_apply_patch,
-            # Artifact tools
-            "list_artifact_images": self._artifacts_handler.list_artifact_images,
-            "read_artifact_image": self._artifacts_handler.read_artifact_image,
-            # Blackboard note tool
-            "NOTE": lambda args, ctx=None: execute_note(
-                args, blackboard=getattr(ctx, "blackboard", None)
-            ),
         }
 
         # Merge skill-owned tool handlers. Each skill's tools.py returned a
@@ -290,23 +229,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         """Return all skill-provided ToolSpecs by name."""
         return dict(self._skill_specs)
 
-    def set_subagent_manager(self, manager: Any) -> None:
-        """Set the subagent manager for task tool execution.
-
-        Args:
-            manager: SubAgentManager instance
-        """
-        self._subagent_manager = manager
-        self._session_handler.set_subagent_manager(manager)
-
-    def get_subagent_manager(self) -> Union[Any, None]:
-        """Get the subagent manager.
-
-        Returns:
-            SubAgentManager instance or None
-        """
-        return self._subagent_manager
-
     def set_hook_manager(self, manager: "HookManager") -> None:
         """Set the hook manager for lifecycle hooks.
 
@@ -314,6 +236,19 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             manager: HookManager instance
         """
         self._hook_manager = manager
+
+    def reset_per_run_state(self) -> None:
+        """Clear session-scoped mutable state so a cached registry can be safely
+        reused for a fresh run without state bleeding between web sessions.
+
+        Rebuildable/re-wired-per-run objects (hook manager) are dropped and
+        re-attached by the caller (web executor) after reset.
+        """
+        self._invoked_skills = set()
+        self._discovered_mcp_tools = set()
+        self._hook_manager = None
+        # Fresh todo store for the new run.
+        self.todo_handler = TodoHandler()
 
     def set_skill_loader(self, loader: "SkillLoader") -> None:
         """Set the skill loader for invoke_skill tool.
@@ -353,7 +288,9 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         Returns:
             List of tool schema dicts for discovered tools only
         """
-        if not self.mcp_manager:
+        # Common case: nothing discovered yet — skip get_all_tools() entirely
+        # (it's called on every LLM build; no point scanning to filter to none).
+        if not self.mcp_manager or not self._discovered_mcp_tools:
             return []
 
         all_tools = self.mcp_manager.get_all_tools()
@@ -384,7 +321,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
         ui_callback: Union[Any, None] = None,
         is_subagent: bool = False,
         tool_call_id: Union[str, None] = None,
-        blackboard: Union[Any, None] = None,
     ) -> dict[str, Any]:
         """Execute a tool by delegating to registered handlers."""
         if tool_name.startswith("mcp__"):
@@ -443,24 +379,15 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             ui_callback=ui_callback,
             is_subagent=is_subagent,
             file_time_tracker=self._file_time_tracker,
-            blackboard=blackboard,
         )
 
         handler = self._handlers[tool_name]
         try:
             if tool_name in {
-                "write_file",
-                "edit_file",
-                "read_file",
                 "run_command",
                 "batch_tool",
                 "present_plan",
                 "send_image",
-                "list_artifact_images",
-                "read_artifact_image",
-                "NOTE",
-                "request_help",
-                "get_help_responses",
                 "write_todos",
                 "update_todo",
                 "complete_todo",
@@ -468,10 +395,6 @@ class ToolRegistry(OrchestrationOpsMixin, InlineToolsMixin):
             }:
                 # Handlers requiring context
                 result = handler(arguments, context)
-            elif tool_name == "list_processes":
-                result = handler(arguments, context)
-            elif tool_name in {"get_process_output", "kill_process"}:
-                result = handler(arguments)
             else:
                 # Remaining handlers ignore execution context
                 result = handler(arguments)

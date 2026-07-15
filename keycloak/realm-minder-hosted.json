@@ -29,16 +29,23 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "redirectUris": [
+        "http://localhost/*",
         "http://localhost:8080/*",
+        "http://127.0.0.1/*",
         "http://127.0.0.1:8080/*",
         "https://YOUR-APP-DOMAIN/*"
       ],
       "webOrigins": [
+        "http://localhost",
         "http://localhost:8080",
+        "http://127.0.0.1",
         "http://127.0.0.1:8080",
         "https://YOUR-APP-DOMAIN"
       ],
-      "attributes": { "pkce.code.challenge.method": "S256" },
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost/*##http://localhost:8080/*##https://YOUR-APP-DOMAIN/*"
+      },
       "protocolMappers": [
         {
           "name": "groups",
