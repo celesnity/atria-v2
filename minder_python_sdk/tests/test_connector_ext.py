@@ -116,3 +116,73 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
     assert mani["remote"]["exposed"] == {"dashboard": "./Dashboard", "./MyAnswer": "./MyAnswer"}
     assert mani["card_types"] == ["m_answer"]
     assert mani["contract_version"] == "3" and mani["min_core_version"] == "2"
+
+
+def test_stream_session_filter_visibility():
+    # The merged /connector/stream delivers broadcast events (no session) to
+    # everyone and session-scoped events only to their own session. (The live
+    # SSE loop is infinite, so we test the pure filter, not an HTTP consume —
+    # Starlette's TestClient buffers the whole response and would deadlock.)
+    from minder_python_sdk.connector import _session_visible
+
+    assert _session_visible(None, "s1") is True   # broadcast → all
+    assert _session_visible("s1", "s1") is True    # own session
+    assert _session_visible("s2", "s1") is False   # other session
+
+
+def test_push_ui_intent_dispatches_enveloped_intent():
+    # The wire the merged stream carries: a `ui.intent` envelope whose payload
+    # holds the UiIntent, tagged with the target session.
+    from minder_python_sdk import Connector
+
+    conn = Connector("catalog")
+    conn.page("home", path="/", label="Home")
+    seen = []
+    conn.on_event(seen.append)
+    conn.push_ui_intent("s1", {"intent": "navigate", "route": "home"})
+    ui_intents = [e for e in seen if e.type == "ui.intent"]
+    assert ui_intents, "expected a ui.intent envelope"
+    env = ui_intents[-1]
+    assert env.session_id == "s1"
+    assert env.payload["intent"]["route"] == "home"
+
+
+def test_snapshot_then_delta_applies_and_versions():
+    from minder_python_sdk import Connector
+    from fastapi.testclient import TestClient
+
+    conn = Connector("catalog")
+    client = TestClient(conn.asgi())
+
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "snapshot", "snapshot": {"page": "home", "n": 1}},
+    )
+    assert r.json() == {"ok": True, "version": 1}
+
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "delta", "base_version": 1,
+              "delta": [{"op": "replace", "path": "/n", "value": 2}]},
+    )
+    assert r.json() == {"ok": True, "version": 2}
+
+    ctx = client.get("/connector/context", headers={"X-Minder-Session": "s1"}).json()
+    assert ctx["ui_snapshot"] == {"page": "home", "n": 2}
+
+
+def test_snapshot_delta_version_mismatch_returns_409():
+    from minder_python_sdk import Connector
+    from fastapi.testclient import TestClient
+
+    conn = Connector("catalog")
+    client = TestClient(conn.asgi())
+    client.post("/connector/ui/snapshot",
+                json={"session_id": "s1", "kind": "snapshot", "snapshot": {"n": 1}})
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "delta", "base_version": 99,
+              "delta": [{"op": "replace", "path": "/n", "value": 2}]},
+    )
+    assert r.status_code == 409
+    assert r.json()["version"] == 1

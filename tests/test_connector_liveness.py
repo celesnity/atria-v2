@@ -88,7 +88,7 @@ def test_worker_hits_correct_events_url(reg, monkeypatch):
     monkeypatch.setattr(liveness.httpx, "stream", fake_stream)
     sub = liveness.ConnectorLivenessSubscriber()
     _run_worker(sub, "m", "http://m:9200")
-    assert seen["url"] == "http://m:9200/connector/events"
+    assert seen["url"] == "http://m:9200/connector/stream"
 
 
 def test_worker_records_failure_and_reconnects_on_error(reg, monkeypatch):

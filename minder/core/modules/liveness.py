@@ -1,6 +1,6 @@
 """SSE-based connector liveness — push instead of poll.
 
-Each registered module connector exposes ``GET /connector/events`` (an SSE
+Each registered module connector exposes ``GET /connector/stream`` (an SSE
 stream of event envelopes, with a ``: ping`` keepalive every ~15 s). Rather than
 HTTP-polling ``/connector/health`` on a timer, the host holds ONE long-lived
 stream per connector: an open stream is itself proof of life, and every line
@@ -115,8 +115,8 @@ class ConnectorLivenessSubscriber:
     # -- per-connector worker -------------------------------------------------
 
     def _worker(self, name: str, url: str, wstop: threading.Event) -> None:
-        """Hold the ``/connector/events`` stream open; each line = liveness."""
-        events_url = f"{url.rstrip('/')}/connector/events"
+        """Hold the ``/connector/stream`` stream open; each line = liveness."""
+        events_url = f"{url.rstrip('/')}/connector/stream"
         backoff = BACKOFF_START_SEC
         reg = get_registry()
         while not (wstop.is_set() or self._stop.is_set()):

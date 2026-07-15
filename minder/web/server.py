@@ -134,7 +134,7 @@ async def lifespan(app: FastAPI):
     start_connector_reconciler(
         on_change=lambda: _broadcast_modules_changed("*"), interval_sec=60.0
     )
-    # Each connector's ``/connector/events`` stream is held open; an open stream
+    # Each connector's ``/connector/stream`` is held open; an open stream
     # is proof of life, so the host no longer HTTP-polls ``/health`` every tick.
     # ``kick_reconcile`` (re)loads the manifest/tools on each (re)connect.
     start_liveness_subscriber(bootstrap=kick_reconcile)

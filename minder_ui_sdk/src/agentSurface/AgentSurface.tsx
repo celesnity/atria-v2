@@ -6,8 +6,9 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { compare } from 'fast-json-patch';
 import { useAgentActivity } from '../agentDriver';
-import { createRegistry, type Registry } from './registry';
+import { createRegistry, type Registry, type UiSnapshot } from './registry';
 
 const RegistryCtx = createContext<Registry | null>(null);
 const PageCtx = createContext<string | null>(null);
@@ -39,21 +40,63 @@ export function AgentRegistryProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity?.tick]);
 
-  // Read path: push a debounced snapshot on every change.
+  // Read path: push a full snapshot once, then debounced RFC-6902 deltas. A
+  // version mismatch (409, e.g. after a backend restart) clears the baseline and
+  // resends a full snapshot.
   useEffect(() => {
     if (!apiBase) return;
     const base = apiBase.replace(/\/$/, '');
+    const url = `${base}/connector/ui/snapshot`;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const push = (): void => {
-      void fetch(`${base}/connector/ui/snapshot`, {
+    let baseline: UiSnapshot | null = null;
+    let version = 0;
+
+    const postFull = async (snap: UiSnapshot): Promise<void> => {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, snapshot: reg.snapshot() }),
-      }).catch(() => {});
+        body: JSON.stringify({ session_id: sessionId, kind: 'snapshot', snapshot: snap }),
+      });
+      const j = (await res.json()) as { version: number };
+      version = j.version;
+      baseline = snap;
     };
+
+    const push = async (): Promise<void> => {
+      const snap = reg.snapshot();
+      try {
+        if (!baseline) {
+          await postFull(snap);
+          return;
+        }
+        const delta = compare(baseline as object, snap as object);
+        if (delta.length === 0) return;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            kind: 'delta',
+            base_version: version,
+            delta,
+          }),
+        });
+        if (res.status === 409) {
+          baseline = null;
+          await postFull(snap);
+          return;
+        }
+        const j = (await res.json()) as { version: number };
+        version = j.version;
+        baseline = snap;
+      } catch {
+        /* best-effort — a dropped snapshot self-heals on the next push */
+      }
+    };
+
     const schedule = (): void => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(push, 150);
+      timer = setTimeout(() => void push(), 150);
     };
     const unsub = reg.subscribe(schedule);
     schedule();
