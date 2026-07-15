@@ -7,7 +7,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "motion": "^11.11.0",
-    "lucide-react": "^0.553.0"
+    "lucide-react": "^0.553.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@module-federation/vite": "^1.16.14",
