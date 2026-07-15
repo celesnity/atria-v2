@@ -68,3 +68,9 @@ def post_carry_forward(body: CarryForwardIn) -> dict:
     return service.carry_forward(
         body.downtime_id, body.from_shift_id, body.to_shift_id, body.original_started_at
     )
+
+
+@router.get("/shifts/{shift_id}/verify-standard")
+def get_verify_standard(shift_id: int) -> dict:
+    """Xác nhận chuẩn ca đã nạp đúng khi bắt đầu (P-HAND-04)."""
+    return service.verify_standard(shift_id)

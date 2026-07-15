@@ -15,6 +15,31 @@ EXCEPTION_STATES = ("open", "triaged", "escalated", "resolved")
 # Lý do gợi ý: thiếu vật tư, máy hỏng, chờ QC (P-EXCP-01).
 
 
+class PrMaterialRequest(Base):
+    """Yêu cầu bổ sung vật tư (P-EXCP-04). Điểm giao với module Move — Track A chỉ
+    ghi nhận yêu cầu, Move sẽ tiêu thụ sau này."""
+
+    __tablename__ = "pr_material_request"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    station_id = Column(Integer, ForeignKey("pr_station.id"), nullable=False)
+    part_code = Column(String(64), nullable=True)
+    qty = Column(Integer, nullable=False, default=0)
+    status = Column(String(16), nullable=False, default="requested")  # requested|fulfilled
+    requested_by = Column(String(64), nullable=True)
+    requested_at = Column(DateTime(timezone=True), nullable=False, default=now)
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "station_id": self.station_id,
+            "part_code": self.part_code,
+            "qty": self.qty,
+            "status": self.status,
+            "requested_by": self.requested_by,
+            "requested_at": self.requested_at.isoformat() if self.requested_at else None,
+        }
+
+
 class PrException(Base):
     __tablename__ = "pr_exception"
     id = Column(Integer, primary_key=True, autoincrement=True)

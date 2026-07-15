@@ -52,6 +52,11 @@ def load_production_order(
         return po.as_dict()
 
 
+def production_order_for(shift_id: int) -> dict | None:
+    """Bản production order hiện hành của ca (public — dùng cho bàn giao P-HAND-04)."""
+    return _production_order(shift_id)
+
+
 def _production_order(shift_id: int) -> dict | None:
     with db_session() as s:
         po = s.scalars(

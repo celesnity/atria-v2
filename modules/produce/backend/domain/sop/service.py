@@ -114,6 +114,36 @@ def confirm_step(
         return c.as_dict()
 
 
+def diff_last_version(sop_id: int) -> dict:
+    """So sánh bản approved hiện hành với bản gần nhất trước đó (P-EXEC-05).
+
+    Trả tên bước được thêm / bỏ / đổi để operator không làm theo bản cũ.
+    """
+    with db_session() as s:
+        versions = s.scalars(
+            select(PrSopVersion)
+            .where(PrSopVersion.sop_id == sop_id)
+            .order_by(PrSopVersion.version.desc())
+        ).all()
+        if not versions:
+            raise SopError(f"SOP {sop_id} chưa có version nào")
+        current = versions[0]
+        prev = versions[1] if len(versions) > 1 else None
+        cur_steps = {st.get("name"): st for st in (current.steps or [])}
+        prev_steps = {st.get("name"): st for st in (prev.steps or [])} if prev else {}
+        added = [n for n in cur_steps if n not in prev_steps]
+        removed = [n for n in prev_steps if n not in cur_steps]
+        changed = [n for n in cur_steps if n in prev_steps and cur_steps[n] != prev_steps[n]]
+        return {
+            "sop_id": sop_id,
+            "current_version": current.version,
+            "previous_version": prev.version if prev else None,
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+        }
+
+
 def job_progress(job_id: int) -> list[dict]:
     with db_session() as s:
         stmt = (
