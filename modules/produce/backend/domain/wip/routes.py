@@ -72,6 +72,18 @@ def get_lots(job_id: int) -> list[dict]:
     return service.job_lots(job_id)
 
 
+@router.get("/lots/{code}/progress")
+def get_lot_progress(code: str) -> dict:
+    """Tiến độ một lot/batch qua các bước (P-WIP-04)."""
+    return service.lot_progress(code)
+
+
+@router.get("/wip")
+def get_wip() -> list[dict]:
+    """WIP tồn theo station (P-WIP-05)."""
+    return service.wip_by_station()
+
+
 @router.post("/counts")
 def post_count(body: CountIn) -> dict:
     return service.record_count(body.station_id, body.qty, body.job_id)
