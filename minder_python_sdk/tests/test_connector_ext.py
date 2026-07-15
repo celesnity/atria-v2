@@ -142,3 +142,44 @@ def test_stream_delivers_ui_intent_for_matching_session():
         assert payload["type"] == "ui.intent"
         assert payload["session_id"] == "s1"
         assert payload["payload"]["intent"]["route"] == "home"
+
+
+def test_snapshot_then_delta_applies_and_versions():
+    from minder_python_sdk import Connector
+    from fastapi.testclient import TestClient
+
+    conn = Connector("catalog")
+    client = TestClient(conn.asgi())
+
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "snapshot", "snapshot": {"page": "home", "n": 1}},
+    )
+    assert r.json() == {"ok": True, "version": 1}
+
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "delta", "base_version": 1,
+              "delta": [{"op": "replace", "path": "/n", "value": 2}]},
+    )
+    assert r.json() == {"ok": True, "version": 2}
+
+    ctx = client.get("/connector/context", headers={"X-Minder-Session": "s1"}).json()
+    assert ctx["ui_snapshot"] == {"page": "home", "n": 2}
+
+
+def test_snapshot_delta_version_mismatch_returns_409():
+    from minder_python_sdk import Connector
+    from fastapi.testclient import TestClient
+
+    conn = Connector("catalog")
+    client = TestClient(conn.asgi())
+    client.post("/connector/ui/snapshot",
+                json={"session_id": "s1", "kind": "snapshot", "snapshot": {"n": 1}})
+    r = client.post(
+        "/connector/ui/snapshot",
+        json={"session_id": "s1", "kind": "delta", "base_version": 99,
+              "delta": [{"op": "replace", "path": "/n", "value": 2}]},
+    )
+    assert r.status_code == 409
+    assert r.json()["version"] == 1

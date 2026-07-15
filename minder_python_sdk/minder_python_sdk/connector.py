@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .cards import decision_packet, unavailable_card, unavailable_suffix
@@ -184,8 +184,11 @@ class Connector:
         # Declared UI surface (pages/forms/controls).
         self._ui = UiSurface()
         # Per-session declarative UI snapshot cache (page/data/actions) the agent
-        # reads via /connector/context to see what's currently on screen.
+        # reads via /connector/context to see what's currently on screen. The
+        # frontend sends a full snapshot once, then RFC-6902 deltas guarded by an
+        # optimistic version (mismatch → 409, client resends full).
         self._ui_snapshots: dict[str, dict] = {}
+        self._ui_snapshot_versions: dict[str, int] = {}
         # Declarative agent-facing context: live state providers + static
         # knowledge/notes, surfaced via /connector/context and the manifest.
         self._ctx_state: dict[str, _StateProvider] = {}
@@ -1047,13 +1050,36 @@ class Connector:
                 return self._fail(str(exc))
 
         @app.post("/connector/ui/snapshot")
-        async def ui_snapshot(request: Request) -> dict:
-            """Cache the frontend's declarative UI snapshot for one session so the
-            agent can read what's currently on screen via ``/connector/context``."""
+        async def ui_snapshot(request: Request) -> Any:
+            """Store the frontend's declarative UI snapshot for one session so the
+            agent can read what's on screen via ``/connector/context``. First push
+            is a full ``snapshot``; later pushes are RFC-6902 ``delta``s guarded by
+            an optimistic ``base_version`` (mismatch → 409, client resends full)."""
             body = await _json_body(request)
             session = body.get("session_id") or "default"
-            self._ui_snapshots[session] = body.get("snapshot") or {}
-            return {"ok": True}
+            kind = body.get("kind") or "snapshot"
+            if kind == "snapshot":
+                self._ui_snapshots[session] = body.get("snapshot") or {}
+                ver = self._ui_snapshot_versions.get(session, 0) + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            if kind == "delta":
+                cur = self._ui_snapshot_versions.get(session, 0)
+                if body.get("base_version") != cur:
+                    return JSONResponse(
+                        {"ok": False, "error": "version_mismatch", "version": cur},
+                        status_code=409,
+                    )
+                import jsonpatch
+
+                patched = jsonpatch.apply_patch(
+                    self._ui_snapshots.get(session, {}), body.get("delta") or []
+                )
+                self._ui_snapshots[session] = patched
+                ver = cur + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            return JSONResponse({"ok": False, "error": "bad_kind"}, status_code=422)
 
         @app.post("/connector/decision")
         async def decision(request: Request) -> dict:
