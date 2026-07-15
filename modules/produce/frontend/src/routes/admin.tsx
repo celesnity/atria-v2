@@ -1,7 +1,15 @@
-// Persona route: FDE / Admin — admin
-// Epic panels: config & master data (E11) · SOP versioning (E2) · thresholds
+import ConfigPanel from '../panels/ConfigPanel';
+import SopPanel from '../panels/SopPanel';
+import SetupPanel from '../panels/SetupPanel';
+import OeePanel from '../panels/OeePanel';
 
-export default function AdminRoute() {
-  // TODO: mount epic panels for this persona.
-  return null;
+export default function AdminRoute({ apiBase }: { apiBase: string }) {
+  return (
+    <>
+      <ConfigPanel apiBase={apiBase} />
+      <SopPanel apiBase={apiBase} />
+      <SetupPanel apiBase={apiBase} />
+      <OeePanel apiBase={apiBase} />
+    </>
+  );
 }
