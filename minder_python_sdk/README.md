@@ -54,6 +54,34 @@ That gives you, for free:
 - `POST /connector/tools/{name}/stream` — SSE (see streaming below)
 - `/dashboard/*` — serves your built Module-Federation frontend
 
+## Typed handlers (no hand-written schema)
+
+Omit `parameters=` and the SDK infers the input schema from your type hints:
+
+```python
+from minder_python_sdk import Response
+
+@conn.tool("greet", description="Greet someone.")
+def greet(name: str, times: int = 1) -> str:
+    return Response(result=name * times)
+```
+
+Declare credentials as params — they're resolved from the forwarded header
+`x-{name}` or env `{NAME_UPPER}` and never appear in the tool schema:
+
+```python
+from minder_python_sdk import Secret
+
+@conn.tool("read_db", description="Read the ledger.")
+def read_db(query: str, db_password: Secret):
+    return {"output": run(query, pw=db_password.value)}
+```
+
+Input is validated strictly (bad args → structured failure, never a 500); the
+return annotation is advertised as `output_schema` and soft-validated. A missing
+required secret is fail-closed. Explicit `parameters=` / `params_model=` still
+override inference, and raw-dict returns still work.
+
 ## Streaming
 
 Make the handler a generator and yield `{"event": ...}` dicts:
