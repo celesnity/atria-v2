@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+import events
 from db import db_session, now
 
 from .models import PrException, PrMaterialRequest
@@ -31,7 +32,9 @@ def raise_exception(
         )
         s.add(e)
         s.flush()
-        return e.as_dict()
+        result = e.as_dict()
+        events.emit("exception.raised", result)
+        return result
 
 
 def _get(s, exc_id: int) -> PrException:
