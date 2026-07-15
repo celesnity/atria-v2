@@ -13,6 +13,7 @@ export default function SopPanel({ apiBase }: { apiBase: string }) {
   const [jobId, setJobId] = useState(1);
   const [stepIndex, setStepIndex] = useState(0);
   const [value, setValue] = useState(0);
+  const [diff, setDiff] = useState<{ current_version: number; previous_version: number; added: string[]; removed: string[]; changed: string[] } | null>(null);
 
   const released = useApi<Record<string, unknown> | null>(apiBase, `/sop/sops/${sopId}/released`, [sopId]);
   const progress = useApi<Array<Record<string, unknown>>>(apiBase, `/sop/jobs/${jobId}/progress`, [jobId]);
@@ -26,6 +27,15 @@ export default function SopPanel({ apiBase }: { apiBase: string }) {
       await api(apiBase, '/sop/step-confirms', { method: 'POST', body: JSON.stringify({ job_id: jobId, sop_version_id: versionId, step_index: stepIndex, value: value || null }) });
       progress.reload(); notify(`Đã xác nhận bước ${stepIndex}`);
     } catch (e) { notify(String((e as Error).message), 'err'); }  // poka-yoke 409 lands here
+  };
+
+  const compareDiff = async () => {
+    try {
+      const d = await api<{ current_version: number; previous_version: number; added: string[]; removed: string[]; changed: string[] }>(apiBase, `/sop/sops/${sopId}/diff`);
+      setDiff(d);
+    } catch (e) {
+      notify(String((e as Error).message), 'err');
+    }
   };
 
   const steps = (released.data?.steps as Array<Record<string, unknown>>) ?? [];
@@ -43,6 +53,19 @@ export default function SopPanel({ apiBase }: { apiBase: string }) {
           <Field label="Giá trị đo"><NumberInput value={value} onChange={setValue} /></Field>
         </div>
         <DataTable columns={[{ key: 'step_index', label: 'Bước' }, { key: 'value', label: 'Giá trị' }, { key: 'confirmed_at', label: 'Lúc' }]} rows={progress.data ?? []} empty="Chưa xác nhận bước nào" />
+      </Section>
+
+      <Section title="Thay đổi so với bản trước" actions={<><Field label="SOP id"><NumberInput value={sopId} onChange={setSopId} /></Field><Button onClick={compareDiff}>So sánh</Button></>}>
+        {diff ? (
+          <div style={{ fontSize: 13 }}>
+            <p>Bản hiện tại: <b>{diff.current_version}</b> · Bản trước: <b>{diff.previous_version}</b></p>
+            <DataTable columns={[{ key: 'v', label: 'Thêm mới' }]} rows={diff.added.map((v) => ({ v }))} empty="Không có" />
+            <DataTable columns={[{ key: 'v', label: 'Đã xóa' }]} rows={diff.removed.map((v) => ({ v }))} empty="Không có" />
+            <DataTable columns={[{ key: 'v', label: 'Thay đổi' }]} rows={diff.changed.map((v) => ({ v }))} empty="Không có" />
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: '#888' }}>Nhấn So sánh để xem thay đổi (P-EXEC-05).</p>
+        )}
       </Section>
     </>
   );

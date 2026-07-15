@@ -8,11 +8,14 @@ import { Field, TextInput, NumberInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
 import { statusColor } from '../theme';
 
-export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string; mode?: 'queue' | 'board' }) {
+export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string; mode?: 'queue' | 'board' | 'load' }) {
   const { tokens } = useMinderTheme();
   const { notify } = useToast();
   const [lineId, setLineId] = useState(1);
   const [operator, setOperator] = useState('op1');
+  const [loadShiftId, setLoadShiftId] = useState(1);
+
+  const shiftLoad = useApi<Array<Record<string, unknown>>>(apiBase, `/work/shift/${loadShiftId}/load`, [loadShiftId]);
 
   const board = useApi<Array<Record<string, unknown>>>(apiBase, `/work/board/${lineId}`, [lineId]);
   const queue = useApi<Array<Record<string, unknown>>>(apiBase, `/work/queue/${operator}`, [operator]);
@@ -35,6 +38,31 @@ export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string
     const c = statusColor(tokens, String(r.status));
     return <span style={{ color: c, background: `${c}18`, borderRadius: 12, padding: '2px 8px', fontSize: 12 }}>{String(r.status)}</span>;
   };
+
+  const statusKeys = ['queued', 'assigned', 'in_progress', 'done', 'blocked'];
+  const detailCell = (r: Record<string, unknown>) => {
+    const parts = statusKeys.filter((k) => r[k] !== undefined).map((k) => String(r[k]));
+    return <span>{parts.join('/')}</span>;
+  };
+
+  if (mode === 'load') {
+    return (
+      <Section
+        title={`Tải công việc toàn ca · ca ${loadShiftId}`}
+        actions={<Field label="Shift"><NumberInput value={loadShiftId} onChange={setLoadShiftId} /></Field>}
+      >
+        <DataTable
+          columns={[
+            { key: 'line_id', label: 'Line' },
+            { key: 'total', label: 'Tổng' },
+            { key: 'detail', label: 'Chi tiết', render: detailCell },
+          ]}
+          rows={shiftLoad.data ?? []}
+          empty="Chưa có dữ liệu tải"
+        />
+      </Section>
+    );
+  }
 
   return (
     <Section
