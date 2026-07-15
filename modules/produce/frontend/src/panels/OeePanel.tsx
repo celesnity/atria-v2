@@ -3,7 +3,7 @@ import { useMinderTheme } from 'minder-ui-sdk';
 import { api, useApi } from '../api';
 import Section from '../ui/Section';
 import Button from '../ui/Button';
-import { Field, NumberInput } from '../ui/Field';
+import { Field, TextInput, NumberInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
 
 export default function OeePanel({ apiBase }: { apiBase: string }) {
@@ -15,8 +15,11 @@ export default function OeePanel({ apiBase }: { apiBase: string }) {
   const [target, setTarget] = useState(500);
   const [planned, setPlanned] = useState(480);
   const [totalCount, setTotalCount] = useState(400);
+  const [lossSeconds, setLossSeconds] = useState(30);
+  const [lossReason, setLossReason] = useState('');
 
   const oee = useApi<Record<string, number> & { error?: string }>(apiBase, `/oee/shifts/${shiftId}?total_count=${totalCount}`, [shiftId, totalCount]);
+  const losses = useApi<Record<string, number> & { error?: string }>(apiBase, `/oee/shifts/${shiftId}/losses?total_count=${totalCount}`, [shiftId, totalCount]);
 
   const load = async () => {
     try {
@@ -25,10 +28,24 @@ export default function OeePanel({ apiBase }: { apiBase: string }) {
     } catch (e) { notify(String((e as Error).message), 'err'); }
   };
 
+  const recordSpeedLoss = async () => {
+    try {
+      await api(apiBase, '/oee/speed-loss', { method: 'POST', body: JSON.stringify({ seconds: lossSeconds, shift_id: shiftId, reason: lossReason }) });
+      losses.reload(); notify('Đã ghi speed loss');
+    } catch (e) { notify(String((e as Error).message), 'err'); }
+  };
+
   const gauge = (label: string, v: number | undefined) => (
     <div style={{ flex: 1, background: tokens.surfaceAlt, borderRadius: 10, padding: 14, textAlign: 'center' }}>
       <div style={{ fontSize: 12, color: tokens.textMuted }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: tokens.text }}>{v === undefined ? '—' : `${Math.round(v * 100)}%`}</div>
+    </div>
+  );
+
+  const lossBox = (label: string, v: number | undefined) => (
+    <div style={{ flex: 1, background: tokens.surfaceAlt, borderRadius: 10, padding: 14, textAlign: 'center' }}>
+      <div style={{ fontSize: 12, color: tokens.textMuted }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: tokens.text }}>{v === undefined ? '—' : `${Math.round(v)}′`}</div>
     </div>
   );
 
@@ -55,6 +72,26 @@ export default function OeePanel({ apiBase }: { apiBase: string }) {
             {gauge('OEE', oee.data?.oee)}
           </div>
         )}
+      </Section>
+
+      <Section title={`Bóc tách 3 tổn thất · ca ${shiftId}`}>
+        {losses.data?.error ? (
+          <p style={{ color: tokens.warning, fontSize: 13 }}>{losses.data.error}</p>
+        ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            {lossBox('Availability loss', losses.data?.availability_loss_min)}
+            {lossBox('Performance loss', losses.data?.performance_loss_min)}
+            {lossBox('Quality loss', losses.data?.quality_loss_min)}
+            {lossBox('Speed loss', losses.data?.speed_loss_min)}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Ghi speed loss" actions={<Button onClick={recordSpeedLoss}>Ghi</Button>}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Field label="Số giây"><NumberInput value={lossSeconds} onChange={setLossSeconds} /></Field>
+          <Field label="Lý do"><TextInput value={lossReason} onChange={setLossReason} /></Field>
+        </div>
       </Section>
     </>
   );

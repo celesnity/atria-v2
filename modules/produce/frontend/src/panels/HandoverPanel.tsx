@@ -12,6 +12,7 @@ export default function HandoverPanel({ apiBase }: { apiBase: string }) {
   const [output, setOutput] = useState(0);
 
   const current = useApi<Record<string, unknown> | null>(apiBase, `/handover/shifts/${fromShift}`, [fromShift]);
+  const verify = useApi<Record<string, unknown> | null>(apiBase, `/handover/shifts/${fromShift}/verify-standard`, [fromShift]);
   const run = async (label: string, fn: () => Promise<unknown>) => {
     try { await fn(); current.reload(); notify(label); } catch (e) { notify(String((e as Error).message), 'err'); }
   };
@@ -36,6 +37,24 @@ export default function HandoverPanel({ apiBase }: { apiBase: string }) {
           {!h.acknowledged_at && <Button onClick={() => run('Đã xác nhận đọc', () => api(apiBase, `/handover/records/${h.id}/acknowledge`, { method: 'POST' }))}>Xác nhận đã đọc</Button>}
         </div>
       ) : <p style={{ fontSize: 13, color: '#888' }}>Chưa có bàn giao cho ca này.</p>}
+      <Section title="Xác nhận chuẩn ca">
+        {verify.data ? (
+          <div style={{ fontSize: 13, lineHeight: 1.8 }}>
+            <div>Đã nạp: <b>{(verify.data.loaded as boolean) ? '✓' : '✗'}</b></div>
+            <div>Vấn đề: <b>{((verify.data.issues as unknown[]) ?? []).length}</b></div>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+              {((verify.data.issues as unknown[]) ?? []).map((iss, i) => <li key={i}>{String(iss)}</li>)}
+            </ul>
+            {verify.data.production_order ? (
+              <div style={{ marginTop: 6 }}>
+                Chu kỳ lý tưởng: <b>{String((verify.data.production_order as Record<string, unknown>).ideal_cycle_time)}</b> ·
+                Mục tiêu: <b>{String((verify.data.production_order as Record<string, unknown>).target_count)}</b> ·
+                Kế hoạch (phút): <b>{String((verify.data.production_order as Record<string, unknown>).planned_minutes)}</b>
+              </div>
+            ) : null}
+          </div>
+        ) : <p style={{ fontSize: 13, color: '#888' }}>Chưa có dữ liệu chuẩn ca.</p>}
+      </Section>
     </Section>
   );
 }

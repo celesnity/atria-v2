@@ -10,9 +10,14 @@ export default function ExceptionPanel({ apiBase, mode = 'triage' }: { apiBase: 
   const { notify } = useToast();
   const [lineId, setLineId] = useState(1);
   const [reason, setReason] = useState('thiếu vật tư');
+  const [mrStation, setMrStation] = useState(1);
+  const [mrPart, setMrPart] = useState('');
+  const [mrQty, setMrQty] = useState(1);
+  const [mrBy, setMrBy] = useState('');
 
   const open = useApi<Array<Record<string, unknown>>>(apiBase, `/exception/line/${lineId}/open`, [lineId]);
   const escalated = useApi<Array<Record<string, unknown>>>(apiBase, '/exception/escalated');
+  const materialRequests = useApi<Array<Record<string, unknown>>>(apiBase, '/exception/material-requests');
   const active = mode === 'escalated' ? escalated : open;
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
@@ -38,6 +43,32 @@ export default function ExceptionPanel({ apiBase, mode = 'triage' }: { apiBase: 
         : undefined}
     >
       <DataTable columns={cols} rows={active.data ?? []} empty="Không có ngoại lệ" />
+      {mode === 'triage' && (
+        <Section
+          title="Yêu cầu vật tư"
+          actions={
+            <>
+              <Field label="Trạm"><NumberInput value={mrStation} onChange={setMrStation} /></Field>
+              <Field label="Mã vật tư"><TextInput value={mrPart} onChange={setMrPart} /></Field>
+              <Field label="Số lượng"><NumberInput value={mrQty} onChange={setMrQty} /></Field>
+              <Field label="Người yêu cầu"><TextInput value={mrBy} onChange={setMrBy} /></Field>
+              <Button onClick={() => run('Đã yêu cầu vật tư', async () => { await api(apiBase, '/exception/material-requests', { method: 'POST', body: JSON.stringify({ station_id: mrStation, part_code: mrPart, qty: mrQty, requested_by: mrBy }) }); materialRequests.reload(); })}>Yêu cầu</Button>
+            </>
+          }
+        >
+          <DataTable
+            columns={[
+              { key: 'id', label: 'ID' },
+              { key: 'station_id', label: 'Trạm' },
+              { key: 'part_code', label: 'Mã vật tư' },
+              { key: 'qty', label: 'Số lượng' },
+              { key: 'status', label: 'Trạng thái' },
+            ]}
+            rows={materialRequests.data ?? []}
+            empty="Không có yêu cầu vật tư"
+          />
+        </Section>
+      )}
     </Section>
   );
 }
