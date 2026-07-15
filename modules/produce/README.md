@@ -29,11 +29,15 @@ Hybrid: 5 persona tabs (Operator / Tổ trưởng / Quản ca / Quản lý xư�
   network), then run this module's own compose — it joins `minder_net`, announces
   to the running Minder, and appears live:
   ```
-  docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   # core
-  docker compose -f modules/produce/docker-compose.yml up -d --build        # module
+  docker compose -f docker-compose.yml -f docker-compose.local.yml up -d               # core (creates minder_net)
+  docker compose --env-file .env -f modules/produce/docker-compose.yml up -d --build    # module
   ```
-  UI at `http://localhost:9310/`. `docker compose -f modules/produce/docker-compose.yml down`
-  removes it from Minder. Set `PR_AGENT_ENABLED=0` in that compose to run Track A only.
+  The module compose is a SEPARATE project, so it does NOT auto-read the repo-root
+  `.env` — pass `--env-file .env` or the Keycloak service-token fetch 401s (the
+  connector still serves, but never registers with Minder). The module folder also
+  needs `SKILL.md` (present) for Minder to list it. UI at `http://localhost:9310/`.
+  `docker compose --env-file .env -f modules/produce/docker-compose.yml down` removes
+  it from Minder. Set `PR_AGENT_ENABLED=0` in that compose to run Track A only.
 
 ## Test
 From `backend/`: `uv run --no-sync pytest` (SQLite in-memory; no Postgres needed).

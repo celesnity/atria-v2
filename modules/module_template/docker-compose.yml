@@ -7,8 +7,11 @@
 # Prereqs: core stack up (creates `minder_net` + shared `minio`):
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 #
-# Run:  docker compose -f modules/module_template/docker-compose.yml up -d --build
-# Stop: docker compose -f modules/module_template/docker-compose.yml down
+# Run this module (MUST pass --env-file .env so ${MINDER_MODULE_CLIENT_SECRET}
+# resolves from the repo-root .env — a separate compose project does NOT auto-read
+# the root .env; without it the Keycloak service-token fetch 401s):
+#   docker compose --env-file .env -f modules/module_template/docker-compose.yml up -d --build
+#   docker compose --env-file .env -f modules/module_template/docker-compose.yml down
 
 name: module_template
 
