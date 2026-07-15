@@ -779,9 +779,12 @@ The announce env for the enabled case (`MINDER_URL`,
     `produce`); boto3 is imported lazily so the app runs without S3 in dev.
 - **Table prefix:** `pr_*` — the module creates and writes only these tables and
   never touches Minder tables.
-- **Deploy:** paste [`modules/produce/docker-compose.snippet.yml`](./produce/docker-compose.snippet.yml)
-  into `docker-compose.yml` (same network as `minder`, build context = repo root),
-  then `docker compose up -d --build produce-web produce-worker`.
+- **Deploy (independent module, runtime registration):** the core stack does NOT
+  bundle this module. Bring core up first (it creates the shared `minder_net`
+  network), then run the module's own compose which joins that network and
+  announces to Minder:
+  `docker compose -f modules/produce/docker-compose.yml up -d --build`. Stop it
+  with `... down` and it disappears from Minder.
 
 See [`modules/produce/README.md`](./produce/README.md) for epics, UI personas, and
 run/test instructions.
