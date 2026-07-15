@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types';
 
 /**
@@ -6,8 +7,9 @@ import type { Message } from '../../types';
  * updated in place, and replaced by the module's card when the tool finishes.
  */
 export function ModuleProgress({ message }: { message: Message }) {
+  const { t } = useTranslation('chat');
   const pct = typeof message.progress_pct === 'number' ? message.progress_pct : null;
-  const label = message.progress_message || 'Working…';
+  const label = message.progress_message || t('moduleProgress.working');
   return (
     <div className="mx-4 my-2 rounded-md bg-bg-100/50 border border-border-300/15 px-3 py-2.5">
       <div className="flex items-center gap-2">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, CopyPlus, Trash2, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   align?: 'left' | 'right';
@@ -16,6 +17,7 @@ export function MessageActions({
   onDeleteBlock,
   deleteDisabled,
 }: Props) {
+  const { t } = useTranslation('chat');
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -45,8 +47,8 @@ export function MessageActions({
         type="button"
         className={btn}
         onClick={onCopyMessage}
-        aria-label="Copy message"
-        title="Copy message"
+        aria-label={t('messageActions.copyMessage')}
+        title={t('messageActions.copyMessage')}
       >
         <Copy className="w-3.5 h-3.5" />
       </button>
@@ -56,8 +58,8 @@ export function MessageActions({
           type="button"
           className={btn}
           onClick={onCopyBlock}
-          aria-label="Copy entire turn"
-          title="Copy entire turn"
+          aria-label={t('messageActions.copyTurn')}
+          title={t('messageActions.copyTurn')}
         >
           <CopyPlus className="w-3.5 h-3.5" />
         </button>
@@ -68,8 +70,8 @@ export function MessageActions({
           type="button"
           className={btn}
           onClick={() => setConfirming(true)}
-          aria-label="Delete turn"
-          title="Delete turn"
+          aria-label={t('messageActions.deleteTurn')}
+          title={t('messageActions.deleteTurn')}
           disabled={deleteDisabled}
         >
           <Trash2 className="w-3.5 h-3.5" />
@@ -85,8 +87,8 @@ export function MessageActions({
               setConfirming(false);
               onDeleteBlock?.();
             }}
-            aria-label="Confirm delete"
-            title="Confirm"
+            aria-label={t('messageActions.confirmDelete')}
+            title={t('messageActions.confirm')}
           >
             <Check className="w-3.5 h-3.5" />
           </button>
@@ -94,8 +96,8 @@ export function MessageActions({
             type="button"
             className={btn}
             onClick={() => setConfirming(false)}
-            aria-label="Cancel delete"
-            title="Cancel"
+            aria-label={t('messageActions.cancelDelete')}
+            title={t('messageActions.cancel')}
           >
             <X className="w-3.5 h-3.5" />
           </button>

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useTranslation } from 'react-i18next';
 
 interface ModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface ModalProps {
  * `{colors.overlay-scrim}` spec, the panel is white canvas with `rounded-md`.
  */
 export function Modal({ isOpen, onClose, title, children, className = '' }: ModalProps) {
+  const { t } = useTranslation('common');
   const reduce = useReducedMotion();
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
               <button
                 onClick={onClose}
                 className="p-1.5 rounded-md text-text-muted hover:bg-surface-soft hover:text-ink"
-                aria-label="Close modal"
+                aria-label={t('modal.closeLabel')}
               >
                 <X className="w-[18px] h-[18px]" strokeWidth={1.5} />
               </button>

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
+import { useUiStore } from '../../stores/ui';
 
 interface Command {
   id: string;
@@ -15,6 +17,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ isOpen, onClose, onOpenStatus }: CommandPaletteProps) {
+  const { t } = useTranslation('chat');
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,16 +27,16 @@ export function CommandPalette({ isOpen, onClose, onOpenStatus }: CommandPalette
   const cycleThinkingLevel = useChatStore(state => state.cycleThinkingLevel);
   const clearChat = useChatStore(state => state.clearChat);
   const sendInterrupt = useChatStore(state => state.sendInterrupt);
-  const toggleSidebar = useChatStore(state => state.toggleSidebar);
+  const toggleSidebar = useUiStore(state => state.toggleSidebar);
 
   const commands: Command[] = [
-    { id: 'clear', label: '/clear', description: 'Clear chat history', action: () => { clearChat(); onClose(); } },
-    { id: 'mode', label: '/mode', description: 'Toggle between Normal and Plan mode', action: () => { toggleMode(); onClose(); } },
-    { id: 'status', label: '/status', description: 'Show session status dialog', action: () => { onOpenStatus(); onClose(); } },
-    { id: 'interrupt', label: '/interrupt', description: 'Interrupt the current task', action: () => { sendInterrupt(); onClose(); } },
-    { id: 'autonomy', label: 'Cycle Autonomy', description: 'Cycle: Manual → Semi-Auto → Auto', action: () => { cycleAutonomy(); onClose(); } },
-    { id: 'thinking', label: 'Cycle Thinking', description: 'Cycle: Off → Low → Medium → High', action: () => { cycleThinkingLevel(); onClose(); } },
-    { id: 'sidebar', label: 'Toggle Sidebar', description: 'Show/hide the sessions sidebar', action: () => { toggleSidebar(); onClose(); } },
+    { id: 'clear', label: '/clear', description: t('commandPalette.clearDesc'), action: () => { clearChat(); onClose(); } },
+    { id: 'mode', label: '/mode', description: t('commandPalette.modeDesc'), action: () => { toggleMode(); onClose(); } },
+    { id: 'status', label: '/status', description: t('commandPalette.statusDesc'), action: () => { onOpenStatus(); onClose(); } },
+    { id: 'interrupt', label: '/interrupt', description: t('commandPalette.interruptDesc'), action: () => { sendInterrupt(); onClose(); } },
+    { id: 'autonomy', label: t('commandPalette.cycleAutonomy'), description: t('commandPalette.cycleAutonomyDesc'), action: () => { cycleAutonomy(); onClose(); } },
+    { id: 'thinking', label: t('commandPalette.cycleThinking'), description: t('commandPalette.cycleThinkingDesc'), action: () => { cycleThinkingLevel(); onClose(); } },
+    { id: 'sidebar', label: t('commandPalette.toggleSidebar'), description: t('commandPalette.toggleSidebarDesc'), action: () => { toggleSidebar(); onClose(); } },
   ];
 
   const filtered = query
@@ -86,12 +89,12 @@ export function CommandPalette({ isOpen, onClose, onOpenStatus }: CommandPalette
           value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type a command..."
+          placeholder={t('commandPalette.placeholder')}
           className="w-full px-4 py-3 text-sm bg-transparent border-b border-border-300/20 text-text-000 placeholder-text-400 outline-none"
         />
         <div className="max-h-64 overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-text-400">No matching commands</div>
+            <div className="px-4 py-3 text-sm text-text-400">{t('commandPalette.noMatch')}</div>
           ) : (
             filtered.map((cmd, i) => (
               <button
@@ -108,9 +111,9 @@ export function CommandPalette({ isOpen, onClose, onOpenStatus }: CommandPalette
           )}
         </div>
         <div className="px-4 py-2 border-t border-border-300/20 text-xs text-text-400 flex gap-3">
-          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">↑↓</kbd> navigate</span>
-          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">Enter</kbd> select</span>
-          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">Esc</kbd> close</span>
+          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">↑↓</kbd> {t('commandPalette.hintNavigate')}</span>
+          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">Enter</kbd> {t('commandPalette.hintSelect')}</span>
+          <span><kbd className="px-1 py-0.5 bg-bg-200 rounded text-text-300">Esc</kbd> {t('commandPalette.hintClose')}</span>
         </div>
       </div>
     </div>

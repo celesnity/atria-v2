@@ -1,4 +1,5 @@
 import { useLocalStorage } from 'usehooks-ts';
+import { useTranslation } from 'react-i18next';
 
 export type LeftMode = 'files' | 'modules';
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function LeftPaneTabs({ mode, onChange }: Props) {
+  const { t } = useTranslation('artifacts');
   const btn = (m: LeftMode, label: string) => (
     <button
       key={m}
@@ -25,8 +27,8 @@ export function LeftPaneTabs({ mode, onChange }: Props) {
   return (
     <div className="flex items-center border-b border-hairline-soft/60 px-2 py-1.5 flex-shrink-0">
       <div className="inline-flex items-center gap-0.5 rounded-md border border-hairline-soft/40 bg-surface-soft/40 p-0.5">
-        {btn('files', 'Files')}
-        {btn('modules', 'Modules')}
+        {btn('files', t('leftPane.files'))}
+        {btn('modules', t('leftPane.modules'))}
       </div>
     </div>
   );

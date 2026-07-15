@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, Folder, Search, ArrowUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/client';
 import { useChatStore } from '../../stores/chat';
 
@@ -23,6 +24,7 @@ const getBreadcrumbs = (absPath: string) => {
 };
 
 export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
+  const { t } = useTranslation('layout');
   const [currentPath, setCurrentPath] = useState('');
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [directories, setDirectories] = useState<DirEntry[]>([]);
@@ -50,7 +52,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
         setBrowseError(result.error);
       }
     } catch (err) {
-      setBrowseError('Failed to browse directory');
+      setBrowseError(t('newSessionModal.failedToBrowse'));
     } finally {
       setIsLoadingDirs(false);
     }
@@ -90,7 +92,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
     } catch (err) {
       console.error('Failed to create session:', err);
       setCreateError(
-        err instanceof Error ? err.message : 'Failed to create session. Please try again.'
+        err instanceof Error ? err.message : t('newSessionModal.failedToCreate')
       );
     } finally {
       setIsCreating(false);
@@ -112,9 +114,9 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
-          <h2 className="text-lg font-semibold text-ink">Select Workspace</h2>
+          <h2 className="text-lg font-semibold text-ink">{t('newSessionModal.title')}</h2>
           <button
-            aria-label="Close dialog"
+            aria-label={t('newSessionModal.closeDialog')}
             onClick={onClose}
             className="p-1 rounded-md hover:bg-surface-soft text-text-muted hover:text-text-secondary"
           >
@@ -140,7 +142,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
               disabled={!manualPath.trim()}
               className="px-4 py-2 text-sm font-medium bg-surface-soft hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-text-secondary border border-hairline-soft"
             >
-              Go
+              {t('newSessionModal.go')}
             </button>
           </div>
         </div>
@@ -175,7 +177,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
               onChange={(e) => setShowHidden(e.target.checked)}
               className="rounded border-hairline-soft text-amber-500"
             />
-            Show hidden
+            {t('newSessionModal.showHidden')}
           </label>
         </div>
 
@@ -200,7 +202,7 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
                       type="text"
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
-                      placeholder="Filter folders..."
+                      placeholder={t('newSessionModal.filterPlaceholder')}
                       className="w-full pl-8 pr-3 py-1.5 text-sm border border-hairline-soft rounded-md"
                     />
                   </div>
@@ -226,21 +228,21 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
                 if (directories.length === 0 && !parentPath) {
                   return (
                     <div className="px-5 py-8 text-center">
-                      <p className="text-sm text-text-muted">No subdirectories</p>
+                      <p className="text-sm text-text-muted">{t('newSessionModal.noSubdirectories')}</p>
                     </div>
                   );
                 }
                 if (directories.length === 0 && parentPath) {
                   return (
                     <div className="px-5 py-6 text-center">
-                      <p className="text-sm text-text-muted">No subdirectories</p>
+                      <p className="text-sm text-text-muted">{t('newSessionModal.noSubdirectories')}</p>
                     </div>
                   );
                 }
                 if (filteredDirs.length === 0) {
                   return (
                     <div className="px-5 py-6 text-center">
-                      <p className="text-sm text-text-muted">No matching folders</p>
+                      <p className="text-sm text-text-muted">{t('newSessionModal.noMatchingFolders')}</p>
                     </div>
                   );
                 }
@@ -274,14 +276,14 @@ export function NewSessionModal({ isOpen, onClose }: NewSessionModalProps) {
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium border border-hairline-soft bg-canvas hover:bg-surface-soft rounded-md text-text-secondary"
           >
-            Cancel
+            {t('newSessionModal.cancel')}
           </button>
           <button
             onClick={handleSelect}
             disabled={!currentPath || isCreating}
             className="px-4 py-2 text-sm font-medium bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md"
           >
-            {isCreating ? 'Creating...' : 'Select This Directory'}
+            {isCreating ? t('newSessionModal.creating') : t('newSessionModal.selectDirectory')}
           </button>
           </div>
         </div>

@@ -8,6 +8,11 @@ RUN npm install
 COPY modules/module_template/frontend/ ./
 # minder-ui-sdk is consumed from source via a vite alias (../../../minder_ui_sdk).
 COPY minder_ui_sdk /minder_ui_sdk
+# The dashboard is a cross-origin federation remote; bundled asset URLs (mascot
+# logo, etc.) must be fully-qualified back to THIS module's public origin, so the
+# base has to be known at build time — not just at runtime (line below).
+ARG MT_PUBLIC_BASE=http://localhost:9300
+ENV MT_PUBLIC_BASE=$MT_PUBLIC_BASE
 RUN npm run build
 
 # --- python service stage ---

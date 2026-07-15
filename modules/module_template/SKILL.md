@@ -39,9 +39,9 @@ UI co-pilot. Tools:
 - `update_price` — **medium** risk; changes a product's price.
 - `assist_add_product` — the **co-pilot**: opens the Add Product form in the UI, prefills the fields you pass, leaves blanks for the user (focuses `category`), and asks them to confirm. It does NOT create the product — the human confirms in the form, which runs `create_product`. Prefer this when the user says "add product …".
 
-The Products panel also has manual controls: search, category filter, price sort, and per-row restock / duplicate / delete. A mascot (**Pilo**, bottom-left) animates in reaction to the agent driving the UI — it walks on `navigate`, "types" on `fill`, points on `focus`, asks on `request_confirm`, and celebrates on create.
+The Products panel also has manual controls: search, category filter, price sort, and per-row restock / duplicate / delete. A mascot (**Minder**, bottom-left) animates in reaction to the agent driving the UI — it walks on `navigate`, "types" on `fill`, points on `focus`, asks on `request_confirm`, and celebrates on create.
 
-Try: *"list the products"*, *"add product ABC, a Widget, priced 12"* (→ co-pilot fills the form, Pilo points, you confirm), *"delete product 2"* (→ returns a decision packet needing approval).
+Try: *"list the products"*, *"add product ABC, a Widget, priced 12"* (→ co-pilot fills the form, Minder points, you confirm), *"delete product 2"* (→ returns a decision packet needing approval).
 
 ## Declarative agent context
 

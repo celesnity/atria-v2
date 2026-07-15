@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { CloudUpload, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useArtifactUpload, type UploadScope } from '../hooks/useArtifactUpload';
 import { formatFileSize } from '../utils/fileUtils';
 
@@ -18,6 +19,7 @@ export function FileUploadWidget({
   maxFileSizeMB = 50,
   className = '',
 }: FileUploadWidgetProps) {
+  const { t } = useTranslation('common');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [scope, setScope] = useState<UploadScope>('conversation');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -119,7 +121,7 @@ export function FileUploadWidget({
               disabled={uploading}
               className="w-4 h-4"
             />
-            <span className="text-sm font-medium">Conversation Scope</span>
+            <span className="text-sm font-medium">{t('upload.scopeConversation')}</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -131,7 +133,7 @@ export function FileUploadWidget({
               disabled={uploading}
               className="w-4 h-4"
             />
-            <span className="text-sm font-medium">Project Scope</span>
+            <span className="text-sm font-medium">{t('upload.scopeProject')}</span>
           </label>
         </div>
 
@@ -157,15 +159,15 @@ export function FileUploadWidget({
             className="hidden"
           />
           <CloudUpload className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-          <p className="text-sm font-medium text-text-secondary">Click to select files</p>
-          <p className="text-xs text-text-muted mt-1">or drag and drop</p>
-          <p className="text-xs text-text-muted mt-2">Max {maxFileSizeMB}MB per file</p>
+          <p className="text-sm font-medium text-text-secondary">{t('upload.clickToSelect')}</p>
+          <p className="text-xs text-text-muted mt-1">{t('upload.dragAndDrop')}</p>
+          <p className="text-xs text-text-muted mt-2">{t('upload.maxSize', { maxMB: maxFileSizeMB })}</p>
         </div>
 
         {/* Selected Files List */}
         {selectedFiles.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-text-secondary">Selected Files ({selectedFiles.length})</h3>
+            <h3 className="text-sm font-medium text-text-secondary">{t('upload.selectedFiles', { count: selectedFiles.length })}</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {selectedFiles.map((file, index) => (
                 <div key={`${file.name}-${index}`} className="flex items-center justify-between bg-surface-soft p-2 rounded">
@@ -186,7 +188,7 @@ export function FileUploadWidget({
                       onClick={() => handleRemoveFile(index)}
                       disabled={uploading}
                       className="flex-shrink-0 ml-2 p-1 text-text-muted hover:text-semantic-danger disabled:opacity-50 cursor-pointer"
-                      aria-label="Remove file"
+                      aria-label={t('upload.removeFileLabel')}
                     >
                       <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
                     </button>
@@ -195,7 +197,7 @@ export function FileUploadWidget({
               ))}
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-text-secondary">Total: {formatFileSize(totalSize)}</span>
+              <span className="text-text-secondary">{t('upload.totalSize', { size: formatFileSize(totalSize) })}</span>
             </div>
           </div>
         )}
@@ -209,7 +211,7 @@ export function FileUploadWidget({
             <button
               onClick={clearError}
               className="text-semantic-danger hover:opacity-80 cursor-pointer"
-              aria-label="Dismiss error"
+              aria-label={t('upload.dismissErrorLabel')}
             >
               <X className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
             </button>
@@ -224,14 +226,14 @@ export function FileUploadWidget({
               disabled={!isValid}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              {uploading ? 'Uploading...' : 'Upload'}
+              {uploading ? t('upload.uploading') : t('upload.uploadButton')}
             </button>
             <button
               onClick={() => setSelectedFiles([])}
               disabled={uploading}
               className="flex-1 px-4 py-2 border border-hairline-soft text-text-secondary rounded-md font-medium hover:bg-surface-soft disabled:opacity-50 transition-colors"
             >
-              Clear
+              {t('upload.clearButton')}
             </button>
           </div>
         )}

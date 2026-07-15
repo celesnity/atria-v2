@@ -1,0 +1,238 @@
+{
+  "activityLine": {
+    "detailPayload": "Activity detail payload",
+    "details": "+ details",
+    "hide": "− hide",
+    "hideDetail": "Hide detail",
+    "showDetail": "Show detail"
+  },
+  "askUserDialog": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "hintCancel": "cancel",
+    "hintConfirm": "confirm",
+    "hintSelect": "select",
+    "next": "Next",
+    "somethingElse": "Something else",
+    "submit": "Submit",
+    "typeYourAnswer": "Type your answer..."
+  },
+  "chatInterface": {
+    "dropFiles": "Drop files to add them as artifacts",
+    "errorHeading": "Something went wrong.",
+    "filesUploaded_one": "{{count}} file uploaded",
+    "filesUploaded_other": "{{count}} files uploaded",
+    "fileUploaded": "\"{{name}}\" uploaded",
+    "uploading": "Uploading…"
+  },
+  "commandPalette": {
+    "clearDesc": "Clear chat history",
+    "cycleAutonomy": "Cycle Autonomy",
+    "cycleAutonomyDesc": "Cycle: Manual → Semi-Auto → Auto",
+    "cycleThinking": "Cycle Thinking",
+    "cycleThinkingDesc": "Cycle: Off → Low → Medium → High",
+    "hintClose": "close",
+    "hintNavigate": "navigate",
+    "hintSelect": "select",
+    "interruptDesc": "Interrupt the current task",
+    "modeDesc": "Toggle between Normal and Plan mode",
+    "noMatch": "No matching commands",
+    "placeholder": "Type a command...",
+    "statusDesc": "Show session status dialog",
+    "toggleSidebar": "Toggle Sidebar",
+    "toggleSidebarDesc": "Show/hide the sessions sidebar"
+  },
+  "deepResearch": {
+    "applyChanges": "Apply changes (Enter)",
+    "applyHint": "Press Enter or ↵ to apply · Shift+Enter for new line",
+    "label": "deep research",
+    "regenerate": "Regenerate",
+    "regenerating": "Regenerating…",
+    "requestChanges": "Request changes",
+    "requestChangesPlaceholder": "e.g. \"translate all to Vietnamese\", \"add a category on economics\", \"remove mental health subtopic\"...",
+    "researchDepth": "Research depth",
+    "researchPlan": "Research plan ({{categories}} categories, {{subtopics}} subtopics)",
+    "saved": "Saved: {{path}}",
+    "sectionsCompleted_one": "{{count}} section completed",
+    "sectionsCompleted_other": "{{count}} sections completed",
+    "starting": "Starting…",
+    "startResearch": "Start Research",
+    "depth": {
+      "deep": "Deep",
+      "deepDesc": "Comprehensive",
+      "shallow": "Shallow",
+      "shallowDesc": "Quick overview",
+      "standard": "Standard",
+      "standardDesc": "Balanced"
+    },
+    "statusLabel": {
+      "done": "Complete",
+      "error": "Error",
+      "queued": "Queued",
+      "reviewing": "Awaiting review",
+      "running": "Researching…"
+    },
+    "taxonomySummary": "Taxonomy — {{categories}} categories, {{subtopics}} subtopics"
+  },
+  "fileLink": {
+    "open": "Open {{path}}"
+  },
+  "genericModuleCard": {
+    "confidence": {
+      "high": "High confidence",
+      "low": "Low confidence",
+      "medium": "Medium confidence"
+    }
+  },
+  "imageMessage": {
+    "altDefault": "Image from assistant"
+  },
+  "inputBox": {
+    "noFilesFound": "No files found",
+    "placeholder": "Message…",
+    "placeholderDisconnected": "Disconnected...",
+    "placeholderLocked": "Deep research in progress — sending paused until it finishes…",
+    "placeholderNoSession": "Select a session to start chatting...",
+    "placeholderQueued": "Queue a message…",
+    "sendEnter": "Send (Enter)",
+    "stopEsc": "Stop (Esc)",
+    "stopTranscribe": "Stop & transcribe",
+    "uploadFile": "Upload file as artifact",
+    "voiceInput": "Voice input (push to talk)"
+  },
+  "landingPage": {
+    "attachFiles": "Attach files",
+    "composerPlaceholder": "Describe what's on your mind, or pick a starting point below.",
+    "eyebrow": "New conversation",
+    "failedToLoad": "Failed to load conversation",
+    "headline": "What should we think through?",
+    "hintNewLine": "for a new line",
+    "hintSend": "to send ·",
+    "removeFile": "Remove {{name}}",
+    "send": "Send",
+    "sendEnter": "Send (Enter)",
+    "starterKind": {
+      "brainstorm": "Brainstorm",
+      "draft": "Draft",
+      "plan": "Plan",
+      "research": "Research"
+    },
+    "starterTitle": {
+      "brainstorm": "Explore ideas",
+      "draft": "Write something",
+      "plan": "Think through a plan",
+      "research": "Compare options"
+    },
+    "uploadDocument": "Upload document",
+    "uploadImage": "Upload image"
+  },
+  "messageActions": {
+    "cancel": "Cancel",
+    "cancelDelete": "Cancel delete",
+    "confirm": "Confirm",
+    "confirmDelete": "Confirm delete",
+    "copyMessage": "Copy message",
+    "copyTurn": "Copy entire turn",
+    "deleteTurn": "Delete turn"
+  },
+  "messageList": {
+    "activity": "Activity",
+    "activityProcessing": "Processing…",
+    "activityRunningTool": "Running {{tool}}…",
+    "activityThinking": "Thinking…",
+    "chipCommands": "commands",
+    "chipEdits": "edits",
+    "chipReads": "reads",
+    "chipThinking": "thinking",
+    "entries_one": "{{count}} item",
+    "entries_other": "{{count}} items",
+    "jumpToLatest": "Jump to latest message",
+    "latencyTooltip": "Measured from when message was sent",
+    "latest": "Latest",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps",
+    "thinking": "Thinking…",
+    "welcomeEyebrow": "Welcome",
+    "welcomeHeadline": "Let's get to work.",
+    "welcomeSubtext": "Start a conversation with Minder."
+  },
+  "moduleProgress": {
+    "working": "Working…"
+  },
+  "personaSelector": {
+    "clearPersona": "Clear persona",
+    "currentPersona": "Current persona: {{name}}",
+    "loadError": "Could not load personas",
+    "noPersonas": "No personas yet",
+    "openSettings": "Open Settings",
+    "persona": "Persona",
+    "selectPersona": "Select a persona"
+  },
+  "planApproval": {
+    "approveAutoDesc": "Auto-approve file edits during implementation.",
+    "approveAutoLabel": "Start implementation",
+    "approveDesc": "Review each file edit before it's applied.",
+    "approveLabel": "Start implementation (review edits)",
+    "feedbackPlaceholder": "What changes would you like? (optional)",
+    "hintConfirm": "to confirm,",
+    "hintPress": "Press",
+    "hintRevise": "to revise",
+    "hintSelect": "to select,",
+    "modifyDesc": "Stay in plan mode and provide feedback.",
+    "modifyLabel": "Revise plan",
+    "submitFeedback": "Submit Feedback",
+    "title": "Plan Ready for Review"
+  },
+  "queueBar": {
+    "queued_one": "{{count}} message queued",
+    "queued_other": "{{count}} messages queued"
+  },
+  "remoteBlock": {
+    "failed": "Block failed: {{error}}",
+    "loading": "Loading…"
+  },
+  "searchResult": {
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "searched": "searched"
+  },
+  "statusBar": {
+    "autonomyTitle": "Approval — Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)",
+    "modeNormal": "Normal",
+    "modePlan": "Plan",
+    "modeTitle": "Mode — Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)",
+    "thinkingTitle": "Thinking — how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
+  },
+  "statusDialog": {
+    "autonomy": "Autonomy",
+    "branch": "Branch: {{branch}}",
+    "close": "Close status dialog",
+    "contextUsage": "Context Usage",
+    "cost": "Cost",
+    "loading": "Loading...",
+    "mcpConnected_one": "connected ({{count}} tool)",
+    "mcpConnected_other": "connected ({{count}} tools)",
+    "mcpDisconnected": "disconnected",
+    "messages": "Messages",
+    "mode": "Mode",
+    "model": "Model",
+    "noMcpServers": "No MCP servers configured",
+    "sectionMcp": "MCP Servers",
+    "sectionModel": "Model",
+    "sectionSession": "Session",
+    "sectionWorkingDir": "Working Directory",
+    "sessionId": "ID",
+    "title": "Session Status"
+  },
+  "thinkingBlock": {
+    "collapse": "Collapse thinking",
+    "critique": "Critique",
+    "expand": "Expand thinking",
+    "thought": "Thought"
+  },
+  "todoListCard": {
+    "ariaLabel": "Tasks, {{done}} of {{total}} done",
+    "doneCount": "{{done}}/{{total}} done",
+    "tasks": "Tasks"
+  }
+}

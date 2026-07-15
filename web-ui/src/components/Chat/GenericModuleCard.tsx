@@ -1,14 +1,15 @@
 import { AlertTriangle, Boxes } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types';
 
 interface Props {
   message: Message;
 }
 
-const BAND_STYLES: Record<string, { dot: string; text: string; label: string }> = {
-  high:   { dot: 'bg-green-500',  text: 'text-green-600',  label: 'High confidence' },
-  medium: { dot: 'bg-yellow-500', text: 'text-yellow-600', label: 'Medium confidence' },
-  low:    { dot: 'bg-red-500',    text: 'text-red-500',    label: 'Low confidence' },
+const BAND_STYLES: Record<string, { dot: string; text: string }> = {
+  high:   { dot: 'bg-green-500',  text: 'text-green-600' },
+  medium: { dot: 'bg-yellow-500', text: 'text-yellow-600' },
+  low:    { dot: 'bg-red-500',    text: 'text-red-500' },
 };
 
 /**
@@ -18,6 +19,7 @@ const BAND_STYLES: Record<string, { dot: string; text: string; label: string }> 
  * validation warnings — styled to match MaintenanceAnswerBlock.
  */
 export function GenericModuleCard({ message }: Props) {
+  const { t } = useTranslation('chat');
   const {
     card_module = 'module',
     card_answer = '',
@@ -43,7 +45,7 @@ export function GenericModuleCard({ message }: Props) {
         {band && (
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className={`w-2 h-2 rounded-full ${band.dot}`} />
-            <span className={`text-xs font-medium ${band.text}`}>{band.label}</span>
+            <span className={`text-xs font-medium ${band.text}`}>{t(`genericModuleCard.confidence.${card_confidence_band}`)}</span>
           </div>
         )}
       </div>

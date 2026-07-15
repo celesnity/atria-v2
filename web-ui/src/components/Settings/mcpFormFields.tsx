@@ -3,6 +3,7 @@
  * Used by both Add and Edit MCP server modals to remove duplication.
  */
 
+import { useTranslation } from 'react-i18next';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface ModalHeaderProps {
@@ -13,6 +14,7 @@ interface ModalHeaderProps {
 }
 
 export function ModalHeader({ title, subtitle, onClose, disabled }: ModalHeaderProps) {
+  const { t } = useTranslation('settings');
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-hairline-soft">
       <div>
@@ -20,7 +22,7 @@ export function ModalHeader({ title, subtitle, onClose, disabled }: ModalHeaderP
         {subtitle && <p className="text-sm text-text-muted mt-0.5">{subtitle}</p>}
       </div>
       <button
-        aria-label="Close dialog"
+        aria-label={t('formFields.closeDialog')}
         type="button"
         onClick={onClose}
         disabled={disabled}
@@ -49,6 +51,7 @@ export function ModalFooter({
   submittingLabel = 'Saving...',
   showSubmit = true,
 }: ModalFooterProps) {
+  const { t } = useTranslation('settings');
   return (
     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-hairline-soft bg-surface-soft">
       <button
@@ -57,7 +60,7 @@ export function ModalFooter({
         disabled={isSubmitting}
         className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-ink hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50"
       >
-        Cancel
+        {t('formFields.cancel')}
       </button>
       {showSubmit && (
         <button
@@ -149,9 +152,10 @@ export function ArgumentsList({
   onRemoveArg,
   disabled,
 }: ArgumentsListProps) {
+  const { t } = useTranslation('settings');
   return (
     <div>
-      <label className="block text-sm font-medium text-text-secondary mb-1">Arguments</label>
+      <label className="block text-sm font-medium text-text-secondary mb-1">{t('formFields.argumentsLabel')}</label>
       <div className="space-y-2">
         {args.map((arg, index) => (
           <div key={index} className="flex items-center gap-2">
@@ -177,7 +181,7 @@ export function ArgumentsList({
             value={argInput}
             onChange={(e) => onArgInputChange(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), onAddArg())}
-            placeholder="Add argument..."
+            placeholder={t('formFields.addArgPlaceholder')}
             disabled={disabled}
             className="flex-1 px-3 py-2 border border-hairline-soft rounded-md disabled:bg-surface-soft"
           />
@@ -187,7 +191,7 @@ export function ArgumentsList({
             disabled={disabled || !argInput.trim()}
             className="px-3 py-2 text-sm font-medium text-text-secondary bg-surface-soft hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50"
           >
-            Add
+            {t('formFields.addButton')}
           </button>
         </div>
       </div>
@@ -216,9 +220,10 @@ export function EnvironmentVariables({
   onRemoveEnv,
   disabled,
 }: EnvironmentVariablesProps) {
+  const { t } = useTranslation('settings');
   return (
     <div>
-      <label className="block text-sm font-medium text-text-secondary mb-1">Environment Variables</label>
+      <label className="block text-sm font-medium text-text-secondary mb-1">{t('formFields.envVarsLabel')}</label>
       <div className="space-y-2">
         {Object.entries(env).map(([key, value]) => (
           <div key={key} className="flex items-center gap-2">
@@ -247,7 +252,7 @@ export function EnvironmentVariables({
             type="text"
             value={envKey}
             onChange={(e) => onEnvKeyChange(e.target.value)}
-            placeholder="KEY"
+            placeholder={t('formFields.envKeyPlaceholder')}
             disabled={disabled}
             className="w-32 px-3 py-2 border border-hairline-soft rounded-md font-mono text-sm disabled:bg-surface-soft"
           />
@@ -257,7 +262,7 @@ export function EnvironmentVariables({
             value={envValue}
             onChange={(e) => onEnvValueChange(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), onAddEnv())}
-            placeholder="value"
+            placeholder={t('formFields.envValuePlaceholder')}
             disabled={disabled}
             className="flex-1 px-3 py-2 border border-hairline-soft rounded-md font-mono text-sm disabled:bg-surface-soft"
           />
@@ -267,7 +272,7 @@ export function EnvironmentVariables({
             disabled={disabled || !envKey.trim() || !envValue.trim()}
             className="px-3 py-2 text-sm font-medium text-text-secondary bg-surface-soft hover:bg-surface-soft rounded-md transition-colors disabled:opacity-50"
           >
-            Add
+            {t('formFields.addButton')}
           </button>
         </div>
       </div>

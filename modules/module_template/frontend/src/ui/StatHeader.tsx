@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Briefcase, Image, Database, Activity } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme, useModuleEvents } from "minder-ui-sdk";
 import StatCard from "./StatCard";
 
 interface Props {
@@ -12,20 +12,11 @@ interface Props {
  *  whichever tab panel the host has selected. */
 export default function StatHeader({ apiBase }: Props) {
   const { tokens } = useMinderTheme();
-  const [healthy, setHealthy] = useState<boolean | null>(null);
   const [overview, setOverview] = useState<{ mt_jobs: number; mt_media: number; minder_artifacts_count: number } | null>(null);
 
-  useEffect(() => {
-    const check = () => {
-      fetch(`${apiBase}/connector/health`)
-        .then((r) => r.json())
-        .then((d) => setHealthy(!!d.ok))
-        .catch(() => setHealthy(false));
-    };
-    check();
-    const t = setInterval(check, 5000);
-    return () => clearInterval(t);
-  }, [apiBase]);
+  // Health = an open SSE stream to /connector/events. Its `connected` flag IS
+  // proof of life, so we no longer poll /connector/health every 5s.
+  const { connected: healthy } = useModuleEvents(apiBase);
 
   useEffect(() => {
     fetch(`${apiBase}/connector/overview`)
@@ -34,8 +25,7 @@ export default function StatHeader({ apiBase }: Props) {
       .catch(() => {});
   }, [apiBase]);
 
-  const healthDotColor =
-    healthy === null ? tokens.warning : healthy ? tokens.success : tokens.error;
+  const healthDotColor = healthy ? tokens.success : tokens.warning;
 
   return (
     <div>
@@ -69,7 +59,7 @@ export default function StatHeader({ apiBase }: Props) {
             }}
           />
           <span style={{ color: tokens.textMuted }}>
-            {healthy === null ? "connecting…" : healthy ? "connector online" : "offline"}
+            {healthy ? "connector online" : "connecting…"}
           </span>
         </div>
       </div>

@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { TopBar } from "./TopBar";
 import { SettingsModal } from "../Settings/SettingsModal";
 import { ToastContainer } from "../ui/Toast";
-import { useChatStore } from "../../stores/chat";
+import { useUiStore } from "../../stores/ui";
 
 /**
  * AppShell — the persistent application frame shared by every primary surface
@@ -16,8 +16,8 @@ export function AppShell() {
   const location = useLocation();
   const outlet = useOutlet();
   const reduce = useReducedMotion();
-  const settingsModalOpen = useChatStore((s) => s.settingsModalOpen);
-  const closeSettingsModal = useChatStore((s) => s.closeSettingsModal);
+  const settingsModalOpen = useUiStore((s) => s.settingsModalOpen);
+  const closeSettingsModal = useUiStore((s) => s.closeSettingsModal);
 
   return (
     <div className="h-[100dvh] flex flex-col bg-canvas overflow-hidden">

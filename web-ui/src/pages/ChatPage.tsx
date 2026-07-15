@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMediaQuery } from 'usehooks-ts';
 import { ProjectSidebar } from '../components/Layout/ProjectSidebar';
 import { ChatRail } from '../components/Layout/ChatRail';
@@ -12,16 +13,18 @@ import { ArtifactViewer } from '../components/ArtifactViewer/ArtifactViewer';
 import { ExplorerPane, EditorPane } from '../components/ArtifactViewer/panes';
 import { MobileTabBar, type MobilePanel } from '../components/Layout/MobileTabBar';
 import { useChatStore } from '../stores/chat';
+import { useUiStore } from '../stores/ui';
 import { useViewerTabsStore } from '../stores/viewerTabs';
 import { useModulesStore } from '../stores/modules';
 import { useProjectsStore } from '../stores/projects';
 import { ModuleDashboardView } from '../components/ModuleDashboard/ModuleDashboardView';
 
 export function ChatPage() {
+  const { t } = useTranslation('common');
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
-  const commandPaletteOpen = useChatStore(state => state.commandPaletteOpen);
-  const closeCommandPalette = useChatStore(state => state.closeCommandPalette);
+  const commandPaletteOpen = useUiStore(state => state.commandPaletteOpen);
+  const closeCommandPalette = useUiStore(state => state.closeCommandPalette);
   const currentSessionId = useChatStore(state => state.currentSessionId);
   const activeModuleDashboard = useModulesStore(s => s.activeModuleDashboard);
   const modulesWithDashboards = useModulesStore(s => s.modulesWithDashboards);
@@ -118,7 +121,7 @@ export function ChatPage() {
     <div className="flex flex-1 items-center justify-center p-8 text-center">
       <div className="max-w-sm">
         <p className="text-sm text-text-secondary">
-          Pick a module from the breadcrumb above, or keep chatting in the left rail.
+          {t('chatPage.noModuleHint')}
         </p>
       </div>
     </div>

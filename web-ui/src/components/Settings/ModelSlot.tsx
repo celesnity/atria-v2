@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 export interface Provider {
   id: string;
   name: string;
@@ -36,6 +38,7 @@ export function ModelSlot({
   optional = false,
   notSetText = "Not configured"
 }: ModelSlotProps) {
+  const { t } = useTranslation('settings');
   const currentProvider = providers.find(p => p.id === selectedProvider);
   const availableModels = currentProvider?.models || [];
 
@@ -51,7 +54,7 @@ export function ModelSlot({
             <h3 className="text-base font-semibold text-ink">{title}</h3>
             {optional && (
               <span className="text-xs px-2 py-0.5 bg-surface-soft text-text-secondary rounded-md">
-                Optional
+                {t('modelSlot.optional')}
               </span>
             )}
           </div>
@@ -63,7 +66,7 @@ export function ModelSlot({
       <div className="space-y-3">
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-1.5">
-            Provider
+            {t('modelSlot.providerLabel')}
           </label>
           <select
             value={selectedProvider || ''}
@@ -93,7 +96,7 @@ export function ModelSlot({
         {selectedProvider && (
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1.5">
-              Model
+              {t('modelSlot.modelLabel')}
             </label>
             <select
               value={selectedModel || ''}

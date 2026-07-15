@@ -218,6 +218,24 @@ class ModuleRegistry:
         if over_limit:
             self.mark_connector_down(name)
 
+    def touch_connector(self, name: str) -> bool:
+        """Mark a connector alive without any state/catalog change.
+
+        Pure in-memory liveness heartbeat: resets ``fail_count`` and refreshes
+        ``last_seen``, but never bumps ``version`` (so it triggers no
+        ``modules.changed`` broadcast). Used by the SSE liveness subscriber —
+        an open ``/connector/stream`` stream is itself the proof of life, so the
+        host doesn't need to HTTP-poll ``/health``. Returns ``False`` if the
+        connector is unknown (e.g. deregistered while its stream was draining).
+        """
+        with self._lock:
+            rec = self._connectors.get(name)
+            if rec is None:
+                return False
+            rec.fail_count = 0
+            rec.last_seen = time.time()
+            return True
+
     def connector(self, name: str) -> Optional[ConnectorRecord]:
         """Return the runtime connector record for ``name`` (or ``None``).
 

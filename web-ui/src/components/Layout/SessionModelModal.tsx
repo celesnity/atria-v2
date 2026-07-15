@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/client';
 import { useToastStore } from '../../stores/toast';
 
@@ -23,12 +24,13 @@ function ModelInput({
   placeholder?: string;
   optional?: boolean;
 }) {
+  const { t } = useTranslation('layout');
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
         <label className="text-xs font-medium text-text-secondary">{label}</label>
         {optional && (
-          <span className="text-xs px-1.5 py-0.5 bg-surface-soft text-text-muted rounded">optional</span>
+          <span className="text-xs px-1.5 py-0.5 bg-surface-soft text-text-muted rounded">{t('sessionModelModal.optional')}</span>
         )}
       </div>
       <input
@@ -43,6 +45,7 @@ function ModelInput({
 }
 
 export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionModelModalProps) {
+  const { t } = useTranslation('layout');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasExistingOverlay, setHasExistingOverlay] = useState(false);
@@ -92,11 +95,11 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
         model_vlm: visionModel || null,
       });
       setHasExistingOverlay(true);
-      addToast('Session model updated', 'success');
+      addToast(t('sessionModelModal.savedSuccess'), 'success');
       onClose();
     } catch (error) {
       console.error('Failed to save session model:', error);
-      addToast('Failed to save session model', 'error');
+      addToast(t('sessionModelModal.savedError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -114,11 +117,11 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
       setCritiqueModel(configData.model_critique || '');
       setCompactModel(configData.model_compact || '');
       setVisionModel(configData.model_vlm || '');
-      addToast('Session model cleared', 'success');
+      addToast(t('sessionModelModal.clearedSuccess'), 'success');
       onClose();
     } catch (error) {
       console.error('Failed to clear session model:', error);
-      addToast('Failed to clear session model', 'error');
+      addToast(t('sessionModelModal.clearedError'), 'error');
     } finally {
       setSaving(false);
     }
@@ -139,11 +142,11 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
         <div className="px-6 py-4 border-b border-hairline-soft flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-ink">Session Models</h2>
+              <h2 className="text-lg font-bold text-ink">{t('sessionModelModal.title')}</h2>
               <p className="text-xs text-text-muted mt-0.5">{sessionLabel}</p>
             </div>
             <button
-              aria-label="Close dialog"
+              aria-label={t('sessionModelModal.closeDialog')}
               onClick={onClose}
               className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-surface-soft text-text-muted hover:text-text-secondary"
             >
@@ -152,7 +155,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
           </div>
           <div className="mt-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs text-amber-800">
-              Override models for this session only. Changes don't affect global settings.
+              {t('sessionModelModal.overrideNote')}
             </p>
           </div>
         </div>
@@ -163,16 +166,16 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-2 text-text-secondary">
                 <div className="w-4 h-4 border-2 border-hairline-soft border-t-gray-600 rounded-md animate-spin" />
-                <span className="text-sm">Loading...</span>
+                <span className="text-sm">{t('sessionModelModal.loading')}</span>
               </div>
             </div>
           ) : (
             <>
-              <ModelInput label="Normal Model" value={normalModel} onChange={setNormalModel} placeholder="gpt-4o" />
-              <ModelInput label="Thinking Model" value={thinkingModel} onChange={setThinkingModel} placeholder="o3-mini" optional />
-              <ModelInput label="Critique Model" value={critiqueModel} onChange={setCritiqueModel} optional />
-              <ModelInput label="Compact Model" value={compactModel} onChange={setCompactModel} optional />
-              <ModelInput label="Vision Model" value={visionModel} onChange={setVisionModel} optional />
+              <ModelInput label={t('sessionModelModal.normalModel')} value={normalModel} onChange={setNormalModel} placeholder="gpt-4o" />
+              <ModelInput label={t('sessionModelModal.thinkingModel')} value={thinkingModel} onChange={setThinkingModel} placeholder="o3-mini" optional />
+              <ModelInput label={t('sessionModelModal.critiqueModel')} value={critiqueModel} onChange={setCritiqueModel} optional />
+              <ModelInput label={t('sessionModelModal.compactModel')} value={compactModel} onChange={setCompactModel} optional />
+              <ModelInput label={t('sessionModelModal.visionModel')} value={visionModel} onChange={setVisionModel} optional />
             </>
           )}
         </div>
@@ -187,7 +190,7 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
                   disabled={saving}
                   className="px-4 py-2.5 border border-semantic-danger/40 text-semantic-danger rounded-md hover:bg-semantic-danger/10 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
                 >
-                  Clear Overrides
+                  {t('sessionModelModal.clearOverrides')}
                 </button>
               )}
               <button
@@ -198,9 +201,9 @@ export function SessionModelModal({ sessionId, sessionLabel, onClose }: SessionM
                 {saving ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-md animate-spin" />
-                    Saving...
+                    {t('sessionModelModal.saving')}
                   </span>
-                ) : 'Save'}
+                ) : t('sessionModelModal.save')}
               </button>
             </div>
           </div>

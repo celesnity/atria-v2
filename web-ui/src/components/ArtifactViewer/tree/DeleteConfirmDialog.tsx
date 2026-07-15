@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../../ui/Modal';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function DeleteConfirmDialog({ open, title, message, confirmLabel = 'Delete', onConfirm, onClose }: Props) {
+  const { t } = useTranslation('artifacts');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -45,14 +47,14 @@ export function DeleteConfirmDialog({ open, title, message, confirmLabel = 'Dele
           autoFocus
           className="px-3 py-1.5 text-[13px] rounded text-ink/75 hover:bg-surface-soft active:scale-[0.98] whitespace-nowrap cursor-pointer transition-colors duration-fast disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Cancel
+          {t('deleteDialog.cancel')}
         </button>
         <button
           onClick={handleConfirm}
           disabled={busy}
           className="px-3 py-1.5 text-[13px] rounded bg-semantic-danger text-white hover:opacity-90 active:scale-[0.98] whitespace-nowrap cursor-pointer transition-colors duration-fast disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {busy ? 'Working…' : confirmLabel}
+          {busy ? t('deleteDialog.working') : confirmLabel}
         </button>
       </div>
     </Modal>

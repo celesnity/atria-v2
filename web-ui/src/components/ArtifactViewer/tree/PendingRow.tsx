@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder, File as FileIcon } from 'lucide-react';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function PendingRow({ depth, kind, placeholder, initial = '', selectExtension = false, onConfirm, onCancel }: Props) {
+  const { t } = useTranslation('artifacts');
   const [value, setValue] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export function PendingRow({ depth, kind, placeholder, initial = '', selectExten
           }}
           onBlur={() => { if (!err) void submit(); else onCancel(); }}
           placeholder={placeholder}
-          aria-label={kind === 'file' ? 'New file name' : 'New folder name'}
+          aria-label={t(kind === 'file' ? 'pendingRow.newFileName' : 'pendingRow.newFolderName')}
           disabled={busy}
           className="flex-1 min-w-0 bg-surface-soft/60 text-ink placeholder:text-ink/35 outline-none rounded px-1 py-0 leading-tight focus:ring-1 focus:ring-accent-cobalt/60"
         />

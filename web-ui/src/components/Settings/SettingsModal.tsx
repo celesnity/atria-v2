@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import {
   CpuChipIcon,
@@ -37,48 +38,49 @@ interface TabConfig {
   description: string;
 }
 
-const tabs: TabConfig[] = [
-  {
-    id: 'model',
-    label: 'Model',
-    icon: CpuChipIcon,
-    description: 'Configure AI model and provider settings'
-  },
-  {
-    id: 'mcp',
-    label: 'MCP Servers',
-    icon: ServerIcon,
-    description: 'Manage Model Context Protocol servers'
-  },
-  {
-    id: 'tools',
-    label: 'Tools',
-    icon: WrenchScrewdriverIcon,
-    description: 'Enable or disable individual agent tools to trim context'
-  },
-  {
-    id: 'connect',
-    label: 'Connect',
-    icon: ChatBubbleLeftRightIcon,
-    description: 'Connect Telegram & other chat apps to the agent'
-  },
-  {
-    id: 'personas',
-    label: 'Personas',
-    icon: SparklesIcon,
-    description: 'Customize agent behavior and system prompts'
-  },
-  {
-    id: 'general',
-    label: 'General',
-    icon: Cog6ToothIcon,
-    description: 'General application settings'
-  },
-];
-
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { t } = useTranslation('settings');
   const [activeTab, setActiveTab] = useState<TabId>('model');
   const reduce = useReducedMotion();
+
+  const tabs: TabConfig[] = [
+    {
+      id: 'model',
+      label: t('settingsModal.modelTab'),
+      icon: CpuChipIcon,
+      description: t('settingsModal.modelDesc'),
+    },
+    {
+      id: 'mcp',
+      label: t('settingsModal.mcpTab'),
+      icon: ServerIcon,
+      description: t('settingsModal.mcpDesc'),
+    },
+    {
+      id: 'tools',
+      label: t('settingsModal.toolsTab'),
+      icon: WrenchScrewdriverIcon,
+      description: t('settingsModal.toolsDesc'),
+    },
+    {
+      id: 'connect',
+      label: t('settingsModal.connectTab'),
+      icon: ChatBubbleLeftRightIcon,
+      description: t('settingsModal.connectDesc'),
+    },
+    {
+      id: 'personas',
+      label: t('settingsModal.personasTab'),
+      icon: SparklesIcon,
+      description: t('settingsModal.personasDesc'),
+    },
+    {
+      id: 'general',
+      label: t('settingsModal.generalTab'),
+      icon: Cog6ToothIcon,
+      description: t('settingsModal.generalDesc'),
+    },
+  ];
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -123,14 +125,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="relative flex items-center justify-between px-5 sm:px-7 py-4 border-b border-hairline-soft">
           <div className="min-w-0">
             <h2 className="text-[22px] leading-none font-[600] tracking-[-0.02em] text-gradient-brand">
-              Settings
+              {t('settingsModal.settings')}
             </h2>
             {activeTabConfig && (
               <p className="mt-1.5 text-xs text-text-muted truncate">{activeTabConfig.description}</p>
             )}
           </div>
           <button
-            aria-label="Close dialog"
+            aria-label={t('settingsModal.closeDialog')}
             onClick={onClose}
             className="flex-shrink-0 grid h-9 w-9 place-items-center rounded-md text-text-muted transition-all hover:bg-surface-soft hover:text-ink active:scale-95"
           >
@@ -212,13 +214,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* Footer */}
         <div className="relative flex items-center justify-between gap-3 px-5 sm:px-7 py-3.5 border-t border-hairline-soft bg-surface-soft/40">
           <p className="hidden sm:block text-[11px] text-text-muted">
-            <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> to close
+            <kbd className="rounded border border-hairline-soft bg-canvas px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> {t('settingsModal.escToClose')}
           </p>
           <button
             onClick={onClose}
             className="ml-auto rounded-pill bg-gradient-brand px-5 py-2 text-sm font-[540] text-white shadow-glow-nebula transition-all hover:brightness-110 active:scale-[0.97]"
           >
-            Done
+            {t('settingsModal.done')}
           </button>
         </div>
           </motion.div>
