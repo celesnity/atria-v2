@@ -744,3 +744,30 @@ isolated in the module's own container, with **zero edits to Minder source**.
 - **SDK showcase (every feature, one tool each):** [`modules/module_template/`](./module_template) — for a runnable example that exercises **every** SDK capability, see this directory; `README.md` maps each feature to its handler.
 - Real-world module: [`modules/maintenance_copilot/`](./maintenance_copilot) — RAG-backed module with federated block, citations, and bridged follow-ups.
 - Design spec: `docs/superpowers/specs/2026-07-10-sdk-self-registering-modules-design.md`
+
+---
+
+## Produce — Track A standalone MES (no SDK)
+
+Unlike `module_template` and `maintenance_copilot`, [`modules/produce/`](./produce)
+is **not** a service module: it is pure human-operated software (Track A). It does
+**not** import `minder_python_sdk`, declares no `@conn.tool`, exposes no
+`/connector/*` route, and needs **no connector / Keycloak / MinIO** wiring. Track B
+(SDK/AI) layers on later without touching this code.
+
+- **Module id:** `produce`.
+- **Service port:** `9310` (`produce-web` serves the REST API and the built React
+  SPA at `/`; the `produce-worker` Celery service has no port).
+- **Environment:**
+  - `PR_DATABASE_URL` — shared Postgres DSN (the module owns only `pr_*` tables).
+  - `PR_REDIS_URL` — Celery broker/backend (Redis DB `/3`).
+  - `PR_PUBLIC_BASE` — browser-facing base for federated asset URLs (default
+    `http://localhost:9310`).
+- **Table prefix:** `pr_*` — the module creates and writes only these tables and
+  never touches Minder tables.
+- **Deploy:** paste [`modules/produce/docker-compose.snippet.yml`](./produce/docker-compose.snippet.yml)
+  into `docker-compose.yml` (same network as `minder`, build context = repo root),
+  then `docker compose up -d --build produce-web produce-worker`.
+
+See [`modules/produce/README.md`](./produce/README.md) for epics, UI personas, and
+run/test instructions.

@@ -1,0 +1,18 @@
+# Paste into docker-compose.yml (same network as `minder`). Build context = repo root.
+# Track A is standalone: no MinIO, no Keycloak, no Minder connector env — pure software.
+
+  produce-web:
+    build: { context: ., dockerfile: modules/produce/backend/Dockerfile }
+    ports: ["9310:9310"]
+    depends_on: [db, redis]
+    environment:
+      PR_DATABASE_URL: "postgresql://minder:minder@db:5432/minder"
+      PR_REDIS_URL: "redis://redis:6379/3"
+      PR_PUBLIC_BASE: "http://localhost:9310"
+
+  produce-worker:
+    build: { context: ., dockerfile: modules/produce/worker/Dockerfile }
+    depends_on: [db, redis]
+    environment:
+      PR_DATABASE_URL: "postgresql://minder:minder@db:5432/minder"
+      PR_REDIS_URL: "redis://redis:6379/3"
