@@ -111,6 +111,7 @@ class _Tool:
     examples: list = field(default_factory=list)
     output_schema: Optional[dict] = None
     output_annotation: Optional[Any] = None
+    auto_params: bool = False
 
 
 @dataclass
@@ -250,8 +251,10 @@ class Connector:
 
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
             model = params_model
+            auto_params = False
             if model is None and parameters is None:
                 model = build_params_model(fn)
+                auto_params = model is not None
             if model is not None:
                 params = model.model_json_schema()  # type: ignore[attr-defined]
             else:
@@ -274,6 +277,7 @@ class Connector:
                 examples=examples or [],
                 output_schema=output_schema_for(fn),
                 output_annotation=output_annotation_for(fn),
+                auto_params=auto_params,
             )
             return fn
 
@@ -711,6 +715,24 @@ class Connector:
             headers=headers,
         )
 
+    def _validate_args(self, tool: _Tool, arguments: dict) -> tuple[dict, Optional[dict]]:
+        """Strict input validation against the tool's params model. Returns
+        ``(coerced_args, None)`` on success or ``(arguments, fail_envelope)`` on
+        error. For an auto-inferred model the validated *field values* are
+        injected (so a ``foo: SomeModel`` param arrives as ``SomeModel``, matching
+        the handler's own type hint); an explicit ``params_model=`` keeps its
+        historical ``model_dump()`` contract."""
+        if tool.params_model is None:
+            return arguments, None
+        try:
+            validated = tool.params_model(**arguments)
+        except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
+            return arguments, self._fail(f"invalid arguments: {exc}")
+        if tool.auto_params:
+            fields = type(validated).model_fields
+            return {name: getattr(validated, name) for name in fields}, None
+        return validated.model_dump(), None
+
     def _call(
         self,
         tool: _Tool,
@@ -724,12 +746,9 @@ class Connector:
         dry_run: bool = False,
         headers: Optional[Mapping[str, str]] = None,
     ) -> dict:
-        if tool.params_model is not None:
-            try:
-                validated = tool.params_model(**arguments)
-                arguments = validated.model_dump()
-            except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
-                return self._fail(f"invalid arguments: {exc}")
+        arguments, arg_err = self._validate_args(tool, arguments)
+        if arg_err is not None:
+            return arg_err
         if tool.requires_auth and not principal.is_authenticated:
             return self._fail("authentication required")
 
@@ -1271,6 +1290,11 @@ class Connector:
         # If the handler is a generator, stream its yields; else run once + final.
         try:
             if inspect.isgeneratorfunction(tool.handler):
+                # Input is strict on the streaming path too (matches _call).
+                args, arg_err = self._validate_args(tool, args)
+                if arg_err is not None:
+                    yield emit({"event": "final", **arg_err})
+                    return
                 kwargs = dict(args)
                 if _accepts_principal(tool.handler):
                     kwargs["principal"] = principal

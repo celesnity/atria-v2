@@ -15,9 +15,10 @@ def _is_secret_type(annotation: Any) -> bool:
     """True if annotation is ``Secret`` / ``OAuth2Secret`` (or a parametrization
     of them). Lazily imports ``_secret`` so this module has no import cycle."""
     try:
-        from ._secret import OAuth2Secret, Secret
+        from ._secret import OAuth2Secret, Secret, unwrap_annotated
     except Exception:  # noqa: BLE001 — _secret may not be importable
         return False
+    annotation = unwrap_annotated(annotation)
     target = getattr(annotation, "__origin__", None) or annotation
     try:
         return isinstance(target, type) and issubclass(target, (Secret, OAuth2Secret))
