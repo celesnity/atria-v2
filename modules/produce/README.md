@@ -17,6 +17,8 @@ Hybrid: 5 persona tabs (Operator / Tổ trưởng / Quản ca / Quản lý xư�
 - Backend: FastAPI, one router per epic, `pr_*` tables on shared Postgres
   (`PR_DATABASE_URL`), lazy engine. Serves the built UI from `frontend_dist/`.
 - Worker: Celery on `PR_REDIS_URL` (Redis DB `/3`) — `oee_snapshot` roll-up.
+- Object store: shared MinIO (`PR_S3_*`, bucket `produce`) for defect photos
+  (P-SCRAP-03); boto3 imported lazily so the app runs without it in dev.
 - Data isolation: creates/owns `pr_*` tables only; never writes Minder tables.
 
 ## Run
