@@ -1,17 +1,22 @@
+import { Grid, Stack } from '@mantine/core';
+import OeeHero from '../panels/OeeHero';
 import WorkPanel from '../panels/WorkPanel';
-import OeePanel from '../panels/OeePanel';
 import HandoverPanel from '../panels/HandoverPanel';
 import ScrapPanel from '../panels/ScrapPanel';
 import ExceptionPanel from '../panels/ExceptionPanel';
+import OeePanel from '../panels/OeePanel';
 
 export default function SupervisorRoute({ apiBase }: { apiBase: string }) {
   return (
-    <>
-      <WorkPanel apiBase={apiBase} mode="load" />
+    <Stack gap="md">
+      <OeeHero apiBase={apiBase} />
+      <Grid gutter="md">
+        <Grid.Col span={{ base: 12, lg: 6 }}><WorkPanel apiBase={apiBase} mode="load" /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><HandoverPanel apiBase={apiBase} /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><ScrapPanel apiBase={apiBase} mode="hold" /></Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}><ExceptionPanel apiBase={apiBase} mode="escalated" /></Grid.Col>
+      </Grid>
       <OeePanel apiBase={apiBase} />
-      <HandoverPanel apiBase={apiBase} />
-      <ScrapPanel apiBase={apiBase} mode="hold" />
-      <ExceptionPanel apiBase={apiBase} mode="escalated" />
-    </>
+    </Stack>
   );
 }
