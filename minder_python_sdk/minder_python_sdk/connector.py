@@ -1010,7 +1010,7 @@ class Connector:
             q: "_queue.Queue[EventEnvelope]" = _queue.Queue(maxsize=256)
 
             def listener(env: EventEnvelope) -> None:
-                if env.session_id not in (None, session):
+                if not _session_visible(env.session_id, session):
                     return
                 try:
                     q.put_nowait(env)
@@ -1338,6 +1338,13 @@ async def _json_body(request: Request) -> dict:
         return data if isinstance(data, dict) else {}
     except ValueError:
         return {}
+
+
+def _session_visible(env_session: Optional[str], session: str) -> bool:
+    """Whether a ``/connector/stream`` for ``session`` should see this envelope:
+    broadcast events (no ``session_id``) reach everyone; session-scoped events
+    reach only their own session."""
+    return env_session is None or env_session == session
 
 
 def _session_from_headers(request: Request) -> Optional[str]:
