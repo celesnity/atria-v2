@@ -30,3 +30,27 @@ Hybrid: 5 persona tabs (Operator / Tổ trưởng / Quản ca / Quản lý xư�
 
 ## Test
 From `backend/`: `uv run --no-sync pytest` (SQLite in-memory; no Postgres needed).
+
+## Track B (Minder co-work)
+Track B layers a Minder co-work surface (Read / Event / Command / Guidance) on top
+of Track A **additively**, using `minder_python_sdk` (backend) + `minder_ui_sdk`
+(frontend). It is **off by default**: set `PR_AGENT_ENABLED=1` to enable it.
+
+- **`PR_AGENT_ENABLED`** (default `0`): when unset/falsy, `produce` runs
+  byte-identically to Track A — no connector, no announce, the event seam is a
+  no-op. When truthy, `app.py` builds the connector ASGI (which announces to
+  Minder and runs the heartbeat) with the Track A routers + SPA attached.
+- **`/connector/*` surface:** with the agent enabled the backend exposes the SDK
+  connector contract at `http://localhost:9310/connector/*` — `/connector/health`,
+  `/connector/manifest` (reads `read_*`, tools `cmd_*`/`guide_*`, and the module's
+  event types), and `/connector/tools/{name}`. This is *in addition to* the Track A
+  REST epics (`/config`, `/work`, `/sop`, …), which are unchanged.
+- **Track A stays standalone when disabled:** with `PR_AGENT_ENABLED=0` there is no
+  `minder_python_sdk` import, no Keycloak/announce wiring, and Track A business
+  logic and human-facing behavior are untouched.
+
+Announce env (only when the agent is enabled): `MINDER_URL`,
+`MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`,
+`MINDER_DEFAULT_AUTONOMY`, `KEYCLOAK_TOKEN_URL`, `MINDER_MODULE_CLIENT_ID`,
+`MINDER_MODULE_CLIENT_SECRET`, `MINDER_MODULE_HEARTBEAT_SEC` — see
+`docker-compose.yml` (`produce-web`) and `modules/module_integration.md` §4.2.
