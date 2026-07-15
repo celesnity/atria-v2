@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Eye, FileCode2 } from 'lucide-react';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function MarkdownViewer({ scope, path, editable, convId, tabId, location }: Props) {
+  const { t } = useTranslation('artifacts');
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'preview' | 'source'>(
@@ -37,13 +39,13 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId, location 
     setText(null);
     setError(null);
     apiClient.readFsText(scope, path)
-      .then(t => { if (!cancelled) setText(t); })
+      .then(txt => { if (!cancelled) setText(txt); })
       .catch(e => { if (!cancelled) setError(String(e)); });
     return () => { cancelled = true; };
   }, [scopeKey, path]);
 
-  if (error) return <div className="p-4 text-xs font-mono text-block-coral">Failed to load file: {error}</div>;
-  if (text === null) return <div className="p-4 text-xs font-mono text-ink/45">Loading…</div>;
+  if (error) return <div className="p-4 text-xs font-mono text-block-coral">{t('markdownViewer.loadError', { error })}</div>;
+  if (text === null) return <div className="p-4 text-xs font-mono text-ink/45">{t('markdownViewer.loading')}</div>;
 
   return (
     <div className="flex flex-col h-full">
@@ -55,7 +57,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId, location 
               mode === 'preview' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
             }`}
           >
-            <Eye className="w-3 h-3" /> Preview
+            <Eye className="w-3 h-3" /> {t('markdownViewer.preview')}
           </button>
           <button
             onClick={() => setMode('source')}
@@ -63,7 +65,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId, location 
               mode === 'source' ? 'bg-canvas text-ink shadow-soft' : 'text-text-muted hover:text-ink'
             }`}
           >
-            <FileCode2 className="w-3 h-3" /> Source
+            <FileCode2 className="w-3 h-3" /> {t('markdownViewer.source')}
           </button>
         </div>
       </div>
@@ -73,7 +75,7 @@ export function MarkdownViewer({ scope, path, editable, convId, tabId, location 
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
           </div>
         ) : (
-          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">Loading editor…</div>}>
+          <Suspense fallback={<div className="p-4 text-xs font-mono text-ink/45">{t('markdownViewer.loadingEditor')}</div>}>
             <MonacoViewer scope={scope} path={path} languageOverride="markdown" editable={editable} convId={convId} tabId={tabId} location={location} />
           </Suspense>
         )}

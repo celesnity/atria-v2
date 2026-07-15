@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Message } from '../../types';
 
 export function ImageMessage({ message }: { message: Message }) {
+  const { t } = useTranslation('chat');
   const [loaded, setLoaded] = useState(false);
   if (!message.image_src) return null;
   return (
@@ -12,7 +14,7 @@ export function ImageMessage({ message }: { message: Message }) {
             Cleared on load; followOutput re-pins any residual delta smoothly. */}
         <img
           src={message.image_src}
-          alt={message.image_caption || 'Image from assistant'}
+          alt={message.image_caption || t('imageMessage.altDefault')}
           onLoad={() => setLoaded(true)}
           className={`block w-full h-auto${loaded ? '' : ' min-h-[180px]'}`}
         />

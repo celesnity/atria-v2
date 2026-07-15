@@ -44,11 +44,23 @@ export default function JobsPanel({ apiBase }: { apiBase: string }) {
       .finally(() => setStarting(false));
   };
 
+  // One-shot fetch on mount; the live polling below only runs while a job is
+  // actually in flight.
   useEffect(() => {
     fetchJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase]);
+
+  // ponytail: poll every 2s ONLY while a job is running/queued — an idle panel
+  // makes zero requests (kills the steady 2s /connector/jobs spam). A job
+  // started by the agent elsewhere appears on the next mount/interaction.
+  const active = jobs.some((j) => j.status === "running" || j.status === "queued");
+  useEffect(() => {
+    if (!active) return;
     const t = setInterval(fetchJobs, 2000);
     return () => clearInterval(t);
-  }, [apiBase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase, active]);
 
   return (
     <Agent.Page name="jobs" description="Background jobs and their status">

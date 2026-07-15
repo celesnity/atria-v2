@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Paperclip, Square, SendHorizontal, Mic } from 'lucide-react';
 import { DocumentIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 import Mentions from 'rc-mentions';
 import type { MentionsRef, DataDrivenOptionProps } from 'rc-mentions/es/Mentions';
 import { useChatStore } from '../../stores/chat';
@@ -12,6 +13,7 @@ import { PersonaSelector } from './PersonaSelector';
 
 
 export function InputBox() {
+  const { t } = useTranslation('chat');
   const [fileOptions, setFileOptions] = useState<DataDrivenOptionProps[]>([]);
   const [isMentionSearching, setIsMentionSearching] = useState(false);
   const mentionsRef = useRef<MentionsRef>(null);
@@ -194,14 +196,14 @@ export function InputBox() {
   }, [currentSessionId, upload, scanArtifacts]);
 
   const inputPlaceholder = !hasActiveSession
-    ? 'Select a session to start chatting...'
+    ? t('inputBox.placeholderNoSession')
     : !isConnected
-    ? 'Disconnected...'
+    ? t('inputBox.placeholderDisconnected')
     : sendLocked
-    ? 'Deep research in progress — sending paused until it finishes…'
+    ? t('inputBox.placeholderLocked')
     : isLoading
-    ? 'Queue a message…'
-    : 'Message…';
+    ? t('inputBox.placeholderQueued')
+    : t('inputBox.placeholder');
 
   return (
     <div className="bg-canvas border-t border-hairline-soft/50 px-2.5 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -231,7 +233,7 @@ export function InputBox() {
                 placement="top"
                 autoSize={{ minRows: 1, maxRows: 7 }}
                 notFoundContent={
-                  <span className="mentions-not-found">No files found</span>
+                  <span className="mentions-not-found">{t('inputBox.noFilesFound')}</span>
                 }
                 placeholder={inputPlaceholder}
                 disabled={!isConnected || !hasActiveSession}
@@ -246,7 +248,7 @@ export function InputBox() {
                     ? 'text-red-500 bg-red-500/10 hover:bg-red-500/15 animate-pulse'
                     : 'text-ink/30 hover:text-ink/60 hover:bg-surface-soft'
                 }`}
-                title={recording ? 'Stop & transcribe' : 'Voice input (push to talk)'}
+                title={recording ? t('inputBox.stopTranscribe') : t('inputBox.voiceInput')}
               >
                 {transcribing ? (
                   <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-full animate-spin" />
@@ -260,7 +262,7 @@ export function InputBox() {
                 onClick={handleFileButtonClick}
                 disabled={!isConnected || !hasActiveSession || fileUploading}
                 className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-colors text-ink/30 hover:text-ink/60 hover:bg-surface-soft disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Upload file as artifact"
+                title={t('inputBox.uploadFile')}
               >
                 {fileUploading ? (
                   <div className="w-4 h-4 border-[1.5px] border-ink/40 border-t-transparent rounded-md animate-spin" />
@@ -272,7 +274,7 @@ export function InputBox() {
                 <button
                   onClick={handleStop}
                   className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-colors text-ink/50 hover:text-ink hover:bg-surface-soft"
-                  title="Stop (Esc)"
+                  title={t('inputBox.stopEsc')}
                 >
                   <Square className="w-4 h-4" />
                 </button>
@@ -281,7 +283,7 @@ export function InputBox() {
                 onClick={handleSend}
                 disabled={!input.trim() || !isConnected || !hasActiveSession || sendLocked}
                 className="min-h-[40px] min-w-[40px] sm:min-h-0 sm:min-w-0 inline-flex items-center justify-center p-2 sm:p-1.5 rounded-md transition-all bg-gradient-brand text-white shadow-glow-nebula hover:brightness-110 active:scale-[0.96] disabled:bg-none disabled:bg-surface-soft disabled:text-text-muted disabled:shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
-                title="Send (Enter)"
+                title={t('inputBox.sendEnter')}
               >
                 <SendHorizontal className="w-4 h-4" />
               </button>

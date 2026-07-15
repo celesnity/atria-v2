@@ -288,7 +288,9 @@ class ToolRegistry(InlineToolsMixin):
         Returns:
             List of tool schema dicts for discovered tools only
         """
-        if not self.mcp_manager:
+        # Common case: nothing discovered yet — skip get_all_tools() entirely
+        # (it's called on every LLM build; no point scanning to filter to none).
+        if not self.mcp_manager or not self._discovered_mcp_tools:
             return []
 
         all_tools = self.mcp_manager.get_all_tools()

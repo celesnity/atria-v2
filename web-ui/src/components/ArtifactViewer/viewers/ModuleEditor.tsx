@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Boxes, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useModulesStore } from '../../../stores/modules';
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function ModuleEditor({ convId, name }: Props) {
+  const { t } = useTranslation('artifacts');
   const { modules, refresh, remove } = useModulesStore();
   const scope = useMemo<FsScope>(() => ({ kind: 'module', name }), [name]);
   const refreshTree = useFileExplorerStore(s => s.refresh);
@@ -28,7 +30,7 @@ export function ModuleEditor({ convId, name }: Props) {
   }, [scope, refreshTree, found?.mtime]);
 
   if (!found) {
-    return <div className="p-4 text-ink/50 text-sm">Loading module {name}…</div>;
+    return <div className="p-4 text-ink/50 text-sm">{t('moduleEditor.loading', { name })}</div>;
   }
 
   return (
@@ -37,14 +39,14 @@ export function ModuleEditor({ convId, name }: Props) {
         <Boxes className="w-4 h-4 text-accent-cobalt" />
         <span className="font-medium text-[13px]">{name}</span>
         <span className="text-[10.5px] font-mono text-ink/40">
-          {found.files.length} file{found.files.length === 1 ? '' : 's'}
+          {t('moduleEditor.fileCount', { count: found.files.length })}
         </span>
         <div className="flex-1" />
         <button
           onClick={() => setConfirmDel(true)}
           className="p-1 rounded text-ink/45 hover:text-semantic-danger hover:bg-surface-soft cursor-pointer transition-colors"
-          aria-label={`Delete module ${name}`}
-          title="Delete module"
+          aria-label={t('moduleEditor.deleteModuleLabel', { name })}
+          title={t('moduleEditor.deleteModuleTitle')}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -52,8 +54,8 @@ export function ModuleEditor({ convId, name }: Props) {
 
       <DeleteConfirmDialog
         open={confirmDel}
-        title="Delete module"
-        message={`Delete module "${name}" and all of its files? This cannot be undone.`}
+        title={t('moduleEditor.deleteDialogTitle')}
+        message={t('moduleEditor.deleteDialogMessage', { name })}
         onConfirm={() => remove(name)}
         onClose={() => setConfirmDel(false)}
       />
@@ -75,8 +77,8 @@ export function ModuleEditor({ convId, name }: Props) {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center gap-1 select-none">
               <Boxes className="w-5 h-5 text-ink/25" />
-              <div className="text-[12px] text-ink/45">SKILL.md is empty</div>
-              <div className="text-[11px] text-ink/35">Open it from the tree to add content.</div>
+              <div className="text-[12px] text-ink/45">{t('moduleEditor.skillEmpty')}</div>
+              <div className="text-[11px] text-ink/35">{t('moduleEditor.skillEmptyHint')}</div>
             </div>
           )}
         </div>

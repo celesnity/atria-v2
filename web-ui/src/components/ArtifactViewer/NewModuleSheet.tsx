@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { X, Sparkles, CheckCircle2, AlertCircle, FilePlus2, FolderPlus, Trash2, ArrowRight } from 'lucide-react';
 import { useModulesStore } from '../../stores/modules';
 import { useToastStore } from '../../stores/toast';
@@ -68,6 +69,7 @@ function humanSize(bytes: number): string {
 }
 
 export function NewModuleSheet({ open, onClose, onCreated }: Props) {
+  const { t } = useTranslation('artifacts');
   const { modules, create, refresh } = useModulesStore();
   const addToast = useToastStore(s => s.addToast);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -160,19 +162,19 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
       if (template === 'data') {
         const res = await ModulesApi.uploadData(name, picked, true);
         await refresh(); // pick up the regenerated SKILL/dashboard (WS also refreshes)
-        const conv = res.converted.length ? ` (${res.converted.length} sheet${res.converted.length > 1 ? 's' : ''} → CSV)` : '';
-        addToast(`Module “${name}” created with ${res.written.length} file(s)${conv}.`, 'success');
+        const suffix = res.converted.length ? ` (${res.converted.length} sheet${res.converted.length > 1 ? 's' : ''} → CSV)` : '';
+        addToast(t('newModule.createdWithFiles', { name, count: res.written.length, suffix }), 'success');
         if (res.skipped.length) {
-          addToast(`${res.skipped.length} file(s) could not be processed.`, 'warning');
+          addToast(t('newModule.filesSkipped', { count: res.skipped.length }), 'warning');
         }
       } else {
-        addToast(`Module “${name}” created.`, 'success');
+        addToast(t('newModule.created', { name }), 'success');
       }
       onCreated(name);
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      addToast(`Failed to create module: ${msg}`, 'error');
+      addToast(t('newModule.createFailed', { msg }), 'error');
       setBusy(false);
     }
   };
@@ -192,12 +194,12 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
       >
         <div className="flex items-center gap-2 px-5 py-3 border-b border-hairline-soft/60 flex-shrink-0">
           <Sparkles className="w-4 h-4 text-ink/55" />
-          <span id="new-module-title" className="text-[14px] font-medium tracking-tight">New module</span>
+          <span id="new-module-title" className="text-[14px] font-medium tracking-tight">{t('newModule.title')}</span>
           <div className="flex-1" />
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('newModule.close')}
             className="p-1 rounded text-ink/45 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
           >
             <X className="w-4 h-4" />
@@ -206,14 +208,14 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
 
         <div className="p-5 space-y-4 overflow-auto">
           <label className="block">
-            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-1">Name</span>
+            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-1">{t('newModule.nameLabelText')}</span>
             <div className="relative">
               <input
                 ref={inputRef}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 onBlur={() => setNameTouched(true)}
-                placeholder="e.g. my-module"
+                placeholder={t('newModule.namePlaceholder')}
                 spellCheck={false}
                 autoCapitalize="none"
                 autoComplete="off"
@@ -239,7 +241,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
               <span className={`text-[11px] leading-snug ${showNameError ? 'text-semantic-danger' : 'text-ink/45'}`}>
                 {showNameError
                   ? nameCheck.error
-                  : 'Lowercase letters, digits, _ and -. Starts with a letter or digit.'}
+                  : t('newModule.nameHint')}
               </span>
               <span className={`text-[10px] font-mono tabular-nums ${name.length > NAME_MAX ? 'text-semantic-danger' : 'text-ink/35'}`}>
                 {name.length}/{NAME_MAX}
@@ -248,12 +250,12 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
           </label>
 
           <label className="block">
-            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-1">Summary <span className="text-ink/40 normal-case tracking-normal">(optional)</span></span>
+            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-1">{t('newModule.summaryLabel')} <span className="text-ink/40 normal-case tracking-normal">{t('newModule.optional')}</span></span>
             <input
               value={summary}
               onChange={e => setSummary(e.target.value)}
               onBlur={() => setSummaryTouched(true)}
-              placeholder="One line shown to the agent."
+              placeholder={t('newModule.summaryPlaceholder')}
               aria-invalid={showSummaryError}
               aria-describedby="summary-help"
               className={`w-full px-3 py-2 text-sm rounded-md border bg-canvas transition-colors focus:outline-none focus-visible:ring-1 ${
@@ -264,7 +266,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
             />
             <div id="summary-help" className="mt-1 flex items-start justify-between gap-3 min-h-[16px]">
               <span className={`text-[11px] leading-snug ${showSummaryError ? 'text-semantic-danger' : 'text-ink/45'}`}>
-                {showSummaryError ? summaryCheck.error : 'A short hint that helps the agent decide when to use this module.'}
+                {showSummaryError ? summaryCheck.error : t('newModule.summaryHint')}
               </span>
               <span className={`text-[10px] font-mono tabular-nums ${summary.length > SUMMARY_MAX ? 'text-semantic-danger' : 'text-ink/35'}`}>
                 {summary.length}/{SUMMARY_MAX}
@@ -273,7 +275,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
           </label>
 
           <div>
-            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-2">Start from</span>
+            <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-2">{t('newModule.startFrom')}</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(Object.keys(TEMPLATES) as ModuleTemplate[]).map(k => {
                 const active = template === k;
@@ -299,7 +301,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
 
           {template === 'data' && (
             <div>
-              <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-2">Data files</span>
+              <span className="block text-[11px] uppercase tracking-wide text-ink/50 mb-2">{t('newModule.dataFiles')}</span>
               <input
                 ref={filesInputRef}
                 type="file"
@@ -319,14 +321,14 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                   onClick={() => filesInputRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
                 >
-                  <FilePlus2 className="w-4 h-4" /> Add files
+                  <FilePlus2 className="w-4 h-4" /> {t('newModule.addFiles')}
                 </button>
                 <button
                   type="button"
                   onClick={() => folderInputRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-md border border-hairline-soft hover:bg-surface-soft/60 cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent-cobalt/60"
                 >
-                  <FolderPlus className="w-4 h-4" /> Add folder
+                  <FolderPlus className="w-4 h-4" /> {t('newModule.addFolder')}
                 </button>
               </div>
               {picked.length > 0 ? (
@@ -348,13 +350,13 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                     ))}
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-[11px] text-ink/45">
-                    <span>{picked.length} file{picked.length > 1 ? 's' : ''} selected · .xlsx auto-converts to CSV</span>
-                    <button type="button" onClick={() => setPicked([])} className="hover:text-ink cursor-pointer">Clear all</button>
+                    <span>{t('newModule.filesSelectedCount', { count: picked.length })}</span>
+                    <button type="button" onClick={() => setPicked([])} className="hover:text-ink cursor-pointer">{t('newModule.clearAll')}</button>
                   </div>
                 </>
               ) : (
                 <p className="mt-2 text-[11px] text-ink/45">
-                  Add individual files or a whole folder. Excel files (.xlsx) are auto-converted to CSV; folders keep their structure.
+                  {t('newModule.dataHint')}
                 </p>
               )}
             </div>
@@ -368,7 +370,7 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
             onClick={onClose}
             className="px-3 py-1.5 text-[13px] rounded text-ink/65 hover:text-ink hover:bg-surface-soft cursor-pointer transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ink/40"
           >
-            Cancel
+            {t('newModule.cancel')}
           </button>
           <button
             type="submit"
@@ -380,9 +382,9 @@ export function NewModuleSheet({ open, onClose, onCreated }: Props) {
                 : 'bg-gradient-brand opacity-50'
             } disabled:opacity-60 disabled:cursor-not-allowed`}
           >
-            {busy ? 'Creating…' : (
+            {busy ? t('newModule.creating') : (
               <span className="inline-flex items-center justify-center gap-1">
-                Create <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+                {t('newModule.create')} <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
               </span>
             )}
           </button>

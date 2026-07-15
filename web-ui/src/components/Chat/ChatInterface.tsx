@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import { useArtifactsStore } from '../../stores/artifacts';
 import { useToastStore } from '../../stores/toast';
@@ -12,6 +13,7 @@ import { InputBox } from './InputBox';
 import { LandingPage } from './LandingPage';
 
 export function ChatInterface() {
+  const { t } = useTranslation('chat');
   const error = useChatStore(state => {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.error ?? null : null;
@@ -53,8 +55,8 @@ export function ChatInterface() {
         scanArtifacts(currentSessionId).catch(() => {});
         addToast(
           uploaded === 1
-            ? `"${acceptedFiles[0].name}" uploaded`
-            : `${uploaded} files uploaded`,
+            ? t('chatInterface.fileUploaded', { name: acceptedFiles[0].name })
+            : t('chatInterface.filesUploaded', { count: uploaded }),
           'success',
           3000,
         );
@@ -82,7 +84,7 @@ export function ChatInterface() {
       {error && (
         <div className="mx-6 mt-4 flex items-start gap-3 rounded-md border border-semantic-danger/25 bg-semantic-danger/10 px-4 py-3 text-semantic-danger">
           <p className="text-body-sm leading-[1.5]">
-            <strong className="font-[600]">Something went wrong.</strong> {error}
+            <strong className="font-[600]">{t('chatInterface.errorHeading')}</strong> {error}
           </p>
         </div>
       )}
@@ -97,7 +99,7 @@ export function ChatInterface() {
           <div className="absolute inset-2 rounded-md border-2 border-dashed border-accent-magenta bg-accent-magenta/[0.06]" />
           <div className="animate-scale-in relative flex items-center gap-3 rounded-md border border-hairline-soft bg-canvas px-6 py-4 shadow-modal">
             <Upload className="h-5 w-5 text-accent-magenta" strokeWidth={1.75} />
-            <span className="text-body-sm font-[540] text-ink">Drop files to add them as artifacts</span>
+            <span className="text-body-sm font-[540] text-ink">{t('chatInterface.dropFiles')}</span>
           </div>
         </div>
       )}
@@ -106,7 +108,7 @@ export function ChatInterface() {
       {uploading && (
         <div className="animate-slide-up absolute bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-pill border border-hairline-soft bg-canvas px-4 py-2 text-body-sm text-ink shadow-hover">
           <div className="h-3 w-3 animate-spin rounded-md border-2 border-accent-magenta border-t-transparent" />
-          Uploading…
+          {t('chatInterface.uploading')}
         </div>
       )}
 

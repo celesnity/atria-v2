@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { Save, Loader2 } from 'lucide-react';
 import { apiClient } from '../../../api/client';
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function MonacoViewer({ scope, path, languageOverride, editable = false, convId, tabId, location }: Props) {
+  const { t } = useTranslation('artifacts');
   const markDirty = useViewerTabsStore(s => s.markDirty);
   const markClean = useViewerTabsStore(s => s.markClean);
   const flagDirty = () => { if (convId && tabId) markDirty(convId, tabId); };
@@ -36,7 +38,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
     setError(null);
     setDirty(false);
     apiClient.readFsText(scope, path)
-      .then(t => { if (!cancelled) setText(t); })
+      .then(txt => { if (!cancelled) setText(txt); })
       .catch(e => { if (!cancelled) setError(String(e)); });
     return () => { cancelled = true; };
   }, [scopeKey, path]);
@@ -124,12 +126,12 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
   if (error) {
     return (
       <div className="p-4 text-xs font-mono text-block-coral">
-        Failed to load file: {error}
+        {t('monacoViewer.loadError', { error })}
       </div>
     );
   }
   if (text === null) {
-    return <div className="p-4 text-xs font-mono text-ink/45">Loading…</div>;
+    return <div className="p-4 text-xs font-mono text-ink/45">{t('monacoViewer.loading')}</div>;
   }
 
   const dot = path.lastIndexOf('.');
@@ -162,10 +164,10 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
         <span className="text-[11px] font-mono text-text-secondary truncate">{path}</span>
         {dirty ? (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-amber-400/15 text-amber-400 text-[10px] font-mono">
-            unsaved · ⌘S
+            {t('monacoViewer.unsaved')}
           </span>
         ) : (
-          <span className="text-[10px] text-text-muted font-mono">saved</span>
+          <span className="text-[10px] text-text-muted font-mono">{t('monacoViewer.saved')}</span>
         )}
         <div className="flex-1" />
         <button
@@ -174,7 +176,7 @@ export function MonacoViewer({ scope, path, languageOverride, editable = false, 
           className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-gradient-brand text-white shadow-glow-accent transition-all duration-base ease-motion-spring hover:-translate-y-px disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none cursor-pointer"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-          Save
+          {t('monacoViewer.save')}
         </button>
       </div>
       <div className="flex-1 min-h-0">{editor}</div>

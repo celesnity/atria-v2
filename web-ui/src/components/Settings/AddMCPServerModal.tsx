@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MCPServerCreateRequest } from '../../types/mcp';
 import {
   ModalHeader,
@@ -46,6 +47,7 @@ const initialFormData: FormData = {
 type InputMode = 'form' | 'json';
 
 export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerModalProps) {
+  const { t } = useTranslation('settings');
   const [mode, setMode] = useState<InputMode>('form');
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [jsonInput, setJsonInput] = useState('');
@@ -69,7 +71,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
       if (parsed.mcpServers) {
         const serverName = Object.keys(parsed.mcpServers)[0];
         if (!serverName) {
-          setError('No server found in JSON');
+          setError(t('mcp.errorNoServerInJson'));
           return;
         }
         const serverConfig = parsed.mcpServers[serverName];
@@ -99,7 +101,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
         setMode('form');
         setError(null);
       } else {
-        setError('Invalid JSON format. Expected either Claude Code format or server config.');
+        setError(t('mcp.errorInvalidJson'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid JSON');
@@ -112,12 +114,12 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
 
     // Validation
     if (!formData.name.trim()) {
-      setError('Server name is required');
+      setError(t('mcp.validationNameRequired'));
       return;
     }
 
     if (!formData.command.trim()) {
-      setError('Command is required');
+      setError(t('mcp.validationCommandRequired'));
       return;
     }
 
@@ -141,7 +143,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
       setEnvValue('');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add server');
+      setError(err instanceof Error ? err.message : t('mcp.errorAddFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -200,7 +202,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="bg-canvas rounded-2xl shadow-modal w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
         {/* Header */}
-        <ModalHeader title="Add MCP Server" onClose={handleClose} disabled={isSubmitting} />
+        <ModalHeader title={t('mcp.addServerTitle')} onClose={handleClose} disabled={isSubmitting} />
 
         {/* Mode Tabs */}
         <div className="flex border-b border-hairline-soft px-6">
@@ -214,7 +216,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
                 : 'border-transparent text-text-muted hover:text-text-secondary'
             }`}
           >
-            Manual Entry
+            {t('mcp.manualEntry')}
           </button>
           <button
             type="button"
@@ -226,7 +228,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
                 : 'border-transparent text-text-muted hover:text-text-secondary'
             }`}
           >
-            Import JSON
+            {t('mcp.importJson')}
           </button>
         </div>
 
@@ -238,10 +240,10 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Paste JSON Configuration
+                  {t('mcp.pasteJsonLabel')}
                 </label>
                 <p className="text-xs text-text-muted mb-3">
-                  Paste your MCP server JSON from Claude Code format or direct server config
+                  {t('mcp.pasteJsonHint')}
                 </p>
                 <textarea
                   value={jsonInput}
@@ -258,13 +260,13 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
                 disabled={isSubmitting || !jsonInput.trim()}
                 className="px-4 py-2 text-sm font-medium text-white bg-gradient-brand hover:brightness-110 active:scale-[0.98] whitespace-nowrap rounded-md transition-colors disabled:opacity-50"
               >
-                Parse and Fill Form
+                {t('mcp.parseButton')}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <TextField
-                label="Server Name"
+                label={t('mcp.serverNameLabel')}
                 value={formData.name}
                 onChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
                 placeholder="e.g., github, filesystem"
@@ -273,7 +275,7 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
               />
 
               <TextField
-                label="Command"
+                label={t('mcp.commandLabel')}
                 value={formData.command}
                 onChange={(value) => setFormData(prev => ({ ...prev, command: value }))}
                 placeholder="e.g., npx -y @modelcontextprotocol/server-github"
@@ -302,21 +304,21 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
               />
 
               <CheckboxField
-                label="Enable auto-start on launch"
+                label={t('mcp.autoStartLabel')}
                 checked={formData.auto_start}
                 onChange={(checked) => setFormData(prev => ({ ...prev, auto_start: checked }))}
                 disabled={isSubmitting}
               />
 
               <CheckboxField
-                label="Enable this server"
+                label={t('mcp.enableServerLabel')}
                 checked={formData.enabled}
                 onChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))}
                 disabled={isSubmitting}
               />
 
               <CheckboxField
-                label="Save to project config (instead of global)"
+                label={t('mcp.saveToProjectLabel')}
                 checked={formData.project_config}
                 onChange={(checked) => setFormData(prev => ({ ...prev, project_config: checked }))}
                 disabled={isSubmitting}
@@ -330,8 +332,8 @@ export function AddMCPServerModal({ isOpen, onClose, onSubmit }: AddMCPServerMod
           onClose={handleClose}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          submitLabel="Add Server"
-          submittingLabel="Adding..."
+          submitLabel={t('mcp.addServerButton')}
+          submittingLabel={t('mcp.addingButton')}
           showSubmit={mode === 'form'}
         />
       </div>

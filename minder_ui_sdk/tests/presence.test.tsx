@@ -2,11 +2,17 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AgentDriverProvider } from '../src/agentDriver';
 import { AgentPresence, attributionLabel } from '../src/presence';
 import { MinderThemeProvider } from '../src/theme';
+import { UI_INTENT } from '../src/events';
+import { __resetSharedStreams } from '../src/stream';
 import type { EventEnvelope } from '../src/agentContext';
 import type { UiIntent } from '../src/agentDriver';
 
-/** One fake EventSource per URL, so a test can push into the right stream:
- * the driver's `/connector/ui/intents` and presence's `/connector/events`. */
+let __seq = 0;
+
+/** One fake EventSource per URL. Both the driver and presence now subscribe to
+ * the merged `/connector/stream` — presence's domain-event reader uses the
+ * session-less URL, the driver uses `?session=s1`. `push` sends a raw envelope;
+ * `pushIntent` wraps a UiIntent as a `ui.intent` envelope. */
 class FakeES {
   static byUrl = new Map<string, FakeES>();
   onmessage: ((e: MessageEvent) => void) | null = null;
@@ -20,8 +26,21 @@ class FakeES {
   push(obj: unknown) {
     this.onmessage?.({ data: JSON.stringify(obj) } as MessageEvent);
   }
+  pushIntent(intent: UiIntent) {
+    this.push({
+      event_id: `e${(__seq += 1)}`,
+      type: UI_INTENT,
+      module: 'm',
+      ts: '',
+      source: 'agent',
+      session_id: 's1',
+      payload: { intent },
+    });
+  }
   close() {}
 }
+
+afterEach(() => __resetSharedStreams());
 
 function setup() {
   FakeES.byUrl.clear();
@@ -35,8 +54,8 @@ function setup() {
     </MinderThemeProvider>,
   );
   return {
-    events: FakeES.byUrl.get('http://m/connector/events')!,
-    intents: FakeES.byUrl.get('http://m/connector/ui/intents?session=s1')!,
+    events: FakeES.byUrl.get('http://m/connector/stream')!,
+    intents: FakeES.byUrl.get('http://m/connector/stream?session=s1')!,
   };
 }
 
@@ -67,7 +86,7 @@ it('animates a committed low-risk action as done, attributed to Minder', () => {
 it('renders a high-risk proposal as a parked cursor awaiting approval', () => {
   const { intents } = setup();
   const intent: UiIntent = { intent: 'request_confirm', target: 'add_product', summary: 'Create ABC?' };
-  act(() => intents.push(intent));
+  act(() => intents.pushIntent(intent));
   expect(document.querySelector('[data-minder-presence="proposing"]')).toBeTruthy();
   expect(screen.getByText('Create ABC?')).toBeTruthy();
   expect(document.querySelector('[data-minder-ghost-cursor="proposing"]')).toBeTruthy();
@@ -75,12 +94,12 @@ it('renders a high-risk proposal as a parked cursor awaiting approval', () => {
 
 it('follows the agent to the field it is filling/focusing', () => {
   const { intents } = setup();
-  act(() => intents.push({ intent: 'fill', form: 'add_product', values: { sku: 'T-1' } } as UiIntent));
+  act(() => intents.pushIntent({ intent: 'fill', form: 'add_product', values: { sku: 'T-1' } }));
   expect(document.querySelector('[data-minder-presence="acting"]')).toBeTruthy();
   expect(screen.getByText('Minder filled the form')).toBeTruthy();
   expect(document.querySelector('[data-minder-ghost-cursor="acting"]')).toBeTruthy();
 
-  act(() => intents.push({ intent: 'focus', form: 'add_product', field: 'category' } as UiIntent));
+  act(() => intents.pushIntent({ intent: 'focus', form: 'add_product', field: 'category' }));
   expect(screen.getByText('Fill this next')).toBeTruthy();
 });
 

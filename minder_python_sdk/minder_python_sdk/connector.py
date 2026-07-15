@@ -40,14 +40,14 @@ import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Mapping, Optional
 
 if TYPE_CHECKING:
     from .client import MinderClient
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .cards import decision_packet, unavailable_card, unavailable_suffix
@@ -61,6 +61,14 @@ from .envelope import (
     normalize_risk,
 )
 from .ui import Control, Form, Page, UiSurface, is_intent, navigate
+from ._response import ActionError, Response
+from ._schema import (
+    build_params_model,
+    output_annotation_for,
+    output_schema_for,
+    secret_params,
+)
+from ._secret import build_secret, resolve_secret_value
 
 logger = logging.getLogger("minder_python_sdk")
 
@@ -101,6 +109,9 @@ class _Tool:
     read_only: bool = False
     when_to_use: str = ""
     examples: list = field(default_factory=list)
+    output_schema: Optional[dict] = None
+    output_annotation: Optional[Any] = None
+    auto_params: bool = False
 
 
 @dataclass
@@ -181,13 +192,14 @@ class Connector:
         # (node + depth) with {nodes, edges} so the agent reasons over connected
         # context instead of a single isolated read.
         self._graph_provider: Optional[Callable[..., Any]] = None
-        # Declared UI surface (pages/forms/controls) + a per-session intent bus
-        # the module frontend drains over SSE.
+        # Declared UI surface (pages/forms/controls).
         self._ui = UiSurface()
-        self._ui_bus: "dict[str, list[Any]]" = {}
         # Per-session declarative UI snapshot cache (page/data/actions) the agent
-        # reads via /connector/context to see what's currently on screen.
+        # reads via /connector/context to see what's currently on screen. The
+        # frontend sends a full snapshot once, then RFC-6902 deltas guarded by an
+        # optimistic version (mismatch → 409, client resends full).
         self._ui_snapshots: dict[str, dict] = {}
+        self._ui_snapshot_versions: dict[str, int] = {}
         # Declarative agent-facing context: live state providers + static
         # knowledge/notes, surfaced via /connector/context and the manifest.
         self._ctx_state: dict[str, _StateProvider] = {}
@@ -235,14 +247,18 @@ class Connector:
         read (implies risk "none")."""
         if params_model is not None and parameters is not None:
             raise ValueError("pass either params_model or parameters, not both")
-        params = (
-            params_model.model_json_schema()
-            if params_model is not None  # type: ignore[attr-defined]
-            else (parameters or {"type": "object", "properties": {}})
-        )
         eff_risk = "none" if read_only else normalize_risk(risk)
 
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+            model = params_model
+            auto_params = False
+            if model is None and parameters is None:
+                model = build_params_model(fn)
+                auto_params = model is not None
+            if model is not None:
+                params = model.model_json_schema()  # type: ignore[attr-defined]
+            else:
+                params = parameters or {"type": "object", "properties": {}}
             self._tools[name] = _Tool(
                 name,
                 description,
@@ -251,7 +267,7 @@ class Connector:
                 card_type,
                 streaming,
                 requires_auth=requires_auth,
-                params_model=params_model,
+                params_model=model,
                 risk=eff_risk,
                 reversible=reversible,
                 undo=undo,
@@ -259,6 +275,9 @@ class Connector:
                 read_only=read_only,
                 when_to_use=when_to_use,
                 examples=examples or [],
+                output_schema=output_schema_for(fn),
+                output_annotation=output_annotation_for(fn),
+                auto_params=auto_params,
             )
             return fn
 
@@ -452,8 +471,9 @@ class Connector:
         self, session_id: str, intent: dict, *, actor: Optional[dict] = None
     ) -> dict:
         """Send a UI intent to a session's frontend. Validates it against the
-        declared surface (warns, doesn't block), records a ``ui.intent`` event
-        for ground truth, and enqueues it for the SSE bus + any event sink."""
+        declared surface (warns, doesn't block) and dispatches it as a
+        ``ui.intent`` envelope to subscribers (the ``/connector/stream`` SSE) and
+        any event sink — the merged stream is the frontend's command bus."""
         if not is_intent(intent):
             raise ValueError(f"not a UI intent: {intent!r}")
         err = self._ui.validate(intent)
@@ -469,11 +489,6 @@ class Connector:
                 session_id=session_id,
             )
         )
-        for q in self._ui_bus.get(session_id, []):
-            try:
-                q.put_nowait(intent)
-            except Exception:  # noqa: BLE001 — full/closed queue: drop for that consumer
-                pass
         return {"ok": True, "warning": err}
 
     def apply_decision(self, decision: dict, principal: Optional[Principal] = None) -> dict:
@@ -608,7 +623,19 @@ class Connector:
 
     def _normalize(self, tool: _Tool, raw: Any) -> dict:
         """Coerce a handler return into the tool-response envelope."""
-        if isinstance(raw, dict) and (
+        # A typed Response[T]: error → handled failure; result → output.
+        if isinstance(raw, Response):
+            if raw.error is not None:
+                return self._fail(raw.error)
+            env = {
+                "success": True,
+                "output": raw.result,
+                "card": None,
+                "card_type": tool.card_type if isinstance(raw.result, dict) else None,
+                "llm_suffix": None,
+                "blocks": None,
+            }
+        elif isinstance(raw, dict) and (
             "output" in raw
             or "card" in raw
             or "blocks" in raw
@@ -616,7 +643,7 @@ class Connector:
             or "llm_suffix" in raw
         ):
             card = raw.get("card")
-            return {
+            env = {
                 "success": bool(raw.get("success", True)),
                 "output": raw.get("output", card if card is not None else raw),
                 "card": card,
@@ -624,16 +651,28 @@ class Connector:
                 "llm_suffix": raw.get("llm_suffix"),
                 "blocks": raw.get("blocks"),
             }
-        # A bare value: it's both the agent output and (if a dict) the card.
-        card = raw if isinstance(raw, dict) else None
-        return {
-            "success": True,
-            "output": raw,
-            "card": card,
-            "card_type": tool.card_type if card is not None else None,
-            "llm_suffix": None,
-            "blocks": None,
-        }
+        else:
+            # A bare value: it's both the agent output and (if a dict) the card.
+            card = raw if isinstance(raw, dict) else None
+            env = {
+                "success": True,
+                "output": raw,
+                "card": card,
+                "card_type": tool.card_type if card is not None else None,
+                "llm_suffix": None,
+                "blocks": None,
+            }
+        # Output soft-validation: warn on a schema mismatch, still return the result.
+        if tool.output_annotation is not None and env.get("success"):
+            try:
+                from pydantic import TypeAdapter
+
+                TypeAdapter(tool.output_annotation).validate_python(env.get("output"))
+            except Exception as exc:  # noqa: BLE001 — soft: warn, still return
+                logger.warning(
+                    "tool %s output does not match output_schema: %s", tool.name, exc
+                )
+        return env
 
     @staticmethod
     def _fail(output: str, *, error: Optional[dict] = None) -> dict:
@@ -659,6 +698,7 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> dict:
         """Invoke a registered tool in-process (for unit tests) — bypasses HTTP.
         Returns the same envelope the /connector/tools/{name} endpoint returns."""
@@ -672,7 +712,26 @@ class Connector:
             agent_id=agent_id,
             request_key=request_key,
             dry_run=dry_run,
+            headers=headers,
         )
+
+    def _validate_args(self, tool: _Tool, arguments: dict) -> tuple[dict, Optional[dict]]:
+        """Strict input validation against the tool's params model. Returns
+        ``(coerced_args, None)`` on success or ``(arguments, fail_envelope)`` on
+        error. For an auto-inferred model the validated *field values* are
+        injected (so a ``foo: SomeModel`` param arrives as ``SomeModel``, matching
+        the handler's own type hint); an explicit ``params_model=`` keeps its
+        historical ``model_dump()`` contract."""
+        if tool.params_model is None:
+            return arguments, None
+        try:
+            validated = tool.params_model(**arguments)
+        except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
+            return arguments, self._fail(f"invalid arguments: {exc}")
+        if tool.auto_params:
+            fields = type(validated).model_fields
+            return {name: getattr(validated, name) for name in fields}, None
+        return validated.model_dump(), None
 
     def _call(
         self,
@@ -685,13 +744,11 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> dict:
-        if tool.params_model is not None:
-            try:
-                validated = tool.params_model(**arguments)
-                arguments = validated.model_dump()
-            except Exception as exc:  # noqa: BLE001 — pydantic ValidationError etc.
-                return self._fail(f"invalid arguments: {exc}")
+        arguments, arg_err = self._validate_args(tool, arguments)
+        if arg_err is not None:
+            return arg_err
         if tool.requires_auth and not principal.is_authenticated:
             return self._fail("authentication required")
 
@@ -730,6 +787,15 @@ class Connector:
         if handler_dry:
             kwargs["dry_run"] = True
 
+        # Managed credentials: resolve each Secret/OAuth2Secret param from the
+        # forwarded header / env and inject it. A missing required secret is
+        # fail-closed — the handler never runs without its credentials.
+        for sname, ann in secret_params(tool.handler).items():
+            raw_secret = resolve_secret_value(sname, headers)
+            if raw_secret is None:
+                return self._fail(f"credential '{sname}' unavailable")
+            kwargs[sname] = build_secret(ann, raw_secret)
+
         actor = actor_from(principal, agent_id)
         # Ground truth: announce the action is starting, so the event log records
         # the attempt even if the handler crashes.
@@ -752,6 +818,8 @@ class Connector:
             if inspect.isgenerator(raw):
                 raw = self._drain(raw)
             result = self._normalize(tool, raw)
+        except ActionError as exc:
+            result = self._fail(str(exc))
         except ToolError as exc:
             result = self._fail(exc.message, error=exc.as_error())
         except ServiceUnavailable as exc:
@@ -1001,18 +1069,23 @@ class Connector:
                 "default_autonomy": self.default_autonomy,
             }
 
-        @app.get("/connector/events")
-        def events() -> StreamingResponse:
-            """SSE stream of this module's event envelopes — the agent's
-            subscription to state changes (backlog B2)."""
+        @app.get("/connector/stream")
+        def stream(request: Request) -> StreamingResponse:
+            """One SSE stream of every envelope for a session — module domain
+            events and ``ui.intent`` alike. Replaces ``/connector/events`` and
+            ``/connector/ui/intents``. Broadcast events (no ``session_id``) reach
+            every subscriber; session-scoped events reach only their session."""
             import queue as _queue
 
+            session = request.query_params.get("session") or "default"
             q: "_queue.Queue[EventEnvelope]" = _queue.Queue(maxsize=256)
 
             def listener(env: EventEnvelope) -> None:
+                if not _session_visible(env.session_id, session):
+                    return
                 try:
                     q.put_nowait(env)
-                except _queue.Full:  # slow consumer — drop rather than block the action
+                except _queue.Full:  # slow consumer — drop rather than block
                     pass
 
             self._event_listeners.append(listener)
@@ -1034,32 +1107,6 @@ class Connector:
 
             return StreamingResponse(gen(), media_type="text/event-stream")
 
-        @app.get("/connector/ui/intents")
-        def ui_intents(request: Request) -> StreamingResponse:
-            """SSE stream of UI intents for one session — the module frontend's
-            command bus (the agent drives the real UI through this)."""
-            import queue as _queue
-
-            session = request.query_params.get("session") or "default"
-            q: "_queue.Queue[dict]" = _queue.Queue(maxsize=256)
-            self._ui_bus.setdefault(session, []).append(q)
-
-            def gen() -> Iterator[bytes]:
-                try:
-                    yield b": ok\n\n"
-                    while True:
-                        try:
-                            intent = q.get(timeout=15)
-                            yield f"data: {json.dumps(intent)}\n\n".encode()
-                        except _queue.Empty:
-                            yield b": ping\n\n"
-                finally:
-                    subs = self._ui_bus.get(session, [])
-                    if q in subs:
-                        subs.remove(q)
-
-            return StreamingResponse(gen(), media_type="text/event-stream")
-
         @app.post("/connector/ui/intent")
         async def ui_intent(request: Request) -> dict:
             """Accept a UI intent from Minder core (agent-originated) and route it
@@ -1074,13 +1121,36 @@ class Connector:
                 return self._fail(str(exc))
 
         @app.post("/connector/ui/snapshot")
-        async def ui_snapshot(request: Request) -> dict:
-            """Cache the frontend's declarative UI snapshot for one session so the
-            agent can read what's currently on screen via ``/connector/context``."""
+        async def ui_snapshot(request: Request) -> Any:
+            """Store the frontend's declarative UI snapshot for one session so the
+            agent can read what's on screen via ``/connector/context``. First push
+            is a full ``snapshot``; later pushes are RFC-6902 ``delta``s guarded by
+            an optimistic ``base_version`` (mismatch → 409, client resends full)."""
             body = await _json_body(request)
             session = body.get("session_id") or "default"
-            self._ui_snapshots[session] = body.get("snapshot") or {}
-            return {"ok": True}
+            kind = body.get("kind") or "snapshot"
+            if kind == "snapshot":
+                self._ui_snapshots[session] = body.get("snapshot") or {}
+                ver = self._ui_snapshot_versions.get(session, 0) + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            if kind == "delta":
+                cur = self._ui_snapshot_versions.get(session, 0)
+                if body.get("base_version") != cur:
+                    return JSONResponse(
+                        {"ok": False, "error": "version_mismatch", "version": cur},
+                        status_code=409,
+                    )
+                import jsonpatch
+
+                patched = jsonpatch.apply_patch(
+                    self._ui_snapshots.get(session, {}), body.get("delta") or []
+                )
+                self._ui_snapshots[session] = patched
+                ver = cur + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            return JSONResponse({"ok": False, "error": "bad_kind"}, status_code=422)
 
         @app.post("/connector/decision")
         async def decision(request: Request) -> dict:
@@ -1178,6 +1248,7 @@ class Connector:
                 "idempotent": t.idempotent,
                 "when_to_use": t.when_to_use,
                 "examples": t.examples,
+                "output_schema": t.output_schema,
             }
             for t in self._tools.values()
         ]
@@ -1199,6 +1270,7 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> Iterator[bytes]:
         def emit(obj: dict) -> bytes:
             return f"data: {json.dumps(obj)}\n\n".encode()
@@ -1218,6 +1290,11 @@ class Connector:
         # If the handler is a generator, stream its yields; else run once + final.
         try:
             if inspect.isgeneratorfunction(tool.handler):
+                # Input is strict on the streaming path too (matches _call).
+                args, arg_err = self._validate_args(tool, args)
+                if arg_err is not None:
+                    yield emit({"event": "final", **arg_err})
+                    return
                 kwargs = dict(args)
                 if _accepts_principal(tool.handler):
                     kwargs["principal"] = principal
@@ -1229,6 +1306,15 @@ class Connector:
                     kwargs["autonomy"] = eff_autonomy
                 if dry_run:
                     kwargs["dry_run"] = True
+                for sname, ann in secret_params(tool.handler).items():
+                    raw_secret = resolve_secret_value(sname, headers)
+                    if raw_secret is None:
+                        yield emit(
+                            {"event": "final",
+                             **self._fail(f"credential '{sname}' unavailable")}
+                        )
+                        return
+                    kwargs[sname] = build_secret(ann, raw_secret)
                 last: Any = None
                 for evt in tool.handler(**kwargs):
                     if isinstance(evt, dict) and evt.get("event"):
@@ -1249,6 +1335,7 @@ class Connector:
                     agent_id=agent_id,
                     request_key=request_key,
                     dry_run=dry_run,
+                    headers=headers,
                 )
                 yield emit({"event": "final", **final})
         except Exception as exc:  # noqa: BLE001
@@ -1341,6 +1428,13 @@ async def _json_body(request: Request) -> dict:
         return {}
 
 
+def _session_visible(env_session: Optional[str], session: str) -> bool:
+    """Whether a ``/connector/stream`` for ``session`` should see this envelope:
+    broadcast events (no ``session_id``) reach everyone; session-scoped events
+    reach only their own session."""
+    return env_session is None or env_session == session
+
+
 def _session_from_headers(request: Request) -> Optional[str]:
     return request.headers.get("X-Minder-Session") or None
 
@@ -1360,6 +1454,7 @@ def _call_ctx_from_headers(request: Request) -> dict:
         "agent_id": request.headers.get("X-Minder-Agent") or None,
         "request_key": request.headers.get("X-Minder-Request-Key") or None,
         "dry_run": dry,
+        "headers": dict(request.headers),
     }
 
 

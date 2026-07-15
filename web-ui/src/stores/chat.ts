@@ -167,10 +167,6 @@ interface ChatState {
   thinkingLevel: 'Off' | 'Low' | 'Medium' | 'High';
   runningSessions: Set<string>;
   sessionListVersion: number;
-  sidebarCollapsed: boolean;
-  mobileSidebarOpen: boolean;
-  settingsModalOpen: boolean;
-  commandPaletteOpen: boolean;
 
   // Actions
   loadSession: (sessionId: string) => Promise<void>;
@@ -188,17 +184,8 @@ interface ChatState {
   respondToPlanApproval: (requestId: string, action: string, feedback?: string) => void;
   sendInterrupt: () => void;
   bumpSessionList: () => void;
-  toggleSidebar: () => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  openMobileSidebar: () => void;
-  closeMobileSidebar: () => void;
-  toggleMobileSidebar: () => void;
   setSelectedPersona: (personaName: string | null) => void;
   setDraft: (sessionId: string, text: string) => void;
-  openSettingsModal: () => void;
-  closeSettingsModal: () => void;
-  openCommandPalette: () => void;
-  closeCommandPalette: () => void;
 }
 
 const AUTONOMY_CYCLE: Array<'Manual' | 'Semi-Auto' | 'Auto'> = ['Manual', 'Semi-Auto', 'Auto'];
@@ -213,17 +200,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   thinkingLevel: 'Medium',
   runningSessions: new Set<string>(),
   sessionListVersion: 0,
-  sidebarCollapsed: false,
-  mobileSidebarOpen: false,
-  settingsModalOpen: false,
-  commandPaletteOpen: false,
 
   bumpSessionList: () => set(state => ({ sessionListVersion: state.sessionListVersion + 1 })),
-  toggleSidebar: () => set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  openMobileSidebar: () => set({ mobileSidebarOpen: true }),
-  closeMobileSidebar: () => set({ mobileSidebarOpen: false }),
-  toggleMobileSidebar: () => set(state => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
   setSelectedPersona: (personaName: string | null) => {
     const sessionId = get().currentSessionId;
     if (sessionId) {
@@ -236,10 +214,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!sessionId) return;
     set(state => ({ ...patchSession(state, sessionId, { draft: text }) }));
   },
-  openSettingsModal: () => set({ settingsModalOpen: true }),
-  closeSettingsModal: () => set({ settingsModalOpen: false }),
-  openCommandPalette: () => set({ commandPaletteOpen: true }),
-  closeCommandPalette: () => set({ commandPaletteOpen: false }),
   loadSession: async (sessionId: string) => {
     console.log(`[Frontend] Loading session ${sessionId}`);
 

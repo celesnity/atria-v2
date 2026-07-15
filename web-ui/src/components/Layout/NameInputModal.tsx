@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface NameInputModalProps {
   isOpen: boolean;
@@ -26,15 +27,19 @@ export function NameInputModal({
   inputLabel,
   placeholder,
   submitLabel,
-  submittingLabel = 'Creating…',
+  submittingLabel,
   emptyError,
   onSubmit,
   children,
 }: NameInputModalProps) {
+  const { t } = useTranslation('layout');
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Use a translated default for submittingLabel if not provided
+  const resolvedSubmittingLabel = submittingLabel ?? t('nameInputModal.creating');
 
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +61,7 @@ export function NameInputModal({
       await onSubmit(trimmed);
       onClose();
     } catch (err) {
-      setError((err as Error).message || 'Failed');
+      setError((err as Error).message || t('nameInputModal.failed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -83,13 +88,13 @@ export function NameInputModal({
           </div>
           {children?.(name)}
           <div className="flex gap-2 justify-end pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm text-text-300 hover:text-text-100 transition-colors">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-1.5 text-sm text-text-300 hover:text-text-100 transition-colors">{t('nameInputModal.cancel')}</button>
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
               className="px-4 py-1.5 text-sm bg-accent-main-100 text-white rounded-md hover:bg-accent-main-100/80 disabled:opacity-40 transition-colors"
             >
-              {isSubmitting ? submittingLabel : submitLabel}
+              {isSubmitting ? resolvedSubmittingLabel : submitLabel}
             </button>
           </div>
         </form>

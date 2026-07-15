@@ -1,4 +1,5 @@
 import { Settings2, Lock, Brain } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 
 const MODE_STYLES = {
@@ -20,6 +21,7 @@ const THINKING_STYLES: Record<string, string> = {
 } as const;
 
 export function StatusBar() {
+  const { t } = useTranslation('chat');
   const status = useChatStore(state => state.status);
   const thinkingLevel = useChatStore(state => state.thinkingLevel);
   const toggleMode = useChatStore(state => state.toggleMode);
@@ -38,17 +40,17 @@ export function StatusBar() {
       <button
         onClick={toggleMode}
         className={`${pillBase} ${MODE_STYLES[status.mode]}`}
-        title="Mode — Normal: full tool access · Plan: read-only exploration. Click to toggle (Shift+Tab)"
+        title={t('statusBar.modeTitle')}
       >
         <Settings2 className="w-3 h-3" strokeWidth={2} />
-        {status.mode === 'normal' ? 'Normal' : 'Plan'}
+        {status.mode === 'normal' ? t('statusBar.modeNormal') : t('statusBar.modePlan')}
       </button>
 
       {/* Autonomy pill */}
       <button
         onClick={cycleAutonomy}
         className={`${pillBase} ${AUTONOMY_STYLES[status.autonomy_level]}`}
-        title="Approval — Manual: approve each tool · Semi-Auto: auto-approve safe tools · Auto: approve all. Click to cycle (Ctrl+Shift+A)"
+        title={t('statusBar.autonomyTitle')}
       >
         <Lock className="w-3 h-3" strokeWidth={2} />
         {status.autonomy_level}
@@ -58,7 +60,7 @@ export function StatusBar() {
       <button
         onClick={cycleThinkingLevel}
         className={`${pillBase} ${THINKING_STYLES[thinkingLevel] || THINKING_STYLES['Medium']}`}
-        title="Thinking — how much the AI reasons before responding. Click to cycle (Ctrl+Shift+T)"
+        title={t('statusBar.thinkingTitle')}
       >
         <Brain className="w-3 h-3" strokeWidth={2} />
         {thinkingLevel}

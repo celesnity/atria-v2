@@ -1,4 +1,5 @@
 import { X, FileText, Code2, Image as ImageIcon, BarChart3, File as FileIcon, Package } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useViewerTabsStore } from '../../stores/viewerTabs';
 import { pickRenderer } from './viewers/extensions';
 import type { ViewerTab } from '../../types';
@@ -19,6 +20,7 @@ function iconFor(tab: ViewerTab) {
 }
 
 export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
+  const { t } = useTranslation('artifacts');
   const slice = useViewerTabsStore(s => s.tabsByConv[convId]);
   const setActive = useViewerTabsStore(s => s.setActive);
   const closeTab = useViewerTabsStore(s => s.closeTab);
@@ -30,7 +32,7 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
   return (
     <div className="flex-1 flex items-center gap-0.5 overflow-x-auto px-1 py-1 min-w-0">
       {tabs.length === 0 && (
-        <span className="text-[13px] font-mono text-ink/35 px-2 select-none">No file open</span>
+        <span className="text-[13px] font-mono text-ink/35 px-2 select-none">{t('tabBar.noFileOpen')}</span>
       )}
       {tabs.map(tab => {
         const Icon = iconFor(tab);
@@ -69,8 +71,8 @@ export function TabBar({ convId, onCollapse: _onCollapse }: Props) {
             <span className="truncate max-w-[140px]">{tab.name}</span>
             {isDirty && (
               <span
-                aria-label="Unsaved changes"
-                title="Unsaved changes"
+                aria-label={t('tabBar.unsavedChanges')}
+                title={t('tabBar.unsavedChanges')}
                 className={`flex-shrink-0 text-[13px] leading-none ${
                   isActive ? 'text-accent-cobalt' : 'text-ink/50'
                 }`}

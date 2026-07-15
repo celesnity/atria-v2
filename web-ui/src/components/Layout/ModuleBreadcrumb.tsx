@@ -1,6 +1,7 @@
 import { ChevronDown, Package } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useModulesStore } from '../../stores/modules';
 import { useModuleHealth } from '../../hooks/useModuleHealth';
 import { ModuleHealthDot } from './ModuleHealthDot';
@@ -11,6 +12,7 @@ import { ModuleHealthDot } from './ModuleHealthDot';
  * list; selecting a module drives the center + ModuleTabs.
  */
 export function ModuleBreadcrumb() {
+  const { t } = useTranslation('layout');
   const modules = useModulesStore((s) => s.modulesWithDashboards);
   const activeName = useModulesStore((s) => s.activeModuleDashboard);
   const openDashboard = useModulesStore((s) => s.openDashboard);
@@ -21,8 +23,7 @@ export function ModuleBreadcrumb() {
   // Connector health per service module, polled on mount + every ~30s.
   const moduleHealth = useModuleHealth();
 
-  // Populate the module list on startup. This used to live in the sidebar
-  // Modules list; the breadcrumb is now the sole owner of that responsibility.
+  // Populate the module list on startup.
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -53,7 +54,7 @@ export function ModuleBreadcrumb() {
         ) : (
           <Package className="h-4 w-4 text-ink/50" strokeWidth={1.5} />
         )}
-        <span className="truncate max-w-[160px]">{active?.display_name ?? 'Select module'}</span>
+        <span className="truncate max-w-[160px]">{active?.display_name ?? t('moduleBreadcrumb.selectModule')}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 

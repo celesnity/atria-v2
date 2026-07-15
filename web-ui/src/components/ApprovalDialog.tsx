@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { TriangleAlert } from 'lucide-react';
+import { useTranslation, Trans } from 'react-i18next';
 import { useChatStore } from '../stores/chat';
 
 export function ApprovalDialog() {
+  const { t } = useTranslation('common');
   const pendingApproval = useChatStore(state => {
     const sid = state.currentSessionId;
     return sid ? state.sessionStates[sid]?.pendingApproval ?? null : null;
@@ -65,9 +67,9 @@ export function ApprovalDialog() {
       <div className="bg-bg-000 rounded-xl shadow-modal border border-border-300/15 max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col animate-slide-up">
         {/* Header */}
         <div className="border-b border-border-300/15 px-6 py-4 flex-shrink-0">
-          <h2 className="text-lg font-semibold text-text-000">Approval Required</h2>
+          <h2 className="text-lg font-semibold text-text-000">{t('approval.title')}</h2>
           <p className="text-sm text-text-300 mt-1">
-            The assistant needs permission to execute the following operation
+            {t('approval.subtitle')}
           </p>
         </div>
 
@@ -76,7 +78,7 @@ export function ApprovalDialog() {
           {/* Tool Name */}
           <div>
             <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-1">
-              Tool
+              {t('approval.toolLabel')}
             </div>
             <div className="flex items-center gap-2">
               <code className="text-sm font-mono bg-bg-100 px-2 py-1 rounded border border-border-300/15">
@@ -88,7 +90,7 @@ export function ApprovalDialog() {
           {/* Description */}
           <div>
             <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-1">
-              Description
+              {t('approval.descriptionLabel')}
             </div>
             <p className="text-sm text-text-000 leading-relaxed">
               {pendingApproval.description}
@@ -99,7 +101,7 @@ export function ApprovalDialog() {
           {pendingApproval.preview && (
             <div>
               <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-2">
-                Preview
+                {t('approval.previewLabel')}
               </div>
               <div className="bg-bg-100 rounded-md border border-border-300/15 p-4 max-h-48 overflow-y-auto">
                 <pre className="text-xs text-text-000 font-mono whitespace-pre-wrap">
@@ -113,7 +115,7 @@ export function ApprovalDialog() {
           {Object.keys(pendingApproval.arguments).length > 0 && (
             <div>
               <div className="text-xs font-medium text-text-400 uppercase tracking-wider mb-2">
-                Arguments
+                {t('approval.argumentsLabel')}
               </div>
               <div className="bg-bg-100 rounded-md border border-border-300/15 p-4 max-h-64 overflow-y-auto">
                 <pre className="text-xs text-text-000 font-mono whitespace-pre-wrap">
@@ -128,9 +130,9 @@ export function ApprovalDialog() {
             <div className="flex gap-3">
               <TriangleAlert className="w-5 h-5 text-warning-100 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-text-000">Review carefully before approving</p>
+                <p className="text-sm font-medium text-text-000">{t('approval.warning.title')}</p>
                 <p className="text-xs text-text-300 mt-1">
-                  This operation will be executed with your current permissions. Make sure you understand what it will do.
+                  {t('approval.warning.body')}
                 </p>
               </div>
             </div>
@@ -148,7 +150,7 @@ export function ApprovalDialog() {
               <div className="w-7 h-7 rounded-md bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 1
               </div>
-              <span className="text-ink">Yes, run this command</span>
+              <span className="text-ink">{t('approval.option1')}</span>
             </button>
 
             {/* Option 2: Yes, and auto-approve — lilac color block */}
@@ -160,8 +162,15 @@ export function ApprovalDialog() {
                 2
               </div>
               <div className="flex-1">
-                <div className="text-ink">Yes, and auto-approve all <span className="font-[540]">{pendingApproval.tool_name}</span> commands</div>
-                <div className="text-[13px] text-ink/70 mt-0.5">Future similar commands will run automatically</div>
+                <div className="text-ink">
+                  <Trans
+                    i18nKey="approval.option2"
+                    ns="common"
+                    values={{ toolName: pendingApproval.tool_name }}
+                    components={{ bold: <span className="font-[540]" /> }}
+                  />
+                </div>
+                <div className="text-[13px] text-ink/70 mt-0.5">{t('approval.option2Hint')}</div>
               </div>
             </button>
 
@@ -173,14 +182,22 @@ export function ApprovalDialog() {
               <div className="w-7 h-7 rounded-md bg-ink/10 group-hover:bg-ink/15 flex items-center justify-center text-ink font-mono font-semibold text-xs">
                 3
               </div>
-              <span className="text-ink">No, cancel and provide feedback</span>
+              <span className="text-ink">{t('approval.option3')}</span>
             </button>
           </div>
 
           {/* Keyboard shortcuts hint */}
           <div className="mt-4 pt-3 border-t border-border-300/15 text-center">
             <p className="text-xs text-text-500">
-              Press <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">1</kbd>, <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">2</kbd>, or <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono">3</kbd> to select
+              <Trans
+                i18nKey="approval.keyboardHint"
+                ns="common"
+                components={{
+                  kbd1: <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono" />,
+                  kbd2: <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono" />,
+                  kbd3: <kbd className="px-1.5 py-0.5 bg-bg-200 border border-border-300/20 rounded text-xs font-mono" />,
+                }}
+              />
             </p>
           </div>
         </div>
