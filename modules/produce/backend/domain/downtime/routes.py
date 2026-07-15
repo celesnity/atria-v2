@@ -57,6 +57,30 @@ def get_open(station_id: int | None = None) -> list[dict]:
     return service.open_downtimes(station_id)
 
 
+@router.get("/alerts")
+def get_alerts(threshold_minutes: float) -> list[dict]:
+    """Downtime đang mở vượt ngưỡng thời gian (P-DOWN-04)."""
+    return service.long_open(threshold_minutes)
+
+
+class ReasonIn(BaseModel):
+    category: str = Field(min_length=1, max_length=64)
+    subcategory: str | None = None
+    code: str | None = None
+    machine: str | None = None
+
+
+@router.get("/lines/{line_id}/reasons")
+def get_reasons(line_id: int, machine: str | None = None) -> list[dict]:
+    return service.reason_library(line_id, machine)
+
+
+@router.post("/lines/{line_id}/reasons")
+def post_reason(line_id: int, body: ReasonIn) -> dict:
+    """FDE/Admin cấu hình thư viện mã lý do downtime (P-DOWN-06)."""
+    return service.add_reason(line_id, body.category, body.subcategory, body.code, body.machine)
+
+
 @router.post("/andon")
 def post_andon(body: AndonIn) -> dict:
     return service.raise_andon(body.line_id, body.station_id, body.operator_id, body.reason)

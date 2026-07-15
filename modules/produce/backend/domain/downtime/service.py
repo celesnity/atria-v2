@@ -11,11 +11,20 @@ from sqlalchemy import func, select
 from db import db_session, now
 
 
-from .models import ANDON_STATES, PrAndon, PrDowntime
+from .models import ANDON_STATES, PrAndon, PrDowntime, PrDowntimeReason
 
 
 class DowntimeError(Exception):
     """Vi phạm luật nghiệp vụ E4."""
+
+
+def _aware(value):
+    """Coi datetime từ DB là UTC (SQLite mất tzinfo; Postgres giữ) để trừ an toàn."""
+    import datetime as _dt
+
+    if value.tzinfo is None:
+        return value.replace(tzinfo=_dt.timezone.utc)
+    return value
 
 
 # --- Downtime (P-DOWN-01, P-DOWN-03) --------------------------------------------
@@ -57,6 +66,47 @@ def open_downtimes(station_id: int | None = None) -> list[dict]:
         if station_id is not None:
             stmt = stmt.where(PrDowntime.station_id == station_id)
         stmt = stmt.order_by(PrDowntime.started_at)
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+def long_open(threshold_minutes: float) -> list[dict]:
+    """Downtime đang mở đã vượt ngưỡng thời gian (P-DOWN-04). Mỗi bản ghi kèm elapsed_minutes."""
+    out: list[dict] = []
+    with db_session() as s:
+        for dt_ in s.scalars(select(PrDowntime).where(PrDowntime.ended_at.is_(None))).all():
+            elapsed = (now() - _aware(dt_.started_at)).total_seconds() / 60.0
+            if elapsed > threshold_minutes:
+                out.append(dt_.as_dict() | {"elapsed_minutes": round(elapsed, 2)})
+    out.sort(key=lambda d: d["elapsed_minutes"], reverse=True)
+    return out
+
+
+# --- Reason-code library (P-DOWN-06) --------------------------------------------
+def add_reason(
+    line_id: int,
+    category: str,
+    subcategory: str | None = None,
+    code: str | None = None,
+    machine: str | None = None,
+) -> dict:
+    with db_session() as s:
+        r = PrDowntimeReason(
+            line_id=line_id, category=category, subcategory=subcategory, code=code, machine=machine
+        )
+        s.add(r)
+        s.flush()
+        return r.as_dict()
+
+
+def reason_library(line_id: int, machine: str | None = None) -> list[dict]:
+    """Danh sách mã lý do gọn, đúng bối cảnh line/máy (P-DOWN-06)."""
+    with db_session() as s:
+        stmt = select(PrDowntimeReason).where(PrDowntimeReason.line_id == line_id)
+        if machine is not None:
+            stmt = stmt.where(
+                (PrDowntimeReason.machine == machine) | (PrDowntimeReason.machine.is_(None))
+            )
+        stmt = stmt.order_by(PrDowntimeReason.category, PrDowntimeReason.id)
         return [r.as_dict() for r in s.scalars(stmt).all()]
 
 
@@ -104,8 +154,8 @@ def downtime_minutes(shift_id: int) -> float:
     with db_session() as s:
         stmt = select(PrDowntime).where(PrDowntime.shift_id == shift_id)
         for dt_ in s.scalars(stmt).all():
-            end = dt_.ended_at or now()
-            total += (end - dt_.started_at).total_seconds() / 60.0
+            end = _aware(dt_.ended_at) if dt_.ended_at else now()
+            total += (end - _aware(dt_.started_at)).total_seconds() / 60.0
     return total
 
 
