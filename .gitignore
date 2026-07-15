@@ -144,7 +144,7 @@ cython_debug/
 *.swp
 *.swo
 *~
-
+outputs/
 # OS
 .DS_Store
 Thumbs.db
