@@ -6,6 +6,6 @@ import { TABS } from './dashboard.tabs';
 // Standalone: same-origin API (backend serves this dist), dark theme by default.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Dashboard apiBase="" activeTab={TABS[0].id} theme="dark" />
+    <Dashboard apiBase="" activeTab={TABS[0].id} theme="dark" agentEnabled={false} />
   </StrictMode>,
 );
