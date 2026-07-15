@@ -21,9 +21,6 @@ class TruncationRule:
 # Default rules by tool name (or prefix)
 _DEFAULT_RULES: dict[str, TruncationRule] = {
     "run_command": TruncationRule(max_chars=8000, strategy="tail"),
-    "read_file": TruncationRule(max_chars=15000, strategy="head"),
-    "search": TruncationRule(max_chars=10000, strategy="head"),
-    "list_files": TruncationRule(max_chars=10000, strategy="head"),
 }
 
 # MCP tools get a default rule

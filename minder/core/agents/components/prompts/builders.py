@@ -6,11 +6,9 @@ import logging
 from typing import Any, TYPE_CHECKING
 
 from minder.core.agents.prompts import load_prompt
-from minder.core.blackboard.injection import render_shared_lessons_section
 
 if TYPE_CHECKING:
     from minder.core.skills import SkillLoader
-    from minder.core.agents.subagents.manager import SubAgentManager
     from .environment import EnvironmentContext
 
 logger = logging.getLogger(__name__)
@@ -46,16 +44,12 @@ class BasePromptBuilder:
         tool_registry: Any | None,
         working_dir: Any | None = None,
         skill_loader: "SkillLoader | None" = None,
-        subagent_manager: "SubAgentManager | None" = None,
         env_context: "EnvironmentContext | None" = None,
-        blackboard: Any | None = None,
     ) -> None:
         self._tool_registry = tool_registry
         self._working_dir = working_dir
         self._skill_loader = skill_loader
-        self._subagent_manager = subagent_manager
         self._env_context = env_context
-        self._blackboard = blackboard
 
     def build(self) -> str:
         """Build complete system prompt from components.
@@ -166,13 +160,6 @@ class BasePromptBuilder:
                 f"{modular_sections}\n\n{skill_block}" if modular_sections else skill_block
             )
 
-        # Append Shared Lessons from blackboard when present and non-empty (dynamic).
-        shared_lessons = render_shared_lessons_section(self._blackboard)
-        if shared_lessons:
-            modular_sections = (
-                f"{modular_sections}\n\n{shared_lessons}" if modular_sections else shared_lessons
-            )
-
         # Combine core prompt + modular sections
         return f"{core_prompt}\n\n{modular_sections}" if modular_sections else core_prompt
 
@@ -210,21 +197,6 @@ class BasePromptBuilder:
                 f"{dynamic_sections}\n\n{skill_block}" if dynamic_sections else skill_block
             )
 
-        # Append Shared Lessons from blackboard to the DYNAMIC part — lesson
-        # content accumulates during a run and must not be prompt-cached.
-        #
-        # KV-cache placement (DeLM §A.4): the shared context wants to be a stable
-        # prefix. It cannot live in the byte-stable `stable` block because it grows
-        # as notes are admitted, so it goes LAST in `dynamic` — the most-volatile
-        # position — keeping the longer, less-volatile prefix (core + stable + skill
-        # block) cacheable, and it still precedes all conversation/task messages.
-        # Do not move it earlier than the skill block, which changes less often.
-        shared_lessons = render_shared_lessons_section(self._blackboard)
-        if shared_lessons:
-            dynamic_sections = (
-                f"{dynamic_sections}\n\n{shared_lessons}" if dynamic_sections else shared_lessons
-            )
-
         # Core prompt is always stable
         if stable_sections:
             stable = f"{core_prompt}\n\n{stable_sections}"
@@ -236,25 +208,19 @@ class BasePromptBuilder:
     def _gating_context(self) -> dict[str, Any]:
         """Compute conditional-section flags from real availability.
 
-        Subagent/todo availability is driven by the tool registry's registered
-        handlers (``spawn_subagent`` / ``list_todos``) rather than by a manager
-        object, because the main agent exposes subagents as tools, not via a
-        ``subagent_manager``. When the registry is not introspectable, both
-        flags fall back to prior always-on behavior so no guidance is dropped.
+        Todo availability is driven by the tool registry's registered handlers
+        (``list_todos`` / ``write_todos``). When the registry is not
+        introspectable, the flag falls back to prior always-on behavior so no
+        guidance is dropped.
         """
         reg = self._tool_registry
         handlers = getattr(reg, "_handlers", None) if reg is not None else None
         if isinstance(handlers, dict):
-            has_subagents = "request_help" in handlers
             todo_enabled = "list_todos" in handlers or "write_todos" in handlers
         else:
-            # No introspectable registry: preserve prior always-on behavior
-            # (also honor an explicit subagent_manager if one was injected).
-            has_subagents = self._subagent_manager is not None or reg is not None
             todo_enabled = reg is not None
         return {
             "in_git_repo": bool(self._env_context and self._env_context.is_git_repo),
-            "has_subagents": has_subagents,
             "todo_tracking_enabled": todo_enabled,
             "model": self._env_context.model if self._env_context else "",
         }

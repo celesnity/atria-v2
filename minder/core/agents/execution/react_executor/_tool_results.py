@@ -24,8 +24,6 @@ class ToolResultsMixin:
         messages: list,
         tool_call: dict,
         result: dict,
-        *,
-        has_subagent_tool: bool = False,
     ):
         """Add tool execution result to message history.
 
@@ -51,7 +49,6 @@ class ToolResultsMixin:
             tool_name,
             tool_call["id"],
             tool_result,
-            has_subagent_tool=has_subagent_tool,
         )
 
         _ctx_logger.info(
@@ -73,8 +70,6 @@ class ToolResultsMixin:
         tool_name: str,
         tool_call_id: str,
         output: str,
-        *,
-        has_subagent_tool: bool = False,
     ) -> str:
         """Offload large tool output to a scratch file, return summary + ref.
 
@@ -86,7 +81,6 @@ class ToolResultsMixin:
             tool_name: Name of the tool.
             tool_call_id: Unique tool call ID for the filename.
             output: Full tool output string.
-            has_subagent_tool: Whether the current agent can spawn subagents.
 
         Returns:
             Original output if small enough, or summary + file reference.
@@ -118,14 +112,7 @@ class ToolResultsMixin:
             if len(output) > 500:
                 preview += "\n..."
 
-            # Dynamic truncation hint based on agent capabilities
-            if has_subagent_tool:
-                hint = (
-                    "Delegate to an explore subagent to process the full output via "
-                    "search/read_file, or use read_file with offset/max_lines to page through it."
-                )
-            else:
-                hint = "Use read_file with offset/max_lines to page through the full output."
+            hint = "Use read_file with offset/max_lines to page through the full output."
 
             return (
                 f"{preview}\n\n"
@@ -176,8 +163,7 @@ class ToolResultsMixin:
                 task_monitor=tool_monitor,
                 session_manager=self.session_manager,
                 ui_callback=ui_callback,
-                tool_call_id=tool_call_id,  # Pass for subagent parent tracking
-                blackboard=getattr(self, "_blackboard_handle", None),
+                tool_call_id=tool_call_id,
             )
             return result
         finally:

@@ -72,6 +72,8 @@ class ContextCompactor(MaskingMixin, SummaryMixin):
         self._msg_count_at_calibration: int = 0
 
         self._max_context = getattr(config, "max_context_tokens", 100_000)
+        # Configurable blocking-compaction trigger (defaults to STAGE_COMPACT).
+        self._compact_threshold = getattr(config, "compaction_threshold", STAGE_COMPACT)
         logger.info(
             "ContextCompactor: max_context=%d tokens (model=%s)",
             self._max_context,
@@ -116,7 +118,7 @@ class ContextCompactor(MaskingMixin, SummaryMixin):
         self._update_token_count(messages, system_prompt)
         pct = self.usage_pct / 100.0  # Convert to 0-1 range
 
-        if pct >= STAGE_COMPACT:
+        if pct >= self._compact_threshold:
             return OptimizationLevel.COMPACT
         if pct >= STAGE_AGGRESSIVE:
             if not self._warned_90:

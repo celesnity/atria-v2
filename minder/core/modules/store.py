@@ -91,15 +91,6 @@ class ModuleDashboardManifest:
 
 
 @dataclass
-class ModuleSubagentManifest:
-    """Opt-in config for routing a module's work to a dedicated subagent."""
-
-    enabled: bool = False
-    model: Optional[str] = None
-    tools: Optional[List[str]] = None
-
-
-@dataclass
 class ModuleServiceManifest:
     """Declares that a module runs as an out-of-process connector service."""
 
@@ -135,7 +126,6 @@ class ModuleManifest:
     dashboard: Optional[ModuleDashboardManifest] = None
     activity_default: Optional[ActivityLabel] = None
     activity_actions: Dict[str, ActivityLabel] = field(default_factory=dict)
-    subagent: Optional[ModuleSubagentManifest] = None
     service: Optional[ModuleServiceManifest] = None
     remote: Optional[ModuleRemoteManifest] = None
     # Corpus dirs (relative to the module) the agent's tools must never read/list/
@@ -254,7 +244,6 @@ def _read_manifest(module_dir: Path) -> Optional[ModuleManifest]:
         dashboard=_parse_dashboard(raw.get("dashboard")),
         activity_default=activity_default,
         activity_actions=activity_actions,
-        subagent=_parse_subagent(raw.get("subagent")),
         service=_parse_service(raw.get("service")),
         remote=_parse_remote(raw.get("remote")),
         protected_paths=_parse_protected_paths(raw.get("protected_paths")),
@@ -308,28 +297,6 @@ def _parse_tabs(raw: Any) -> list[ModuleTabManifest]:
             continue
         out.append(ModuleTabManifest(id=tab_id, label=label, entry=_nonempty_str(item.get("entry"))))
     return out
-
-
-def _parse_subagent(raw: Any) -> Optional[ModuleSubagentManifest]:
-    """Lenient parser for the optional ``subagent`` manifest block.
-
-    Anything malformed degrades to ``None`` so old/invalid manifests keep working.
-    """
-    if not isinstance(raw, dict):
-        return None
-    enabled = raw.get("enabled")
-    if not isinstance(enabled, bool):
-        enabled = False
-    tools_raw = raw.get("tools")
-    tools: Optional[List[str]] = None
-    if isinstance(tools_raw, list):
-        cleaned = [t for t in tools_raw if isinstance(t, str) and t.strip()]
-        tools = cleaned or None
-    return ModuleSubagentManifest(
-        enabled=enabled,
-        model=_nonempty_str(raw.get("model")),
-        tools=tools,
-    )
 
 
 def _parse_service(raw: Any) -> Optional[ModuleServiceManifest]:

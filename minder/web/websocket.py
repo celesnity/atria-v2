@@ -540,17 +540,9 @@ class WebSocketManager:
                 return result
 
             if method == "artifact.read":
-                artifact_id = args.get("artifact_id")
-                if artifact_id is None:
-                    raise ValueError("artifact.read requires 'artifact_id'")
-                from minder.core.context_engineering.tools.context import ToolExecutionContext
-                from minder.core.context_engineering.tools.handlers.artifacts_handler import (
-                    ArtifactsHandler,
-                )
-
-                handler = ArtifactsHandler()
-                ctx = ToolExecutionContext(session_manager=state.session_manager)
-                return handler.read_artifact_image({"artifact_id": artifact_id}, ctx)
+                # The artifact image tools were removed in the tool slim-down; this
+                # RPC no longer has a backing handler.
+                raise ValueError("artifact.read is no longer supported")
 
             if method == "config.read":
                 app_config = state.config_manager.get_config()

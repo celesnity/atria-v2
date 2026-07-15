@@ -13,8 +13,6 @@ class ToolDependencies:
     """Value object capturing tool-level dependencies."""
 
     file_ops: Union[Any, None]
-    write_tool: Union[Any, None]
-    edit_tool: Union[Any, None]
     bash_tool: Union[Any, None]
     notebook_edit_tool: Union[Any, None] = None
     ask_user_tool: Union[Any, None] = None
@@ -32,8 +30,6 @@ class ToolFactory:
         """Instantiate a `ToolRegistry` with the configured dependencies."""
         registry = ToolRegistry(
             file_ops=self._deps.file_ops,
-            write_tool=self._deps.write_tool,
-            edit_tool=self._deps.edit_tool,
             bash_tool=self._deps.bash_tool,
             notebook_edit_tool=self._deps.notebook_edit_tool,
             ask_user_tool=self._deps.ask_user_tool,

@@ -14,6 +14,8 @@ services:
       # Real token budget for the deployed model's 30000-token window.
       - MINDER_MAX_CONTEXT_TOKENS=${MINDER_MAX_CONTEXT_TOKENS:-24000}
       - MINDER_MAX_TOKENS=${MINDER_MAX_TOKENS:-4096}
+      # TEMP: per-phase TTFT profiler (remove when done).
+      - MINDER_TTFT_PROFILE=1
     entrypoint:
       - /bin/sh
       - -c
@@ -23,20 +25,6 @@ services:
         : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}"
         printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${MINDER_MODEL}" "$${MINDER_API_BASE_URL}" "$${MINDER_MAX_TOKENS:-4096}" "$${MINDER_MAX_CONTEXT_TOKENS:-24000}" > /home/minder/.minder/settings.json
         exec minder --host 0.0.0.0 --port 8080
-
-  minder-worker:
-    environment:
-      - MINDER_MAX_CONTEXT_TOKENS=${MINDER_MAX_CONTEXT_TOKENS:-24000}
-      - MINDER_MAX_TOKENS=${MINDER_MAX_TOKENS:-4096}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        mkdir -p /home/minder/.minder
-        : "$${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}"
-        : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}"
-        printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${MINDER_MODEL}" "$${MINDER_API_BASE_URL}" "$${MINDER_MAX_TOKENS:-4096}" "$${MINDER_MAX_CONTEXT_TOKENS:-24000}" > /home/minder/.minder/settings.json
-        exec taskiq worker minder.core.tasks.broker:broker minder.core.tasks.tasks
 
   # module_template full-stack services — reach in-compose db/redis/minio/minder/
   # keycloak only; host.docker.internal added for parity.

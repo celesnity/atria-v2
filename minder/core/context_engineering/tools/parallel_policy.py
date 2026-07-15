@@ -13,39 +13,23 @@ from typing import Any
 READ_ONLY_TOOLS: frozenset[str] = frozenset(
     {
         # File reading
-        "read_file",
-        "list_files",
-        "search",
         "read_pdf",
         # Process inspection
-        "list_processes",
-        "get_process_output",
-        # Session (read-only)
-        "list_subagents",
         # Meta (read-only)
         "list_todos",
-        "search_tools",
         "task_complete",
-        # Agents listing
-        "list_agents",
     }
 )
 
 # Tools that modify state and should generally run sequentially
 WRITE_TOOLS: frozenset[str] = frozenset(
     {
-        "write_file",
-        "edit_file",
         "run_command",
-        "notebook_edit",
-        "apply_patch",
-        "kill_process",
         "write_todos",
         "update_todo",
         "complete_todo",
         "clear_todos",
         "send_message",
-        "schedule",
     }
 )
 
@@ -142,7 +126,7 @@ class ParallelPolicy:
             except (json.JSONDecodeError, TypeError):
                 return False  # Can't determine target → sequential
 
-            if name in ("write_file", "edit_file", "notebook_edit"):
+            if name in ("write_file", "edit_file"):
                 target = args.get("file_path") or args.get("notebook_path", "")
                 if not target:
                     return False

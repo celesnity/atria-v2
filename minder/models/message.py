@@ -48,7 +48,7 @@ class ToolCall(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
     approved: bool = False
     error: Optional[str] = None
-    nested_tool_calls: list["ToolCall"] = Field(default_factory=list)  # For subagent tools
+    nested_tool_calls: list["ToolCall"] = Field(default_factory=list)  # For nested tool expansion
 
 
 class ChatMessage(BaseModel):

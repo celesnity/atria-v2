@@ -45,21 +45,4 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
-    # Skill-owned schemas live in their skill folders and are merged in via
-    # ToolSchemaBuilder(extra_schemas=...).
-    {
-        "type": "function",
-        "function": {
-            "name": "md_to_pdf",
-            "description": load_tool_description("md-to-pdf"),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "md_path": {"type": "string"},
-                    "pdf_path": {"type": "string"},
-                },
-                "required": ["md_path", "pdf_path"],
-            },
-        },
-    },
 ]

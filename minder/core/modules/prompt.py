@@ -1,10 +1,8 @@
-"""Build the SKILL catalog injected into every conversation's system prompt.
+"""Build the module catalog injected into every conversation's system prompt.
 
-This is a *lazy* catalog: per module it emits the one-line description, the
-"When to use" triggers, and an index of sub-skills — but NOT the full SKILL.md
-body. The agent loads the full guide on demand with ``invoke_skill("<name>")``
-and individual sub-skills with ``invoke_skill("<name>:<sub>")``. This keeps the
-always-on prompt small even when a module documents many functions.
+Per module it emits the one-line description, the "When to use" triggers, and
+an index of sub-skills. Modules are used by running their scripts (via bash) or
+calling any remote proxy tools they expose.
 """
 
 from __future__ import annotations
@@ -37,14 +35,8 @@ def _header(root: Path) -> str:
         f"The following modules are installed under ``{r}/<name>/``. Each module is "
         "a self-contained skill folder. Only a short summary is shown here; the "
         "full instructions load **on demand** so the prompt stays small.\n\n"
-        "**Loading module instructions (lazy):**\n"
-        '- ``invoke_skill("<name>")`` — load the module\'s full ``SKILL.md`` into '
-        "context. Do this before using a module you haven't loaded yet.\n"
-        '- ``invoke_skill("<name>:<sub-skill>")`` — load just one sub-skill\'s '
-        "detailed guide (the sub-skills are listed per module below). Prefer this "
-        "over loading the whole module when you only need one area.\n"
-        "- Decide from each module's description + 'When to use' + sub-skill list "
-        "whether (and what) to load — don't load everything preemptively.\n\n"
+        "**Module instructions are shown inline below** — each module's description, "
+        "triggers, and sub-skill index are listed.\n\n"
         "**Running scripts:** ``python <absolute-path>/<name>/scripts/<file>.py`` "
         "(via bash). **Always use absolute paths** — your bash CWD is the chat "
         f"workspace, NOT the modules root. Example: ``python {r}/<name>/scripts/<file>.py``.\n"
@@ -82,12 +74,31 @@ def _format_files(files: list[str]) -> str:
     return f"Files: {', '.join(shown)}{suffix}"
 
 
-def render_module_section(m: Module) -> list[str]:
-    """Render one module's catalog lines (heading, summary, sub-skill index).
+def _render_context_block(name: str, ctx: dict) -> list[str]:
+    """Prompt lines for a module's declarative context: static domain knowledge +
+    area notes, and a hint to fetch live state via the read_module_context tool.
+    Empty when the module declares no context."""
+    knowledge = ctx.get("knowledge") or []
+    notes = ctx.get("notes") or []
+    if not knowledge and not notes:
+        return []
+    out: list[str] = []
+    if knowledge:
+        out += ["", "**Domain knowledge:**"]
+        out += [f"- {k}" for k in knowledge]
+    if notes:
+        out += ["", "**Areas:**"]
+        out += [f"- {n.get('name')}: {n.get('text')}" for n in notes if n.get("name")]
+    out += [
+        "",
+        f"Call `read_module_context('{name}')` for live state and the current "
+        "on-screen snapshot.",
+    ]
+    return out
 
-    Shared by the always-on Active Modules block and the per-module gateway
-    block injected into a module's dedicated subagent.
-    """
+
+def render_module_section(m: Module) -> list[str]:
+    """Render one module's catalog lines (heading, summary, sub-skill index)."""
     _, body = parse_frontmatter(m.skill_md)
     section = [f"### {m.name}", "", (m.description or "").strip()]
 
@@ -96,11 +107,14 @@ def render_module_section(m: Module) -> list[str]:
         section += ["", "**When to use:**", when]
 
     if m.subskills:
-        section += ["", "**Sub-skills** (load individually with `invoke_skill`):"]
+        section += ["", "**Sub-skills**:"]
         for s in m.subskills:
-            section.append(f'- `invoke_skill("{m.name}:{s.name}")` — {s.description}')
+            section.append(f'- `{m.name}:{s.name}` — {s.description}')
 
-    section += ["", f'Full guide: `invoke_skill("{m.name}")`']
+    from minder.core.modules.registry import get_registry
+
+    rec = get_registry().connector(m.name)
+    section += _render_context_block(m.name, (rec.context if rec else None) or {})
 
     listing = _format_files(list(m.files))
     if listing:
@@ -108,31 +122,13 @@ def render_module_section(m: Module) -> list[str]:
     return section
 
 
-def build_skill_block(registry: ModuleRegistry, *, include_subagent_delegation: bool = True) -> str:
-    """Return the lazy module catalog (header + a summary per module). Empty if none.
-
-    Args:
-        registry: Module registry to render entries from.
-        include_subagent_delegation: When True (default), modules whose manifest
-            enables a dedicated subagent get a "delegate with `subagent(...)`" hint.
-            Pass False for agents whose LLM has no `subagent` tool (e.g.
-            `AssistantAgent`) so the prompt doesn't instruct a tool that isn't
-            available; module entries still render, just without the hint.
-    """
+def build_skill_block(registry: ModuleRegistry) -> str:
+    """Return the lazy module catalog (header + a summary per module). Empty if none."""
     modules = registry.all()
     if not modules:
         return ""
     parts = [_header(registry.root)]
     for m in modules:
         section_lines = render_module_section(m)
-        sub = m.manifest.subagent if m.manifest else None
-        if sub and sub.enabled and include_subagent_delegation:
-            section_lines += [
-                "",
-                f"**Dedicated subagent:** this module has a specialist subagent "
-                f"`{m.name}`. For multi-step or heavy work, delegate with "
-                f'`subagent(tasks=[{{"subagent_type": "{m.name}", "prompt": "…"}}])` — '
-                f"its CLI output stays out of this conversation. Quick lookups may run inline.",
-            ]
         parts.append("\n".join(section_lines) + "\n")
     return "\n".join(parts)

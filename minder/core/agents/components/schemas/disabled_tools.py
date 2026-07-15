@@ -11,7 +11,7 @@ Resolution (mirrors :func:`minder.core.modules.registry.load_disabled_modules`):
 * If that key is **present**, it is the source of truth (even when ``[]`` — an
   explicit "nothing disabled").
 * If the key is **absent**, we fall back to :data:`DEFAULT_DISABLED_TOOLS` so a
-  fresh install keeps today's behavior (web/subagents/todos/... stay off).
+  fresh install keeps today's behavior (web/todos/... stay off).
 * The ``MINDER_DISABLED_TOOLS`` env var is always unioned in, as a no-UI escape
   hatch and for parity with the modules pattern.
 
@@ -37,15 +37,6 @@ DEFAULT_DISABLED_TOOLS: frozenset[str] = frozenset(
     {
         # NOTE: send_image is intentionally NOT disabled — it pushes images to
         # the web chat.
-        # Code symbol tools + notebook
-        "notebook_edit",
-        # request_help / get_help_responses (broadcast blackboard) are ENABLED by
-        # default — the feature is meant to be live out of the box.
-        "list_subagents",
-        "list_agents",
-        # Uploaded-image artifacts — users don't upload images here.
-        "list_artifact_images",
-        "read_artifact_image",
         # Todo tracking — not used in this deployment.
         "write_todos",
         "update_todo",
@@ -92,10 +83,8 @@ def load_disabled_tools() -> set[str]:
 def _build_category_map() -> dict[str, str]:
     from minder.core.agents.components.schemas.builtin import (
         agent_tools,
-        artifact_tools,
         file_tools,
         interaction_tools,
-        knowledge_tools,
         orchestration_tools,
         process_tools,
         system_tools,
@@ -108,10 +97,8 @@ def _build_category_map() -> dict[str, str]:
         ("Web", web_tools),
         ("Interaction", interaction_tools),
         ("System", system_tools),
-        ("Knowledge", knowledge_tools),
         ("Agents", agent_tools),
         ("Orchestration", orchestration_tools),
-        ("Artifacts", artifact_tools),
     ]
     mapping: dict[str, str] = {}
     for label, module in groups:

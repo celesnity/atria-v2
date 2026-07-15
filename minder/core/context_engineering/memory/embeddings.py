@@ -63,6 +63,10 @@ class EmbeddingCache:
         """
         self.model = model
         self._cache: Dict[str, EmbeddingMetadata] = {}
+        # True when the cache has mutated since the last save_to_file — lets
+        # selection persist only when embeddings actually changed (the selector
+        # calls save on every select(), usually a no-op).
+        self._dirty = False
 
     def get(self, text: str, model: Optional[str] = None) -> Optional[List[float]]:
         """Get cached embedding for text.
@@ -95,6 +99,7 @@ class EmbeddingCache:
 
         metadata = EmbeddingMetadata.create(text, model, embedding)
         self._cache[cache_key] = metadata
+        self._dirty = True
 
     def get_or_generate(
         self,
@@ -224,11 +229,14 @@ class EmbeddingCache:
         Args:
             path: File path to save to
         """
+        if not self._dirty:
+            return  # nothing changed since the last save — skip the disk write
         file_path = Path(path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
         with file_path.open("w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+        self._dirty = False
 
     @classmethod
     def load_from_file(cls, path: str) -> Optional["EmbeddingCache"]:

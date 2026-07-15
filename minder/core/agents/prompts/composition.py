@@ -189,11 +189,9 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
     # Code quality and workflows - Priority 55-65
     composer.register_section("action_safety", "system/main/main-action-safety.md", priority=56)
 
-    composer.register_section(
-        "read_before_edit",
-        "system/main/main-read-before-edit.md",
-        priority=58,
-    )
+    # NOTE: read-before-edit was dropped — the main agent no longer has
+    # read_file/edit_file (those are delegated to subagents). See
+    # normal_builder.MAIN_AGENT_DENIED_TOOLS.
 
     composer.register_section("error_recovery", "system/main/main-error-recovery.md", priority=60)
 
@@ -203,13 +201,6 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
         "system/main/main-task-tracking.md",
         condition=lambda ctx: ctx.get("todo_tracking_enabled", False),
         priority=75,
-    )
-
-    composer.register_section(
-        "subagent_guide",
-        "system/main/main-subagent-guide.md",
-        condition=lambda ctx: ctx.get("has_subagents", False),
-        priority=65,
     )
 
     # Context awareness - Priority 85-95
@@ -255,10 +246,6 @@ def create_thinking_composer(templates_dir: Path) -> PromptComposer:
 
     composer.register_section(
         "available_tools", "system/thinking/thinking-available-tools.md", priority=45
-    )
-
-    composer.register_section(
-        "subagent_guide", "system/thinking/thinking-subagent-guide.md", priority=50
     )
 
     composer.register_section(

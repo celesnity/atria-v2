@@ -33,7 +33,8 @@ def test_build_specs_only_for_ready_connectors(monkeypatch, tmp_path):
     assert build_remote_tool_specs(SkillToolContext(), reg.live_service_modules()) == []
     reg.mark_connector_ready("m", [{"name": "m_q", "parameters": {"type": "object"}}])
     specs = build_remote_tool_specs(SkillToolContext(), reg.live_service_modules())
-    assert [s.name for s in specs] == ["m_q"]
+    # A live connector also gets the module-context reader appended.
+    assert [s.name for s in specs] == ["m_q", "read_module_context"]
 
 
 def test_core_hardcodes_no_protected_paths():

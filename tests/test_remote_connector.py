@@ -26,6 +26,50 @@ def test_call_tool_returns_connector_payload():
     assert out["card"]["answer"] == "42"
 
 
+def test_autonomy_maps_to_ladder_and_rides_the_header():
+    # core mode → connector risk ladder (only risky actions gate; routine work runs)
+    assert remote._ladder_autonomy("Manual") == "medium"    # gates high/critical (e.g. delete)
+    assert remote._ladder_autonomy("Semi-Auto") == "high"   # gates critical only
+    assert remote._ladder_autonomy("Auto") == "critical"    # gates nothing
+    assert remote._ladder_autonomy("weird") is None         # unknown ⇒ module default
+
+    # the header carries the mapped value
+    seen2 = {}
+
+    def h2(request):
+        seen2["a"] = request.headers.get("X-Minder-Autonomy")
+        return httpx.Response(200, json={"success": True, "output": "ok"})
+
+    _connector(h2).call_tool("t", {}, autonomy="Manual")
+    assert seen2["a"] == "medium"
+
+    seen = {}
+
+    def handler(request):
+        seen["autonomy"] = request.headers.get("X-Minder-Autonomy")
+        return httpx.Response(200, json={"success": True, "output": "ok"})
+
+    conn = _connector(handler)
+    conn.call_tool("t", {}, autonomy="Semi-Auto")
+    assert seen["autonomy"] == "high"
+    # no autonomy ⇒ no header (module uses its own default_autonomy)
+    conn.call_tool("t", {})
+    assert seen["autonomy"] is None
+
+
+def test_requires_approval_forces_stop_suffix_and_flag():
+    # A gated packet must be flagged and carry the firm "approve on the card" suffix
+    # so the agent never routes approval through a channel — even if the module's
+    # own suffix was weak/absent.
+    ctx = type("Ctx", (), {"push_block": None, "broadcaster": None, "logger": remote.logger})()
+    out = remote._emit_response(ctx, _connector(lambda r: None),
+                                {"success": True, "output": "proposing…",
+                                 "requires_approval": True, "card": {"kind": "decision"}})
+    assert out["requires_approval"] is True
+    assert "on-screen card IS the approval" in out["_llm_suffix"]
+    assert "Do NOT send a message" in out["_llm_suffix"]
+
+
 def test_call_tool_network_error_raises_unreachable():
     def handler(request):
         raise httpx.ConnectError("refused")
@@ -85,14 +129,15 @@ def test_build_specs_registers_declared_tools(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok", "review_required": False}, "llm_suffix": None}
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", fake_call)
 
     reg = _ready_registry(monkeypatch, tmp_path)
     specs = remote.build_remote_tool_specs(ctx, reg.live_service_modules())
-    assert [s.name for s in specs] == ["maintenance_copilot_query"]
+    # A live connector also gets the module-context reader appended.
+    assert [s.name for s in specs] == ["maintenance_copilot_query", "read_module_context"]
 
     out = specs[0].handler(query="torque?")
     assert out["success"] is True
@@ -110,7 +155,7 @@ def test_explicit_card_type_is_honored(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def fake_call(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         return {"success": True, "output": {"answer": "ok"},
                 "card": {"answer": "ok"}, "card_type": "maintenance_answer",
                 "llm_suffix": None}
@@ -128,7 +173,7 @@ def test_handler_connector_down_fails_closed(monkeypatch, tmp_path):
     broadcasts = []
     ctx = SkillToolContext(broadcaster=broadcasts.append)
 
-    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None):
+    def boom(self, tool, arguments, timeout=110.0, principal=None, session_id=None, autonomy=None):
         raise remote.ConnectorUnreachable("refused")
     monkeypatch.setattr(remote.RemoteConnector, "call_tool", boom)
 
@@ -155,3 +200,24 @@ def test_module_without_service_yields_no_specs():
 
     specs = remote.build_remote_tool_specs(SkillToolContext(), [_Mod("plain", _NoSvc())])
     assert specs == []
+
+
+def test_fetch_context_returns_state_payload():
+    def handler(request):
+        assert request.url.path == "/connector/context"
+        return httpx.Response(200, json={
+            "state": [{"name": "inventory", "value": {"total": 2}}],
+            "ui_snapshot": {"page": "products"},
+            "actions": [],
+        })
+    conn = _connector(handler)
+    out = conn.fetch_context()
+    assert out["state"][0]["name"] == "inventory"
+    assert out["ui_snapshot"]["page"] == "products"
+
+
+def test_fetch_context_returns_none_on_error():
+    def handler(request):
+        return httpx.Response(503, json={"error": "down"})
+    conn = _connector(handler)
+    assert conn.fetch_context() is None

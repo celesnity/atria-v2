@@ -93,7 +93,7 @@ New compose services: `minio` (S3), `module-template-web` (uvicorn), `module-tem
 - Task `run_job(job_id, session_id, steps)`: loads the `MtJob`, marks `running`, loops steps
   (update `pct` in DB + `MinderClient().update_block(...)` for a live progress block), marks
   `done`, writes a small report to S3 + `MinderClient().push_artifact(session_id, ...)`.
-- Reverse-push uses `minder_module_sdk` (`MinderClient`) — the worker imports the SDK, never `minder`.
+- Reverse-push uses `minder_python_sdk` (`MinderClient`) — the worker imports the SDK, never `minder`.
 - A failed task marks the `MtJob` `error` and best-effort updates the block; never crashes the worker.
 
 ### 3. Media store (`backend/media.py`)
