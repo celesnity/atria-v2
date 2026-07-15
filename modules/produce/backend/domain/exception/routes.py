@@ -67,3 +67,21 @@ def post_escalate(exc_id: int) -> dict:
 @router.post("/exceptions/{exc_id}/resolve")
 def post_resolve(exc_id: int) -> dict:
     return _guard(service.resolve, exc_id)
+
+
+class MaterialRequestIn(BaseModel):
+    station_id: int
+    part_code: str | None = None
+    qty: int = 0
+    requested_by: str | None = None
+
+
+@router.get("/material-requests")
+def get_material_requests() -> list[dict]:
+    return service.open_material_requests()
+
+
+@router.post("/material-requests")
+def post_material_request(body: MaterialRequestIn) -> dict:
+    """Yêu cầu bổ sung vật tư (P-EXCP-04, giao với Move)."""
+    return service.request_material(body.station_id, body.part_code, body.qty, body.requested_by)

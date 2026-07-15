@@ -12,6 +12,8 @@ from sqlalchemy import select
 
 from db import db_session, now
 
+from domain.oee import service as oee_service
+
 from .models import PrCarryForward, PrHandover
 
 
@@ -63,6 +65,21 @@ def acknowledge(handover_id: int) -> dict:
         h.acknowledged_at = now()
         s.flush()
         return h.as_dict()
+
+
+def verify_standard(shift_id: int) -> dict:
+    """Xác nhận production order / ideal cycle time / target đã nạp đúng khi ca bắt đầu (P-HAND-04)."""
+    po = oee_service.production_order_for(shift_id)
+    if po is None:
+        return {"shift_id": shift_id, "loaded": False, "issues": ["chưa nạp production order"]}
+    issues = []
+    if not po.get("ideal_cycle_time"):
+        issues.append("thiếu ideal cycle time")
+    if not po.get("target_count"):
+        issues.append("target_count = 0")
+    if not po.get("planned_minutes"):
+        issues.append("planned_minutes = 0")
+    return {"shift_id": shift_id, "loaded": True, "issues": issues, "production_order": po}
 
 
 def carry_forward(

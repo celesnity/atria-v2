@@ -70,3 +70,9 @@ def post_confirm(body: ConfirmIn) -> dict:
 @router.get("/jobs/{job_id}/progress")
 def get_progress(job_id: int) -> list[dict]:
     return service.job_progress(job_id)
+
+
+@router.get("/sops/{sop_id}/diff")
+def get_diff(sop_id: int) -> dict:
+    """Cái gì đã đổi so với bản trước (P-EXEC-05)."""
+    return _guard(service.diff_last_version, sop_id)

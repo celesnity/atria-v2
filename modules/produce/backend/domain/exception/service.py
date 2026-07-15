@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from db import db_session, now
 
-from .models import PrException
+from .models import PrException, PrMaterialRequest
 
 
 class ExceptionError(Exception):
@@ -88,5 +88,29 @@ def escalated_exceptions() -> list[dict]:
             select(PrException)
             .where(PrException.status == "escalated")
             .order_by(PrException.opened_at)
+        )
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+# --- Material replenishment request (P-EXCP-04, giao với Move) -------------------
+def request_material(
+    station_id: int, part_code: str | None = None, qty: int = 0, requested_by: str | None = None
+) -> dict:
+    """Operator yêu cầu bổ sung vật tư khi sắp hết (P-EXCP-04). Move sẽ tiêu thụ sau."""
+    with db_session() as s:
+        r = PrMaterialRequest(
+            station_id=station_id, part_code=part_code, qty=qty, requested_by=requested_by
+        )
+        s.add(r)
+        s.flush()
+        return r.as_dict()
+
+
+def open_material_requests() -> list[dict]:
+    with db_session() as s:
+        stmt = (
+            select(PrMaterialRequest)
+            .where(PrMaterialRequest.status == "requested")
+            .order_by(PrMaterialRequest.requested_at)
         )
         return [r.as_dict() for r in s.scalars(stmt).all()]
