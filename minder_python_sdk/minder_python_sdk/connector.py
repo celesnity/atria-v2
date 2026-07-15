@@ -40,7 +40,7 @@ import os
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Iterator, Mapping, Optional
 
 if TYPE_CHECKING:
     from .client import MinderClient
@@ -61,6 +61,14 @@ from .envelope import (
     normalize_risk,
 )
 from .ui import Control, Form, Page, UiSurface, is_intent, navigate
+from ._response import ActionError, Response
+from ._schema import (
+    build_params_model,
+    output_annotation_for,
+    output_schema_for,
+    secret_params,
+)
+from ._secret import build_secret, resolve_secret_value
 
 logger = logging.getLogger("minder_python_sdk")
 
@@ -101,6 +109,8 @@ class _Tool:
     read_only: bool = False
     when_to_use: str = ""
     examples: list = field(default_factory=list)
+    output_schema: Optional[dict] = None
+    output_annotation: Optional[Any] = None
 
 
 @dataclass
@@ -236,14 +246,16 @@ class Connector:
         read (implies risk "none")."""
         if params_model is not None and parameters is not None:
             raise ValueError("pass either params_model or parameters, not both")
-        params = (
-            params_model.model_json_schema()
-            if params_model is not None  # type: ignore[attr-defined]
-            else (parameters or {"type": "object", "properties": {}})
-        )
         eff_risk = "none" if read_only else normalize_risk(risk)
 
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+            model = params_model
+            if model is None and parameters is None:
+                model = build_params_model(fn)
+            if model is not None:
+                params = model.model_json_schema()  # type: ignore[attr-defined]
+            else:
+                params = parameters or {"type": "object", "properties": {}}
             self._tools[name] = _Tool(
                 name,
                 description,
@@ -252,7 +264,7 @@ class Connector:
                 card_type,
                 streaming,
                 requires_auth=requires_auth,
-                params_model=params_model,
+                params_model=model,
                 risk=eff_risk,
                 reversible=reversible,
                 undo=undo,
@@ -260,6 +272,8 @@ class Connector:
                 read_only=read_only,
                 when_to_use=when_to_use,
                 examples=examples or [],
+                output_schema=output_schema_for(fn),
+                output_annotation=output_annotation_for(fn),
             )
             return fn
 
@@ -605,7 +619,19 @@ class Connector:
 
     def _normalize(self, tool: _Tool, raw: Any) -> dict:
         """Coerce a handler return into the tool-response envelope."""
-        if isinstance(raw, dict) and (
+        # A typed Response[T]: error → handled failure; result → output.
+        if isinstance(raw, Response):
+            if raw.error is not None:
+                return self._fail(raw.error)
+            env = {
+                "success": True,
+                "output": raw.result,
+                "card": None,
+                "card_type": tool.card_type if isinstance(raw.result, dict) else None,
+                "llm_suffix": None,
+                "blocks": None,
+            }
+        elif isinstance(raw, dict) and (
             "output" in raw
             or "card" in raw
             or "blocks" in raw
@@ -613,7 +639,7 @@ class Connector:
             or "llm_suffix" in raw
         ):
             card = raw.get("card")
-            return {
+            env = {
                 "success": bool(raw.get("success", True)),
                 "output": raw.get("output", card if card is not None else raw),
                 "card": card,
@@ -621,16 +647,28 @@ class Connector:
                 "llm_suffix": raw.get("llm_suffix"),
                 "blocks": raw.get("blocks"),
             }
-        # A bare value: it's both the agent output and (if a dict) the card.
-        card = raw if isinstance(raw, dict) else None
-        return {
-            "success": True,
-            "output": raw,
-            "card": card,
-            "card_type": tool.card_type if card is not None else None,
-            "llm_suffix": None,
-            "blocks": None,
-        }
+        else:
+            # A bare value: it's both the agent output and (if a dict) the card.
+            card = raw if isinstance(raw, dict) else None
+            env = {
+                "success": True,
+                "output": raw,
+                "card": card,
+                "card_type": tool.card_type if card is not None else None,
+                "llm_suffix": None,
+                "blocks": None,
+            }
+        # Output soft-validation: warn on a schema mismatch, still return the result.
+        if tool.output_annotation is not None and env.get("success"):
+            try:
+                from pydantic import TypeAdapter
+
+                TypeAdapter(tool.output_annotation).validate_python(env.get("output"))
+            except Exception as exc:  # noqa: BLE001 — soft: warn, still return
+                logger.warning(
+                    "tool %s output does not match output_schema: %s", tool.name, exc
+                )
+        return env
 
     @staticmethod
     def _fail(output: str, *, error: Optional[dict] = None) -> dict:
@@ -656,6 +694,7 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> dict:
         """Invoke a registered tool in-process (for unit tests) — bypasses HTTP.
         Returns the same envelope the /connector/tools/{name} endpoint returns."""
@@ -669,6 +708,7 @@ class Connector:
             agent_id=agent_id,
             request_key=request_key,
             dry_run=dry_run,
+            headers=headers,
         )
 
     def _call(
@@ -682,6 +722,7 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> dict:
         if tool.params_model is not None:
             try:
@@ -727,6 +768,15 @@ class Connector:
         if handler_dry:
             kwargs["dry_run"] = True
 
+        # Managed credentials: resolve each Secret/OAuth2Secret param from the
+        # forwarded header / env and inject it. A missing required secret is
+        # fail-closed — the handler never runs without its credentials.
+        for sname, ann in secret_params(tool.handler).items():
+            raw_secret = resolve_secret_value(sname, headers)
+            if raw_secret is None:
+                return self._fail(f"credential '{sname}' unavailable")
+            kwargs[sname] = build_secret(ann, raw_secret)
+
         actor = actor_from(principal, agent_id)
         # Ground truth: announce the action is starting, so the event log records
         # the attempt even if the handler crashes.
@@ -749,6 +799,8 @@ class Connector:
             if inspect.isgenerator(raw):
                 raw = self._drain(raw)
             result = self._normalize(tool, raw)
+        except ActionError as exc:
+            result = self._fail(str(exc))
         except ToolError as exc:
             result = self._fail(exc.message, error=exc.as_error())
         except ServiceUnavailable as exc:
@@ -1177,6 +1229,7 @@ class Connector:
                 "idempotent": t.idempotent,
                 "when_to_use": t.when_to_use,
                 "examples": t.examples,
+                "output_schema": t.output_schema,
             }
             for t in self._tools.values()
         ]
@@ -1198,6 +1251,7 @@ class Connector:
         agent_id: Optional[str] = None,
         request_key: Optional[str] = None,
         dry_run: bool = False,
+        headers: Optional[Mapping[str, str]] = None,
     ) -> Iterator[bytes]:
         def emit(obj: dict) -> bytes:
             return f"data: {json.dumps(obj)}\n\n".encode()
@@ -1228,6 +1282,15 @@ class Connector:
                     kwargs["autonomy"] = eff_autonomy
                 if dry_run:
                     kwargs["dry_run"] = True
+                for sname, ann in secret_params(tool.handler).items():
+                    raw_secret = resolve_secret_value(sname, headers)
+                    if raw_secret is None:
+                        yield emit(
+                            {"event": "final",
+                             **self._fail(f"credential '{sname}' unavailable")}
+                        )
+                        return
+                    kwargs[sname] = build_secret(ann, raw_secret)
                 last: Any = None
                 for evt in tool.handler(**kwargs):
                     if isinstance(evt, dict) and evt.get("event"):
@@ -1248,6 +1311,7 @@ class Connector:
                     agent_id=agent_id,
                     request_key=request_key,
                     dry_run=dry_run,
+                    headers=headers,
                 )
                 yield emit({"event": "final", **final})
         except Exception as exc:  # noqa: BLE001
@@ -1366,6 +1430,7 @@ def _call_ctx_from_headers(request: Request) -> dict:
         "agent_id": request.headers.get("X-Minder-Agent") or None,
         "request_key": request.headers.get("X-Minder-Request-Key") or None,
         "dry_run": dry,
+        "headers": dict(request.headers),
     }
 
 
