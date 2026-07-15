@@ -39,6 +39,28 @@ class PrDowntime(Base):
         }
 
 
+class PrDowntimeReason(Base):
+    """Thư viện mã lý do downtime theo line/máy (P-DOWN-06) — thu ít mà thu đúng."""
+
+    __tablename__ = "pr_downtime_reason"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    line_id = Column(Integer, ForeignKey("pr_line.id"), nullable=False)
+    machine = Column(String(64), nullable=True)  # null = áp cho cả line
+    category = Column(String(64), nullable=False)
+    subcategory = Column(String(64), nullable=True)
+    code = Column(String(64), nullable=True)
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "line_id": self.line_id,
+            "machine": self.machine,
+            "category": self.category,
+            "subcategory": self.subcategory,
+            "code": self.code,
+        }
+
+
 class PrAndon(Base):
     __tablename__ = "pr_andon"
     id = Column(Integer, primary_key=True, autoincrement=True)
