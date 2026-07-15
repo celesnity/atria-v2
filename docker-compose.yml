@@ -210,6 +210,54 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  # produce — Track A standalone MES. Pure human-operated software: NO connector,
+  # NO Keycloak, NO announce to Minder. Reuses shared `db` (own pr_* tables),
+  # `redis` (DB index /3), and `minio` (bucket `produce` for defect photos).
+  # Serves its own REST API + built React SPA at http://localhost:9310/.
+  produce-web:
+    build:
+      context: .
+      dockerfile: modules/produce/backend/Dockerfile
+    ports:
+      - "9310:9310"
+    environment:
+      - PR_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - PR_REDIS_URL=redis://redis:6379/3
+      - PR_PUBLIC_BASE=http://localhost:9310
+      - PR_S3_ENDPOINT=http://minio:9000
+      - PR_S3_BUCKET=produce
+      - PR_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
+      - PR_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9310/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # produce Celery worker — OEE snapshot roll-up. Same DB/Redis as the web.
+  produce-worker:
+    build:
+      context: .
+      dockerfile: modules/produce/worker/Dockerfile
+    environment:
+      - PR_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - PR_REDIS_URL=redis://redis:6379/3
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   minder_data:
   postgres_data:
