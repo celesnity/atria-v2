@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from db import db_session
 
-from .models import PrLine, PrOperation, PrPart, PrStation
+from .models import PrLine, PrOperation, PrPart, PrSkill, PrStation, PrThreshold
 
 
 # --- Line -----------------------------------------------------------------------
@@ -90,3 +90,32 @@ def latest_part(code: str) -> dict | None:
 def list_parts() -> list[dict]:
     with db_session() as s:
         return [r.as_dict() for r in s.scalars(select(PrPart).order_by(PrPart.code, PrPart.version)).all()]
+
+
+# --- Threshold (P-CFG-04) -------------------------------------------------------
+def create_threshold(line_id: int, metric: str, op: str, value: float) -> dict:
+    with db_session() as s:
+        th = PrThreshold(line_id=line_id, metric=metric, op=op, value=value)
+        s.add(th)
+        s.flush()
+        return th.as_dict()
+
+
+def list_thresholds(line_id: int) -> list[dict]:
+    with db_session() as s:
+        stmt = select(PrThreshold).where(PrThreshold.line_id == line_id).order_by(PrThreshold.id)
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+# --- Skill (P-CFG-03) -----------------------------------------------------------
+def create_skill(code: str, name: str) -> dict:
+    with db_session() as s:
+        sk = PrSkill(code=code, name=name)
+        s.add(sk)
+        s.flush()
+        return sk.as_dict()
+
+
+def list_skills() -> list[dict]:
+    with db_session() as s:
+        return [r.as_dict() for r in s.scalars(select(PrSkill).order_by(PrSkill.id)).all()]

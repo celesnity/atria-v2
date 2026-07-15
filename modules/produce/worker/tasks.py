@@ -1,6 +1,8 @@
-"""Produce worker — Celery jobs (Track A): report roll-up, OEE snapshot,
-threshold alerts. Stub — TODO wire tasks."""
+"""Produce worker entrypoint — imports the backend task module so `celery -A tasks`
+resolves. The worker Dockerfile sets WORKDIR to the backend code tree, so this
+file is only used when running the worker from the module root."""
 
 from __future__ import annotations
 
-# TODO: from celery import Celery; định nghĩa app + tasks (OEE snapshot, alerts).
+from celery_app import celery_app  # noqa: F401
+from tasks import oee_snapshot  # noqa: F401

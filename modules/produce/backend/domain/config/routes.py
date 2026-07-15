@@ -86,3 +86,34 @@ def get_latest_part(code: str) -> dict | None:
 def post_part(body: PartIn) -> dict:
     """Tạo version kế tiếp cho part `code` (không ghi đè)."""
     return service.create_part_version(body.code, body.name, body.ideal_cycle_time)
+
+
+class ThresholdIn(BaseModel):
+    metric: str = Field(min_length=1, max_length=32)
+    op: str = Field(default=">", max_length=4)
+    value: float
+
+
+class SkillIn(BaseModel):
+    code: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=128)
+
+
+@router.get("/lines/{line_id}/thresholds")
+def get_thresholds(line_id: int) -> list[dict]:
+    return service.list_thresholds(line_id)
+
+
+@router.post("/lines/{line_id}/thresholds")
+def post_threshold(line_id: int, body: ThresholdIn) -> dict:
+    return service.create_threshold(line_id, body.metric, body.op, body.value)
+
+
+@router.get("/skills")
+def get_skills() -> list[dict]:
+    return service.list_skills()
+
+
+@router.post("/skills")
+def post_skill(body: SkillIn) -> dict:
+    return service.create_skill(body.code, body.name)
