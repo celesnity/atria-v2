@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+import events
 from db import db_session, now
 
 
@@ -45,7 +46,9 @@ def open_downtime(
         )
         s.add(dt_)
         s.flush()
-        return dt_.as_dict()
+        result = dt_.as_dict()
+        events.emit("downtime.opened", result)
+        return result
 
 
 def close_downtime(downtime_id: int) -> dict:
@@ -57,7 +60,9 @@ def close_downtime(downtime_id: int) -> dict:
             raise DowntimeError("downtime đã đóng")
         dt_.ended_at = now()
         s.flush()
-        return dt_.as_dict()
+        result = dt_.as_dict()
+        events.emit("downtime.closed", result)
+        return result
 
 
 def open_downtimes(station_id: int | None = None) -> list[dict]:
@@ -120,7 +125,9 @@ def raise_andon(
         )
         s.add(a)
         s.flush()
-        return a.as_dict()
+        result = a.as_dict()
+        events.emit("andon.raised", result)
+        return result
 
 
 def set_andon_status(andon_id: int, status: str) -> dict:

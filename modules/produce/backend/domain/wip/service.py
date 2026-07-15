@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+import events
 from db import db_session, now
 
 from .models import (
@@ -31,7 +32,9 @@ def start_job(task_id: int, station_id: int | None = None, operator_id: str | No
         job = PrJob(task_id=task_id, station_id=station_id, operator_id=operator_id)
         s.add(job)
         s.flush()
-        return job.as_dict()
+        result = job.as_dict()
+        events.emit("job.started", result)
+        return result
 
 
 def complete_job(job_id: int) -> dict:
@@ -45,7 +48,9 @@ def complete_job(job_id: int) -> dict:
         job.status = "done"
         job.ended_at = now()
         s.flush()
-        return job.as_dict()
+        result = job.as_dict()
+        events.emit("job.completed", result)
+        return result
 
 
 def add_job_step(job_id: int, name: str, seq: int = 0) -> dict:

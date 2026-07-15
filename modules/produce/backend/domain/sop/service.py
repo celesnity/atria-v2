@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+import events
 from db import db_session, now
 
 from .models import PrSop, PrSopVersion, PrStepConfirm
@@ -111,7 +112,9 @@ def confirm_step(
         )
         s.add(c)
         s.flush()
-        return c.as_dict()
+        result = c.as_dict()
+        events.emit("step.confirmed", result)
+        return result
 
 
 def diff_last_version(sop_id: int) -> dict:
