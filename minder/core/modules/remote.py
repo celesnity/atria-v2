@@ -566,14 +566,14 @@ def build_module_context_spec(ctx: "SkillToolContext") -> "ToolSpec":
         if rec is None or rec.state is not ConnectorState.READY:
             return {
                 "success": False,
-                "output": f"module {name!r} has no live UI surface. " f"{_inspectable_hint(reg)}",
+                "output": f"module {name!r} has no live UI surface. {_inspectable_hint(reg)}",
             }
         conn = RemoteConnector(rec.name, rec.connector_url)
         data = conn.fetch_context(principal=ctx.principal, session_id=ctx.session_id)
         if data is None:
             return {
                 "success": False,
-                "output": f"module {name!r} has no live UI surface. " f"{_inspectable_hint(reg)}",
+                "output": f"module {name!r} has no live UI surface. {_inspectable_hint(reg)}",
             }
         static = rec.context or {}
         return {
