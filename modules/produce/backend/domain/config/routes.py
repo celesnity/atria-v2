@@ -30,6 +30,7 @@ class OperationIn(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     steps: list[dict] = Field(default_factory=list)
     station_id: int | None = None
+    required_skill_id: int | None = None
 
 
 class PartIn(BaseModel):
@@ -68,7 +69,9 @@ def get_operations(line_id: int) -> list[dict]:
 
 @router.post("/lines/{line_id}/operations")
 def post_operation(line_id: int, body: OperationIn) -> dict:
-    return service.create_operation(line_id, body.code, body.name, body.steps, body.station_id)
+    return service.create_operation(
+        line_id, body.code, body.name, body.steps, body.station_id, body.required_skill_id
+    )
 
 
 # --- parts, versioned (P-CFG-02) ------------------------------------------------
@@ -117,3 +120,18 @@ def get_skills() -> list[dict]:
 @router.post("/skills")
 def post_skill(body: SkillIn) -> dict:
     return service.create_skill(body.code, body.name)
+
+
+class OperatorSkillIn(BaseModel):
+    skill_id: int
+
+
+@router.get("/operators/{operator_id}/skills")
+def get_operator_skills(operator_id: str) -> list[int]:
+    return service.operator_skills(operator_id)
+
+
+@router.post("/operators/{operator_id}/skills")
+def post_operator_skill(operator_id: str, body: OperatorSkillIn) -> dict:
+    """Cấp kỹ năng cho operator (P-CFG-03)."""
+    return service.grant_operator_skill(operator_id, body.skill_id)

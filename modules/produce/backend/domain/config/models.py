@@ -60,6 +60,8 @@ class PrOperation(Base):
     code = Column(String(64), nullable=False)  # operation ID (master data)
     name = Column(String(128), nullable=False)
     steps = Column(JSON, nullable=False, default=list)  # [{name, required, ...}] — P-CFG-01
+    # Kỹ năng bắt buộc để làm operation này (P-CFG-03); null = ai cũng làm được.
+    required_skill_id = Column(Integer, ForeignKey("pr_skill.id"), nullable=True)
     __table_args__ = (UniqueConstraint("line_id", "code", name="uq_operation_line_code"),)
 
     def as_dict(self) -> dict:
@@ -70,6 +72,7 @@ class PrOperation(Base):
             "code": self.code,
             "name": self.name,
             "steps": self.steps or [],
+            "required_skill_id": self.required_skill_id,
         }
 
 
