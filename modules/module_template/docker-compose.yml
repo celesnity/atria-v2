@@ -1,0 +1,67 @@
+# module_template — INDEPENDENT module compose (runtime registration).
+#
+# Runs separately from the core Minder stack, joining the shared `minder_net`
+# network to reach `minder`, `db`, `redis`, `minio`, `keycloak` by name. It
+# announces on startup and vanishes from Minder on `down`.
+#
+# Prereqs: core stack up (creates `minder_net` + shared `minio`):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+#
+# Run:  docker compose -f modules/module_template/docker-compose.yml up -d --build
+# Stop: docker compose -f modules/module_template/docker-compose.yml down
+
+name: module_template
+
+networks:
+  default:
+    external: true
+    name: minder_net
+
+services:
+  module-template-web:
+    build:
+      context: ../..
+      dockerfile: modules/module_template/backend/Dockerfile
+    ports:
+      - "9300:9300"
+    environment:
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - MT_PUBLIC_BASE=http://localhost:9300
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - MT_REDIS_URL=redis://redis:6379/2
+      - MT_S3_ENDPOINT=http://minio:9000
+      - MT_S3_BUCKET=module-template
+      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
+      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      - MINDER_MODULE_HEARTBEAT_SEC=10
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9300/connector/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  module-template-worker:
+    build:
+      context: ../..
+      dockerfile: modules/module_template/worker/Dockerfile
+    environment:
+      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
+      - MT_REDIS_URL=redis://redis:6379/2
+      - MT_S3_ENDPOINT=http://minio:9000
+      - MT_S3_BUCKET=module-template
+      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
+      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+    restart: unless-stopped

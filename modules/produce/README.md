@@ -24,9 +24,16 @@ Hybrid: 5 persona tabs (Operator / Tổ trưởng / Quản ca / Quản lý xư�
 ## Run
 - Local dev: backend `uvicorn app:app --port 9310` (from `backend/`), frontend
   `npm run dev` (vite on 5173, talks to 9310 via CORS).
-- Docker: paste `docker-compose.snippet.yml` into `docker-compose.yml`, then
-  `docker compose up -d --build produce-web produce-worker`. UI at
-  `http://localhost:9310/`.
+- Docker (independent module): the core Minder stack runs on its own and does NOT
+  bundle this module. First bring core up (it creates the shared `minder_net`
+  network), then run this module's own compose — it joins `minder_net`, announces
+  to the running Minder, and appears live:
+  ```
+  docker compose -f docker-compose.yml -f docker-compose.local.yml up -d   # core
+  docker compose -f modules/produce/docker-compose.yml up -d --build        # module
+  ```
+  UI at `http://localhost:9310/`. `docker compose -f modules/produce/docker-compose.yml down`
+  removes it from Minder. Set `PR_AGENT_ENABLED=0` in that compose to run Track A only.
 
 ## Test
 From `backend/`: `uv run --no-sync pytest` (SQLite in-memory; no Postgres needed).
