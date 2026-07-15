@@ -52,6 +52,42 @@ def test_on_change_fired_when_state_changes(monkeypatch, tmp_path):
     assert fired, "on_change should be called when state flips to READY"
 
 
+def test_steady_state_pass_does_not_refetch_manifest(monkeypatch, tmp_path):
+    """A module that is already READY is kept alive via cheap /health only — the
+    heavy /manifest is NOT refetched every tick (the anti-spam optimisation)."""
+    tools = [{"name": "m_q", "parameters": {"type": "object"}}]
+
+    class _CountingConn:
+        manifest_calls = 0
+        health_calls = 0
+
+        def fetch_manifest(self):
+            _CountingConn.manifest_calls += 1
+            return {"tools": tools}
+
+        def health(self, timeout=2.0):
+            _CountingConn.health_calls += 1
+            return {"ok": True, "ready": True}
+
+    reset_registry_for_tests()
+    monkeypatch.setenv("MINDER_MODULES_DIR", str(tmp_path))
+    from minder.core.modules import registry as reg_mod
+    reg = reg_mod.get_registry()
+    reg.register_connector(name="m", connector_url="http://m:9200")
+    monkeypatch.setattr(watcher, "RemoteConnector", lambda *a, **k: _CountingConn())
+
+    r = watcher.ConnectorReconciler()
+    r.reconcile_once("m")  # PENDING -> READY: must fetch manifest once
+    assert _CountingConn.manifest_calls == 1
+    assert reg.connector_records()[0].state is ConnectorState.READY
+
+    # Three more steady-state passes: health each time, manifest never again.
+    for _ in range(3):
+        r.reconcile_once("m")
+    assert _CountingConn.manifest_calls == 1, "manifest refetched on a steady READY pass"
+    assert _CountingConn.health_calls == 4, "health should probe every pass"
+
+
 def test_on_change_not_fired_when_state_unchanged(monkeypatch, tmp_path):
     """on_change is NOT called on a no-op reconcile pass (already READY, same tools)."""
     tools = [{"name": "m_q", "parameters": {"type": "object"}}]

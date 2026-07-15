@@ -50,6 +50,11 @@ from minder.core.modules.watcher import (
     stop_global_watcher,
     start_connector_reconciler,
     stop_connector_reconciler,
+    kick_reconcile,
+)
+from minder.core.modules.liveness import (
+    start_liveness_subscriber,
+    stop_liveness_subscriber,
 )
 from minder.web.state import init_state, get_state
 from minder.core.runtime import ConfigManager, ModeManager
@@ -123,7 +128,16 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
-    start_connector_reconciler(on_change=lambda: _broadcast_modules_changed("*"))
+    # Realtime liveness comes from a per-connector SSE stream (push). The polling
+    # reconciler stays on only as a slow safety-net: it bootstraps tools/manifest
+    # and covers the gap before a stream first connects or while it reconnects.
+    start_connector_reconciler(
+        on_change=lambda: _broadcast_modules_changed("*"), interval_sec=60.0
+    )
+    # Each connector's ``/connector/stream`` is held open; an open stream
+    # is proof of life, so the host no longer HTTP-polls ``/health`` every tick.
+    # ``kick_reconcile`` (re)loads the manifest/tools on each (re)connect.
+    start_liveness_subscriber(bootstrap=kick_reconcile)
 
     # Start the cross-process message bus.
     from minder.web.bus import make_bus, set_bus
@@ -173,6 +187,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
+        stop_liveness_subscriber()
         stop_connector_reconciler()
         try:
             from minder.web.connect_runtime import get_connect_manager
@@ -285,9 +300,12 @@ def create_app() -> FastAPI:
                     from fastapi.responses import FileResponse
 
                     return FileResponse(str(file_path))
-                # Read index.html on each request so a UI rebuild takes effect
-                # without restarting the server (the file is tiny).
-                return HTMLResponse(index_file.read_text())
+                # FileResponse streams the file off the event loop and adds
+                # ETag/Last-Modified (so an unchanged index.html 304s), while a
+                # UI rebuild still takes effect — the file is re-read per request.
+                from fastapi.responses import FileResponse
+
+                return FileResponse(str(index_file), media_type="text/html")
 
     else:
         # Development: Return placeholder HTML

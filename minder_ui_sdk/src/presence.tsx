@@ -230,31 +230,37 @@ function useTrackedPosition(
       return;
     }
     let raf = 0;
-    let tries = 0;
     let cancelled = false;
-    const measure = (): boolean => {
+    let last: { x: number; y: number } | null = null;
+    const measure = (): void => {
       const el = document.querySelector(selector) as HTMLElement | null;
-      if (!el) return false;
+      if (!el) return;
       const r = el.getBoundingClientRect();
+      // A freshly-mounted element that is still animating in can report a zero
+      // box — skip it so the cursor doesn't snap to (0,0) then jump.
+      if (r.width === 0 && r.height === 0) return;
       // Point just inside the element's leading edge (feels like the cursor
       // landed on it), vertically centred.
-      setPos({ x: r.left + Math.min(20, r.width / 2), y: r.top + r.height / 2 });
-      return true;
+      const next = { x: r.left + Math.min(20, r.width / 2), y: r.top + r.height / 2 };
+      if (!last || Math.abs(last.x - next.x) > 0.5 || Math.abs(last.y - next.y) > 0.5) {
+        last = next;
+        setPos(next);
+      }
     };
-    const poll = () => {
-      if (cancelled || measure()) return;
-      tries += 1;
-      if (tries < 45) raf = requestAnimationFrame(poll); // ~0.7s to let it mount
+    // Follow the target continuously while active. Panels crossfade, rows
+    // animate in (framer-motion), and layout shifts as content loads — a
+    // one-shot measure would leave the cursor parked at the element's initial
+    // (pre-animation) position instead of where it finally settles. setPos only
+    // fires on real movement, so once settled this idles without re-rendering.
+    const loop = () => {
+      if (cancelled) return;
+      measure();
+      raf = requestAnimationFrame(loop);
     };
-    poll();
-    const onView = () => measure();
-    window.addEventListener('resize', onView);
-    window.addEventListener('scroll', onView, true);
+    loop();
     return () => {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onView);
-      window.removeEventListener('scroll', onView, true);
     };
   }, [selector, nonce]);
   return pos;
@@ -276,7 +282,9 @@ export function GhostCursor({
   if (state === 'idle') return null;
   const color = state === 'proposing' ? tokens.warning : tokens.primary;
   const style: React.CSSProperties = pos
-    ? { position: 'fixed', left: pos.x, top: pos.y, transform: 'translate(-2px, -2px)' }
+    ? // Offset so the pointer's tip (top-left of the SVG), not its box, sits on
+      // the measured point.
+      { position: 'fixed', left: pos.x, top: pos.y, transform: 'translate(-4px, -2px)' }
     : { position: 'fixed', right: 24, bottom: 24 };
   return (
     <div

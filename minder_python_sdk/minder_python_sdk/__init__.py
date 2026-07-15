@@ -11,6 +11,8 @@ from .cards import assumption, block, card, decision_packet, unavailable_card, u
 from .client import MinderClient, MinderClientError
 from .connector import Connector, Principal, ServiceUnavailable
 from .context import Note  # noqa: F401
+from ._response import ActionError, Response
+from ._secret import OAuth2Secret, Secret, SecretSpec
 from .envelope import (
     RISK_LADDER,
     EventEnvelope,
@@ -29,6 +31,11 @@ __all__ = [
     "Principal",
     "ServiceUnavailable",
     "Note",
+    "Response",
+    "ActionError",
+    "Secret",
+    "OAuth2Secret",
+    "SecretSpec",
     "ToolError",
     "EventEnvelope",
     "make_envelope",
@@ -50,4 +57,4 @@ __all__ = [
     "submit",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
