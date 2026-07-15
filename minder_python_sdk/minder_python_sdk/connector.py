@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .cards import decision_packet, unavailable_card, unavailable_suffix
@@ -181,13 +181,14 @@ class Connector:
         # (node + depth) with {nodes, edges} so the agent reasons over connected
         # context instead of a single isolated read.
         self._graph_provider: Optional[Callable[..., Any]] = None
-        # Declared UI surface (pages/forms/controls) + a per-session intent bus
-        # the module frontend drains over SSE.
+        # Declared UI surface (pages/forms/controls).
         self._ui = UiSurface()
-        self._ui_bus: "dict[str, list[Any]]" = {}
         # Per-session declarative UI snapshot cache (page/data/actions) the agent
-        # reads via /connector/context to see what's currently on screen.
+        # reads via /connector/context to see what's currently on screen. The
+        # frontend sends a full snapshot once, then RFC-6902 deltas guarded by an
+        # optimistic version (mismatch → 409, client resends full).
         self._ui_snapshots: dict[str, dict] = {}
+        self._ui_snapshot_versions: dict[str, int] = {}
         # Declarative agent-facing context: live state providers + static
         # knowledge/notes, surfaced via /connector/context and the manifest.
         self._ctx_state: dict[str, _StateProvider] = {}
@@ -452,8 +453,9 @@ class Connector:
         self, session_id: str, intent: dict, *, actor: Optional[dict] = None
     ) -> dict:
         """Send a UI intent to a session's frontend. Validates it against the
-        declared surface (warns, doesn't block), records a ``ui.intent`` event
-        for ground truth, and enqueues it for the SSE bus + any event sink."""
+        declared surface (warns, doesn't block) and dispatches it as a
+        ``ui.intent`` envelope to subscribers (the ``/connector/stream`` SSE) and
+        any event sink — the merged stream is the frontend's command bus."""
         if not is_intent(intent):
             raise ValueError(f"not a UI intent: {intent!r}")
         err = self._ui.validate(intent)
@@ -469,11 +471,6 @@ class Connector:
                 session_id=session_id,
             )
         )
-        for q in self._ui_bus.get(session_id, []):
-            try:
-                q.put_nowait(intent)
-            except Exception:  # noqa: BLE001 — full/closed queue: drop for that consumer
-                pass
         return {"ok": True, "warning": err}
 
     def apply_decision(self, decision: dict, principal: Optional[Principal] = None) -> dict:
@@ -1001,18 +998,23 @@ class Connector:
                 "default_autonomy": self.default_autonomy,
             }
 
-        @app.get("/connector/events")
-        def events() -> StreamingResponse:
-            """SSE stream of this module's event envelopes — the agent's
-            subscription to state changes (backlog B2)."""
+        @app.get("/connector/stream")
+        def stream(request: Request) -> StreamingResponse:
+            """One SSE stream of every envelope for a session — module domain
+            events and ``ui.intent`` alike. Replaces ``/connector/events`` and
+            ``/connector/ui/intents``. Broadcast events (no ``session_id``) reach
+            every subscriber; session-scoped events reach only their session."""
             import queue as _queue
 
+            session = request.query_params.get("session") or "default"
             q: "_queue.Queue[EventEnvelope]" = _queue.Queue(maxsize=256)
 
             def listener(env: EventEnvelope) -> None:
+                if not _session_visible(env.session_id, session):
+                    return
                 try:
                     q.put_nowait(env)
-                except _queue.Full:  # slow consumer — drop rather than block the action
+                except _queue.Full:  # slow consumer — drop rather than block
                     pass
 
             self._event_listeners.append(listener)
@@ -1034,32 +1036,6 @@ class Connector:
 
             return StreamingResponse(gen(), media_type="text/event-stream")
 
-        @app.get("/connector/ui/intents")
-        def ui_intents(request: Request) -> StreamingResponse:
-            """SSE stream of UI intents for one session — the module frontend's
-            command bus (the agent drives the real UI through this)."""
-            import queue as _queue
-
-            session = request.query_params.get("session") or "default"
-            q: "_queue.Queue[dict]" = _queue.Queue(maxsize=256)
-            self._ui_bus.setdefault(session, []).append(q)
-
-            def gen() -> Iterator[bytes]:
-                try:
-                    yield b": ok\n\n"
-                    while True:
-                        try:
-                            intent = q.get(timeout=15)
-                            yield f"data: {json.dumps(intent)}\n\n".encode()
-                        except _queue.Empty:
-                            yield b": ping\n\n"
-                finally:
-                    subs = self._ui_bus.get(session, [])
-                    if q in subs:
-                        subs.remove(q)
-
-            return StreamingResponse(gen(), media_type="text/event-stream")
-
         @app.post("/connector/ui/intent")
         async def ui_intent(request: Request) -> dict:
             """Accept a UI intent from Minder core (agent-originated) and route it
@@ -1074,13 +1050,36 @@ class Connector:
                 return self._fail(str(exc))
 
         @app.post("/connector/ui/snapshot")
-        async def ui_snapshot(request: Request) -> dict:
-            """Cache the frontend's declarative UI snapshot for one session so the
-            agent can read what's currently on screen via ``/connector/context``."""
+        async def ui_snapshot(request: Request) -> Any:
+            """Store the frontend's declarative UI snapshot for one session so the
+            agent can read what's on screen via ``/connector/context``. First push
+            is a full ``snapshot``; later pushes are RFC-6902 ``delta``s guarded by
+            an optimistic ``base_version`` (mismatch → 409, client resends full)."""
             body = await _json_body(request)
             session = body.get("session_id") or "default"
-            self._ui_snapshots[session] = body.get("snapshot") or {}
-            return {"ok": True}
+            kind = body.get("kind") or "snapshot"
+            if kind == "snapshot":
+                self._ui_snapshots[session] = body.get("snapshot") or {}
+                ver = self._ui_snapshot_versions.get(session, 0) + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            if kind == "delta":
+                cur = self._ui_snapshot_versions.get(session, 0)
+                if body.get("base_version") != cur:
+                    return JSONResponse(
+                        {"ok": False, "error": "version_mismatch", "version": cur},
+                        status_code=409,
+                    )
+                import jsonpatch
+
+                patched = jsonpatch.apply_patch(
+                    self._ui_snapshots.get(session, {}), body.get("delta") or []
+                )
+                self._ui_snapshots[session] = patched
+                ver = cur + 1
+                self._ui_snapshot_versions[session] = ver
+                return {"ok": True, "version": ver}
+            return JSONResponse({"ok": False, "error": "bad_kind"}, status_code=422)
 
         @app.post("/connector/decision")
         async def decision(request: Request) -> dict:
@@ -1339,6 +1338,13 @@ async def _json_body(request: Request) -> dict:
         return data if isinstance(data, dict) else {}
     except ValueError:
         return {}
+
+
+def _session_visible(env_session: Optional[str], session: str) -> bool:
+    """Whether a ``/connector/stream`` for ``session`` should see this envelope:
+    broadcast events (no ``session_id``) reach everyone; session-scoped events
+    reach only their own session."""
+    return env_session is None or env_session == session
 
 
 def _session_from_headers(request: Request) -> Optional[str]:

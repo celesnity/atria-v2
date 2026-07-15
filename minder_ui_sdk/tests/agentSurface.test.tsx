@@ -1,6 +1,10 @@
 import { render, screen, act } from '@testing-library/react';
 import { AgentDriverProvider, type UiIntent } from '../src/agentDriver';
 import { AgentRegistryProvider, Agent } from '../src/agentSurface/AgentSurface';
+import { UI_INTENT } from '../src/events';
+import { __resetSharedStreams } from '../src/stream';
+
+let __seq = 0;
 
 class FakeES {
   static last: FakeES | null = null;
@@ -11,10 +15,21 @@ class FakeES {
     FakeES.last = this;
   }
   emit(intent: UiIntent) {
-    this.onmessage?.({ data: JSON.stringify(intent) } as MessageEvent);
+    const env = {
+      event_id: `e${(__seq += 1)}`,
+      type: UI_INTENT,
+      module: 'm',
+      ts: '',
+      source: 'agent',
+      session_id: 's1',
+      payload: { intent },
+    };
+    this.onmessage?.({ data: JSON.stringify(env) } as MessageEvent);
   }
   close() {}
 }
+
+afterEach(() => __resetSharedStreams());
 
 function Demo({ onAdd }: { onAdd: () => void }) {
   return (
