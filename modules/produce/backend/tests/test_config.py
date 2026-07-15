@@ -49,3 +49,16 @@ def test_part_versioning_does_not_overwrite():
     assert v2["version"] == 2
     assert service.latest_part("PN-1")["version"] == 2
     assert len(service.list_parts()) == 2
+
+
+def test_threshold_and_skill_crud():
+    from domain.config import service
+
+    line = service.create_line("L9", "Line 9")["id"]
+    th = service.create_threshold(line, "downtime_minutes", ">", 15)
+    assert th["metric"] == "downtime_minutes" and th["op"] == ">"
+    assert service.list_thresholds(line)[0]["value"] == 15
+
+    sk = service.create_skill("WELD", "Welding")
+    assert sk["code"] == "WELD"
+    assert service.list_skills()[0]["name"] == "Welding"
