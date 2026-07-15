@@ -1,7 +1,17 @@
-// Persona route: Operator — operator
-// Epic panels: hàng đợi (E1) · e-SOP (E2) · WIP (E3) · downtime/andon (E4) · scrap (E5)
+import WorkPanel from '../panels/WorkPanel';
+import SopPanel from '../panels/SopPanel';
+import WipPanel from '../panels/WipPanel';
+import DowntimePanel from '../panels/DowntimePanel';
+import ScrapPanel from '../panels/ScrapPanel';
 
-export default function OperatorRoute() {
-  // TODO: mount epic panels for this persona.
-  return null;
+export default function OperatorRoute({ apiBase }: { apiBase: string }) {
+  return (
+    <>
+      <WorkPanel apiBase={apiBase} mode="queue" />
+      <SopPanel apiBase={apiBase} />
+      <WipPanel apiBase={apiBase} />
+      <DowntimePanel apiBase={apiBase} mode="log" />
+      <ScrapPanel apiBase={apiBase} mode="record" />
+    </>
+  );
 }

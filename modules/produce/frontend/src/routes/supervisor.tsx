@@ -1,7 +1,15 @@
-// Persona route: Quản ca — supervisor
-// Epic panels: OEE ca (E6) · escalate (E9) · bàn giao (E8) · hold lot (E5)
+import OeePanel from '../panels/OeePanel';
+import HandoverPanel from '../panels/HandoverPanel';
+import ScrapPanel from '../panels/ScrapPanel';
+import ExceptionPanel from '../panels/ExceptionPanel';
 
-export default function SupervisorRoute() {
-  // TODO: mount epic panels for this persona.
-  return null;
+export default function SupervisorRoute({ apiBase }: { apiBase: string }) {
+  return (
+    <>
+      <OeePanel apiBase={apiBase} />
+      <HandoverPanel apiBase={apiBase} />
+      <ScrapPanel apiBase={apiBase} mode="hold" />
+      <ExceptionPanel apiBase={apiBase} mode="escalated" />
+    </>
+  );
 }
