@@ -9,10 +9,12 @@
 # Prereqs: the core stack is already up (it creates `minder_net`):
 #   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
 #
-# Run this module:
-#   docker compose -f modules/produce/docker-compose.yml up -d --build
+# Run this module (MUST pass --env-file .env so ${MINDER_MODULE_CLIENT_SECRET}
+# resolves from the repo-root .env — this is a SEPARATE compose project, so it does
+# NOT auto-read the root .env; without it the Keycloak service-token fetch 401s):
+#   docker compose --env-file .env -f modules/produce/docker-compose.yml up -d --build
 # Stop it (module vanishes from Minder):
-#   docker compose -f modules/produce/docker-compose.yml down
+#   docker compose --env-file .env -f modules/produce/docker-compose.yml down
 
 name: produce
 
