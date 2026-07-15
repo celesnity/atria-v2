@@ -750,11 +750,22 @@ isolated in the module's own container, with **zero edits to Minder source**.
 ## Produce — Track A standalone MES (no SDK)
 
 Unlike `module_template` and `maintenance_copilot`, [`modules/produce/`](./produce)
-is **not** a service module: it is pure human-operated software (Track A). It does
+is a hybrid. By default it runs as pure human-operated software (Track A): it does
 **not** import `minder_python_sdk`, declares no `@conn.tool`, exposes no
 `/connector/*` route, and needs **no connector / Keycloak** wiring. It does reuse
 the shared **MinIO** for defect photos (P-SCRAP-03, bucket `produce`, `PR_S3_*`).
-Track B (SDK/AI) layers on later without touching this code.
+
+**Optional Track B agent surface.** Setting `PR_AGENT_ENABLED=1` layers a Minder
+co-work surface (Read / Event / Command / Guidance) on top of Track A *additively*
+via `minder_python_sdk`. When enabled, `produce-web` builds the connector ASGI —
+exposing `/connector/*` (health, manifest with reads `read_*`, tools
+`cmd_*`/`guide_*`, and event types) alongside the unchanged Track A REST epics — and
+announces itself to Minder like any other service module. When `PR_AGENT_ENABLED` is
+unset/falsy, produce runs byte-identically to Track A (no connector, no announce).
+The announce env for the enabled case (`MINDER_URL`,
+`MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`,
+`MINDER_DEFAULT_AUTONOMY`, and the Keycloak client creds — see §4.2) is set on
+`produce-web` in `docker-compose.yml`.
 
 - **Module id:** `produce`.
 - **Service port:** `9310` (`produce-web` serves the REST API and the built React

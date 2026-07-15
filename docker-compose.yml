@@ -228,6 +228,15 @@ services:
       - PR_S3_BUCKET=produce
       - PR_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
       - PR_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
+      - PR_AGENT_ENABLED=1
+      - MINDER_URL=http://minder:8080
+      - MINDER_MODULE_CONNECTOR_URL=http://produce-web:9310
+      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9310/dashboard/remoteEntry.js
+      - MINDER_DEFAULT_AUTONOMY=medium
+      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
+      - MINDER_MODULE_CLIENT_ID=minder-module
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
+      - MINDER_MODULE_HEARTBEAT_SEC=10
     depends_on:
       db:
         condition: service_healthy
@@ -236,7 +245,7 @@ services:
       minio:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9310/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9310/connector/health')"]
       interval: 15s
       timeout: 5s
       retries: 5
