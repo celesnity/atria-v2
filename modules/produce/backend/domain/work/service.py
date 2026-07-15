@@ -6,9 +6,11 @@ gán/gán lại bởi tổ trưởng (P-WORK-04), board trạng thái tổ (P-WO
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from db import db_session
+
+from domain.config import service as config_service
 
 from .models import TASK_STATES, PrShift, PrTask
 
@@ -82,11 +84,16 @@ def _get(s, task_id: int) -> PrTask:
 
 
 def assign_task(task_id: int, assignee_id: str) -> dict:
-    """Tổ trưởng gán hoặc gán lại task (P-WORK-04)."""
+    """Tổ trưởng gán hoặc gán lại task (P-WORK-04). Chặn nếu thiếu kỹ năng (P-WORK-03)."""
     with db_session() as s:
         t = _get(s, task_id)
         if t.status in ("in_progress", "done"):
             raise WorkError(f"không gán lại task đang ở trạng thái {t.status!r}")
+        operation_id = t.operation_id
+    if not config_service.operator_can_operate(assignee_id, operation_id):
+        raise WorkError(f"operator {assignee_id!r} không đủ kỹ năng cho operation này")
+    with db_session() as s:
+        t = _get(s, task_id)
         t.assignee_id = assignee_id
         t.status = "assigned"
         s.flush()
@@ -94,11 +101,16 @@ def assign_task(task_id: int, assignee_id: str) -> dict:
 
 
 def claim_task(task_id: int, assignee_id: str) -> dict:
-    """Operator nhận task và đánh dấu đang làm (P-WORK-02)."""
+    """Operator nhận task, đánh dấu đang làm (P-WORK-02). Chỉ giao việc đủ kỹ năng (P-WORK-03)."""
     with db_session() as s:
         t = _get(s, task_id)
         if t.assignee_id not in (None, assignee_id):
             raise WorkError("task đã được gán cho người khác")
+        operation_id = t.operation_id
+    if not config_service.operator_can_operate(assignee_id, operation_id):
+        raise WorkError(f"operator {assignee_id!r} không đủ kỹ năng cho operation này")
+    with db_session() as s:
+        t = _get(s, task_id)
         t.assignee_id = assignee_id
         t.status = "in_progress"
         s.flush()
@@ -113,3 +125,20 @@ def set_status(task_id: int, status: str) -> dict:
         t.status = status
         s.flush()
         return t.as_dict()
+
+
+def shift_load(shift_id: int) -> list[dict]:
+    """Tải công việc mọi line trong một ca, gộp theo (line, status) — cho quản ca (P-WORK-06)."""
+    with db_session() as s:
+        stmt = (
+            select(PrTask.line_id, PrTask.status, func.count().label("n"))
+            .where(PrTask.shift_id == shift_id)
+            .group_by(PrTask.line_id, PrTask.status)
+            .order_by(PrTask.line_id)
+        )
+        rows: dict[int, dict] = {}
+        for line_id, status, n in s.execute(stmt).all():
+            rows.setdefault(line_id, {"line_id": line_id, "total": 0})
+            rows[line_id][status] = int(n)
+            rows[line_id]["total"] += int(n)
+        return list(rows.values())

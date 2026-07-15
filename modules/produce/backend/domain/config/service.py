@@ -10,7 +10,15 @@ from sqlalchemy import select
 
 from db import db_session
 
-from .models import PrLine, PrOperation, PrPart, PrSkill, PrStation, PrThreshold
+from .models import (
+    PrLine,
+    PrOperation,
+    PrOperatorSkill,
+    PrPart,
+    PrSkill,
+    PrStation,
+    PrThreshold,
+)
 
 
 # --- Line -----------------------------------------------------------------------
@@ -44,11 +52,21 @@ def list_stations(line_id: int) -> list[dict]:
 
 # --- Operation (P-CFG-01) -------------------------------------------------------
 def create_operation(
-    line_id: int, code: str, name: str, steps: list[dict] | None = None, station_id: int | None = None
+    line_id: int,
+    code: str,
+    name: str,
+    steps: list[dict] | None = None,
+    station_id: int | None = None,
+    required_skill_id: int | None = None,
 ) -> dict:
     with db_session() as s:
         op = PrOperation(
-            line_id=line_id, code=code, name=name, steps=steps or [], station_id=station_id
+            line_id=line_id,
+            code=code,
+            name=name,
+            steps=steps or [],
+            station_id=station_id,
+            required_skill_id=required_skill_id,
         )
         s.add(op)
         s.flush()
@@ -119,3 +137,45 @@ def create_skill(code: str, name: str) -> dict:
 def list_skills() -> list[dict]:
     with db_session() as s:
         return [r.as_dict() for r in s.scalars(select(PrSkill).order_by(PrSkill.id)).all()]
+
+
+def grant_operator_skill(operator_id: str, skill_id: int) -> dict:
+    """Cấp một kỹ năng cho operator (P-CFG-03). Idempotent theo (operator, skill)."""
+    with db_session() as s:
+        existing = s.scalars(
+            select(PrOperatorSkill).where(
+                PrOperatorSkill.operator_id == operator_id, PrOperatorSkill.skill_id == skill_id
+            )
+        ).first()
+        if existing:
+            return existing.as_dict()
+        os_ = PrOperatorSkill(operator_id=operator_id, skill_id=skill_id)
+        s.add(os_)
+        s.flush()
+        return os_.as_dict()
+
+
+def operator_skills(operator_id: str) -> list[int]:
+    with db_session() as s:
+        stmt = select(PrOperatorSkill.skill_id).where(PrOperatorSkill.operator_id == operator_id)
+        return [int(r) for r in s.scalars(stmt).all()]
+
+
+def operator_can_operate(operator_id: str, operation_id: int | None) -> bool:
+    """True nếu operation không yêu cầu kỹ năng, hoặc operator có kỹ năng đó (P-WORK-03).
+
+    operation_id None (task chưa gắn operation) coi như không ràng buộc.
+    """
+    if operation_id is None:
+        return True
+    with db_session() as s:
+        op = s.get(PrOperation, operation_id)
+        if op is None or op.required_skill_id is None:
+            return True
+        has = s.scalars(
+            select(PrOperatorSkill).where(
+                PrOperatorSkill.operator_id == operator_id,
+                PrOperatorSkill.skill_id == op.required_skill_id,
+            )
+        ).first()
+        return has is not None

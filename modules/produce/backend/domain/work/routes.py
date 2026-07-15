@@ -73,6 +73,12 @@ def get_board(line_id: int, shift_id: int | None = None) -> list[dict]:
     return service.team_board(line_id, shift_id)
 
 
+@router.get("/shift/{shift_id}/load")
+def get_shift_load(shift_id: int) -> list[dict]:
+    """Tải công việc mọi line trong ca — cho quản ca (P-WORK-06)."""
+    return service.shift_load(shift_id)
+
+
 @router.post("/tasks/{task_id}/assign")
 def post_assign(task_id: int, body: AssignIn) -> dict:
     """Tổ trưởng gán/gán lại (P-WORK-04)."""
