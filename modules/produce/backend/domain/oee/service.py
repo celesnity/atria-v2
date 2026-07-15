@@ -13,14 +13,14 @@ Downtime lấy qua E4, scrap qua E5 (gọi service, không đụng model epic kh
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from db import db_session
 
 from domain.downtime import service as downtime_service
 from domain.scrap import service as scrap_service
 
-from .models import PrProductionOrder
+from .models import PrProductionOrder, PrSpeedLoss
 
 
 class OeeError(Exception):
@@ -106,3 +106,56 @@ def shift_oee(shift_id: int, total_count: int) -> dict:
         "target_count": po["target_count"],
     }
     return result
+
+
+# --- Speed loss (P-OEE-05) ------------------------------------------------------
+def record_speed_loss(
+    seconds: float,
+    *,
+    shift_id: int | None = None,
+    station_id: int | None = None,
+    job_id: int | None = None,
+    reason: str | None = None,
+) -> dict:
+    with db_session() as s:
+        sl = PrSpeedLoss(
+            seconds=seconds, shift_id=shift_id, station_id=station_id, job_id=job_id, reason=reason
+        )
+        s.add(sl)
+        s.flush()
+        return sl.as_dict()
+
+
+def speed_loss_minutes(shift_id: int) -> float:
+    with db_session() as s:
+        secs = s.scalar(
+            select(func.coalesce(func.sum(PrSpeedLoss.seconds), 0.0)).where(
+                PrSpeedLoss.shift_id == shift_id
+            )
+        )
+        return round(float(secs or 0.0) / 60.0, 2)
+
+
+# --- Loss breakdown (P-OEE-04) --------------------------------------------------
+def loss_breakdown(shift_id: int, total_count: int) -> dict:
+    """Bóc tách ba tổn thất theo phút cho một ca (P-OEE-04): availability / performance / quality.
+
+    availability_loss = downtime; performance_loss = A×(1−P)×planned;
+    quality_loss = A×P×(1−Q)×planned. Đơn vị phút trên planned time.
+    """
+    base = shift_oee(shift_id, total_count)  # có A/P/Q + planned/downtime
+    po = _production_order(shift_id)
+    planned = float(po["planned_minutes"]) if po else 0.0
+    a, p, q = base["availability"], base["performance"], base["quality"]
+    availability_loss = round(base["downtime_minutes"], 2)
+    performance_loss = round(a * (1 - p) * planned, 2)
+    quality_loss = round(a * p * (1 - q) * planned, 2)
+    return {
+        "shift_id": shift_id,
+        "planned_minutes": planned,
+        "availability_loss_min": availability_loss,
+        "performance_loss_min": performance_loss,
+        "quality_loss_min": quality_loss,
+        "speed_loss_min": speed_loss_minutes(shift_id),
+        "oee": base["oee"],
+    }
