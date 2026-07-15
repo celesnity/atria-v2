@@ -69,7 +69,10 @@ class ToolSchemaBuilder:
             if self._tool_registry and hasattr(self._tool_registry, "get_discovered_mcp_tools")
             else ()
         )
-        key = (thinking_visible, discovered, frozenset(load_disabled_tools()))
+        # Read the disabled set once — reused for the cache key AND the filter
+        # below (was parsed from disk twice per build on a cache miss).
+        disabled = frozenset(load_disabled_tools())
+        key = (thinking_visible, discovered, disabled)
         if key == self._cache_key and self._cached_schemas is not None:
             return self._cached_schemas
 
@@ -100,9 +103,8 @@ class ToolSchemaBuilder:
             schemas = adapt_for_provider(schemas, self._provider)
 
         # Drop disabled tools last, so it also strips any MCP/task/extra schemas
-        # that happen to share a disabled name. Read fresh each build so web-UI
-        # toggles take effect on the next LLM call without a restart.
-        disabled = load_disabled_tools()
+        # that happen to share a disabled name. `disabled` was read fresh above,
+        # so web-UI toggles still take effect on the next LLM call without a restart.
         if disabled:
             schemas = [
                 schema

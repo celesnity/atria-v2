@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { getSharedStream } from './stream';
+import { UI_INTENT, type EventEnvelope, type EventActor } from './events';
 
 /**
  * The agent-facing sensing surface, mirrored from the module SDK's event
@@ -7,24 +9,9 @@ import { useEffect, useRef, useState } from 'react';
  * the caller's autonomy/scope so the UI can show what the agent may do here.
  */
 
-/** Who acted — distinguishes an agent acting on a user's behalf from a human. */
-export interface EventActor {
-  kind: 'agent' | 'human' | 'system';
-  agent_id?: string | null;
-  on_behalf_of?: string | null;
-}
-
-/** A normalized, timestamped, sourced record of something that happened. */
-export interface EventEnvelope<P = unknown> {
-  event_id: string;
-  type: string;
-  module: string;
-  ts: string;
-  source: string;
-  actor?: EventActor | null;
-  session_id?: string | null;
-  payload: P;
-}
+// Envelope types live in `./events` (single source of truth); re-export so
+// existing consumers importing them from here keep working.
+export type { EventEnvelope, EventActor };
 
 /** The caller's autonomy + identity + per-action permission, from `/context`. */
 export interface AgentContext {
@@ -40,7 +27,9 @@ export interface AgentContext {
 }
 
 export interface UseModuleEventsOptions {
-  /** SSE path relative to `apiBase`. Defaults to `/connector/events`. */
+  /** Session whose stream to join; shares the driver's EventSource when equal. */
+  sessionId?: string;
+  /** SSE path relative to `apiBase`. Defaults to `/connector/stream`. */
   path?: string;
   /** Keep only the last N events (ring buffer). Defaults to 100. */
   limit?: number;
@@ -51,48 +40,43 @@ export interface UseModuleEventsOptions {
 }
 
 /**
- * Subscribe to a module's normalized event stream over SSE and return the most
- * recent envelopes plus a live `connected` flag. Reconnects are handled by the
- * browser's `EventSource`. Pass `types` to filter.
+ * Subscribe to a module's normalized event stream (the merged
+ * `/connector/stream`) and return the most recent envelopes. `ui.intent` events
+ * are excluded — the agent driver owns those. Pass `types` to filter further,
+ * and `sessionId` to share the driver's single EventSource.
  *
- *   const { events, connected } = useModuleEvents(apiBase, { types: ['queue.changed'] });
+ *   const { events } = useModuleEvents(apiBase, { sessionId, types: ['queue.changed'] });
  */
 export function useModuleEvents(
   apiBase: string,
   opts: UseModuleEventsOptions = {},
 ): { events: EventEnvelope[]; connected: boolean } {
-  const { path = '/connector/events', limit = 100, types, onEvent } = opts;
+  const { sessionId, path = '/connector/stream', limit = 100, types, onEvent } = opts;
   const [events, setEvents] = useState<EventEnvelope[]>([]);
-  const [connected, setConnected] = useState(false);
   const onEventRef = useRef(onEvent);
   onEventRef.current = onEvent;
 
   const typeKey = types ? types.join(',') : '';
   useEffect(() => {
     if (!apiBase || typeof EventSource === 'undefined') return;
-    const url = `${apiBase.replace(/\/$/, '')}${path}`;
-    const es = new EventSource(url);
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-    es.onmessage = (e: MessageEvent) => {
-      let env: EventEnvelope;
-      try {
-        env = JSON.parse(e.data) as EventEnvelope;
-      } catch {
-        return;
-      }
+    const qs = sessionId ? `?session=${encodeURIComponent(sessionId)}` : '';
+    const url = `${apiBase.replace(/\/$/, '')}${path}${qs}`;
+    const handle = getSharedStream(url, (env) => {
+      if (env.type === UI_INTENT) return; // the driver owns intents
       if (types && !types.includes(env.type)) return;
       onEventRef.current?.(env);
       setEvents((prev) => {
         const next = [...prev, env];
         return next.length > limit ? next.slice(next.length - limit) : next;
       });
-    };
-    return () => es.close();
+    });
+    return () => handle.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBase, path, limit, typeKey]);
+  }, [apiBase, path, limit, typeKey, sessionId]);
 
-  return { events, connected };
+  // The shared EventSource auto-reconnects; a per-consumer connected flag is no
+  // longer meaningful, so report connected once mounted.
+  return { events, connected: true };
 }
 
 /**
