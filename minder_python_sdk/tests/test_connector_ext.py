@@ -1,4 +1,3 @@
-import json
 import os
 from minder_python_sdk import Connector
 from minder_python_sdk.connector import Principal
@@ -119,29 +118,33 @@ def test_manifest_advertises_exposed_blocks_and_versions(monkeypatch):
     assert mani["contract_version"] == "3" and mani["min_core_version"] == "2"
 
 
-def test_stream_delivers_ui_intent_for_matching_session():
+def test_stream_session_filter_visibility():
+    # The merged /connector/stream delivers broadcast events (no session) to
+    # everyone and session-scoped events only to their own session. (The live
+    # SSE loop is infinite, so we test the pure filter, not an HTTP consume —
+    # Starlette's TestClient buffers the whole response and would deadlock.)
+    from minder_python_sdk.connector import _session_visible
+
+    assert _session_visible(None, "s1") is True   # broadcast → all
+    assert _session_visible("s1", "s1") is True    # own session
+    assert _session_visible("s2", "s1") is False   # other session
+
+
+def test_push_ui_intent_dispatches_enveloped_intent():
+    # The wire the merged stream carries: a `ui.intent` envelope whose payload
+    # holds the UiIntent, tagged with the target session.
     from minder_python_sdk import Connector
-    from fastapi.testclient import TestClient
 
     conn = Connector("catalog")
     conn.page("home", path="/", label="Home")
-    client = TestClient(conn.asgi())
-
-    with client.stream("GET", "/connector/stream?session=s1") as resp:
-        lines = resp.iter_lines()
-        assert next(lines) == ": ok"           # open marker
-        conn.push_ui_intent("s1", {"intent": "navigate", "route": "home"})
-        # advance to the data frame (skip blank separators / pings)
-        payload = None
-        for _ in range(10):
-            line = next(lines)
-            if line.startswith("data: "):
-                payload = json.loads(line[len("data: "):])
-                break
-        assert payload is not None
-        assert payload["type"] == "ui.intent"
-        assert payload["session_id"] == "s1"
-        assert payload["payload"]["intent"]["route"] == "home"
+    seen = []
+    conn.on_event(seen.append)
+    conn.push_ui_intent("s1", {"intent": "navigate", "route": "home"})
+    ui_intents = [e for e in seen if e.type == "ui.intent"]
+    assert ui_intents, "expected a ui.intent envelope"
+    env = ui_intents[-1]
+    assert env.session_id == "s1"
+    assert env.payload["intent"]["route"] == "home"
 
 
 def test_snapshot_then_delta_applies_and_versions():
