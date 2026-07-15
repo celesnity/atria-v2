@@ -59,6 +59,12 @@ def get_total(shift_id: int | None = None, station_id: int | None = None) -> dic
     return {"total": service.scrap_total(shift_id, station_id)}
 
 
+@router.get("/by-station")
+def get_by_station(shift_id: int | None = None) -> list[dict]:
+    """Phế phẩm theo station (P-SCRAP-04)."""
+    return service.scrap_by_station(shift_id)
+
+
 @router.post("/rework")
 def post_rework(body: ReworkIn) -> dict:
     return service.mark_rework(body.lot_code, body.reason, body.job_id)

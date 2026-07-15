@@ -7,9 +7,32 @@ không lưu bảng riêng ở MVP (snapshot tính on-demand).
 
 from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 
 from db import Base, now
+
+
+class PrSpeedLoss(Base):
+    """Ghi speed loss khi chạy chậm hơn chuẩn (P-OEE-05) — performance không bị giấu."""
+
+    __tablename__ = "pr_speed_loss"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    shift_id = Column(Integer, ForeignKey("pr_shift.id"), nullable=True)
+    station_id = Column(Integer, ForeignKey("pr_station.id"), nullable=True)
+    job_id = Column(Integer, ForeignKey("pr_job.id"), nullable=True)
+    seconds = Column(Float, nullable=False, default=0.0)  # thời gian mất do chạy chậm
+    reason = Column(String(128), nullable=True)
+    recorded_at = Column(DateTime(timezone=True), nullable=False, default=now)
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "shift_id": self.shift_id,
+            "station_id": self.station_id,
+            "job_id": self.job_id,
+            "seconds": self.seconds,
+            "reason": self.reason,
+        }
 
 
 class PrProductionOrder(Base):

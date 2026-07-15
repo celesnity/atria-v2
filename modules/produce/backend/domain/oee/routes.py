@@ -47,3 +47,29 @@ def post_production_order(body: ProductionOrderIn) -> dict:
 def get_shift_oee(shift_id: int, total_count: int = 0) -> dict:
     """OEE ca hiện tại (P-OEE-03). `total_count` = sản lượng ca tính tới hiện tại."""
     return _guard(service.shift_oee, shift_id, total_count)
+
+
+@router.get("/shifts/{shift_id}/losses")
+def get_losses(shift_id: int, total_count: int = 0) -> dict:
+    """Bóc tách ba tổn thất theo phút (P-OEE-04)."""
+    return _guard(service.loss_breakdown, shift_id, total_count)
+
+
+class SpeedLossIn(BaseModel):
+    seconds: float = Field(gt=0)
+    shift_id: int | None = None
+    station_id: int | None = None
+    job_id: int | None = None
+    reason: str | None = None
+
+
+@router.post("/speed-loss")
+def post_speed_loss(body: SpeedLossIn) -> dict:
+    """Ghi speed loss khi chạy chậm hơn chuẩn (P-OEE-05)."""
+    return service.record_speed_loss(
+        body.seconds,
+        shift_id=body.shift_id,
+        station_id=body.station_id,
+        job_id=body.job_id,
+        reason=body.reason,
+    )

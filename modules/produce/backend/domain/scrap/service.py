@@ -51,6 +51,21 @@ def scrap_total(shift_id: int | None = None, station_id: int | None = None) -> i
         return int(s.scalar(stmt) or 0)
 
 
+def scrap_by_station(shift_id: int | None = None) -> list[dict]:
+    """Phế phẩm gộp theo station (P-SCRAP-04) — chỗ nào sinh lỗi nhiều."""
+    with db_session() as s:
+        stmt = select(PrScrap.station_id, func.coalesce(func.sum(PrScrap.qty), 0).label("q"))
+        if shift_id is not None:
+            stmt = stmt.where(PrScrap.shift_id == shift_id)
+        stmt = stmt.group_by(PrScrap.station_id).order_by(func.sum(PrScrap.qty).desc())
+        return [{"station_id": sid, "scrap": int(q)} for sid, q in s.execute(stmt).all()]
+
+
+def defect_rate(scrap: int, produced: int) -> float:
+    """Tỷ lệ lỗi = scrap / produced (P-SCRAP-04). produced 0 → 0.0."""
+    return round(scrap / produced, 4) if produced > 0 else 0.0
+
+
 # --- Rework (P-SCRAP-02) --------------------------------------------------------
 def mark_rework(lot_code: str, reason: str | None = None, job_id: int | None = None) -> dict:
     with db_session() as s:
