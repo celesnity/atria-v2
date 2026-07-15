@@ -4,5 +4,7 @@ sqlalchemy
 psycopg2-binary
 celery
 redis
+boto3
+python-multipart
 httpx
 pytest

@@ -66,6 +66,23 @@ def defect_rate(scrap: int, produced: int) -> float:
     return round(scrap / produced, 4) if produced > 0 else 0.0
 
 
+def get_scrap(scrap_id: int) -> dict | None:
+    with db_session() as s:
+        row = s.get(PrScrap, scrap_id)
+        return row.as_dict() if row else None
+
+
+def set_photo(scrap_id: int, photo_ref: str) -> dict:
+    """Gắn ảnh lỗi vào bản ghi phế phẩm (P-SCRAP-03)."""
+    with db_session() as s:
+        row = s.get(PrScrap, scrap_id)
+        if row is None:
+            raise ScrapError(f"scrap {scrap_id} không tồn tại")
+        row.photo_ref = photo_ref
+        s.flush()
+        return row.as_dict()
+
+
 # --- Rework (P-SCRAP-02) --------------------------------------------------------
 def mark_rework(lot_code: str, reason: str | None = None, job_id: int | None = None) -> dict:
     with db_session() as s:

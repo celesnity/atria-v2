@@ -6,8 +6,10 @@ Quản ca: hold/release lot (P-SCRAP-05).
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
+
+import media
 
 from . import service
 
@@ -63,6 +65,31 @@ def get_total(shift_id: int | None = None, station_id: int | None = None) -> dic
 def get_by_station(shift_id: int | None = None) -> list[dict]:
     """Phế phẩm theo station (P-SCRAP-04)."""
     return service.scrap_by_station(shift_id)
+
+
+@router.post("/records/{scrap_id}/photo")
+async def post_photo(scrap_id: int, file: UploadFile = File(...)) -> dict:
+    """Chụp ảnh lỗi đính kèm bản ghi phế phẩm (P-SCRAP-03) — lưu vào MinIO."""
+    if service.get_scrap(scrap_id) is None:
+        raise HTTPException(status_code=404, detail=f"scrap {scrap_id} không tồn tại")
+    data = await file.read()
+    media.ensure_bucket()
+    key = media.put_defect_photo(
+        scrap_id, file.filename or "photo.jpg", data, file.content_type or "image/jpeg"
+    )
+    rec = service.set_photo(scrap_id, key)
+    return {"scrap_id": scrap_id, "photo_ref": key, "url": media.presigned_url(key), "record": rec}
+
+
+@router.get("/records/{scrap_id}/photo")
+def get_photo(scrap_id: int) -> dict:
+    """URL xem ảnh lỗi (presigned)."""
+    rec = service.get_scrap(scrap_id)
+    if rec is None:
+        raise HTTPException(status_code=404, detail=f"scrap {scrap_id} không tồn tại")
+    if not rec.get("photo_ref"):
+        raise HTTPException(status_code=404, detail="bản ghi chưa có ảnh")
+    return {"scrap_id": scrap_id, "url": media.presigned_url(rec["photo_ref"])}
 
 
 @router.post("/rework")

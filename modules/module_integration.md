@@ -752,8 +752,9 @@ isolated in the module's own container, with **zero edits to Minder source**.
 Unlike `module_template` and `maintenance_copilot`, [`modules/produce/`](./produce)
 is **not** a service module: it is pure human-operated software (Track A). It does
 **not** import `minder_python_sdk`, declares no `@conn.tool`, exposes no
-`/connector/*` route, and needs **no connector / Keycloak / MinIO** wiring. Track B
-(SDK/AI) layers on later without touching this code.
+`/connector/*` route, and needs **no connector / Keycloak** wiring. It does reuse
+the shared **MinIO** for defect photos (P-SCRAP-03, bucket `produce`, `PR_S3_*`).
+Track B (SDK/AI) layers on later without touching this code.
 
 - **Module id:** `produce`.
 - **Service port:** `9310` (`produce-web` serves the REST API and the built React
@@ -763,6 +764,8 @@ is **not** a service module: it is pure human-operated software (Track A). It do
   - `PR_REDIS_URL` — Celery broker/backend (Redis DB `/3`).
   - `PR_PUBLIC_BASE` — browser-facing base for federated asset URLs (default
     `http://localhost:9310`).
+  - `PR_S3_*` — shared MinIO endpoint/bucket/creds for defect photos (bucket
+    `produce`); boto3 is imported lazily so the app runs without S3 in dev.
 - **Table prefix:** `pr_*` — the module creates and writes only these tables and
   never touches Minder tables.
 - **Deploy:** paste [`modules/produce/docker-compose.snippet.yml`](./produce/docker-compose.snippet.yml)
