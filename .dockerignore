@@ -40,5 +40,22 @@ dist
 build
 *.egg-info
 
+# Not needed in the runtime image (COPY . . would otherwise ship them).
+# The host UI the app serves is prebuilt into minder/web/static (kept); the
+# web-ui/ source, tests, docs and local scratch are all build-time-only.
+# (Keep *.md — pyproject's readme=README.md is read during the project install.)
+tests
+docs
+web-ui
+_local
+Tasks
+
+# Module frontend builds — the core image never serves module UIs (each module
+# ships its own container); the build only needs modules/*/requirements.txt.
+**/frontend/dist
+**/frontend/.mf
+**/frontend/@mf-types
+modules/*/landing
+
 # Misc
 *.log
