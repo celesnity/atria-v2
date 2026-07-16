@@ -31,6 +31,15 @@ def create_app() -> FastAPI:
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
     )
     app.include_router(router)
+
+    import os
+
+    from fastapi.staticfiles import StaticFiles
+
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    if os.path.isdir(static_dir):
+        app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
     return app
 
 
