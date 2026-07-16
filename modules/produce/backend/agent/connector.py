@@ -65,6 +65,17 @@ def build_app():
 
     from fastapi.staticfiles import StaticFiles
 
+    # The Module Federation entry (`remoteEntry.js`) and index have stable URLs,
+    # so browsers cache them and keep loading an old module build after a deploy.
+    # Force revalidation on those; content-hashed chunks stay cacheable.
+    @app.middleware("http")
+    async def _revalidate_spa_entry(request, call_next):  # noqa: ANN001
+        resp = await call_next(request)
+        path = request.url.path
+        if path.endswith("remoteEntry.js") or path.endswith(".html") or path.rstrip("/").endswith("/dashboard"):
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return resp
+
     dist = os.environ.get("PR_DASHBOARD_DIST", os.path.join(os.path.dirname(__file__), "..", "frontend_dist"))
     if os.path.isdir(dist):
         app.mount("/", StaticFiles(directory=dist, html=True), name="ui")

@@ -62,12 +62,12 @@ const DARK: MinderTokens = {
 };
 
 const LIGHT: MinderTokens = {
-  bg: 'radial-gradient(120% 140% at 18% 12%, hsl(224 40% 95%) 0%, hsl(228 55% 97%) 45%, hsl(228 60% 99%) 100%)',
-  surface: 'hsl(228 60% 99%)', // near-white card on lavender wash
-  surfaceAlt: 'hsl(224 40% 95%)', // --surface-soft (lavender-mist inset)
-  border: 'hsl(250 20% 72%)', // --hairline
+  bg: 'radial-gradient(120% 140% at 18% 12%, hsl(224 42% 96%) 0%, hsl(228 55% 98%) 45%, hsl(228 60% 99.5%) 100%)',
+  surface: 'hsl(0 0% 100%)', // pure-white card lifts cleanly off the lavender wash
+  surfaceAlt: 'hsl(224 42% 96%)', // --surface-soft (lavender-mist inset)
+  border: 'hsl(226 22% 70%)', // --hairline (crisper, cooler)
   text: 'hsl(230 39% 18%)', // --ink
-  textMuted: 'hsl(230 18% 52%)', // --text-muted
+  textMuted: 'hsl(230 20% 48%)', // --text-muted (AA on soft surfaces)
   primary: 'hsl(221 83% 50%)', // --accent
   secondary: 'hsl(214 90% 55%)', // --accent-2
   info: 'hsl(205 90% 58%)', // --accent-magenta

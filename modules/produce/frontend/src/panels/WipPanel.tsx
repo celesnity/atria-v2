@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { Button as MButton } from '@mantine/core';
 import { api, useApi } from '../api';
 import Section from '../ui/Section';
 import DataTable from '../ui/DataTable';
 import Button from '../ui/Button';
 import { Field, NumberInput, TextInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
+import { statusColorMantine } from '../theme.mantine';
+import { StationSelect } from '../ui/selects';
 
 const STATION_STATES = ['idle', 'running', 'down', 'blocked', 'setup'];
 
@@ -42,16 +45,29 @@ export default function WipPanel({ apiBase }: { apiBase: string }) {
         </div>
       </Section>
 
-      <Section title={`Station ${stationId}`} actions={<Field label="Station"><NumberInput value={stationId} onChange={setStationId} /></Field>}>
+      <Section title={`Station ${stationId}`} actions={<StationSelect apiBase={apiBase} value={stationId} onChange={setStationId} />}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 12 }}>
           <Field label="Số lượng"><NumberInput value={qty} onChange={setQty} /></Field>
           <Button onClick={() => run('Đã ghi count', () => api(apiBase, '/wip/counts', { method: 'POST', body: JSON.stringify({ station_id: stationId, qty }) }), () => total.reload())}>+ Count</Button>
         </div>
         <p style={{ fontSize: 13 }}>Tổng sản lượng: <b>{total.data?.total ?? 0}</b> · Trạng thái: <b>{String(stStatus.data?.status ?? '—')}</b></p>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {STATION_STATES.map((s) => (
-            <Button key={s} variant="ghost" onClick={() => run(`Station → ${s}`, () => api(apiBase, `/wip/stations/${stationId}/status`, { method: 'PUT', body: JSON.stringify({ status: s }) }), () => stStatus.reload())}>{s}</Button>
-          ))}
+          {STATION_STATES.map((s) => {
+            const active = String(stStatus.data?.status ?? '') === s;
+            return (
+              <MButton
+                key={s}
+                size="xs"
+                radius="xl"
+                color={statusColorMantine(s)}
+                variant={active ? 'filled' : 'light'}
+                onClick={() => run(`Station → ${s}`, () => api(apiBase, `/wip/stations/${stationId}/status`, { method: 'PUT', body: JSON.stringify({ status: s }) }), () => stStatus.reload())}
+                styles={{ root: { fontWeight: 600, textTransform: 'capitalize' } }}
+              >
+                {s}
+              </MButton>
+            );
+          })}
         </div>
       </Section>
 

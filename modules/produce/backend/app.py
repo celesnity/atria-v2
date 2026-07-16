@@ -71,6 +71,16 @@ def _build_track_a_app() -> FastAPI:
     def health() -> dict:
         return {"status": "ok", "module": "produce"}
 
+    # Force revalidation of the stable-URL SPA entry so a redeploy is picked up
+    # without a manual cache clear (content-hashed chunks stay cacheable).
+    @app.middleware("http")
+    async def _revalidate_spa_entry(request, call_next):  # noqa: ANN001
+        resp = await call_next(request)
+        path = request.url.path
+        if path.endswith("remoteEntry.js") or path.endswith(".html") or path.rstrip("/").endswith("/dashboard"):
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return resp
+
     # Serve the built React dashboard as a standalone SPA when it has been built
     # into ./frontend_dist (Docker copies it there). No-op in a bare checkout.
     _DIST = os.environ.get("PR_DASHBOARD_DIST", os.path.join(os.path.dirname(__file__), "frontend_dist"))

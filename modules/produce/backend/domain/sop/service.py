@@ -20,6 +20,12 @@ class SopError(Exception):
 
 
 # --- SOP + version (P-EXEC-06) --------------------------------------------------
+def list_sops() -> list[dict]:
+    """All SOPs (for pickers)."""
+    with db_session() as s:
+        return [r.as_dict() for r in s.scalars(select(PrSop).order_by(PrSop.id)).all()]
+
+
 def create_sop(code: str, title: str, operation_id: int | None = None) -> dict:
     with db_session() as s:
         sop = PrSop(code=code, title=title, operation_id=operation_id)

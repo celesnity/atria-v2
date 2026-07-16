@@ -38,6 +38,12 @@ def _guard(fn, *args, **kwargs):
         raise HTTPException(status_code=409, detail=str(exc))
 
 
+@router.get("/sops")
+def get_sops() -> list[dict]:
+    """All SOPs for pickers."""
+    return service.list_sops()
+
+
 @router.post("/sops")
 def post_sop(body: SopIn) -> dict:
     return service.create_sop(body.code, body.title, body.operation_id)

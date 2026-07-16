@@ -52,6 +52,15 @@ def create_task(
         return t.as_dict()
 
 
+def list_shifts(line_id: int | None = None) -> list[dict]:
+    """All shifts (optionally scoped to a line) for pickers."""
+    with db_session() as s:
+        stmt = select(PrShift)
+        if line_id is not None:
+            stmt = stmt.where(PrShift.line_id == line_id)
+        return [r.as_dict() for r in s.scalars(stmt.order_by(PrShift.id)).all()]
+
+
 def operator_queue(assignee_id: str) -> list[dict]:
     """Hàng đợi của một operator, ưu tiên cao trước (P-WORK-01).
 

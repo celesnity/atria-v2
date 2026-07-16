@@ -1,13 +1,25 @@
 import { useState } from 'react';
+import { ActionIcon, Tooltip } from '@mantine/core';
+import { IconEye, IconAlertTriangle } from '@tabler/icons-react';
 import { api, useApi } from '../api';
 import Section from '../ui/Section';
 import DataTable from '../ui/DataTable';
 import Button from '../ui/Button';
 import { Field, NumberInput, TextInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
+import DetailModal from '../ui/DetailModal';
+import RowDetail from '../ui/RowDetail';
+import { LineSelect, StationSelect, CategorySelect } from '../ui/selects';
+
+const DT_LABELS: Record<string, string> = {
+  id: 'Mã sự cố', station_id: 'Trạm', shift_id: 'Ca', category: 'Nhóm',
+  subcategory: 'Nhóm phụ', code: 'Mã lý do', started_at: 'Bắt đầu', ended_at: 'Kết thúc',
+  elapsed_minutes: 'Đã trôi (phút)',
+};
 
 export default function DowntimePanel({ apiBase, mode = 'log' }: { apiBase: string; mode?: 'log' | 'andon' }) {
   const { notify } = useToast();
+  const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [lineId, setLineId] = useState(1);
   const [stationId, setStationId] = useState(1);
   const [category, setCategory] = useState('Mechanical');
@@ -29,7 +41,7 @@ export default function DowntimePanel({ apiBase, mode = 'log' }: { apiBase: stri
   if (mode === 'andon') {
     return (
       <>
-        <Section title={`Andon · line ${lineId}`} actions={<Field label="Line"><NumberInput value={lineId} onChange={setLineId} /></Field>}>
+        <Section title={`Andon · line ${lineId}`} actions={<LineSelect apiBase={apiBase} value={lineId} onChange={setLineId} />}>
           <DataTable
             columns={[
               { key: 'id', label: 'ID' }, { key: 'station_id', label: 'Station' }, { key: 'reason', label: 'Lý do' }, { key: 'status', label: 'Trạng thái' },
@@ -61,27 +73,34 @@ export default function DowntimePanel({ apiBase, mode = 'log' }: { apiBase: stri
     <>
       <Section title="Ghi downtime" actions={
         <>
-          <Field label="Station"><NumberInput value={stationId} onChange={setStationId} /></Field>
-          <Field label="Category"><TextInput value={category} onChange={setCategory} /></Field>
+          <StationSelect apiBase={apiBase} value={stationId} onChange={setStationId} />
+          <CategorySelect value={category} onChange={setCategory} />
           <Button onClick={() => run('Đã ghi downtime', () => api(apiBase, '/downtime/events', { method: 'POST', body: JSON.stringify({ station_id: stationId, category }) }), () => open.reload())}>Log</Button>
         </>
       }>
         <DataTable
           columns={[
             { key: 'id', label: 'ID' }, { key: 'station_id', label: 'Station' }, { key: 'category', label: 'Category' }, { key: 'started_at', label: 'Bắt đầu' },
-            { key: 'act', label: '', render: (r) => <Button variant="ghost" onClick={() => run('Đã đóng', () => api(apiBase, `/downtime/events/${r.id}/close`, { method: 'POST' }), () => open.reload())}>Close</Button> },
+            { key: 'act', label: '', render: (r) => (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+                <Tooltip label="Xem chi tiết" withArrow>
+                  <ActionIcon variant="light" color="cobalt" radius="md" onClick={() => setDetail(r)} aria-label="Xem chi tiết"><IconEye size={16} /></ActionIcon>
+                </Tooltip>
+                <Button variant="ghost" onClick={() => run('Đã đóng', () => api(apiBase, `/downtime/events/${r.id}/close`, { method: 'POST' }), () => open.reload())}>Close</Button>
+              </div>
+            ) },
           ]}
           rows={open.data ?? []}
           empty="Không có downtime mở"
         />
       </Section>
-      <Section title="Andon" actions={<><Field label="Line"><NumberInput value={lineId} onChange={setLineId} /></Field><Button variant="danger" onClick={() => run('Đã gọi andon', () => api(apiBase, '/downtime/andon', { method: 'POST', body: JSON.stringify({ line_id: lineId, station_id: stationId }) }))}>Gọi andon</Button></>}>
+      <Section title="Andon" actions={<><LineSelect apiBase={apiBase} value={lineId} onChange={setLineId} /><Button variant="danger" onClick={() => run('Đã gọi andon', () => api(apiBase, '/downtime/andon', { method: 'POST', body: JSON.stringify({ line_id: lineId, station_id: stationId }) }))}>Gọi andon</Button></>}>
         <p style={{ fontSize: 13, color: '#888' }}>Gọi hỗ trợ khi không tự xử được (P-DOWN-02).</p>
       </Section>
       <Section title="Thư viện mã lý do" actions={
         <>
-          <Field label="Line"><NumberInput value={lineId} onChange={setLineId} /></Field>
-          <Field label="Category"><TextInput value={reasonCategory} onChange={setReasonCategory} /></Field>
+          <LineSelect apiBase={apiBase} value={lineId} onChange={setLineId} />
+          <CategorySelect value={reasonCategory} onChange={setReasonCategory} label="Category" />
           <Field label="Subcategory"><TextInput value={reasonSubcategory} onChange={setReasonSubcategory} /></Field>
           <Field label="Code"><TextInput value={reasonCode} onChange={setReasonCode} /></Field>
           <Field label="Machine"><TextInput value={reasonMachine} onChange={setReasonMachine} /></Field>
@@ -96,6 +115,16 @@ export default function DowntimePanel({ apiBase, mode = 'log' }: { apiBase: stri
           empty="Chưa có mã lý do"
         />
       </Section>
+
+      <DetailModal
+        opened={!!detail}
+        onClose={() => setDetail(null)}
+        title={detail ? `Sự cố downtime #${detail.id}` : 'Downtime'}
+        subtitle="Chi tiết sự kiện dừng máy"
+        icon={<IconAlertTriangle size={20} />}
+      >
+        {detail ? <RowDetail row={detail} labels={DT_LABELS} /> : null}
+      </DetailModal>
     </>
   );
 }

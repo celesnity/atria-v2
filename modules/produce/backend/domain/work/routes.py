@@ -49,6 +49,12 @@ def post_shift(body: ShiftIn) -> dict:
     return service.create_shift(body.line_id, body.name, body.supervisor_id)
 
 
+@router.get("/shifts")
+def get_shifts(line_id: int | None = None) -> list[dict]:
+    """All shifts (optionally scoped to a line) for pickers."""
+    return service.list_shifts(line_id)
+
+
 @router.post("/tasks")
 def post_task(body: TaskIn) -> dict:
     return service.create_task(
