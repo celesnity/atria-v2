@@ -7,7 +7,7 @@ manager (``routes/mcp.py``). Connections persist to ``~/.minder/connect.json`` v
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
