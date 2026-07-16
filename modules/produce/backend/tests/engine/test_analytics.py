@@ -21,7 +21,7 @@ def _principal(session, subject, role, path="site/lineA"):
 def _complete_one_item(session, principal):
     vid = seed.seed_demo_workflow(session)
     session.flush()
-    wi = exe.create_work_item(session, vid, "site/lineA/res1")
+    wi = exe.create_work_item(session, principal, vid, "site/lineA/res1")
     session.flush()
     exe.claim(session, principal, wi.id)
     for key in ("prepare", "measure", "finish"):
@@ -48,7 +48,7 @@ def test_close_period_snapshots_summary():
     with db.db_session() as s:
         sup = _principal(s, "s2", "supervisor")
         _complete_one_item(s, sup)
-        p = an.open_period(s, "site/lineA")
+        p = an.open_period(s, sup, "site/lineA")
         s.flush()
         closed = an.close_period(s, sup, p.id, target=1)
         assert closed.closed_at is not None

@@ -11,9 +11,10 @@ from engine.db import now
 from engine.exception.models import PrInterrupt
 
 
-def open_period(session: Session, scope_path: str) -> "PrPeriod":
+def open_period(session: Session, principal: Principal, scope_path: str) -> "PrPeriod":
     from engine.analytics.models import PrPeriod
 
+    auth.require(principal, "close_period", scope_path)
     p = PrPeriod(scope_path=scope_path, opened_at=now())
     session.add(p)
     return p

@@ -19,7 +19,7 @@ def _setup(session):
     vid = seed.seed_demo_workflow(session)
     session.flush()
     p = _worker(session)
-    wi = service.create_work_item(session, vid, "site/lineA/res1")
+    wi = service.create_work_item(session, p, vid, "site/lineA/res1")
     session.flush()
     return p, wi
 
@@ -72,3 +72,19 @@ def test_override_records_event():
         s.flush()
         assert run.overridden is True
         assert s.query(el.PrEvent).filter_by(type="override.logged").count() == 1
+
+
+def test_blocked_submit_persists_rejection_event():
+    from engine.core import eventlog as el
+
+    with db.db_session() as s:
+        p, wi = _setup(s)
+        service.claim(s, p, wi.id)
+        r1 = service.start_step(s, p, wi.id, "prepare")
+        service.submit_output(s, p, r1.id, {})
+        r2 = service.start_step(s, p, wi.id, "measure")
+        with pytest.raises(jsonschema.ValidationError):
+            service.submit_output(s, p, r2.id, {"value": 99.0})  # no override
+    # rejection event must survive despite the raised exception rolling back the session
+    with db.db_session() as s2:
+        assert s2.query(el.PrEvent).filter_by(type="step.rejected").count() == 1

@@ -33,11 +33,13 @@ def reason_codes():
 
 
 @router.post("/work-items")
-def create_work_item(body: dict = Body(...)):
+def create_work_item(body: dict = Body(...), principal: Principal = Depends(get_principal)):
     with db_session() as s:
-        wi = exe.create_work_item(s, body["workflow_version_id"], body["scope_path"])
-        s.flush()
-        return _wi(wi)
+        def go():
+            wi = exe.create_work_item(s, principal, body["workflow_version_id"], body["scope_path"])
+            s.flush()
+            return _wi(wi)
+        return _guard(go)
 
 
 @router.get("/queue")
@@ -126,11 +128,13 @@ def dashboard(scope_path: str, target: int = 0):
 
 
 @router.post("/periods")
-def open_period(body: dict = Body(...)):
+def open_period(body: dict = Body(...), principal: Principal = Depends(get_principal)):
     with db_session() as s:
-        p = an.open_period(s, body["scope_path"])
-        s.flush()
-        return {"id": p.id, "scope_path": p.scope_path}
+        def go():
+            p = an.open_period(s, principal, body["scope_path"])
+            s.flush()
+            return {"id": p.id, "scope_path": p.scope_path}
+        return _guard(go)
 
 
 @router.post("/periods/{pid}/close")

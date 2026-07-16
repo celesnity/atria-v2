@@ -18,8 +18,9 @@ def _graph(session: Session, work_item: PrWorkItem) -> dict:
 
 
 def create_work_item(
-    session: Session, workflow_version_id: int, scope_path: str, priority: int = 100
+    session: Session, principal: Principal, workflow_version_id: int, scope_path: str, priority: int = 100
 ) -> PrWorkItem:
+    auth.require(principal, "assign", scope_path)
     wi = PrWorkItem(
         workflow_version_id=workflow_version_id,
         scope_path=scope_path,
@@ -112,6 +113,8 @@ def submit_output(
                 payload={"step_run_id": run.id, "error": err.message},
                 work_item_id=wi.id, step_run_id=run.id,
             )
+            session.flush()
+            session.commit()  # ponytail: commit the rejection audit before the 422 rollback swallows it
             raise
         auth.require(principal, "override", wi.scope_path)
         run.overridden = True
