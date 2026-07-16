@@ -50,7 +50,7 @@ _HIST_KEYS = ("oee", "thru", "temp", "vib", "health", "defect", "avail", "perf",
 
 
 def _data_dir() -> Path:
-    override = os.environ.get("OPTIMIZE_DATA_DIR")
+    override = os.environ.get("MONITOR_DATA_DIR") or os.environ.get("OPTIMIZE_DATA_DIR")
     if override:
         return Path(override)
     # MINDER_MODULE_ROOT is what the dashboard run gateway sets; ATRIA_MODULE_ROOT is the
@@ -595,123 +595,6 @@ def build_scn(
     }
 
 
-# Severity order when leading-action recovery ties: a stopped machine is more urgent than a degrading
-# one, which is more urgent than fleet starvation, which is more urgent than a merely sub-par line.
-_PROBLEM_SEVERITY = {"down": 3, "health": 2, "starve": 1, "oee": 0}
-
-# How long (real seconds) to keep a just-actioned recommendation out of the queue, so it does not
-# re-surface before the sim reflects the action (the poll runs every ~8s).
-_RECO_COOLDOWN_SECONDS = 120
-_COOLDOWN_STATUSES = {"approved", "dispatched", "completed"}
-
-
-def _suppressed_rec_ids() -> set:
-    """rec_ids the user acted on recently -- suppressed from the queue during the cooldown window.
-
-    Reads the decision store (best-effort: any read error -> empty set, so problems still surface).
-    """
-    try:
-        import store  # local import: the module root is on sys.path; avoids a hard dep for V2
-    except ImportError:
-        try:
-            from . import store  # type: ignore[no-redef]
-        except ImportError:
-            return set()
-    out: set = set()
-    now = datetime.now(timezone.utc)
-    try:
-        for rec in store.load_decisions():
-            if rec.get("status") not in _COOLDOWN_STATUSES:
-                continue
-            rid = str(rec.get("recommendation_id") or "")
-            stamp = rec.get("status_at")
-            if not rid:
-                continue
-            if not stamp:  # no timestamp -> treat as recent (suppress) to be safe
-                out.add(rid)
-                continue
-            try:
-                t = datetime.fromisoformat(stamp)
-                age = (now - (t if t.tzinfo else t.replace(tzinfo=timezone.utc))).total_seconds()
-                if age < _RECO_COOLDOWN_SECONDS:
-                    out.add(rid)
-            except (ValueError, TypeError):
-                out.add(rid)
-    except Exception:  # noqa: BLE001 - the queue must never break because the store is unreadable
-        return set()
-    return out
-
-
-def build_reco_queue(
-    machines: list,
-    intake: dict | None = None,
-    lang: str = "en",
-    history: dict | None = None,
-    limit: int = 5,
-) -> list:
-    """A ranked queue of DISTINCT fleet problems, each a full decision scenario.
-
-    Distinct problems (not one-per-machine): product starvation collapses to a SINGLE fleet-level
-    release reco; each down machine is its own resolve reco; degraded/at-risk machines collapse to the
-    single worst 'service' reco (a fleet-wide health condition is one recommendation, not nine);
-    the worst-OEE running line gets a resequence/speed reco. Ranked by the leading action's expected
-    recovery (a common unit) with a severity tiebreak, capped at ``limit``. Recently-actioned recos are
-    suppressed (cooldown) so the user is never re-nagged about something they just handled.
-    """
-    if not machines:
-        return []
-    stx = intake_stats(intake, machines)
-    suppressed = _suppressed_rec_ids()
-
-    targets: list[tuple[str, dict]] = []  # (problem, machine)
-    covered = set()
-
-    # 1) Product starvation -> ONE fleet reco (representative = highest-throughput starved machine).
-    starved = [m for m in machines if _is_starved(m, intake)]
-    if starved:
-        rep = sorted(starved, key=lambda m: -m["target"])[0]
-        targets.append(("starve", rep))
-        # ALL idle-for-product machines are the SAME starvation problem -- cover them so a machine that
-        # is merely idle isn't also surfaced as a separate 'health' reco led by a starvation action.
-        covered.update(x["id"] for x in starved)
-
-    # 2) Each down machine -> its own resolve reco.
-    for m in sorted((m for m in machines if m["state"] == "down"), key=lambda m: -m["target"]):
-        if m["id"] not in covered:
-            targets.append(("down", m))
-            covered.add(m["id"])
-
-    # 3) Degraded/at-risk machines -> collapse to the single WORST 'service' reco. A fleet-wide health
-    #    slump is one recommendation, not one per machine (that would flood the deck).
-    unhealthy = [m for m in machines
-                 if m["id"] not in covered and (m["health"] < HEALTH_LIMIT or m.get("atRisk"))]
-    if unhealthy:
-        worst = sorted(unhealthy, key=lambda m: m["health"])[0]
-        targets.append(("health", worst))
-        covered.add(worst["id"])
-
-    # 4) Worst-OEE running line -> a resequence/speed reco (only if something is actually running).
-    running = [m for m in machines if m["state"] == "running" and m["id"] not in covered]
-    if running:
-        worst_run = sorted(running, key=lambda m: m["oee"])[0]
-        targets.append(("oee", worst_run))
-
-    scns = []
-    for problem, m in targets:
-        scn = build_scn(machines, intake, lang, history, target=m, problem=problem)
-        if scn.get("recId") in suppressed:
-            continue
-        # Leading action's recovery is the ranking unit; label severity for tiebreaks + ordering.
-        alts = scn.get("alternatives") or []
-        lead = next((a for a in alts if a.get("feasible") and a.get("id") != "ACT-000"), None)
-        scn["leadRecovery"] = round(float(lead.get("recovered") or 0)) if lead else 0
-        scn["severity"] = _PROBLEM_SEVERITY.get(problem, 0)
-        scns.append(scn)
-
-    scns.sort(key=lambda s: (s["leadRecovery"], s["severity"]), reverse=True)
-    return scns[:limit]
-
-
 # ── command ─────────────────────────────────────────────────────────────────
 def handle_status(payload: dict) -> dict:
     base = (payload or {}).get("url") or DEFAULT_URL
@@ -738,10 +621,9 @@ def handle_status(payload: dict) -> dict:
     # target (attainProb). build_history only appends this frame + reads the buffer, so ordering it
     # ahead of build_scn is side-effect safe.
     hist = build_history(machines, minute) if machines else {"trends": None, "series": {}}
-    # The recommendation queue: a ranked list of DISTINCT fleet problems (Guided V3). scn stays the
-    # single top-target scenario for Console V2 (which reads scn only) -- purely additive.
-    scns = build_reco_queue(machines, intake, lang, history=hist.get("series")) if machines else []
-    scn = scns[0] if scns else (build_scn(machines, intake, lang, history=hist.get("series")) if machines else None)
+    # Monitor is read-only: no recommendation queue (that's Optimize). Keep a single `scn` (via
+    # build_scn) only because Ask-AI passes it as fleet context; do NOT build the ranked `scns`.
+    scn = build_scn(machines, intake, lang, history=hist.get("series")) if machines else None
     return {
         "ok": True,
         "connected": True,
@@ -751,99 +633,11 @@ def handle_status(payload: dict) -> dict:
         "machines": machines,
         "summary": summary,
         "scn": scn,
-        "scns": scns,
         "intake": intake,
         "trends": hist.get("trends"),
         "history": hist.get("series"),
         "ts": ts,
     }
-
-
-def _post(base: str, path: str, body: dict) -> dict:
-    req = urllib.request.Request(
-        base.rstrip("/") + path,
-        data=json.dumps(body or {}).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-        return json.loads(resp.read().decode("utf-8"))
-
-
-# How an approved recovery action actuates the live simulator. The fleet console recommends
-# production actions; on the demo simulator we express "recover this machine" as a real control
-# call so the approved decision visibly changes the live telemetry (the machine recovers on the
-# next poll). Map: default = service the target machine (which also un-trips a fault-stopped one).
-def _actuation_for(action: str, machine: str) -> tuple[str, dict]:
-    action = (action or "service").lower()
-    if action in ("resolve", "resolve_fault", "clear"):
-        return "/api/fleet/machines/{}/resolve-fault".format(machine), {}
-    if action in ("speed", "increase_speed"):
-        return "/api/fleet/control/speed", {"minutes_per_sec": 2.0}
-    # default: full service -> restores condition and returns a tripped machine to running.
-    return "/api/fleet/machines/{}/maintenance".format(machine), {"action": "full_service"}
-
-
-def handle_actuate(payload: dict) -> dict:
-    """Push an approved recommendation to the live simulator (the "approve to the machine" loop)."""
-    base = (payload or {}).get("url") or DEFAULT_URL
-    machine = str((payload or {}).get("machine") or "").strip().upper()
-    action = ((payload or {}).get("action") or "service").lower()
-    ts = datetime.now(timezone.utc).isoformat()
-
-    # Laundry: an approved "release product" recovery actuates the REAL intake queue -- it releases
-    # product batches into intake so the starved washers resume on the next poll. Product/count come
-    # from the payload or default to the top-supply product.
-    if action in ("release", "product", "material", "intake"):
-        try:
-            intk = _get(base, "/api/fleet/intake")
-        except (urllib.error.URLError, OSError, ValueError, TimeoutError):
-            intk = {}
-        supply = (intk or {}).get("supply") or {}
-        product = (payload or {}).get("product") or (
-            max(supply, key=lambda k: supply[k]) if supply else "towels"
-        )
-        count = int((payload or {}).get("count") or 1)
-        try:
-            resp = _post(base, "/api/fleet/intake/release", {"product": product, "count": count})
-            return {
-                "ok": True, "connected": True, "actuated": True, "machine": machine or "-",
-                "action": "release", "endpoint": "/api/fleet/intake/release",
-                "product": product, "count": count, "response": resp, "ts": ts,
-            }
-        except (urllib.error.URLError, OSError, ValueError, TimeoutError) as exc:
-            return {
-                "ok": True, "connected": False, "actuated": False, "machine": machine or "-",
-                "action": "release", "endpoint": "/api/fleet/intake/release",
-                "error": "{}: {}".format(type(exc).__name__, exc), "ts": ts,
-            }
-
-    if not machine:
-        return {"ok": True, "actuated": False, "error": "no machine id", "ts": ts}
-    endpoint, body = _actuation_for(action, machine)
-    try:
-        resp = _post(base, endpoint, body)
-        return {
-            "ok": True,
-            "connected": True,
-            "actuated": True,
-            "machine": machine,
-            "action": action,
-            "endpoint": endpoint,
-            "response": resp,
-            "ts": ts,
-        }
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError) as exc:
-        return {
-            "ok": True,
-            "connected": False,
-            "actuated": False,
-            "machine": machine,
-            "action": action,
-            "endpoint": endpoint,
-            "error": "{}: {}".format(type(exc).__name__, exc),
-            "ts": ts,
-        }
 
 
 def main(argv) -> int:
@@ -855,8 +649,6 @@ def main(argv) -> int:
         payload = {}
     if cmd == "status":
         out = handle_status(payload)
-    elif cmd == "actuate":
-        out = handle_actuate(payload)
     elif cmd in ("ping", "health"):
         base = (payload or {}).get("url") or DEFAULT_URL
         try:

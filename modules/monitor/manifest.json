@@ -1,0 +1,18 @@
+{
+  "display_name": "Monitor",
+  "tooltip": "Read-only manufacturing fleet monitor · live 20-machine OEE/availability/throughput/quality/health streaming from the fleet simulator, per-machine drill-down, and a gpt-5.4-mini Ask-AI that answers machine/fleet questions grounded in live data with the right chart. No actuation — the decision loop lives in the Optimize module.",
+  "icon": "icon.svg",
+  "dashboard": {
+    "title": "Monitor · Fleet",
+    "default_height": 960,
+    "badge_color": "info"
+  },
+  "activity": {
+    "default": { "running": "Working…", "done": "Done" },
+    "actions": {
+      "status": { "running": "Reading fleet…", "done": "Live" },
+      "ask":    { "running": "Asking the fleet…", "done": "Answered" }
+    }
+  },
+  "subagent": { "enabled": false, "model": null, "tools": null }
+}

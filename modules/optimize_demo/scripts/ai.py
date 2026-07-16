@@ -15,10 +15,11 @@ Commands:
 The per-stage commands run the same 6-stage pipeline the agent skills use (``pipeline.py``); pass an
 ``execution_id`` (returned by an earlier stage) so every stage reads ONE shared live snapshot.
 
-The model reuses Atria's env config: ``OPENAI_API_KEY``, ``ATRIA_MODEL`` (default gpt-5.4-mini),
-``ATRIA_API_BASE_URL`` (an OpenAI-compatible /chat/completions endpoint). Numbers are never
-invented — the pipeline passes the live telemetry it already has, the model only writes prose
-and picks the machine + chart intent, and the dashboard draws the chart from the live data.
+The model reuses Minder's env config: ``OPENAI_API_KEY``, ``MINDER_MODEL`` (default gpt-5.4-mini),
+``MINDER_API_BASE_URL`` (an OpenAI-compatible /chat/completions endpoint). The pre-rebrand
+``ATRIA_*`` names still work as a deprecated fallback. Numbers are never invented — the pipeline
+passes the live telemetry it already has, the model only writes prose and picks the machine + chart
+intent, and the dashboard draws the chart from the live data.
 """
 
 from __future__ import annotations
@@ -41,6 +42,20 @@ DEFAULT_BASE = "https://api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5.4-mini"
 
 
+def env_setting(name: str, default: str | None = None) -> str | None:
+    """Read a MINDER_* setting, falling back to the pre-rebrand ATRIA_* name.
+
+    The rebrand renamed the setters but missed these readers, so ``ATRIA_MODEL`` was still being
+    consulted while ``.env`` shipped ``MINDER_MODEL`` -- masked only because the defaults happened
+    to match. Prefer MINDER_*, keep ATRIA_* working for anyone with an old environment.
+    """
+    return os.environ.get("MINDER_" + name) or os.environ.get("ATRIA_" + name) or default
+
+
+def model_name() -> str:
+    return env_setting("MODEL", DEFAULT_MODEL) or DEFAULT_MODEL
+
+
 def _api_key() -> str | None:
     return os.environ.get("OPENAI_API_KEY") or os.environ.get("IIOT_AI_API_KEY") or None
 
@@ -50,8 +65,8 @@ def llm_chat(system: str, user: str, max_tokens: int = 900, timeout: float = 55.
     key = _api_key()
     if not key:
         raise RuntimeError("no API key (OPENAI_API_KEY)")
-    base = os.environ.get("ATRIA_API_BASE_URL") or DEFAULT_BASE
-    model = os.environ.get("ATRIA_MODEL") or DEFAULT_MODEL
+    base = env_setting("API_BASE_URL", DEFAULT_BASE)
+    model = model_name()
     # gpt-5 / o-series family: use max_completion_tokens and DO NOT send a custom temperature.
     body = {
         "model": model,
@@ -127,7 +142,7 @@ def cmd_ask(payload: dict) -> dict:
         system, user = analysis.build_ask_messages(question, machines, scn, lang=lang)
         obj = analysis.parse_json(llm_chat(system, user))
         out = analysis.normalize_ask(obj, machines, scn)
-        out["source"] = os.environ.get("ATRIA_MODEL") or DEFAULT_MODEL
+        out["source"] = model_name()
     except Exception as exc:  # noqa: BLE001 - always degrade gracefully to a valid JSON reply
         out = analysis.deterministic_ask(question, machines, scn)
         out["source"] = "fallback"
