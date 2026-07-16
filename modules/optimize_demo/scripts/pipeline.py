@@ -595,12 +595,21 @@ def _decision_packet(snapshot: dict, rec: dict, status: str, lang: str = "en") -
             "target_output": scn.get("target"),
             "forecast_output": scn.get("forecastBase"),
             "forecast_gap": scn.get("gap"),
-            "target_attainment_probability": scn.get("attainBefore"),
+            # The chance of REACHING target, not the forecast/target ratio. The key says
+            # "probability", so it must hold one (see simulate.attain_probability); attainBefore is
+            # a ratio and is kept separately under its own name.
+            "target_attainment_probability": scn.get("attainProb", scn.get("attainBefore")),
+            "target_attainment_ratio": scn.get("attainBefore"),
         },
         "recommended_action": {
             "action_id": rec.get("id"),
             "type": rec.get("type"),
-            "parameters": {"detail": rec.get("detail")},
+            # The machine-readable action kind (release / speed / service / resolve ...). Without it
+            # the dispatcher can only guess from the human-readable `type`, and guessed wrong: every
+            # non-speed action fell through to a full_service, so an approved "release product"
+            # serviced an idle machine instead of feeding it. Carry the kind the engine already knows.
+            "kind": rec.get("kind"),
+            "parameters": {"detail": rec.get("detail"), "release_count": rec.get("releaseCount")},
         },
         "expected_effect": {
             "forecast_output_after_action": rec.get("forecastAfter"),
@@ -710,10 +719,28 @@ def stage_replan(snapshot, execution_id=None, lang="en", llm=None, recommendatio
         return resp
 
     # Approved -> actuate the live simulator + persist dispatch/outcome.
-    action = (decision.get("recommended_action") or {}).get("type") or ""
-    act_kind = "speed" if "speed" in action.lower() else "service"
+    # Dispatch the action the human actually approved.
+    #
+    # This used to be `"speed" if "speed" in type.lower() else "service"` -- a guess off the
+    # human-readable label. Every other action (notably the laundry fleet's "Release product to
+    # intake") therefore fell through to a full_service: the approved action was never the one
+    # sent, and the recovery it promised could not happen. Prefer the engine's own `kind`; keep
+    # the old inference only for decisions persisted before `kind` existed.
+    rec_action = decision.get("recommended_action") or {}
+    act_kind = rec_action.get("kind")
+    if not act_kind:
+        label = (rec_action.get("type") or "").lower()
+        act_kind = "speed" if "speed" in label else ("release" if "release" in label else "service")
     machine = scn.get("targetMachine")
-    actu = simulate.handle_actuate({"machine": machine, "action": act_kind, "url": fleet_url})
+    # `release` feeds the fleet-level intake queue, so it carries the batch count rather than a
+    # machine setpoint (simulate.handle_actuate resolves the product from live supply).
+    act = {"machine": machine, "action": act_kind, "url": fleet_url}
+    if act_kind == "release":
+        try:
+            act["count"] = max(1, int((rec_action.get("parameters") or {}).get("release_count") or 1))
+        except (TypeError, ValueError):
+            act["count"] = 1
+    actu = simulate.handle_actuate(act)
     recovered = ((decision.get("expected_effect") or {}).get("recovered_units")) or 0
     try:
         store.dispatch(str(rec_id), "move", command={"machine": machine, "action": act_kind}, at=at)

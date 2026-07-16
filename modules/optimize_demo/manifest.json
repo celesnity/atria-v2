@@ -3,9 +3,12 @@
   "tooltip": "Live manufacturing fleet console · 20-machine OEE/availability/throughput/quality/health streaming from the fleet simulator, a gpt-5.4-mini Ask-AI that answers machine status with the right chart, and an AI decision loop (measure→recommend) that approves a recovery action to the simulator machine (demo)",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Optimize · Fleet Console",
+    "title": "Optimize · Guided",
     "default_height": 960,
-    "badge_color": "info"
+    "badge_color": "info",
+    "tabs": [
+      { "id": "guided", "label": "Guided", "entry": "blocks/guided.html" }
+    ]
   },
   "activity": {
     "default": { "running": "Working…", "done": "Done" },

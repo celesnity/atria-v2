@@ -109,7 +109,7 @@ def _ask_handler(ctx):
                 raise RuntimeError("no llm")
             system, user = analysis.build_ask_messages(q, machines, scn)
             out = analysis.normalize_ask(analysis.parse_json(llm(system, user)), machines, scn)
-            src = os.environ.get("ATRIA_MODEL") or "gpt-5.4-mini"
+            src = os.environ.get("MINDER_MODEL") or os.environ.get("ATRIA_MODEL") or "gpt-5.4-mini"
         except Exception:  # noqa: BLE001 - degrade to deterministic
             out = analysis.deterministic_ask(q, machines, scn)
             src = "deterministic"

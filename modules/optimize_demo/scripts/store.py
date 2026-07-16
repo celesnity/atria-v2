@@ -19,8 +19,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 # Terminal lifecycle states that must not be overwritten by a later transition.
 _TERMINAL = {"rejected", "completed", "superseded", "expired"}
@@ -29,14 +34,15 @@ _TERMINAL = {"rejected", "completed", "superseded", "expired"}
 def data_dir() -> Path:
     """Resolve the module's ``data/`` directory.
 
-    Prefers ``ATRIA_MODULE_ROOT`` (set by the dashboard run gateway); falls back
-    to the module root inferred from this file's location. Honors
-    ``OPTIMIZE_DATA_DIR`` as an explicit override (used by tests).
+    Prefers ``MINDER_MODULE_ROOT`` (set by the dashboard run gateway; the pre-rebrand
+    ``ATRIA_MODULE_ROOT`` still works as a deprecated fallback); falls back to the module
+    root inferred from this file's location. Honors ``OPTIMIZE_DATA_DIR`` as an explicit
+    override (used by tests).
     """
     override = os.environ.get("OPTIMIZE_DATA_DIR")
     if override:
         return Path(override)
-    root = os.environ.get("ATRIA_MODULE_ROOT")
+    root = os.environ.get("MINDER_MODULE_ROOT") or os.environ.get("ATRIA_MODULE_ROOT")
     base = Path(root) if root else Path(__file__).resolve().parent.parent
     return base / "data"
 
@@ -169,6 +175,9 @@ def set_status(
         return None
     rec.setdefault("approval", {})
     rec["status"] = status
+    # Stamp when the status changed so the recommendation queue can apply a cooldown (don't re-surface
+    # a problem the user just acted on before the sim reflects it). Real wall-clock, always present.
+    rec["status_at"] = at or _now_iso()
     if status == "approved" and isinstance(rec.get("approval"), dict):
         rec["approval"]["approved_by"] = (actor or {}).get("id")
         if at is not None:

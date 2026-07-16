@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minder Optimize — Guided</title>
+<!--
+  Minder Optimize - Guided - a guided operational-decision experience.
+  Ported from the "Minder Optimize - Guided" Claude Design (project
+  73b8309d-b935-460e-816a-12b69de9435b, file "Minder Optimize - Guided.dc.html");
+  the prototype + its brief are kept alongside in ../design/ and remain the source
+  of truth for layout and copy.
+
+  Faithful vanilla-JS port of the DCLogic component - same move as dashboard.html
+  (Optimize Console V2). The DC runtime is deliberately NOT used: its support.js
+  pulls React + ReactDOM + @babel/standalone from unpkg.com, which fails in the
+  sandboxed iframe and offline (see report/PROOF-OF-DONE-optimize-console-v2.md).
+  So sc-if/sc-for/{{ }} become plain conditionals + map(), and the React.createElement
+  charts are redrawn through the same string-serializing hyperscript h() used by V2.
+
+  This is NOT a dashboard. The recommended decision is the hero; monitoring is
+  secondary. Progressive disclosure is the core rule:
+    L1 default -> L2 "How did Minder reach this?" -> L3 evidence & audit drawer.
+
+  DATA IS SIMULATED. Every value lives in the single SCENARIO object below, shaped
+  like scripts/pipeline.py's standard_response() so that wiring it to the real
+  6-stage pipeline (measure -> explain -> predict -> evaluate -> recommend ->
+  replan) is a swap of that one seam. See design/GUIDED_DESIGN_BRIEF.md section 7
+  for what real integration must replace. The Simulation banner stays until then.
+  The prototype's "Prototype states" bar is demo scaffolding and is NOT shipped.
+
+  Served at /api/modules/optimize_demo/blocks/guided.html inside a sandboxed
+  iframe. Note ../__bridge.js - from blocks/ the bridge lives one level up. The
+  bridge is OPTIONAL and used only to follow the host's light/dark theme.
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,400..700&display=swap');
+
+/* ---- Celesnity "Gradient — two skies" tokens (resolved from the design system's
+     tokens/colors.css: :root = Cosmos/dark, [data-theme="light"] = Daybreak/light). One
+     cobalt->violet->magenta accent spine shared across both. ---- */
+:root{
+  --bg-0:#05060F; --bg-1:#0B0A1E; --bg-2:#121030; --bg-3:#1A0E4D;
+  --surf:rgba(255,255,255,.04); --surf-2:rgba(255,255,255,.07);
+  --line:rgba(201,206,232,.12); --line-2:rgba(201,206,232,.20);
+  --text:#F8F9FE; --text-dim:#C9CEE8; --text-mute:rgba(201,206,232,.62); --text-faint:rgba(201,206,232,.34);
+  --accent:#2D44E0; --accent-hi:#9E7BEA; --accent-lo:#2436B8; --accent-2:#6E1FC6; --accent-3:#B14FD0;
+  --danger:#F87171; --ok:#4ADE80; --warn:#FBBF24;
+  --glow:rgba(45,68,224,.42); --glow-soft:rgba(45,68,224,.18); --grid-line:rgba(201,206,232,.08);
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+:root[data-theme="light"]{
+  --bg-0:#F8F9FE; --bg-1:#FFFFFF; --bg-2:#EEECF8; --bg-3:#E6E3F4;
+  --surf:rgba(28,34,64,.03); --surf-2:rgba(28,34,64,.06);
+  --line:rgba(28,34,64,.10); --line-2:rgba(28,34,64,.16);
+  --text:#1C2240; --text-dim:rgba(28,34,64,.72); --text-mute:rgba(28,34,64,.52); --text-faint:rgba(28,34,64,.32);
+  --accent:#2D44E0; --accent-hi:#8739E0; --accent-lo:#2436B8; --accent-2:#8739E0; --accent-3:#BC67D5;
+  --danger:#DC2626; --ok:#16A34A; --warn:#D97706;
+  --glow:rgba(45,68,224,.28); --glow-soft:rgba(45,68,224,.15); --grid-line:rgba(28,34,64,.06);
+}
+/* Fonts are language-conditional: English adopts the new single-typeface Inter; Vietnamese keeps
+   Be Vietnam Pro / Newsreader / JetBrains Mono (proper diacritics + the serif hinge word).
+   Driven by data-lang on <html>, mirroring data-theme. */
+:root, :root[data-lang="vi"]{
+  --serif:"Newsreader","Instrument Serif",Georgia,"Times New Roman",serif;
+  --sans:"Be Vietnam Pro","Inter","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Code",Menlo,Consolas,monospace;
+}
+:root[data-lang="en"]{
+  --sans:"Inter",system-ui,"Segoe UI",sans-serif;
+  --serif:"Inter",system-ui,sans-serif;
+  --mono:"Inter",ui-monospace,SFMono-Regular,monospace;
+}
+
+/* ---- Scoped styles (verbatim from the design's helmet <style>) ---- */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-0);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.55}
+a{color:var(--accent-hi);text-decoration:none;cursor:pointer}
+a:hover{color:var(--accent)}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:20px;padding:14px 28px;background:color-mix(in srgb,var(--text) 4%,var(--bg-0));border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:9px;font:600 15px var(--mono);letter-spacing:.11em;color:var(--text)}
+.sq{width:15px;height:15px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-radius:4px;box-shadow:0 0 12px var(--glow-soft)}
+.nav{display:flex;gap:4px;margin-left:14px}
+.nav-t{background:none;border:none;border-radius:9px;color:var(--text-mute);font:500 14px var(--sans);padding:8px 15px;cursor:pointer;transition:all .16s var(--ease)}
+.nav-t:hover{color:var(--text-dim);background:var(--surf)}
+.nav-t[data-on="1"]{color:var(--text);background:color-mix(in srgb,var(--accent) 15%,transparent)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:14px;position:relative}
+.who{font:500 13px var(--sans);color:var(--text-dim)}
+.clock{font:500 13px var(--mono);color:var(--text-mute);min-width:64px;text-align:right}
+/* Chrome the prototype does not have: Demo/Live + a settings popover. Kept deliberately quiet so
+   the topbar still reads as the design's sparse bar (brief: minimal chrome, few nested borders). */
+.mseg-w{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surf)}
+.mseg{appearance:none;border:0;background:transparent;cursor:pointer;padding:5px 11px;font:600 11px var(--sans);letter-spacing:.02em;color:var(--text-mute);transition:background .15s,color .15s}
+.mseg:hover{color:var(--text-dim)}
+.mseg[data-on="1"]{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text)}
+.gear{appearance:none;border:0;background:transparent;cursor:pointer;color:var(--text-mute);padding:4px;border-radius:7px;display:inline-flex;align-items:center;transition:color .15s,background .15s}
+.gear:hover{color:var(--text);background:var(--surf)}
+.pop{position:absolute;top:calc(100% + 10px);right:0;z-index:40;min-width:170px;display:flex;flex-direction:column;gap:7px;padding:12px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.28)}
+.pop-s{font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--text-faint)}
+.pop-s:not(:first-child){margin-top:5px}
+.scroll{flex:1;overflow-y:auto}
+.stage{max-width:760px;margin:0 auto;padding:26px 24px 80px;display:flex;flex-direction:column;gap:22px}
+.wide{max-width:960px}
+.simline{display:flex;align-items:center;gap:9px;font:500 12px var(--sans);color:var(--text-mute);padding:9px 14px;background:color-mix(in srgb,var(--warn) 8%,transparent);border:1px solid color-mix(in srgb,var(--warn) 26%,transparent);border-radius:10px}
+.sim-dot{width:7px;height:7px;border-radius:999px;background:var(--warn);flex:none}
+/* Honesty affordances: quiet notes that say what a number is (or is not). Deliberately low-weight
+   so they inform without competing with the decision (brief: one primary action per screen). */
+.chart-note{margin-top:8px;font:400 11px var(--sans);color:var(--text-faint)}
+.sb-note{margin-top:10px;font:400 12px/1.5 var(--sans);color:var(--text-mute)}
+.warn-note{color:var(--warn)}
+.empty-note{padding:22px;text-align:center;font:400 14px var(--sans);color:var(--text-mute);border:1px dashed var(--line);border-radius:12px}
+/* loading / unreachable-simulator states */
+.state-box{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:26px;border:1px solid var(--line);border-radius:14px;background:var(--surf)}
+.state-box h3{margin:0;font:500 17px var(--sans);color:var(--text)}
+.state-box p{margin:0;font:400 14px/1.55 var(--sans);color:var(--text-mute);max-width:52ch}
+.state-actions{display:flex;gap:8px;margin-top:4px}
+.spin{width:14px;height:14px;border-radius:999px;border:2px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading-row{display:flex;align-items:center;gap:10px;font:400 14px var(--sans);color:var(--text-mute);padding:26px}
+.mono-err{font:400 11px var(--mono);color:var(--text-faint);word-break:break-word}
+/* real constraint results (live) + drawer notes */
+.cons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cons li{display:flex;justify-content:space-between;gap:12px;font:400 13px var(--sans);padding:7px 10px;border-radius:8px;background:var(--surf)}
+.cons li.ok{color:var(--text-dim)}
+.cons li.ok span:last-child{color:var(--ok);font-weight:600}
+.cons li.bad{color:var(--text)}
+.cons li.bad span:last-child{color:var(--danger);font-weight:600}
+.dr-note{font:400 12px/1.55 var(--sans);color:var(--text-mute);padding:10px 12px;border:1px dashed var(--line);border-radius:9px;margin-bottom:12px}
+/* today */
+.greet{display:flex;flex-direction:column;gap:8px}
+.greet h1{margin:0;font:500 30px/1.2 var(--sans);letter-spacing:-.03em;color:var(--text)}
+.greet h1 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--accent-hi)}
+.greet p{margin:0;font:400 17px/1.5 var(--sans);color:var(--text-dim)}
+.attn{display:flex;flex-wrap:wrap;gap:28px;padding:6px 2px}
+.attn-i{display:flex;flex-direction:column;gap:3px}
+.attn-v{font:500 26px var(--sans);letter-spacing:-.03em;color:var(--text);line-height:1}
+.attn-v.warn{color:var(--warn)}.attn-v.ok{color:var(--ok)}
+.attn-l{font:400 13px var(--sans);color:var(--text-mute)}
+.case-card{display:flex;flex-direction:column;gap:14px;padding:26px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 8%,var(--bg-1)),var(--bg-1) 62%);border:1px solid var(--line-2);border-radius:20px}
+.case-card h2{margin:0;font:500 22px/1.25 var(--sans);letter-spacing:-.02em;color:var(--text)}
+.case-card p{margin:0;font:400 16px/1.55 var(--sans);color:var(--text-dim)}
+.case-meta{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font:500 14px var(--sans);color:var(--text-dim)}
+.chipmeta{display:inline-flex;align-items:center;gap:7px}
+.mdot{width:5px;height:5px;border-radius:999px;background:var(--text-faint)}
+/* recommendation deck (Today) -- verbatim from the design */
+.recodeck{display:flex;flex-direction:column;gap:14px}
+.cc-inner{display:flex;flex-direction:column;gap:14px}
+.mainflag{align-self:flex-start;display:inline-flex;align-items:center;font:600 10.5px var(--sans);letter-spacing:.02em;color:var(--accent-hi);background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 26%,transparent);border-radius:999px;padding:3px 11px}
+.upnext{display:flex;flex-direction:column;gap:8px}
+.upnext-h{display:flex;align-items:center;gap:9px;font:500 12.5px var(--sans);color:var(--text-mute);letter-spacing:.02em;padding-left:2px;margin-top:4px}
+.upnext-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--surf-2);border:1px solid var(--line);color:var(--text-dim);font:600 11px var(--sans)}
+.mini{display:flex;align-items:center;gap:13px;text-align:left;width:100%;background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:13px 16px;cursor:pointer;transition:opacity .45s var(--ease),transform .45s var(--ease),border-color .18s var(--ease),background .18s var(--ease)}
+.mini:hover{border-color:var(--line-2);background:var(--surf-2)}
+.mini-num{flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--surf-2);border:1px solid var(--line);color:var(--text-mute);font:600 12px var(--sans)}
+.mini-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.mini-t{font:500 15px var(--sans);color:var(--text)}
+.mini-m{font:400 13px var(--sans);color:var(--text-mute)}
+/* live deck animation: a newly-arrived recommendation slides up in; a resolved one fades out. The
+   .mini transition (above) already carries the hooks. Motion is gated on prefers-reduced-motion so
+   it degrades to an instant swap. */
+@keyframes slideup{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion: no-preference){
+  .mini.enter,.case-card.enter{animation:slideup .42s var(--ease) both}
+  .mini.leaving{opacity:0;transform:translateY(-6px);transition:opacity .3s var(--ease),transform .3s var(--ease);pointer-events:none}
+}
+/* buttons */
+.btn-primary{align-self:flex-start;background:linear-gradient(180deg,var(--accent-hi),var(--accent));border:1px solid var(--accent-lo);border-radius:12px;color:#fff;font:500 15px var(--sans);padding:13px 24px;cursor:pointer;box-shadow:0 8px 22px -10px var(--glow);transition:all .2s var(--ease)}
+.btn-primary:hover{box-shadow:0 10px 26px -10px var(--glow),inset 0 1px rgba(255,255,255,.4)}
+.btn-soft{background:var(--surf-2);border:1px solid var(--line-2);border-radius:11px;color:var(--text);font:500 14px var(--sans);padding:11px 18px;cursor:pointer;transition:all .18s var(--ease)}
+.btn-soft:hover{border-color:var(--accent);color:var(--accent-hi)}
+.btn-quiet{background:none;border:none;color:var(--text-mute);font:500 14px var(--sans);padding:8px 4px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.btn-quiet:hover{color:var(--text-dim)}
+.linkq{display:inline-flex;align-items:center;gap:8px;font:500 14px var(--sans);color:var(--accent-hi);background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 32%,transparent);border-radius:11px;cursor:pointer;padding:11px 16px;align-self:flex-start;transition:all .18s var(--ease)}
+.linkq:hover{background:color-mix(in srgb,var(--accent) 16%,transparent);border-color:var(--accent)}
+/* decision */
+.eyebrow{font:500 13px var(--sans);color:var(--text-mute)}
+.situation{font:500 24px/1.3 var(--sans);letter-spacing:-.02em;color:var(--text);margin:0}
+.metrics3{display:flex;flex-wrap:wrap;gap:30px}
+.m3{display:flex;flex-direction:column;gap:3px}
+.m3-v{font:500 27px var(--sans);letter-spacing:-.03em;line-height:1;color:var(--text)}
+.m3-v.warn{color:var(--warn)}.m3-v.danger{color:var(--danger)}.m3-v.ok{color:var(--ok)}.m3-v.accent{color:var(--accent-hi)}
+.m3-l{font:400 13px var(--sans);color:var(--text-mute)}
+.chartwrap{background:var(--bg-1);border:1px solid var(--line);border-radius:16px;padding:18px 18px 12px}
+.chart-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.chart-t{font:500 14px var(--sans);color:var(--text-dim)}
+.chart-leg{display:flex;gap:14px;font:400 12px var(--sans);color:var(--text-mute)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg-s{width:15px;height:3px;border-radius:2px}
+.lg-s.dash{background:repeating-linear-gradient(90deg,var(--text-mute) 0 4px,transparent 4px 7px)}
+.reco{display:flex;flex-direction:column;gap:14px;padding:24px;background:var(--bg-1);border:1px solid var(--line-2);border-radius:18px}
+.reco-lab{font:500 13px var(--sans);color:var(--accent-hi);display:flex;align-items:center;gap:8px}
+.reco h2{margin:0;font:500 26px/1.2 var(--sans);letter-spacing:-.03em;color:var(--text)}
+.reco h2 em{font-family:var(--serif);font-style:italic;font-weight:400;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.reco p{margin:0;font:400 16px/1.55 var(--sans);color:var(--text-dim)}
+.cta-row{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:2px}
+/* how (level 2) */
+.how{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);margin-top:2px}
+.how-h{font:500 16px var(--sans);color:var(--text);padding:16px 0 6px}
+.qa{padding:16px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:7px}
+.qa:first-of-type{border-top:none}
+.qa-q{font:500 15px var(--sans);color:var(--text);display:flex;align-items:center;gap:9px}
+.qa-n{width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:999px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-hi);font:600 11px var(--mono)}
+.qa-a{font:400 15px/1.6 var(--sans);color:var(--text-dim);padding-left:31px}
+.qa-tag{display:inline-block;font:500 11px var(--sans);color:var(--text-mute);background:var(--surf);border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+.opts{padding-left:31px;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.opt{display:flex;align-items:center;gap:10px;font:400 14px var(--sans);color:var(--text-dim);padding:8px 12px;background:var(--surf);border-radius:10px}
+.opt b{color:var(--text);font-weight:500}
+.opt .rec{margin-left:auto;font:500 13px var(--mono);color:var(--accent-hi)}
+.opt[data-blocked="1"] .rec{color:var(--danger)}
+.opt-tag{font:500 11px var(--mono);color:var(--text-mute)}
+.opt[data-blocked="1"] .opt-tag{color:var(--danger)}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(2,2,6,.55);backdrop-filter:blur(2px);z-index:50}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:460px;max-width:94vw;background:var(--bg-1);border-left:1px solid var(--line-2);z-index:51;display:flex;flex-direction:column;box-shadow:-30px 0 60px -30px rgba(0,0,0,.7);animation:slide .28s var(--ease)}
+@keyframes slide{from{transform:translateX(30px);opacity:.4}to{transform:translateX(0);opacity:1}}
+.dr-h{display:flex;align-items:center;gap:10px;padding:20px 22px 16px;border-bottom:1px solid var(--line)}
+.dr-h h3{margin:0;font:500 17px var(--sans);color:var(--text)}
+.dr-close{margin-left:auto;background:var(--surf);border:1px solid var(--line);border-radius:8px;color:var(--text-mute);width:30px;height:30px;cursor:pointer;font-size:15px}
+.dr-close:hover{color:var(--text);border-color:var(--line-2)}
+.dr-body{flex:1;overflow-y:auto;padding:20px 22px}
+.dr-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.dr-sec{padding:14px 0;border-top:1px solid var(--line)}
+.dr-sec:first-child{border-top:none;padding-top:0}
+.dr-sec-l{font:500 12px var(--sans);color:var(--text-mute);margin-bottom:5px}
+.dr-sec-v{font:400 15px/1.5 var(--sans);color:var(--text)}
+.dr-sec-v b{font-weight:500}
+.dr-sec-v.ok{color:var(--ok)}
+.sec-actions{display:flex;flex-wrap:wrap;gap:8px}
+.mini-a{background:none;border:1px solid var(--line);border-radius:9px;color:var(--text-mute);font:500 13px var(--sans);padding:8px 13px;cursor:pointer}
+.mini-a:hover{color:var(--text-dim);border-color:var(--line-2)}
+.mini-a.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
+.mini-a.danger:hover{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+.foot-note{font:400 12px var(--sans);color:var(--text-faint);text-align:center}
+/* evidence (level 3) */
+.ev-item{padding:13px 0;border-top:1px solid var(--line)}
+.ev-item:first-child{border-top:none}
+.ev-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.ev-name{font:500 14px var(--sans);color:var(--text)}
+.ev-val{font:500 14px var(--mono);color:var(--text)}
+.ev-src{font:400 12px var(--sans);color:var(--text-mute);margin-top:3px}
+.ev-src .ev-id{font-family:var(--mono);color:var(--text-faint)}
+.ev-conflict{font:400 12px var(--sans);color:var(--danger);margin-top:4px}
+.disc{margin-top:16px}
+.disc summary{font:500 13px var(--sans);color:var(--text-mute);cursor:pointer;padding:8px 0;list-style:none}
+.disc summary::-webkit-details-marker{display:none}
+.disc summary:hover{color:var(--text-dim)}
+.disc[open] summary{color:var(--text)}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:6px 0;font-size:13px}
+.kv-k{font:500 11px var(--sans);color:var(--text-mute)}
+.kv-v{font:400 12px var(--mono);color:var(--text-dim);word-break:break-word}
+.jsonbox{margin:8px 0 0;font:500 11px/1.5 var(--mono);color:var(--accent-hi);background:var(--bg-0);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;max-height:280px;white-space:pre}
+/* execution + validation */
+.statusblock{display:flex;flex-direction:column;gap:16px;padding:26px;background:var(--bg-1);border:1px solid var(--line-2);border-radius:18px}
+.sb-head{display:flex;align-items:center;gap:12px}
+.sb-ic{width:38px;height:38px;flex:none;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.sb-ic.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.sb-ic.run{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-hi)}
+.sb-ic.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.sb-title{font:500 20px var(--sans);letter-spacing:-.02em;color:var(--text)}
+.sb-lines{display:flex;flex-direction:column;gap:9px}
+.sb-line{font:400 15px/1.5 var(--sans);color:var(--text-dim)}
+.sb-line b{color:var(--text);font-weight:500}
+.val-compare{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.vc-row{display:grid;grid-template-columns:96px 1fr 56px;gap:12px;align-items:center}
+.vc-l{font:400 14px var(--sans);color:var(--text-dim)}
+.vc-track{height:12px;background:var(--surf-2);border-radius:4px;overflow:hidden}
+.vc-fill{height:100%;border-radius:4px}
+.vc-n{font:500 14px var(--mono);text-align:right;color:var(--text)}
+.verdict{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;font:500 14px var(--sans);color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent);border:1px solid color-mix(in srgb,var(--ok) 32%,transparent);border-radius:999px;padding:7px 15px}
+/* performance / history */
+.section-lead{font:400 16px/1.55 var(--sans);color:var(--text-dim);margin:0;max-width:60ch}
+.perf-kpis{display:flex;flex-wrap:wrap;gap:30px}
+.hist{display:flex;flex-direction:column}
+.hist-row{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:16px 0;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:none;border-right:none;border-bottom:none;width:100%;text-align:left;font:inherit;transition:opacity .15s var(--ease)}
+.hist-row:first-child{border-top:none}
+.hist-row:hover{opacity:.72}
+.hist-t{font:500 15px var(--sans);color:var(--text)}
+.hist-s{font:400 13px var(--sans);color:var(--text-mute);margin-top:3px}
+.hist-st{font:500 13px var(--sans)}
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subnav-b{background:none;border:1px solid var(--line);border-radius:999px;color:var(--text-mute);font:500 13px var(--sans);padding:6px 14px;cursor:pointer}
+.subnav-b[data-on="1"]{background:var(--surf-2);border-color:var(--line-2);color:var(--text)}
+.imp-list{display:flex;flex-direction:column;gap:10px}
+.imp-c{padding:16px 18px;background:var(--surf);border:1px solid var(--line);border-radius:12px}
+.imp-c h4{margin:0 0 5px;font:500 15px var(--sans);color:var(--text)}
+.imp-c p{margin:0;font:400 13.5px/1.5 var(--sans);color:var(--text-mute)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:999px}
+.livedot{background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pulse 2s var(--ease) infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@media(max-width:640px){.nav-t{padding:8px 11px;font-size:13px}.greet h1{font-size:25px}.stage{padding:20px 16px 60px}}
+/* Topbar condensing. NOT in the prototype's CSS: its .topbar is a single non-wrapping
+   flex row (brand + 4 nav + who + clock), which needs ~658px and overflows a 360px
+   viewport. The brief (section 8) requires "responsive down to ~360px (nav condenses,
+   single column)", so this honours the brief where the prototype's CSS falls short.
+   Scoped to <=640px only - desktop layout is untouched. */
+@media(max-width:640px){
+  .topbar{flex-wrap:wrap;gap:10px 12px;padding:12px 16px}
+  .nav{order:3;width:100%;margin-left:0;flex-wrap:wrap}
+  .top-r{margin-left:auto;gap:10px}
+  .clock{min-width:auto}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../__bridge.js"></script>
+<script>window.AtriaDash = window.AtriaDash || window.MinderDash || null;</script>
+<script>
+(function () {
+  "use strict";
+
+  // ── props (overridable via URL for standalone preview) ────────────────────
+  var qs = new URLSearchParams(location.search);
+  var props = { startView: qs.get('view') || 'today' };
+
+  // ── humanized language map (GUIDED_DESIGN_BRIEF.md section 6) ─────────────
+  // The left side is the pipeline's fact label; the right side is what a shift
+  // manager reads. Never surface the raw label.
+  var LABEL = {
+    Observed:   { en: 'Live data',                 vi: 'Dữ liệu trực tiếp' },
+    Calculated: { en: 'Calculated from live data', vi: 'Tính từ dữ liệu trực tiếp' },
+    Inferred:   { en: 'Likely explanation',        vi: 'Giải thích khả dĩ' },
+    Predicted:  { en: 'Expected outcome',          vi: 'Kết quả dự kiến' },
+    Recommended:{ en: 'Why recommended',           vi: 'Vì sao được đề xuất' },
+    Executed:   { en: 'Sent',                      vi: 'Đã gửi' },
+    Validated:  { en: 'Result confirmed',          vi: 'Đã xác nhận kết quả' }
+  };
+
+  // ── i18n (mirrors dashboard.html:372-379) ────────────────────────────────
+  // {en, vi} per key; t('key') resolves via state.lang. INVARIANT, inherited from V2: this table
+  // holds CHROME ONLY. Numbers, telemetry and model prose never live here — they come from the
+  // pipeline (which authors its own prose per language via the `lang` argument).
+  function L(pair) { if (!pair || typeof pair !== 'object') return pair || ''; return (state.lang === 'vi' && pair.vi) ? pair.vi : (pair.en != null ? pair.en : pair.vi || ''); }
+  function t(key) { var s = STRINGS[key]; return s ? L(s) : key; }
+
+  var STRINGS = {
+    // nav + chrome
+    nav_today:        { en: 'Today',        vi: 'Hôm nay' },
+    nav_decision:     { en: 'Decisions',    vi: 'Quyết định' },
+    nav_performance:  { en: 'Performance',  vi: 'Hiệu suất' },
+    nav_history:      { en: 'History',      vi: 'Lịch sử' },
+    brand:            { en: 'Minder Optimize', vi: 'Minder Optimize' },
+    settings:         { en: 'Settings',     vi: 'Cài đặt' },
+    language:         { en: 'Language',     vi: 'Ngôn ngữ' },
+    appearance:       { en: 'Appearance',   vi: 'Giao diện' },
+    theme_light:      { en: 'Light',        vi: 'Sáng' },
+    theme_dark:       { en: 'Dark',         vi: 'Tối' },
+    mode_live:        { en: 'Live',         vi: 'Trực tiếp' },
+    mode_demo:        { en: 'Demo',         vi: 'Demo' },
+
+    // the Simulation banner (a product element, not scaffolding - brief section 5)
+    sim_live:  { en: 'Simulation — live data from the fleet simulator, not a real plant.',
+                 vi: 'Mô phỏng — dữ liệu trực tiếp từ trình mô phỏng, không phải nhà máy thật.' },
+    sim_demo:  { en: 'Demo — a frozen example scenario. Not connected to the simulator.',
+                 vi: 'Demo — kịch bản ví dụ cố định. Không kết nối trình mô phỏng.' },
+
+    // loading / failure
+    loading:      { en: 'Reading the line…',  vi: 'Đang đọc chuyền…' },
+    sim_down_t:   { en: 'Cannot reach the simulator', vi: 'Không kết nối được trình mô phỏng' },
+    sim_down_b:   { en: 'Live needs the fleet simulator running. Start it, or switch to Demo to see an example scenario.',
+                   vi: 'Chế độ trực tiếp cần trình mô phỏng đang chạy. Hãy khởi động nó, hoặc chuyển sang Demo để xem kịch bản ví dụ.' },
+    retry:        { en: 'Try again',  vi: 'Thử lại' },
+    send_failed_t:{ en: 'The action was not sent', vi: 'Hành động chưa được gửi' },
+    send_failed_b:{ en: 'Nothing was changed on the line. The decision is still waiting for your approval — you can try again.',
+                    vi: 'Không có gì trên chuyền bị thay đổi. Quyết định vẫn đang chờ bạn phê duyệt — bạn có thể thử lại.' },
+    switch_demo:  { en: 'Switch to Demo', vi: 'Chuyển sang Demo' },
+    no_decision_t:{ en: 'Nothing needs a decision right now', vi: 'Hiện chưa có gì cần quyết định' },
+    no_decision_b:{ en: 'Minder only opens a decision when a human is needed. The line is within range of its target.',
+                    vi: 'Minder chỉ mở quyết định khi cần con người. Chuyền vẫn trong khoảng mục tiêu.' },
+
+    // Today
+    greet_morning: { en: 'Good morning.',   vi: 'Chào buổi sáng.' },
+    greet_afternoon:{ en: 'Good afternoon.', vi: 'Chào buổi chiều.' },
+    greet_evening: { en: 'Good evening.',   vi: 'Chào buổi tối.' },
+    // {subject} is the live line/machine id (or "Line 2" in demo) -- injected at render, so this
+    // table stays chrome-only. The hinge word is the <em> that follows (brief section 1).
+    needs_attention:{ en: '{subject} needs your', vi: '{subject} cần bạn' },
+    attention_em:  { en: 'attention.',      vi: 'chú ý.' },
+    attn_decision: { en: 'Needs your decision', vi: 'Cần bạn quyết định' },
+    attn_progress: { en: 'Actions in progress',  vi: 'Hành động đang chạy' },
+    attn_confirmed:{ en: 'Resolved today', vi: 'Đã xử lý hôm nay' },
+    review_reco:   { en: 'Review recommendation', vi: 'Xem đề xuất' },
+    // recommendation deck (Today). {n}/{i} are queue counts injected at render (chrome stays number-free).
+    deck_greet:      { en: 'You have {n} recommendations.', vi: 'Bạn có {n} đề xuất.' },
+    deck_greet_none: { en: 'nothing needs you right now.', vi: 'hiện chưa có gì cần bạn.' },
+    deck_sub:        { en: 'Minder keeps judging the plant and queues what is worth your decision — act on any of them, in any order.',
+                       vi: 'Minder liên tục đánh giá nhà máy và xếp hàng những gì đáng để bạn quyết định — xử lý bất kỳ cái nào, theo thứ tự tùy ý.' },
+    deck_sub_none:   { en: 'Minder is watching the plant and will queue a recommendation the moment one is worth your decision.',
+                       vi: 'Minder đang theo dõi nhà máy và sẽ xếp một đề xuất ngay khi có điều gì đáng để bạn quyết định.' },
+    rec_of:          { en: 'Recommendation {i} of {n}', vi: 'Đề xuất {i} trên {n}' },
+    // problem-specific deck titles (Live)
+    title_starve:    { en: '{subject} is starved for product.', vi: '{subject} đang thiếu sản phẩm.' },
+    title_down:      { en: '{subject} is down.', vi: '{subject} đang dừng.' },
+    title_health:    { en: '{subject} is degrading and needs service.', vi: '{subject} đang xuống cấp và cần bảo dưỡng.' },
+    title_oee:       { en: '{subject} is running below target.', vi: '{subject} đang chạy dưới mục tiêu.' },
+    up_next:         { en: 'Up next', vi: 'Tiếp theo' },
+    all_caught_t:    { en: "You're all caught up.", vi: 'Bạn đã xử lý hết.' },
+    all_caught_b:    { en: 'No recommendations need your decision right now. Minder opens one the moment a deviation crosses a governed threshold.',
+                       vi: 'Hiện không có đề xuất nào cần bạn quyết định. Minder sẽ mở một cái ngay khi một sai lệch vượt ngưỡng quản trị.' },
+
+    // Decision
+    units_short:   { en: 'units short',     vi: 'đơn vị còn thiếu' },
+    chance_target: { en: 'chance of reaching target', vi: 'khả năng đạt mục tiêu' },
+    to_decide:     { en: 'to decide',       vi: 'để quyết định' },
+    minutes:       { en: 'min',             vi: 'phút' },
+    exp_recovery:  { en: 'expected recovery (units)', vi: 'phục hồi dự kiến (đơn vị)' },
+    risk:          { en: 'risk',            vi: 'rủi ro' },
+    confidence:    { en: 'confidence',      vi: 'độ tin cậy' },
+    risk_low:      { en: 'Low',             vi: 'Thấp' },
+    risk_med:      { en: 'Medium',          vi: 'Trung bình' },
+    risk_high:     { en: 'High',            vi: 'Cao' },
+    conf_high:     { en: 'High',            vi: 'Cao' },
+    conf_med:      { en: 'Medium',          vi: 'Trung bình' },
+    conf_low:      { en: 'Low',             vi: 'Thấp' },
+    how_pill:      { en: 'How did Minder reach this?', vi: 'Minder đi đến kết luận này thế nào?' },
+    how_pill_h:    { en: 'How Minder reached this',    vi: 'Cách Minder đi đến kết luận này' },
+    send_to_move:  { en: 'Review and send to Move', vi: 'Xem lại và gửi sang Move' },
+    see_data:      { en: 'See the data behind this →', vi: 'Xem dữ liệu phía sau →' },
+    recommends:    { en: 'Minder recommends', vi: 'Minder đề xuất' },
+    forecast_note: { en: 'Projected at the current rate — not a forecast model.',
+                     vi: 'Chiếu theo tốc độ hiện tại — không phải mô hình dự báo.' },
+    with_action:   { en: 'With action',     vi: 'Có hành động' },
+    no_action:     { en: 'No action',       vi: 'Không hành động' },
+    target:        { en: 'TARGET',          vi: 'MỤC TIÊU' },
+
+    // How panel
+    q1: { en: 'What is happening?',            vi: 'Chuyện gì đang xảy ra?' },
+    q2: { en: 'Why is it happening?',          vi: 'Vì sao lại như vậy?' },
+    q3: { en: 'What happens if we do nothing?',vi: 'Nếu không làm gì thì sao?' },
+    q4: { en: 'What options were considered?', vi: 'Đã cân nhắc những phương án nào?' },
+    q5: { en: 'Why is this recommended?',      vi: 'Vì sao đề xuất phương án này?' },
+    q4_lead: { en: 'Minder compared the options and checked each against safety and machine limits:',
+               vi: 'Minder đã so sánh các phương án và kiểm tra từng phương án theo giới hạn an toàn và máy móc:' },
+    opt_recommended: { en: 'recommended', vi: 'được đề xuất' },
+    opt_baseline:    { en: 'baseline',    vi: 'cơ sở' },
+    opt_blocked:     { en: 'blocked',     vi: 'bị chặn' },
+    do_nothing:      { en: 'Do nothing',  vi: 'Không làm gì' },
+
+    // Review drawer
+    review_title:  { en: 'Review and approve', vi: 'Xem lại và phê duyệt' },
+    will_happen:   { en: 'What will happen',   vi: 'Điều gì sẽ xảy ra' },
+    expected_res:  { en: 'Expected result',    vi: 'Kết quả dự kiến' },
+    safety:        { en: 'Safety and constraints', vi: 'An toàn và ràng buộc' },
+    owning_module: { en: 'Owning module',      vi: 'Module phụ trách' },
+    stop_cond:     { en: 'Stop / rollback condition', vi: 'Điều kiện dừng / hoàn tác' },
+    approve_send:  { en: 'Approve and send',   vi: 'Phê duyệt và gửi' },
+    modify:        { en: 'Modify',             vi: 'Chỉnh sửa' },
+    more_evidence: { en: 'Request more evidence', vi: 'Yêu cầu thêm bằng chứng' },
+    defer:         { en: 'Defer',              vi: 'Hoãn' },
+    reject:        { en: 'Reject',             vi: 'Từ chối' },
+    recorded_note: { en: 'Your name, role, time and reason are recorded with this decision.',
+                     vi: 'Tên, vai trò, thời gian và lý do của bạn được lưu cùng quyết định này.' },
+    passed:        { en: 'passed',  vi: 'đạt' },
+    failed:        { en: 'failed',  vi: 'không đạt' },
+    module_boundary: { en: 'Minder asks Move to do it; Minder does not control the forklift or machine directly.',
+                       vi: 'Minder yêu cầu Move thực hiện; Minder không điều khiển trực tiếp xe nâng hay máy.' },
+
+    // Evidence drawer
+    evidence_title:{ en: 'Data behind this decision', vi: 'Dữ liệu phía sau quyết định' },
+    source_events: { en: 'Source events',      vi: 'Sự kiện nguồn' },
+    conflicts:     { en: 'Conflicts',          vi: 'Xung đột' },
+    formulas:      { en: 'Formulas and model versions', vi: 'Công thức và phiên bản mô hình' },
+    full_object:   { en: 'Full decision object',vi: 'Đối tượng quyết định đầy đủ' },
+    tech_details:  { en: 'Technical details',  vi: 'Chi tiết kỹ thuật' },
+    sample_data:   { en: 'Sample — not from the simulator', vi: 'Mẫu — không lấy từ trình mô phỏng' },
+    evidence_partial: { en: 'The simulator provides values and their source module. Event IDs, freshness and cross-system conflicts need the governed data feed, which is not connected yet — those fields are shown as samples.',
+                        vi: 'Trình mô phỏng cung cấp giá trị và module nguồn. Mã sự kiện, độ mới và xung đột giữa các hệ thống cần nguồn dữ liệu quản trị — hiện chưa kết nối, nên các trường đó là dữ liệu mẫu.' },
+
+    // Executing / completed
+    exec_title:    { en: 'Move accepted the request.', vi: 'Move đã nhận yêu cầu.' },
+    exec_task:     { en: 'Task',        vi: 'Tác vụ' },
+    exec_resource: { en: 'Assigned',    vi: 'Được giao' },
+    exec_eta:      { en: 'Expected arrival', vi: 'Dự kiến đến' },
+    exec_check:    { en: 'Next check',  vi: 'Kiểm tra tiếp theo' },
+    done_expected: { en: 'Expected',    vi: 'Dự kiến' },
+    done_measured: { en: 'Measured',    vi: 'Đo được' },
+    // Verdict copy is chosen from the measured result, never asserted. "It worked" only when it did.
+    done_worked_title:   { en: 'The action worked.',        vi: 'Hành động đã có hiệu quả.' },
+    done_worked_sub:     { en: 'Result confirmed — within the expected range',
+                           vi: 'Đã xác nhận kết quả — nằm trong khoảng dự kiến' },
+    done_partial_title:  { en: 'The action helped, but less than expected.',
+                           vi: 'Hành động có tác dụng, nhưng ít hơn dự kiến.' },
+    done_partial_sub:    { en: 'Result recorded — below the expected range',
+                           vi: 'Đã ghi nhận kết quả — dưới khoảng dự kiến' },
+    done_noeffect_title: { en: 'No recovery measured yet.', vi: 'Chưa đo được phục hồi.' },
+    done_noeffect_sub:   { en: 'Result recorded — the line has not recovered over the measured window',
+                           vi: 'Đã ghi nhận kết quả — chuyền chưa phục hồi trong cửa sổ đo' },
+    no_side:       { en: 'No side effects detected on quality or downstream lines.',
+                     vi: 'Không phát hiện tác dụng phụ lên chất lượng hay các chuyền phía sau.' },
+    recovered_line:{ en: 'Recovered {measured} of an expected {expected} units.',
+                     vi: 'Đã phục hồi {measured} trên {expected} đơn vị dự kiến.' },
+    outcome_sim:   { en: 'Outcome is simulated — the measured window is not wired to a real feed yet.',
+                     vi: 'Kết quả là mô phỏng — cửa sổ đo chưa nối với nguồn dữ liệu thật.' },
+    sending:       { en: 'Sending to Move…', vi: 'Đang gửi sang Move…' },
+
+    // Performance
+    perf_lead:     { en: 'Minder only opens a decision when a human is needed. Everything else runs on its own.',
+                     vi: 'Minder chỉ mở quyết định khi cần con người. Mọi thứ khác tự chạy.' },
+    perf_trend:    { en: 'Output vs target', vi: 'Sản lượng so với mục tiêu' },
+    perf_on_pace:  { en: 'on pace today',    vi: 'theo nhịp hôm nay' },
+    perf_attain:   { en: 'avg attainment',   vi: 'đạt mục tiêu trung bình' },
+    perf_quality:  { en: 'quality (first-pass)', vi: 'chất lượng (đạt lần đầu)' },
+    perf_open:     { en: 'open decision',    vi: 'quyết định đang mở' },
+
+    // History
+    hist_decisions:{ en: 'Decisions',   vi: 'Quyết định' },
+    hist_improve:  { en: 'Improvement', vi: 'Cải thiện' },
+    hist_lead:     { en: 'Every decision is kept with who approved it, why, and whether it worked. Open a decision to see its full audit and data sources.',
+                     vi: 'Mọi quyết định đều được lưu cùng người phê duyệt, lý do và kết quả. Mở một quyết định để xem toàn bộ nhật ký và nguồn dữ liệu.' },
+    hist_empty:    { en: 'No decisions recorded yet.', vi: 'Chưa có quyết định nào được ghi.' },
+    hist_improve_lead: { en: 'Improvements Minder is testing and confirming over time — the actions that repeatedly deliver their expected benefit.',
+                         vi: 'Những cải thiện Minder đang thử nghiệm và xác nhận theo thời gian — các hành động liên tục mang lại lợi ích như dự kiến.' },
+    // Live copy. Placeholders are filled with live telemetry at render time, so no numbers live
+    // in this table (V2's STRINGS invariant).
+    live_today_sub:   { en: 'It is on pace to finish {gap} units below today’s target.',
+                        vi: 'Theo nhịp hiện tại sẽ kết thúc thấp hơn mục tiêu hôm nay {gap} đơn vị.' },
+    live_case_title:  { en: '{subject} may miss its shift target.', vi: '{subject} có thể không đạt mục tiêu ca.' },
+    live_meta_recovery: { en: 'Expected recovery: {n} units', vi: 'Phục hồi dự kiến: {n} đơn vị' },
+    live_meta_risk:   { en: '{r} risk', vi: 'Rủi ro {r}' },
+    live_meta_time:   { en: '{n} minutes left in the shift', vi: 'Còn {n} phút trong ca' },
+    live_eyebrow:     { en: 'Decision · {subject} · {wo}', vi: 'Quyết định · {subject} · {wo}' },
+    live_eyebrow_sent:{ en: 'Decision · {subject} · sent to Move', vi: 'Quyết định · {subject} · đã gửi sang Move' },
+    live_eyebrow_done:{ en: 'Decision · {subject} · result measured', vi: 'Quyết định · {subject} · đã đo kết quả' },
+    live_situation:   { en: 'At the current rate this shift finishes at {cur} of {tgt} units.',
+                        vi: 'Theo tốc độ hiện tại, ca này kết thúc ở {cur} trên {tgt} đơn vị.' },
+    live_chart_title: { en: 'Projected output by end of shift', vi: 'Sản lượng chiếu đến cuối ca' },
+    live_perf_title:  { en: '{subject} performance', vi: 'Hiệu suất {subject}' },
+    live_perf_chart:  { en: 'Fleet throughput · recent window', vi: 'Sản lượng đội máy · cửa sổ gần đây' },
+    live_operator:    { en: 'Signed-in operator', vi: 'Người dùng đang đăng nhập' },
+    // Shown while the model's explanation is still in flight. The numbers are already on screen;
+    // this only ever stands in for prose.
+    prose_pending:    { en: 'Minder is still writing this explanation…', vi: 'Minder đang viết phần giải thích này…' },
+    det_measure:      { en: '{subject} has produced {cur} units so far this shift, against a target of {tgt}.',
+                        vi: '{subject} đã sản xuất {cur} đơn vị trong ca này, so với mục tiêu {tgt}.' },
+    det_predict:      { en: 'At the current rate the shift ends at {end} — {gap} short of target, with a {pct} chance of reaching it.',
+                        vi: 'Theo tốc độ hiện tại, ca kết thúc ở {end} — thiếu {gap} so với mục tiêu, khả năng đạt là {pct}.' },
+    det_evaluate:     { en: 'Minder compared {n} options and checked each against the machine and safety limits.',
+                        vi: 'Minder đã so sánh {n} phương án và kiểm tra từng phương án theo giới hạn máy và an toàn.' },
+    det_recommend:    { en: '“{action}” is the highest-ranked option that passes every constraint, and is projected to recover {n} units.',
+                        vi: '“{action}” là phương án xếp hạng cao nhất vượt qua mọi ràng buộc, dự kiến phục hồi {n} đơn vị.' },
+    live_will_happen: { en: 'Minder will ask <b>Move</b> to carry out “{action}” on {machine}.',
+                        vi: 'Minder sẽ yêu cầu <b>Move</b> thực hiện “{action}” trên {machine}.' },
+    live_expected_res:{ en: '{n} units recovered · projected output rises to {after}.',
+                        vi: 'Phục hồi {n} đơn vị · sản lượng chiếu tăng lên {after}.' },
+    live_owner:       { en: 'Move · fleet simulator', vi: 'Move · trình mô phỏng đội máy' },
+    live_stop:        { en: 'Minder measures the result after the action and records what actually changed. Nothing else is altered on the machine.',
+                        vi: 'Minder đo kết quả sau hành động và ghi lại thay đổi thực tế. Không có thiết lập nào khác trên máy bị thay đổi.' },
+    attn_blocked:     { en: 'Constraints not passed', vi: 'Ràng buộc chưa đạt' },
+    attn_units_today: { en: 'Units produced this shift', vi: 'Đơn vị đã sản xuất trong ca' },
+
+    // measured-outcome copy
+    meas_baseline: { en: 'Rate before the action: {rate}/h, with {h}h left in the shift',
+                     vi: 'Tốc độ trước hành động: {rate}/giờ, còn {h} giờ trong ca' },
+    meas_window:   { en: 'Rate {mins} simulated minutes later: {rate}/h',
+                     vi: 'Tốc độ sau {mins} phút mô phỏng: {rate}/giờ' },
+    meas_method:   { en: 'Measured the line’s actual throughput before and after the action; recovery is the observed rate gain applied over the shift time that remained — the same basis the expected figure uses.',
+                     vi: 'Đo sản lượng thực tế của chuyền trước và sau hành động; phần phục hồi là mức tăng tốc độ quan sát được nhân với thời gian còn lại của ca — cùng cơ sở với con số dự kiến.' },
+    meas_failed:   { en: 'Could not measure the window — outcome not verified.',
+                     vi: 'Không đo được cửa sổ — chưa xác minh kết quả.' },
+
+    st_worked:     { en: 'Worked',       vi: 'Hiệu quả' },
+    st_rejected:   { en: 'Rejected',     vi: 'Đã từ chối' },
+    st_inconclusive:{ en: 'Inconclusive', vi: 'Chưa kết luận' },
+    st_executing:  { en: 'Executing',    vi: 'Đang thực hiện' }
+  };
+
+  // ── DEMO scenario ────────────────────────────────────────────────────────
+  // The frozen example, and the ONLY hardcoded data left. It backs Demo mode; Live builds the
+  // same shape from the fleet simulator (see scenarioFromLive). Shaped like scripts/pipeline.py
+  // standard_response(). Every fact carries a `kind` (Observed/Calculated/Inferred/Predicted/
+  // Recommended/Executed/Validated) which the UI renders through LABEL above.
+  //
+  // Demo is never a fallback for a failed Live load -- that would show canned numbers as if they
+  // were real. Live failure renders an explicit error state instead.
+  var DEMO = {
+    skill: 'recommend_operational_action',
+    status: 'awaiting_approval',
+    execution_id: 'OPT-20260716-00142',
+    correlation_id: 'corr-4521-b',
+    decision_id: 'DC-2026-00452',
+    scope: { plant_id: 'plant-a', line_id: 'Line-2', work_order: 'WO-4521', timezone: 'Asia/Bangkok' },
+    summary: { en: 'Line 2 is expected to produce 820 of 1,000 units this shift.',
+               vi: 'Chuyền 2 dự kiến sản xuất 820 trên 1.000 đơn vị trong ca này.' },
+
+    // Display copy. Demo carries {en,vi} pairs; Live fills the same fields with prose the backend
+    // already authored in the active language (analysis.py writes VI prose when lang=vi). L()
+    // passes plain strings through, so both render through one path.
+    ui: {
+      subject: 'Line 2',
+      today_sub: { en: 'It is likely to finish 180 units below today’s target.',
+                   vi: 'Nhiều khả năng sẽ kết thúc thấp hơn mục tiêu hôm nay 180 đơn vị.' },
+      case_title: { en: 'Line 2 may miss its shift target.', vi: 'Chuyền 2 có thể không đạt mục tiêu ca.' },
+      case_body: { en: 'Material for the next job is arriving late. Minder recommends prioritizing pallet P-104 now.',
+                   vi: 'Vật tư cho công việc kế tiếp đang về trễ. Minder đề xuất ưu tiên pallet P-104 ngay.' },
+      case_meta: [
+        { text: { en: 'Expected recovery: 75 units', vi: 'Phục hồi dự kiến: 75 đơn vị' }, cls: '' },
+        { text: { en: 'Low risk', vi: 'Rủi ro thấp' }, cls: '' },
+        { text: { en: 'Action needed within 18 minutes', vi: 'Cần hành động trong 18 phút' }, cls: 'warn' }
+      ],
+      eyebrow: { en: 'Decision · Line 2 · WO-4521', vi: 'Quyết định · Chuyền 2 · WO-4521' },
+      eyebrow_sent: { en: 'Decision · Line 2 · sent to Move', vi: 'Quyết định · Chuyền 2 · đã gửi sang Move' },
+      eyebrow_done: { en: 'Decision · Line 2 · result confirmed', vi: 'Quyết định · Chuyền 2 · đã xác nhận kết quả' },
+      situation: { en: 'Line 2 is expected to produce <b>820 of 1,000</b> units this shift.',
+                   vi: 'Chuyền 2 dự kiến sản xuất <b>820 trên 1.000</b> đơn vị trong ca này.' },
+      chart_title: { en: 'Expected output by end of shift', vi: 'Sản lượng dự kiến cuối ca' },
+      reco_title: { en: 'Prioritize pallet <em>P-104</em> with Forklift F07',
+                    vi: 'Ưu tiên pallet <em>P-104</em> với xe nâng F07' },
+      reco_body: { en: 'The line is waiting for material. Forklift F07 is available and can deliver the required pallet about 25 minutes sooner.',
+                   vi: 'Chuyền đang chờ vật tư. Xe nâng F07 đang rảnh và có thể giao pallet cần thiết sớm hơn khoảng 25 phút.' },
+      perf_title: { en: 'Line 2 performance', vi: 'Hiệu suất Chuyền 2' },
+      perf_chart: { en: 'Output vs target · last 12 shifts', vi: 'Sản lượng so với mục tiêu · 12 ca gần nhất' }
+    },
+
+    review: {
+      will_happen: { en: 'Minder will ask <b>Move</b> to prioritize pallet <b>P-104</b> to Line 2 using Forklift F07.',
+                     vi: 'Minder sẽ yêu cầu <b>Move</b> ưu tiên pallet <b>P-104</b> tới Chuyền 2 bằng xe nâng F07.' },
+      expected: { en: '<b>+75 units</b> recovered · chance of reaching target rises from 18% to <b>52%</b>.',
+                  vi: 'Phục hồi <b>+75 đơn vị</b> · khả năng đạt mục tiêu tăng từ 18% lên <b>52%</b>.' },
+      safety: { en: 'All checks passed. No machine setpoint change. Route is clear and the forklift is certified for this zone.',
+                vi: 'Tất cả kiểm tra đều đạt. Không đổi thiết lập máy. Lộ trình thông thoáng và xe nâng được chứng nhận cho khu vực này.' },
+      owner: { en: 'Move · simulated connector', vi: 'Move · trình kết nối mô phỏng' },
+      stop: { en: 'Cancel automatically if the forklift is diverted, or if the material buffer recovers above 40% before dispatch.',
+              vi: 'Tự động hủy nếu xe nâng bị điều đi nơi khác, hoặc nếu mức đệm vật tư hồi phục trên 40% trước khi điều phối.' }
+    },
+
+    observations: [
+      { kind: 'Observed', name: { en: 'Good units produced', vi: 'Số lượng đạt đã sản xuất' }, val: '530', src: 'Produce · MES', fresh: '18s ago', id: 'EV-8113', conflict: '' },
+      { kind: 'Observed', name: { en: 'Cycle time', vi: 'Thời gian chu kỳ' }, val: '14.8 s', src: 'Produce · MES', fresh: '29s ago', id: 'EV-8114', conflict: '' },
+      { kind: 'Observed', name: { en: 'Material buffer level', vi: 'Mức đệm vật tư' }, val: '8%', src: 'Produce · MES', fresh: '40s ago', id: 'EV-8120', conflict: { en: 'Legacy WMS reports 14% — a 6-point mismatch. Loss estimate carries ±14 units.', vi: 'WMS cũ báo 14% — lệch 6 điểm. Ước tính thất thoát có sai số ±14 đơn vị.' } },
+      { kind: 'Observed', name: { en: 'Pallet P-104 location', vi: 'Vị trí pallet P-104' }, val: 'Staging ST-2', src: 'Move · WMS', fresh: '68s ago', id: 'EV-8131', conflict: '' },
+      { kind: 'Observed', name: { en: 'Forklift F07 status', vi: 'Trạng thái xe nâng F07' }, val: { en: 'Available', vi: 'Sẵn sàng' }, src: 'Move · fleet', fresh: '25s ago', id: 'EV-8132', conflict: '' },
+      { kind: 'Observed', name: { en: 'Machine health index', vi: 'Chỉ số sức khỏe máy' }, val: '0.68', src: 'Monitor · asset health', fresh: '4m ago', id: 'EV-8138', conflict: '' }
+    ],
+
+    // The five Level-2 questions, in the order the brief mandates.
+    questions: [
+      { n: '1', kind: 'Observed', q: 'q1', a: { en: 'Line 2 has made 530 units but is running slower than planned — about 14.8 seconds per unit against a 12-second standard.',
+                                                vi: 'Chuyền 2 đã làm được 530 đơn vị nhưng chạy chậm hơn kế hoạch — khoảng 14,8 giây mỗi đơn vị so với chuẩn 12 giây.' } },
+      { n: '2', kind: 'Inferred', q: 'q2', a: { en: 'The feeding buffer keeps running low because the next pallet of material has not been brought to the line yet.',
+                                                vi: 'Bộ đệm cấp liệu liên tục cạn vì pallet vật tư kế tiếp chưa được đưa tới chuyền.' } },
+      { n: '3', kind: 'Predicted', q: 'q3', a: { en: 'The line is expected to finish at 820 units — 180 short of target, with only an 18% chance of catching up.',
+                                                 vi: 'Chuyền dự kiến kết thúc ở 820 đơn vị — thiếu 180 so với mục tiêu, chỉ khoảng 18% khả năng đuổi kịp.' } },
+      { n: '4', kind: null, q: 'q4', a: 'q4_lead', opts: [
+        { name: { en: 'Prioritize pallet P-104 (Forklift F07)', vi: 'Ưu tiên pallet P-104 (xe nâng F07)' }, note: { en: 'recommended', vi: 'được đề xuất' }, rec: '+75', blocked: '0' },
+        { name: { en: 'Resequence Job C ahead of Job B', vi: 'Đổi thứ tự Job C trước Job B' }, note: { en: 'needs planner', vi: 'cần người lập kế hoạch' }, rec: '+62', blocked: '0' },
+        { name: { en: 'Move an operator from Line 1', vi: 'Điều một thợ từ Chuyền 1' }, note: { en: 'needs supervisor', vi: 'cần quản lý ca' }, rec: '+48', blocked: '0' },
+        { name: { en: 'Increase line speed +8%', vi: 'Tăng tốc độ chuyền +8%' }, note: { en: 'blocked · machine health', vi: 'bị chặn · sức khỏe máy' }, rec: '+90', blocked: '1' },
+        { name: { en: 'Do nothing', vi: 'Không làm gì' }, note: { en: 'baseline', vi: 'cơ sở' }, rec: '0', blocked: '0' }
+      ] },
+      { n: '5', kind: 'Recommended', q: 'q5', a: { en: 'Prioritizing pallet P-104 directly fixes the material shortage, can happen right now (the forklift is free and the pallet is staged), and passes every safety check. Raising line speed would recover more but is blocked because machine health is below its safe limit.',
+                                                   vi: 'Ưu tiên pallet P-104 xử lý trực tiếp việc thiếu vật tư, có thể làm ngay (xe nâng đang rảnh và pallet đã sẵn), và vượt qua mọi kiểm tra an toàn. Tăng tốc độ chuyền sẽ phục hồi nhiều hơn nhưng bị chặn vì sức khỏe máy dưới giới hạn an toàn.' } }
+    ],
+
+    decision: {
+      metrics: [
+        { v: '180', l: 'units_short', cls: 'warn' },
+        { v: '18%', l: 'chance_target', cls: 'warn' },
+        { v: '18 min', l: 'to_decide', cls: '' }
+      ],
+      reco_metrics: [
+        { v: '+75', l: 'exp_recovery', cls: 'accent' },
+        { v: { en: 'Low', vi: 'Thấp' }, l: 'risk', cls: 'ok' },
+        { v: { en: 'High', vi: 'Cao' }, l: 'confidence', cls: '' }
+      ],
+      forecast: { no_action: [530, 592, 651, 708, 762, 820], with_action: [530, 618, 692, 758, 828, 895], target: 1000 }
+    },
+
+    // Executed / Validated stages (simulated - a real Move ack fills these).
+    execution: { task_id: 'MOVE-TASK-7012', resource: 'Forklift F07', eta: '11:16', check_at: '11:46',
+      command: 'move.task.prioritize(P-104 → Line-2)', idempotency_key: 'idem-DC00452-ALT1-7f3a',
+      correlation_id: 'corr-4521-b', owning_module: 'Move · simulated connector' },
+    validation: { expected: 75, measured: 71, baseline: '10:24–11:04 (frozen)', comparison: '11:16–11:46',
+      method: 'pre/post rate delta, material-adjusted', write_back: 'DC-2026-00452 · labeled outcome',
+      simulated: true },
+
+    data_quality: { completeness: 0.97, latest_timestamp: '2026-07-16T13:58:42+07:00', latency_seconds: 78,
+      warnings: ['Material buffer level conflicts with legacy WMS (8% vs 14%).'] },
+    confidence: { level: 'high', score: 0.89, explanation: 'Evidence is consistent across first-party Produce, Move and Monitor events.' },
+    provenance: { source_event_ids: ['EV-8113', 'EV-8114', 'EV-8120', 'EV-8131', 'EV-8132', 'EV-8138'], module_reads: ['Produce', 'Move', 'Monitor'] },
+    audit: { principal: 'L. Trần · Shift Manager', required_role: 'Shift Manager',
+      kpi_definition_versions: ['kpi-pack-2.4'], ruleset_version: 'operational-constraints-0.1',
+      model_versions: ['production-forecast-0.1', 'weighted-ranking-0.1', 'material-recovery-0.1'] }
+  };
+
+  // Demo deck teasers (illustrative; all open the single worked P-104 decision under the Demo banner).
+  var DEMO_DECK = [
+    { title: { en: 'Line 2 may miss its shift target.', vi: 'Chuyền 2 có thể không đạt mục tiêu ca.' },
+      recovery: { en: 'Expected recovery: 75 units', vi: 'Phục hồi dự kiến: 75 đơn vị' },
+      risk: { en: 'Low risk', vi: 'Rủi ro thấp' }, within: { en: 'within 18 minutes', vi: 'trong 18 phút' } },
+    { title: { en: 'Job B is waiting on material.', vi: 'Job B đang chờ vật tư.' },
+      recovery: { en: 'Expected recovery: 62 units', vi: 'Phục hồi dự kiến: 62 đơn vị' },
+      risk: { en: 'Medium risk', vi: 'Rủi ro trung bình' }, within: { en: 'within 25 minutes', vi: 'trong 25 phút' } },
+    { title: { en: 'The pack station is short-handed.', vi: 'Trạm đóng gói thiếu người.' },
+      recovery: { en: 'Expected recovery: 48 units', vi: 'Phục hồi dự kiến: 48 đơn vị' },
+      risk: { en: 'Medium risk', vi: 'Rủi ro trung bình' }, within: { en: 'within 30 minutes', vi: 'trong 30 phút' } },
+    { title: { en: 'Micro-stops are climbing on CP-12.', vi: 'Dừng vặt đang tăng trên CP-12.' },
+      recovery: { en: 'Expected recovery: 26 units', vi: 'Phục hồi dự kiến: 26 đơn vị' },
+      risk: { en: 'Low risk', vi: 'Rủi ro thấp' }, within: { en: 'within 45 minutes', vi: 'trong 45 phút' } }
+  ];
+  // Queue-level attention stats. Live derives from the queue length + store; Demo mirrors the design.
+  function attnStats() {
+    if (state.dataMode === 'demo') {
+      return [
+        { v: String(DEMO_DECK.length), l: 'attn_decision', cls: 'warn' },
+        { v: '2', l: 'attn_progress', cls: '' },
+        { v: '+71', l: 'attn_confirmed', cls: 'ok' }
+      ];
+    }
+    var n = activeRecos().length;
+    var done = (state.live && state.live.history || []).filter(function (h) { return h.status === 'Worked'; }).length;
+    return [
+      { v: String(n), l: 'attn_decision', cls: n ? 'warn' : 'ok' },
+      { v: String((state.live && state.live.history || []).filter(function (h) { return h.status === 'Executing'; }).length), l: 'attn_progress', cls: '' },
+      { v: String(done), l: 'attn_confirmed', cls: 'ok' }
+    ];
+  }
+  var DEMO_PERF_KPIS = [
+    { v: '820', l: { en: 'on pace today (of 1,000)', vi: 'theo nhịp hôm nay (trên 1.000)' }, cls: 'warn' },
+    { v: '89%', l: { en: 'avg attainment · 12 shifts', vi: 'đạt mục tiêu TB · 12 ca' }, cls: '' },
+    { v: '96%', l: { en: 'quality (first-pass)', vi: 'chất lượng (đạt lần đầu)' }, cls: 'ok' },
+    { v: '1', l: { en: 'open decision', vi: 'quyết định đang mở' }, cls: '' }
+  ];
+  var DEMO_PERF_SERIES = [910, 872, 934, 889, 951, 903, 868, 922, 880, 940, 861, 820];
+  var DEMO_HIST_ROWS = [
+    { title: { en: 'Prioritize pallet P-104', vi: 'Ưu tiên pallet P-104' }, when: '11:04', actor: { en: 'in progress', vi: 'đang chạy' }, status: 'Executing', color: 'var(--accent-hi)' },
+    { title: { en: 'Resequence Job C ahead of Job B', vi: 'Đổi thứ tự Job C trước Job B' }, when: '09:38', actor: 'T. Nguyễn · Planner', status: 'Worked', color: 'var(--ok)' },
+    { title: { en: 'Move operator from Line 1', vi: 'Điều thợ từ Chuyền 1' }, when: '08:52', actor: 'L. Trần · Supervisor', status: 'Worked', color: 'var(--ok)' },
+    { title: { en: 'Increase speed +8% (proposed)', vi: 'Tăng tốc +8% (đề xuất)' }, when: '07:15', actor: 'D. Phạm · Shift Mgr', status: 'Rejected', color: 'var(--danger)' },
+    { title: { en: 'Reduce speed to hold quality', vi: 'Giảm tốc để giữ chất lượng' }, when: '06:40', actor: 'T. Nguyễn · Planner', status: 'Inconclusive', color: 'var(--text-mute)' }
+  ];
+  var DEMO_IMPROVEMENTS = [
+    { t: { en: 'Pre-stage the next pallet 15 min early', vi: 'Chuẩn bị pallet kế tiếp sớm 15 phút' },
+      d: { en: 'Tested over 8 shifts — cuts material starvation by an average of 58 units. Minder now suggests it proactively.',
+           vi: 'Đã thử qua 8 ca — giảm thiếu vật tư trung bình 58 đơn vị. Minder nay chủ động đề xuất.' } },
+    { t: { en: 'Resequencing when material is line-side', vi: 'Đổi thứ tự khi vật tư đã ở chuyền' },
+      d: { en: 'Confirmed to beat the planner baseline by ~4% attainment across two weeks.',
+           vi: 'Đã xác nhận vượt mức cơ sở của người lập kế hoạch ~4% trong hai tuần.' } },
+    { t: { en: 'Operator-share threshold', vi: 'Ngưỡng chia sẻ nhân lực' },
+      d: { en: 'Still measuring when borrowing labor between lines is net-positive.',
+           vi: 'Vẫn đang đo khi nào việc mượn nhân lực giữa các chuyền là có lợi.' } }
+  ];
+
+  // ── active dataset ───────────────────────────────────────────────────────
+  // S() is the scenario the UI renders. In Demo it is the frozen DEMO object; in Live it is the
+  // scenario built from the simulator, or null while loading / when the sim is unreachable.
+  // Returning DEMO on a failed Live load would present canned numbers as live -- never do that.
+  // The recommendation QUEUE. Demo is a single worked scenario; Live is the ranked list from the
+  // simulator. activeRecos() is the queue; S() is the one the decision views act on (recoIndex).
+  function activeRecos() { return state.dataMode === 'demo' ? [DEMO] : ((state.live && state.live.recos) || []); }
+  function S() { return activeRecos()[state.recoIndex] || null; }
+  // The deck's teasers: Live shows one per real reco (each openable at its index); Demo shows the
+  // 4 illustrative teasers, ALL opening the single worked example (index 0) -- matches the prototype
+  // and stays honest under the "Demo" banner (no fabricated per-reco decision trees).
+  function deckItems() {
+    if (state.dataMode === 'demo') return DEMO_DECK.map(function (tz) { return { teaser: tz, i: 0 }; });
+    // Keep the ORIGINAL index (openReco needs it) but drop recos the user just resolved this session --
+    // the backend cooldown then keeps them out on the next poll.
+    return activeRecos().map(function (r, i) { return { teaser: r.teaser, i: i, id: r.rec_id }; })
+      .filter(function (it) { return !state.resolvedIds[it.id]; });
+  }
+  function perfKpis() { return state.dataMode === 'demo' ? DEMO_PERF_KPIS : ((S() && S().perf_kpis) || []); }
+  function perfSeries() { return state.dataMode === 'demo' ? DEMO_PERF_SERIES : ((S() && S().perf_series) || []); }
+  function perfTarget() { return state.dataMode === 'demo' ? 1000 : ((S() && S().perf_target) || 0); }
+  function histRows() { return state.dataMode === 'demo' ? DEMO_HIST_ROWS : ((state.live && state.live.history) || []); }
+  function improvements() { return state.dataMode === 'demo' ? DEMO_IMPROVEMENTS : ((state.live && state.live.improvements) || []); }
+
+  // ── state ────────────────────────────────────────────────────────────────
+  var state = {
+    view: props.startView,
+    status: 'awaiting',          // awaiting -> executing -> completed
+    recoIndex: 0,                // which recommendation in the queue is active (open in the decision view)
+    resolvedIds: {},             // recos the user acted on this session -> hidden from the deck immediately
+    shownRecoIds: {},            // recos already on screen -> only genuinely-new ones slide up on a poll
+    howOpen: false,
+    reviewOpen: false,
+    evidenceOpen: false,
+    settingsOpen: false,
+    histTab: 'decisions',
+    clock: fmtClock(new Date()),
+    // Theme default is LIGHT here, deliberately diverging from the prototype's dark-first
+    // brief: the product owner asked for light as the default face of the Guided console.
+    // The palette itself is the same one dashboard.html ships, so both are fully styled.
+    theme: readManualTheme() || (qs.get('mode') === 'dark' ? 'dark' : 'light'),
+    lang: readLang(),
+    // 'sim' = Live (real fleet simulator, the default, mirrors dashboard.html) | 'demo' = the
+    // frozen DEMO scenario below. Live is what makes this a real console; demo is kept so the
+    // screen can always be shown without a simulator.
+    dataMode: readDataMode(),
+    live: null,        // scenario built from live telemetry (null until the first load lands)
+    loading: false,
+    error: null        // {msg} when Live cannot be reached - never silently fall back to demo
+  };
+  var chartW = {};
+  var execTimer = null;
+  var simTimer = null;
+
+  // ── theme / language / data mode (all mirror dashboard.html, shared keys) ──
+  // Keys are shared with the Console V2 tab on purpose: they are two tabs of one module, so a
+  // choice made in either should hold in both.
+  function readManualTheme() { try { var t = localStorage.getItem('optimize-theme'); return (t === 'light' || t === 'dark') ? t : null; } catch (e) { return null; } }
+  function saveTheme(m) { try { localStorage.setItem('optimize-theme', m); } catch (e) {} }
+  function applyTheme(mode) { state.theme = mode; try { document.documentElement.setAttribute('data-theme', mode); } catch (e) {} }
+  function setTheme(m) { if (m !== 'light' && m !== 'dark') return; saveTheme(m); applyTheme(m); render(); }
+
+  function readLang() { try { var l = localStorage.getItem('optimize-lang'); if (l === 'en' || l === 'vi') return l; } catch (e) {} return qs.get('lang') === 'vi' ? 'vi' : 'en'; }
+  function saveLang(l) { try { localStorage.setItem('optimize-lang', l); } catch (e) {} }
+  // Fonts are language-conditional (Inter for EN, Be Vietnam Pro/Newsreader/JetBrains for VI), so the
+  // active language drives a data-lang attribute the CSS keys off — mirrors applyTheme's data-theme.
+  function applyLang(l) { try { document.documentElement.setAttribute('data-lang', l); } catch (e) {} }
+  function setLang(l) {
+    if (l !== 'en' && l !== 'vi') return;
+    state.lang = l; saveLang(l); applyLang(l);
+    // Backend prose (summary, the five answers) is authored per-language, so a language change
+    // has to re-ask for it rather than re-render the stale English.
+    if (state.dataMode === 'sim') { state.live = null; refreshLive(true); }
+    render();
+  }
+
+  function readDataMode() { try { var m = localStorage.getItem('optimize-mode'); if (m === 'sim' || m === 'demo') return m; } catch (e) {} return qs.get('src') === 'demo' ? 'demo' : 'sim'; }
+  function saveDataMode(m) { try { localStorage.setItem('optimize-mode', m); } catch (e) {} }
+  function setDataMode(m) {
+    if (m !== 'sim' && m !== 'demo') return;
+    state.dataMode = m; saveDataMode(m);
+    state.status = 'awaiting'; state.error = null;
+    state.howOpen = state.reviewOpen = state.evidenceOpen = false;
+    clearTimeout(execTimer);
+    if (m === 'sim') { refreshLive(true); startLivePoll(); } else { stopLivePoll(); state.live = null; }
+    render();
+  }
+
+  // ── tiny string-serializing hyperscript (replaces React.createElement) ────
+  var ATTRMAP = { textAnchor: 'text-anchor' };
+  function kebab(k) { return k.replace(/[A-Z]/g, function (m) { return '-' + m.toLowerCase(); }); }
+  function styleStr(o) { var s = ''; for (var k in o) { if (!o.hasOwnProperty(k)) continue; var v = o[k]; if (v == null) continue; s += kebab(k) + ':' + v + ';'; } return s; }
+  function escText(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function raw(x) { if (x == null || x === false || x === true) return ''; if (typeof x === 'object' && x.__html != null) return x.__html; return escText(String(x)); }
+  function ser(kids) { var out = ''; for (var i = 0; i < kids.length; i++) { var c = kids[i]; if (Array.isArray(c)) out += ser(c); else out += raw(c); } return out; }
+  function h(tag, props2) {
+    var kids = Array.prototype.slice.call(arguments, 2);
+    var attrs = '';
+    if (props2) {
+      for (var k in props2) {
+        if (!props2.hasOwnProperty(k) || k === 'key') continue;
+        var v = props2[k];
+        if (v == null) continue;
+        if (k === 'style') attrs += ' style="' + escAttr(styleStr(v)) + '"';
+        else attrs += ' ' + (ATTRMAP[k] || k) + '="' + escAttr(String(v)) + '"';
+      }
+    }
+    return { __html: '<' + tag + attrs + '>' + ser(kids) + '</' + tag + '>' };
+  }
+  function H(x) { return raw(x); }
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function fmtClock(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function greetLead() { var hr = new Date().getHours(); return hr < 12 ? t('greet_morning') : (hr < 18 ? t('greet_afternoon') : t('greet_evening')); }
+  function tag(kind) { return kind ? L(LABEL[kind]) || '' : ''; }
+  // Numbers are injected into chrome templates at render time, so STRINGS itself stays free of
+  // telemetry (V2's invariant). fmt(t('key'), {line: 'M-05'}) -> "M-05 needs your".
+  function fmt(s, vars) {
+    return String(s).replace(/\{(\w+)\}/g, function (_, k) {
+      return (vars && vars[k] != null) ? String(vars[k]) : '{' + k + '}';
+    });
+  }
+
+  // ── charts (ported from the DC's React.createElement drawing onto h()) ────
+  function fcChart(key) {
+    var H_ = 180, W = chartW[key] || 640;
+    var d = S().decision.forecast;
+    var noAct = d.no_action, withAct = d.with_action, target = d.target;
+    var n = noAct.length;
+    // Scale to the actual series + target. The prototype hardcoded 480..1050 for a 1,000-unit
+    // shift; live targets are whatever the plant runs at (~96 for the laundry fleet), so fixed
+    // bounds pushed every real point flat onto the axis -- the empty-chart bug.
+    var vals = noAct.concat(withAct).concat([target]);
+    var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    var pad = Math.max((hi - lo) * 0.15, Math.max(hi * 0.05, 1));
+    var mn = Math.max(0, lo - pad), mx = hi + pad;
+    var padL = 42, padR = 14, padT = 12, padB = 22, x0 = padL, x1 = W - padR, y0 = padT, y1 = H_ - padB;
+    var sx = function (i) { return x0 + (x1 - x0) * i / (n - 1); };
+    var sy = function (v) { return y1 - (y1 - y0) * (v - mn) / (mx - mn); };
+    var kids = [];
+    for (var gi = 0; gi <= 3; gi++) {  // NB: not `t` -- that shadows the i18n t() used just below
+      var val = mn + (mx - mn) * gi / 3, y = sy(val);
+      kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } }));
+      kids.push(h('text', { x: x0 - 7, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-faint)', font: '500 9px var(--mono)' } }, Math.round(val)));
+    }
+    var ty = sy(target);
+    kids.push(h('line', { x1: x0, x2: x1, y1: ty, y2: ty, style: { stroke: 'var(--warn)', strokeWidth: 1.5, strokeDasharray: '5 4' } }));
+    kids.push(h('text', { x: x1, y: ty - 5, textAnchor: 'end', style: { fill: 'var(--warn)', font: '500 9px var(--mono)' } }, t('target') + ' ' + fmtNum(target)));
+    var area = 'M ' + sx(0) + ' ' + y1 + ' L ' + withAct.map(function (v, i) { return sx(i) + ' ' + sy(v); }).join(' L ') + ' L ' + sx(n - 1) + ' ' + y1 + ' Z';
+    kids.push(h('path', { d: area, style: { fill: 'var(--accent)', opacity: .12 } }));
+    kids.push(h('polyline', { points: noAct.map(function (v, i) { return sx(i) + ',' + sy(v); }).join(' '), style: { fill: 'none', stroke: 'var(--text-mute)', strokeWidth: 2, strokeDasharray: '5 4', strokeLinejoin: 'round' } }));
+    kids.push(h('polyline', { points: withAct.map(function (v, i) { return sx(i) + ',' + sy(v); }).join(' '), style: { fill: 'none', stroke: 'var(--accent)', strokeWidth: 2.5, strokeLinejoin: 'round' } }));
+    kids.push(h('circle', { cx: sx(n - 1), cy: sy(noAct[n - 1]), r: 3, style: { fill: 'var(--text-mute)' } }));
+    kids.push(h('circle', { cx: sx(n - 1), cy: sy(withAct[n - 1]), r: 3.4, style: { fill: 'var(--accent-hi)' } }));
+    return H(h('svg', { viewBox: '0 0 ' + W + ' ' + H_, style: { width: '100%', height: H_ + 'px', display: 'block' } }, kids));
+  }
+  function perfChart(key) {
+    var H_ = 200, W = chartW[key] || 720;
+    var act = perfSeries(), tgt = perfTarget(), n = act.length;
+    if (!n) return '';
+    // Scale to the data, not to the demo's 1,000-unit shift: Live targets are whatever the
+    // simulator's plant runs at (the laundry fleet's is ~96), and fixed 700..1050 bounds would
+    // push every live point off the bottom of the chart.
+    var lo = Math.min.apply(null, act.concat([tgt])), hi = Math.max.apply(null, act.concat([tgt]));
+    var pad = Math.max((hi - lo) * 0.18, Math.max(hi * 0.04, 1));
+    var mn = Math.max(0, lo - pad), mx = hi + pad;
+    var padL = 42, padR = 14, padT = 12, padB = 24, x0 = padL, x1 = W - padR, y0 = padT, y1 = H_ - padB;
+    var sx = function (i) { return x0 + (x1 - x0) * i / (n - 1); };
+    var sy = function (v) { return y1 - (y1 - y0) * (v - mn) / (mx - mn); };
+    var kids = [];
+    for (var gi = 0; gi <= 3; gi++) {  // not `t` -- avoid shadowing the i18n t()
+      var val = mn + (mx - mn) * gi / 3, y = sy(val);
+      kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } }));
+      kids.push(h('text', { x: x0 - 7, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-faint)', font: '500 9px var(--mono)' } }, Math.round(val)));
+    }
+    var ty = sy(tgt);
+    kids.push(h('line', { x1: x0, x2: x1, y1: ty, y2: ty, style: { stroke: 'var(--warn)', strokeWidth: 1.5, strokeDasharray: '5 4' } }));
+    var area = 'M ' + sx(0) + ' ' + y1 + ' L ' + act.map(function (v, i) { return sx(i) + ' ' + sy(v); }).join(' L ') + ' L ' + sx(n - 1) + ' ' + y1 + ' Z';
+    kids.push(h('path', { d: area, style: { fill: 'var(--accent)', opacity: .1 } }));
+    kids.push(h('polyline', { points: act.map(function (v, i) { return sx(i) + ',' + sy(v); }).join(' '), style: { fill: 'none', stroke: 'var(--accent)', strokeWidth: 2, strokeLinejoin: 'round' } }));
+    act.forEach(function (v, i) { kids.push(h('circle', { cx: sx(i), cy: sy(v), r: 2.2, style: { fill: 'var(--accent)' } })); });
+    return H(h('svg', { viewBox: '0 0 ' + W + ' ' + H_, style: { width: '100%', height: H_ + 'px', display: 'block' } }, kids));
+  }
+
+  // The Level-3 audit object. This is the last place a fabricated value is acceptable: it is what a
+  // reviewer reads to check the decision. In Live every field is built from the live scenario; in
+  // Demo it describes the demo case.
+  function decisionJson() {
+    var s = S();
+    if (!s) return '{}';
+    if (state.dataMode === 'demo') {
+      return JSON.stringify({
+        decision_id: s.decision_id, status: state.status, line: s.scope.line_id, work_order: s.scope.work_order,
+        recommended_action: { id: 'ALT-1', type: 'move.task.prioritize', parameters: { pallet_id: 'P-104', resource: 'Forklift-F07', destination: 'Line-2' } },
+        expected_effect: { recovered_units: 75, attainment_after: 0.52 },
+        confidence: s.confidence.level, risk: 'low', constraints: { result: 'passed' },
+        approval: { required_role: s.audit.required_role },
+        versions: { forecast: 'production-forecast-0.1', ranking: 'weighted-ranking-0.1', ruleset: s.audit.ruleset_version },
+        note: 'DEMO — a frozen example scenario, not from the simulator.'
+      }, null, 2);
+    }
+    var rec = s.rec_action || {};
+    var raw = s.raw || {};
+    return JSON.stringify({
+      decision_id: s.decision_id, status: state.status,
+      line: s.scope.line_id, work_order: s.scope.work_order,
+      recommended_action: { id: rec.id, name: rec.name || rec.title, feasible: rec.feasible !== false, score: rec.score },
+      expected_effect: { recovered_units: raw.expected, projected_output_after: rec.forecastAfter },
+      current_state: { produced: raw.current, projected_no_action: raw.forecastBase, target: s.perf_target,
+                       chance_of_reaching_target: (s.decision && s.decision.metrics && s.decision.metrics[1] && s.decision.metrics[1].v) || null },
+      constraints: s.constraints,
+      confidence: s.confidence,
+      provenance: s.provenance,
+      versions: s.versions,
+      validation: s.validation,
+      source: 'fleet simulator via simulate.py; prose via ai.py'
+    }, null, 2);
+  }
+
+  // ── template builders (HTML strings + data-act delegation) ────────────────
+  function metricsRow(list) {
+    // m.l is either a STRINGS key, an {en,vi} pair, or an already-localized string. L() passes
+    // plain strings through, so Demo (pairs) and Live (backend-localized prose) share one path.
+    return '<div class="metrics3">' + (list || []).map(function (m) {
+      var lab = (typeof m.l === 'string' && STRINGS[m.l]) ? t(m.l) : L(m.l);
+      return '<div class="m3"><span class="m3-v ' + m.cls + '">' + escText(L(m.v)) + '</span><span class="m3-l">' + escText(lab) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  function topbar() {
+    var navDefs = [['today', t('nav_today')], ['decision', t('nav_decision')], ['performance', t('nav_performance')], ['history', t('nav_history')]];
+    var who = principal();
+    return '<header class="topbar">'
+      + '<div class="brand"><span class="sq"></span>' + escText(t('brand')) + '</div>'
+      + '<nav class="nav">' + navDefs.map(function (n) {
+          return '<button class="nav-t" data-on="' + (state.view === n[0] ? '1' : '0') + '" data-act="view" data-view="' + n[0] + '">' + escText(n[1]) + '</button>';
+        }).join('') + '</nav>'
+      + '<div class="top-r">'
+      // Demo/Live stays visible: it changes what every number on the screen MEANS, so hiding it
+      // behind a menu would invite reading demo numbers as real. Language + theme are quieter
+      // preferences and live in the popover, keeping the bar close to the design's minimalism.
+      + '<div class="mseg-w">'
+      + '<button class="mseg" data-on="' + (state.dataMode === 'sim' ? '1' : '0') + '" data-act="mode" data-mode="sim">' + escText(t('mode_live')) + '</button>'
+      + '<button class="mseg" data-on="' + (state.dataMode === 'demo' ? '1' : '0') + '" data-act="mode" data-mode="demo">' + escText(t('mode_demo')) + '</button>'
+      + '</div>'
+      + (who ? '<span class="who">' + escText(who) + '</span>' : '')
+      + '<span class="clock">' + state.clock + '</span>'
+      + '<button class="gear" data-act="settings" aria-label="' + escAttr(t('settings')) + '" title="' + escAttr(t('settings')) + '">' + GEAR_SVG + '</button>'
+      + (state.settingsOpen ? settingsPop() : '')
+      + '</div>'
+      + '</header>';
+  }
+
+  var GEAR_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
+    + '<circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    + '<path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7L3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+
+  function settingsPop() {
+    return '<div class="pop" data-stop="1">'
+      + '<div class="pop-s">' + escText(t('language')) + '</div>'
+      + '<div class="mseg-w">'
+      + '<button class="mseg" data-on="' + (state.lang === 'en' ? '1' : '0') + '" data-act="lang" data-lang="en">EN</button>'
+      + '<button class="mseg" data-on="' + (state.lang === 'vi' ? '1' : '0') + '" data-act="lang" data-lang="vi">VI</button>'
+      + '</div>'
+      + '<div class="pop-s">' + escText(t('appearance')) + '</div>'
+      + '<div class="mseg-w">'
+      + '<button class="mseg" data-on="' + (state.theme === 'light' ? '1' : '0') + '" data-act="theme" data-theme="light">' + escText(t('theme_light')) + '</button>'
+      + '<button class="mseg" data-on="' + (state.theme === 'dark' ? '1' : '0') + '" data-act="theme" data-theme="dark">' + escText(t('theme_dark')) + '</button>'
+      + '</div></div>';
+  }
+
+  // Who is approving. Demo names its persona; Live uses the real signed-in identity handed down by
+  // the run gateway. The brief's Shift-Manager/CI-Engineer split needs a role model the app does
+  // not have yet, so we show identity and keep a single approver rather than invent a role.
+  function principal() {
+    if (state.dataMode === 'demo') return L(DEMO.audit.principal);
+    return (state.live && state.live.audit && state.live.audit.principal) || '';
+  }
+
+  // The Simulation banner is a genuine product element, not scaffolding (brief section 5). Both of
+  // our modes ARE simulated -- "Live" means the fleet simulator, not a real plant -- so the banner
+  // stays in both and only distinguishes WHICH simulation you are looking at. It would disappear
+  // only against a real Produce/Move feed.
+  function simline() {
+    return '<div class="simline"><span class="sim-dot"></span>'
+      + escText(state.dataMode === 'demo' ? t('sim_demo') : t('sim_live')) + '</div>';
+  }
+
+  // Today is now a RECOMMENDATION DECK, not a single case. The model keeps judging the plant and
+  // returns a ranked queue; the user acts on whichever they want, whenever -- no blocking wait.
+  function metaChips(tz) {
+    var chips = [
+      { text: tz.recovery, cls: '' },
+      { text: tz.risk, cls: '' },
+      { text: tz.within, cls: 'warn' }
+    ];
+    return chips.map(function (c, i) {
+      return (i ? '<span class="mdot"></span>' : '')
+        + '<span class="chipmeta"' + (c.cls === 'warn' ? ' style="color:var(--warn)"' : '') + '>' + escText(L(c.text)) + '</span>';
+    }).join('');
+  }
+  // A deck item's stable id -- keys the reconciler so existing cards stay put and only new/removed
+  // ones animate. Demo items all point at the single worked decision (index 0), so they share one id.
+  function itemId(item) { return state.dataMode === 'demo' ? ('demo-' + item.i) : (item.id || ''); }
+
+  function miniCard(item, num) {
+    var tz = item.teaser;
+    return '<button class="mini" data-act="open-reco" data-i="' + item.i + '" data-rec="' + escAttr(itemId(item)) + '">'
+      + '<span class="mini-num">' + num + '</span>'
+      + '<div class="mini-txt"><div class="mini-t">' + escText(L(tz.title)) + '</div>'
+      + '<div class="mini-m">' + escText(L(tz.recovery)) + ' · ' + escText(L(tz.risk)) + ' · ' + escText(L(tz.within)) + '</div></div>'
+      + '</button>';
+  }
+  function deckHeadHtml(items) {
+    var n = items.length;
+    return '<div class="greet"><h1>' + escText(greetLead()) + ' ' + escText(n ? fmt(t('deck_greet'), { n: n }) : t('deck_greet_none')) + '</h1>'
+      + '<p>' + escText(n ? t('deck_sub') : t('deck_sub_none')) + '</p></div>'
+      + '<div class="attn">' + attnStats().map(function (a) {
+          var lab = (typeof a.l === 'string' && STRINGS[a.l]) ? t(a.l) : L(a.l);
+          return '<div class="attn-i"><span class="attn-v ' + a.cls + '">' + escText(a.v) + '</span><span class="attn-l">' + escText(lab) + '</span></div>';
+        }).join('') + '</div>';
+  }
+  function heroHtml(items) {
+    var n = items.length, heroItem = items[0];
+    // Use the deterministic summary (always a real sentence), not the explain-prose which is only
+    // fetched on open -- keeps the deck instant, no "still writing..." placeholder.
+    var heroScn = state.dataMode === 'demo' ? DEMO : activeRecos()[heroItem.i];
+    var heroBody = state.dataMode === 'demo'
+      ? (heroScn && heroScn.ui ? L(heroScn.ui.case_body) : '')
+      : (heroScn ? L(heroScn.summary) : '');
+    return '<div class="case-card" data-rec="' + escAttr(itemId(heroItem)) + '"><div class="cc-inner">'
+      + '<div class="mainflag">' + escText(fmt(t('rec_of'), { i: 1, n: n })) + '</div>'
+      + '<h2>' + escText(L(heroItem.teaser.title)) + '</h2>'
+      + (heroBody ? '<p>' + escText(heroBody) + '</p>' : '')
+      + '<div class="case-meta">' + metaChips(heroItem.teaser) + '</div>'
+      + '<button class="btn-primary" data-act="open-reco" data-i="' + heroItem.i + '">' + escText(t('review_reco')) + '</button>'
+      + '</div></div>';
+  }
+  function upnextHtml(items) {
+    var rest = items.slice(1);
+    if (!rest.length) return '<div class="upnext" style="display:none"><div class="upnext-h">' + escText(t('up_next')) + '<span class="upnext-count">0</span></div><div id="upnext-list"></div></div>';
+    return '<div class="upnext"><div class="upnext-h">' + escText(t('up_next'))
+      + '<span class="upnext-count">' + rest.length + '</span></div>'
+      + '<div id="upnext-list">' + rest.map(function (it, k) { return miniCard(it, k + 2); }).join('') + '</div></div>';
+  }
+  function todayView() {
+    var items = deckItems();
+    seedShown(items);  // first paint: mark current ids as already shown so they don't all animate
+    var inner = items.length
+      ? '<div class="recodeck"><div id="hero-slot">' + heroHtml(items) + '</div>' + upnextHtml(items) + '</div>'
+      : '<div class="case-card"><div class="cc-inner"><h2>' + escText(t('all_caught_t')) + '</h2>'
+        + '<p>' + escText(t('all_caught_b')) + '</p></div></div>';
+    return '<div id="deck-root"><div id="deck-head">' + deckHeadHtml(items) + '</div>' + inner + '</div>';
+  }
+
+  // ── live deck reconciliation (no full-page repaint; new recos slide up, resolved fade out) ──
+  var _shownSeeded = false;
+  function seedShown(items) {
+    if (_shownSeeded) return;
+    items.forEach(function (it) { state.shownRecoIds[itemId(it)] = true; });
+    _shownSeeded = true;
+  }
+  function reconcileDeck() {
+    var root = document.getElementById('deck-root');
+    if (!root) { render(); return; }               // deck not mounted -> full render
+    var items = deckItems();
+
+    // Head (greeting + attn + counts): tiny, replace in place -- topbar/scroll untouched.
+    var head = document.getElementById('deck-head');
+    if (head) head.innerHTML = deckHeadHtml(items);
+
+    // Empty queue -> ensure the all-clear card is shown (fall back to a full deck render of Today).
+    if (!items.length) {
+      var rd = root.querySelector('.recodeck');
+      if (rd) { render(); }  // structure differs (all-clear card) -> simplest correct path
+      return;
+    }
+    // If we were empty and now have items, the recodeck container may be missing -> full render.
+    if (!root.querySelector('.recodeck')) { render(); return; }
+
+    var newIds = {};
+    items.forEach(function (it) { newIds[itemId(it)] = true; });
+
+    // Hero: swap only if the top recommendation changed (else leave it undisturbed).
+    var heroItem = items[0], heroId = itemId(heroItem);
+    var heroSlot = document.getElementById('hero-slot');
+    var curHero = heroSlot && heroSlot.querySelector('.case-card');
+    if (heroSlot && (!curHero || curHero.getAttribute('data-rec') !== heroId)) {
+      heroSlot.innerHTML = heroHtml(items);
+      var hc = heroSlot.querySelector('.case-card');
+      if (hc && !state.shownRecoIds[heroId]) hc.classList.add('enter');
+    }
+
+    // Up-next list: reconcile by data-rec. Existing nodes stay (identity preserved); new ones enter;
+    // gone ones leave. Then renumber the badges.
+    var listWrap = root.querySelector('.upnext');
+    var list = document.getElementById('upnext-list');
+    if (!list) { render(); return; }
+    var rest = items.slice(1);
+    var wantIds = {};
+    rest.forEach(function (it) { wantIds[itemId(it)] = true; });
+
+    // remove nodes no longer wanted (fade out, then drop)
+    Array.prototype.slice.call(list.children).forEach(function (node) {
+      var id = node.getAttribute('data-rec');
+      if (id && !wantIds[id] && !node.classList.contains('leaving')) {
+        node.classList.add('leaving');
+        setTimeout(function () { if (node.parentNode) node.parentNode.removeChild(node); }, 320);
+      }
+    });
+    // add/order wanted nodes
+    rest.forEach(function (it, k) {
+      var id = itemId(it);
+      var existing = list.querySelector('[data-rec="' + cssEsc(id) + '"]:not(.leaving)');
+      if (!existing) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = miniCard(it, k + 2);
+        var node = tmp.firstChild;
+        if (!state.shownRecoIds[id]) node.classList.add('enter');
+        list.appendChild(node);
+      }
+    });
+    // renumber the visible (non-leaving) minis in order
+    var num = 2;
+    Array.prototype.slice.call(list.children).forEach(function (node) {
+      if (node.classList.contains('leaving')) return;
+      var b = node.querySelector('.mini-num'); if (b) b.textContent = num++;
+    });
+    if (listWrap) listWrap.style.display = rest.length ? '' : 'none';
+
+    // everything now on screen is "shown" -> future arrivals animate, current ones won't
+    items.forEach(function (it) { state.shownRecoIds[itemId(it)] = true; });
+  }
+  // Minimal CSS.escape shim (attribute selectors with our ids are alnum + dashes, but be safe).
+  function cssEsc(s) { return String(s).replace(/["\\\]]/g, '\\$&'); }
+
+  // Resolve a field that may be a STRINGS key, an {en,vi} pair, or already-localized backend prose.
+  function txt(v) { return (typeof v === 'string' && STRINGS[v]) ? t(v) : L(v); }
+
+  function howPanel() {
+    return '<div class="how"><div class="how-h">' + escText(t('how_pill_h')) + '</div>'
+      + S().questions.map(function (q) {
+          var tg = tag(q.kind);
+          var s = '<div class="qa">'
+            + '<div class="qa-q"><span class="qa-n">' + q.n + '</span>' + escText(txt(q.q)) + '</div>'
+            + '<div class="qa-a">' + escText(txt(q.a)) + (tg ? '<span class="qa-tag">' + escText(tg) + '</span>' : '') + '</div>';
+          if (q.opts) {
+            s += '<div class="opts">' + q.opts.map(function (o) {
+              return '<div class="opt" data-blocked="' + o.blocked + '"><b>' + escText(txt(o.name)) + '</b>'
+                + '<span class="opt-tag">' + escText(txt(o.note)) + '</span>'
+                + '<span class="rec">' + escText(o.rec) + '</span></div>';
+            }).join('') + '</div>';
+          }
+          return s + '</div>';
+        }).join('')
+      + '<button class="linkq" style="margin-top:8px" data-act="open-evidence">' + escText(t('see_data')) + '</button>'
+      + '</div>';
+  }
+
+  function decisionAwaiting() {
+    var s = S(), u = s.ui;
+    return '<div class="eyebrow">' + escText(L(u.eyebrow)) + '</div>'
+      // situation carries inline <b> emphasis from the design, so it is authored as safe markup
+      // rather than escaped text. Both Demo and the Live adapter build it via safeSituation().
+      + '<p class="situation">' + L(u.situation) + '</p>'
+      + metricsRow(s.decision.metrics)
+      + '<div class="chartwrap">'
+      + '<div class="chart-h"><span class="chart-t">' + escText(L(u.chart_title)) + '</span>'
+      + '<span class="chart-leg"><span class="lg"><span class="lg-s" style="background:var(--accent)"></span>' + escText(t('with_action')) + '</span>'
+      + '<span class="lg"><span class="lg-s dash"></span>' + escText(t('no_action')) + '</span></span></div>'
+      + '<div data-ck="fc" style="width:100%">' + fcChart('fc') + '</div>'
+      // The forecast is a straight-line projection at the current rate, not a forecast model.
+      // Saying so is the difference between honest and overclaiming (GUIDED_DESIGN_BRIEF section 7).
+      + '<div class="chart-note">' + escText(t('forecast_note')) + '</div>'
+      + '</div>'
+      + '<div class="reco">'
+      + '<div class="reco-lab"><span class="dot" style="background:var(--accent)"></span>' + escText(t('recommends')) + '</div>'
+      + '<h2>' + L(u.reco_title) + '</h2>'
+      + '<p>' + escText(L(u.reco_body)) + '</p>'
+      + metricsRow(s.decision.reco_metrics)
+      + '<div class="cta-row">'
+      + '<button class="btn-primary" data-act="open-review">' + escText(t('send_to_move')) + '</button>'
+      + '<button class="linkq" data-act="toggle-how">' + escText(t('how_pill')) + '</button>'
+      + '</div></div>'
+      + (state.howOpen ? howPanel() : '');
+  }
+
+  function decisionExecuting() {
+    var s = S(), e = s.execution;
+    return '<div class="eyebrow">' + escText(L(s.ui.eyebrow_sent)) + '</div>'
+      + '<div class="statusblock">'
+      + '<div class="sb-head"><span class="sb-ic run">→</span><span class="sb-title">' + escText(t('exec_title')) + '</span></div>'
+      + '<div class="sb-lines">'
+      + '<div class="sb-line">' + escText(t('exec_task')) + ' <b>' + escText(e.task_id) + '</b> · ' + escText(L(e.resource)) + '</div>'
+      + (e.eta ? '<div class="sb-line">' + escText(t('exec_eta')) + ': <b>' + escText(e.eta) + '</b></div>' : '')
+      + (e.check_at ? '<div class="sb-line">' + escText(t('exec_check')) + ': <b>' + escText(e.check_at) + '</b></div>' : '')
+      + '</div>'
+      + '<div class="sb-note">' + escText(t('module_boundary')) + '</div>'
+      + '<details class="disc"><summary>' + escText(t('tech_details')) + '</summary>'
+      + kv('Command', e.command) + kv('Idempotency key', e.idempotency_key)
+      + kv('Correlation ID', e.correlation_id) + kv('Owning module', L(e.owning_module))
+      + '</details></div>'
+      + '<button class="linkq" data-act="go-today">← ' + escText(t('nav_today')) + '</button>';
+  }
+
+  function decisionCompleted() {
+    var s = S(), v = s.validation;
+    // Bar widths are computed from the numbers, not eyeballed: the prototype hardcoded 79%/75%
+    // for the values 75/71, which stops being true the moment the values are real.
+    var top = Math.max(Number(v.expected) || 0, Number(v.measured) || 0, 1);
+    var wE = Math.round((Number(v.expected) || 0) / top * 100);
+    var wM = Math.round((Number(v.measured) || 0) / top * 100);
+    var vr = outcomeVerdict(v.expected, v.measured);
+    var verdict = vr.key, icon = vr.icon;
+    return '<div class="eyebrow">' + escText(L(s.ui.eyebrow_done)) + '</div>'
+      + '<div class="statusblock">'
+      + '<div class="sb-head"><span class="sb-ic ' + icon + '</span><span class="sb-title">' + escText(t(verdict + '_title')) + '</span></div>'
+      + '<div class="val-compare">'
+      + '<div class="vc-row"><span class="vc-l">' + escText(t('done_expected')) + '</span><div class="vc-track"><div class="vc-fill" style="width:' + wE + '%;background:color-mix(in srgb,var(--accent) 60%,transparent)"></div></div><span class="vc-n">' + escText(v.expected) + '</span></div>'
+      + '<div class="vc-row"><span class="vc-l">' + escText(t('done_measured')) + '</span><div class="vc-track"><div class="vc-fill" style="width:' + wM + '%;background:var(--ok)"></div></div><span class="vc-n">' + escText(v.measured) + '</span></div>'
+      + '</div>'
+      + '<span class="verdict"><span class="dot livedot"></span>' + escText(t(verdict + '_sub')) + '</span>'
+      + '<div class="sb-line">' + escText(fmt(t('recovered_line'), { measured: v.measured, expected: v.expected })) + '</div>'
+      + '<div class="sb-line">' + escText(t('no_side')) + '</div>'
+      // If the outcome did not come from a measured window, say so rather than implying it did.
+      + (v.simulated ? '<div class="sb-note warn-note">' + escText(t('outcome_sim')) + '</div>' : '')
+      + '<details class="disc"><summary>' + escText(t('tech_details')) + '</summary>'
+      + kv('Baseline', L(v.baseline)) + kv('Comparison', L(v.comparison))
+      + kv('Method', L(v.method)) + kv('Write-back', L(v.write_back))
+      + '</details></div>'
+      + '<button class="linkq" data-act="go-today">← ' + escText(t('nav_today')) + '</button>';
+  }
+
+  function kv(k, v) { return '<div class="kv"><span class="kv-k">' + escText(k) + '</span><span class="kv-v">' + escText(v) + '</span></div>'; }
+
+  // Choose the completed-screen verdict from the measured result. Exposed on window for tests
+  // because it is a semantic honesty rule ("it worked" only when it did), not a layout detail --
+  // the kind of thing a structural DOM check would happily pass over a false headline.
+  //   worked   : measured landed within 25% of the expectation (or beat an unset expectation)
+  //   partial  : it recovered something, but short of expected
+  //   noeffect : the measured window showed no recovery -- must NOT say "it worked"
+  function outcomeVerdict(expected, measured) {
+    var e = Number(expected) || 0, m = Number(measured) || 0;
+    var within = e > 0 && Math.abs(m - e) <= e * 0.25;
+    if (within || (e <= 0 && m > 0)) return { key: 'done_worked', icon: 'ok">✓' };
+    if (m > 0) return { key: 'done_partial', icon: 'run">•' };
+    return { key: 'done_noeffect', icon: 'warn">!' };
+  }
+  window.__optimizeVerdict = outcomeVerdict;
+  // Test seam (like __optimizeVerdict): lets the reconcile test drive a poll without an 8s wait.
+  // No effect on production behaviour.
+  window.__guidedTest = { refreshLive: function (s) { return refreshLive(s); }, reconcileDeck: function () { return reconcileDeck(); } };
+
+  function performanceView() {
+    var u = (S() || DEMO).ui;
+    var kpis = perfKpis();
+    return '<div class="greet"><h1>' + escText(L(u.perf_title)) + '</h1></div>'
+      + '<p class="section-lead">' + escText(t('perf_lead')) + '</p>'
+      + '<div class="perf-kpis">' + kpis.map(function (k) {
+          var lab = (typeof k.l === 'string' && STRINGS[k.l]) ? t(k.l) : L(k.l);
+          return '<div class="m3"><span class="m3-v ' + k.cls + '">' + escText(L(k.v)) + '</span><span class="m3-l">' + escText(lab) + '</span></div>';
+        }).join('') + '</div>'
+      + '<div class="chartwrap"><div class="chart-h"><span class="chart-t">' + escText(L(u.perf_chart)) + '</span></div>'
+      + '<div data-ck="perf" style="width:100%">' + perfChart('perf') + '</div></div>';
+  }
+
+  // History row statuses arrive as stable codes so they can be localized rather than compared as
+  // display strings.
+  var HIST_ST = {
+    Worked: { k: 'st_worked', c: 'var(--ok)' },
+    Rejected: { k: 'st_rejected', c: 'var(--danger)' },
+    Inconclusive: { k: 'st_inconclusive', c: 'var(--text-mute)' },
+    Executing: { k: 'st_executing', c: 'var(--accent-hi)' }
+  };
+
+  function historyView() {
+    var tabs = [['decisions', t('hist_decisions')], ['improve', t('hist_improve')]];
+    var rows = histRows(), imps = improvements();
+    var s = '<div class="greet"><h1>' + escText(t('nav_history')) + '</h1></div>'
+      + '<div class="subnav">' + tabs.map(function (tb) {
+          return '<button class="subnav-b" data-on="' + (state.histTab === tb[0] ? '1' : '0') + '" data-act="hist-tab" data-tab="' + tb[0] + '">' + escText(tb[1]) + '</button>';
+        }).join('') + '</div>';
+    if (state.histTab === 'decisions') {
+      s += '<p class="section-lead">' + escText(t('hist_lead')) + '</p>';
+      s += rows.length
+        ? '<div class="hist">' + rows.map(function (r) {
+            var st = HIST_ST[r.status] || { k: r.status, c: 'var(--text-mute)' };
+            var lab = STRINGS[st.k] ? t(st.k) : r.status;
+            return '<button class="hist-row" data-act="open-case"' + (r.rec_id ? ' data-rec="' + escAttr(r.rec_id) + '"' : '') + '><div><div class="hist-t">' + escText(L(r.title)) + '</div>'
+              + '<div class="hist-s">' + escText(r.when) + ' · ' + escText(L(r.actor)) + '</div></div>'
+              + '<span class="hist-st" style="color:' + (r.color || st.c) + '">' + escText(lab) + '</span></button>';
+          }).join('') + '</div>'
+        : '<div class="empty-note">' + escText(t('hist_empty')) + '</div>';
+    } else {
+      s += '<p class="section-lead">' + escText(t('hist_improve_lead')) + '</p>'
+        + '<div class="imp-list">' + imps.map(function (i) {
+            return '<div class="imp-c"><h4>' + escText(L(i.t)) + '</h4><p>' + escText(L(i.d)) + '</p></div>';
+          }).join('') + '</div>';
+    }
+    return s;
+  }
+
+  function reviewDrawer() {
+    var s = S();
+    if (!s || !s.decision) return '';
+    var d = s.review || {};
+    // Live: the constraint list is a REAL pass/fail check from the simulator (scn.constraints), so
+    // the drawer's "Safety and constraints" section reports what was actually checked rather than
+    // asserting "all checks passed".
+    var cons = s.constraints || [];
+    var failed = cons.filter(function (c) { return c.r !== 'passed'; });
+    var consHtml = cons.length
+      ? '<ul class="cons">' + cons.map(function (c) {
+          var ok = c.r === 'passed';
+          return '<li class="' + (ok ? 'ok' : 'bad') + '"><span>' + escText(L(c.c)) + '</span><span>' + escText(ok ? t('passed') : (L(c.r) || t('failed'))) + '</span></li>';
+        }).join('') + '</ul>'
+      : '<div class="dr-sec-v ok">' + escText(L(d.safety) || '') + '</div>';
+
+    return '<div class="scrim" data-act="close-review"></div>'
+      + '<aside class="drawer">'
+      + '<div class="dr-h"><h3>' + escText(t('review_title')) + '</h3><button class="dr-close" data-act="close-review">✕</button></div>'
+      + '<div class="dr-body">'
+      + '<div class="dr-sec"><div class="dr-sec-l">' + escText(t('will_happen')) + '</div><div class="dr-sec-v">' + L(d.will_happen) + '</div></div>'
+      + '<div class="dr-sec"><div class="dr-sec-l">' + escText(t('expected_res')) + '</div><div class="dr-sec-v">' + L(d.expected) + '</div></div>'
+      + '<div class="dr-sec"><div class="dr-sec-l">' + escText(t('safety')) + '</div>' + consHtml
+      + (failed.length ? '' : '') + '</div>'
+      + '<div class="dr-sec"><div class="dr-sec-l">' + escText(t('owning_module')) + '</div><div class="dr-sec-v">' + escText(L(d.owner) || 'Move') + '</div></div>'
+      + '<div class="dr-sec"><div class="dr-sec-l">' + escText(t('stop_cond')) + '</div><div class="dr-sec-v">' + escText(L(d.stop) || '') + '</div></div>'
+      + '<div class="dr-sec"><div class="dr-sec-v" style="color:var(--text-mute)">' + escText(t('module_boundary')) + '</div></div>'
+      + '</div>'
+      + '<div class="dr-foot">'
+      // One prominent action; the rest stay deliberately lower-weight (brief section 4).
+      + '<button class="btn-primary" style="align-self:stretch;text-align:center" data-act="approve">' + escText(t('approve_send')) + '</button>'
+      + '<div class="sec-actions">'
+      + '<button class="mini-a" data-act="close-review">' + escText(t('modify')) + '</button>'
+      + '<button class="mini-a" data-act="open-evidence">' + escText(t('more_evidence')) + '</button>'
+      + '<button class="mini-a" data-act="close-review">' + escText(t('defer')) + '</button>'
+      + '<button class="mini-a danger" data-act="reject-dec">' + escText(t('reject')) + '</button>'
+      + '</div>'
+      + '<div class="foot-note">' + escText(t('recorded_note')) + '</div>'
+      + '</div></aside>';
+  }
+
+  function evidenceDrawer() {
+    var s = S();
+    if (!s) return '';
+    var live = state.dataMode === 'sim';
+    var vers = s.versions || {};
+    return '<div class="scrim" data-act="close-evidence"></div>'
+      + '<aside class="drawer">'
+      + '<div class="dr-h"><h3>' + escText(t('evidence_title')) + '</h3><button class="dr-close" data-act="close-evidence">✕</button></div>'
+      + '<div class="dr-body">'
+      // Level 3 is where a console either earns trust or loses it. In Live the values and their
+      // source module are real; event ids, freshness and cross-system conflicts require the
+      // governed data feed, which is not connected. Say so rather than dress samples as provenance.
+      + (live ? '<div class="dr-note">' + escText(t('evidence_partial')) + '</div>' : '')
+      + (s.observations || []).map(function (e) {
+          var meta = [escText(L(e.src))];
+          if (e.fresh) meta.push(escText(L(e.fresh)));
+          var id = L(e.id);
+          return '<div class="ev-item">'
+            + '<div class="ev-top"><span class="ev-name">' + escText(L(e.name)) + '</span><span class="ev-val">' + escText(L(e.val)) + '</span></div>'
+            + '<div class="ev-src">' + meta.join(' · ') + (id ? ' · <span class="ev-id">' + escText(id) + '</span>' : '') + '</div>'
+            + (e.conflict ? '<div class="ev-conflict">' + escText(L(e.conflict)) + '</div>' : '')
+            + '</div>';
+        }).join('')
+      + (s.attain_note ? '<div class="dr-note">' + escText(L(s.attain_note)) + '</div>' : '')
+      + '<details class="disc"><summary>' + escText(t('formulas')) + '</summary>'
+      + (live
+          ? kv('Forecast', (vers.forecast_model || '—') + ' · projection at current rate')
+            + kv('Chance of reaching target', 'P(rate ≥ required) · normal approx over the recent window')
+            + kv('Impact', vers.impact_model || '—')
+            + kv('Ranking', vers.optimizer || '—')
+            + kv('Constraints', (vers.ruleset || '—'))
+          : kv('Good units', 'MES counter · kpi-pack-2.4')
+            + kv('Cycle time', 'window_time ÷ good_units')
+            + kv('Forecast', 'production-forecast-0.1')
+            + kv('Loss attribution', 'material-recovery-0.1')
+            + kv('Ranking', 'weighted-ranking-0.1')
+            + kv('Constraints', 'operational-constraints-0.1 (Protect)'))
+      + '</details>'
+      + '<details class="disc"><summary>' + escText(t('full_object')) + '</summary>'
+      + '<pre class="jsonbox">' + escText(decisionJson()) + '</pre>'
+      + '</details>'
+      + '</div></aside>';
+  }
+
+  // ── render ───────────────────────────────────────────────────────────────
+  function loadingBody() {
+    return '<div class="loading-row"><span class="spin"></span>' + escText(t('loading')) + '</div>';
+  }
+  // Two different failures, two different messages. Telling someone the simulator is unreachable
+  // when the simulator is fine and it was the dispatch that failed sends them to fix the wrong
+  // thing -- which is exactly what this screen did before.
+  function errorBody() {
+    var isSend = state.error && state.error.kind === 'send';
+    return '<div class="state-box">'
+      + '<h3>' + escText(isSend ? t('send_failed_t') : t('sim_down_t')) + '</h3>'
+      + '<p>' + escText(isSend ? t('send_failed_b') : t('sim_down_b')) + '</p>'
+      + (state.error && state.error.msg ? '<p class="mono-err">' + escText(state.error.msg) + '</p>' : '')
+      + '<div class="state-actions">'
+      + '<button class="btn-primary" data-act="retry">' + escText(t('retry')) + '</button>'
+      + (isSend ? '' : '<button class="linkq" data-act="mode" data-mode="demo">' + escText(t('switch_demo')) + '</button>')
+      + '</div></div>';
+  }
+  function noDecisionBody() {
+    return '<div class="state-box"><h3>' + escText(t('no_decision_t')) + '</h3>'
+      + '<p>' + escText(t('no_decision_b')) + '</p></div>';
+  }
+
+  function render() {
+    var body = '';
+    // Live must never borrow DEMO's numbers to fill a gap: a failed or pending load renders an
+    // explicit state instead. This is the whole difference between a real console and a mock.
+    if (state.dataMode === 'sim' && state.error) body = errorBody();
+    else if (state.dataMode === 'sim' && !state.live) body = loadingBody();
+    else if (state.view === 'today') body = todayView();
+    else if (state.view === 'decision') {
+      // The queue may have emptied under an open decision (e.g. after resolving the last reco);
+      // fall back to Today rather than dereferencing a null active reco.
+      if (!S()) { state.view = 'today'; body = todayView(); }
+      else if (state.status === 'awaiting') body = S().decision ? decisionAwaiting() : noDecisionBody();
+      else if (state.status === 'executing') body = decisionExecuting();
+      else body = decisionCompleted();
+    } else if (state.view === 'performance') body = performanceView();
+    else if (state.view === 'history') body = historyView();
+
+    var html = '<div class="app">' + topbar()
+      + '<div class="scroll"><main class="stage ' + (state.view === 'performance' ? 'wide' : '') + '">'
+      + simline() + body
+      + '</main></div></div>';
+    if (state.reviewOpen) html += reviewDrawer();
+    if (state.evidenceOpen) html += evidenceDrawer();
+
+    document.getElementById('app').innerHTML = html;
+    observeCharts();
+  }
+
+  // ── chart width measurement (ResizeObserver -> re-render) ─────────────────
+  var ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(function (entries) {
+    var changed = false;
+    for (var i = 0; i < entries.length; i++) {
+      var k = entries[i].target.getAttribute('data-ck');
+      var w = Math.round(entries[i].contentRect.width);
+      if (k && w && chartW[k] !== w) { chartW[k] = w; changed = true; }
+    }
+    if (changed) render();   // guarded: only when a width actually changed
+  }) : null;
+  function observeCharts() {
+    if (!ro) return;
+    var els = document.querySelectorAll('[data-ck]');
+    for (var i = 0; i < els.length; i++) ro.observe(els[i]);
+  }
+
+  // ── Live: the adapter ────────────────────────────────────────────────────
+  // The pipeline and the design describe the same decision in different shapes. The pipeline emits
+  // {label,value,kind} / {metric,value,kind} and keeps ids under `audit`; the design wants
+  // {kind,name,val,src,fresh,id,conflict}, five numbered questions, and a `ui` block of prose.
+  // This function is that translation -- the "one seam" the port was written around.
+  //
+  // Rules it must not break:
+  //  - every number here comes from `scn` (the simulator) or the pipeline; none are invented
+  //  - `ai.py analyze` supplies prose ONLY; if it fails we fall back to the deterministic prose
+  //    the pipeline already wrote, never to demo text
+  function bridgeJson(script, args, stdin, timeoutMs) {
+    var b = window.AtriaDash;
+    if (!b || !b.json) return Promise.reject(new Error('bridge unavailable'));
+    return b.json(script, args, { stdin: JSON.stringify(stdin || {}), timeout_ms: timeoutMs || 20000 });
+  }
+
+  // The run gateway allows only a few in-flight scripts per session and 429s the rest. A background
+  // prose call can hold a slot for tens of seconds, so a foreground action (the approve chain) can
+  // lose the race. Retry a rejected call a couple of times with a short backoff; a real failure
+  // still surfaces after the retries. Only rate-limit-ish rejections are worth retrying, but
+  // retrying any transient rejection here is harmless because these calls are idempotent reads
+  // plus the store's own idempotent status writes.
+  function bridgeJsonRetry(script, args, stdin, timeoutMs, tries) {
+    tries = tries == null ? 3 : tries;
+    return bridgeJson(script, args, stdin, timeoutMs).catch(function (e) {
+      var msg = String((e && e.message) || e);
+      var retriable = /rate-limited|429|non-zero/i.test(msg);
+      if (tries <= 1 || !retriable) throw e;
+      return new Promise(function (res) { setTimeout(res, 700); })
+        .then(function () { return bridgeJsonRetry(script, args, stdin, timeoutMs, tries - 1); });
+    });
+  }
+
+  function fmtNum(n) { return (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString(state.lang === 'vi' ? 'vi-VN' : 'en-US'); }
+  function pct(x) { return Math.round((Number(x) || 0) * 100) + '%'; }
+
+  // The engine already scores risk and confidence per alternative (simulate.build_scn), so we
+  // translate its values rather than invent our own. Only the LABEL is ours.
+  function riskFor(alt) {
+    var r = String((alt && alt.risk) || '').toLowerCase();
+    if (r === 'high') return { v: t('risk_high'), cls: 'warn' };
+    if (r === 'medium' || r === 'med') return { v: t('risk_med'), cls: 'warn' };
+    if (r === 'low') return { v: t('risk_low'), cls: 'ok' };
+    return { v: '—', cls: '' };
+  }
+  function confFor(alt) {
+    var s = Number(alt && alt.confidence);
+    if (isNaN(s)) return { v: '—', cls: '' };
+    if (s >= 0.75) return { v: t('conf_high'), cls: '' };
+    if (s >= 0.45) return { v: t('conf_med'), cls: '' };
+    return { v: t('conf_low'), cls: 'warn' };
+  }
+  // An option is refused when the engine marks it infeasible / gives a rejection reason. That is a
+  // real constraint check against live machine health -- never a canned flag.
+  function isBlocked(a) { return a.feasible === false || !!a.rejection; }
+
+  // Straight-line projection between current and a forecast scalar -- exactly what V2 draws
+  // (dashboard.html recForecastChart) and what build_scn's forecast_base means: "continue as-is".
+  function projectSeries(current, end, n) {
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(Math.round(current + (end - current) * (i / (n - 1))));
+    return out;
+  }
+
+  // Build ONE decision scenario from ONE scn (a queue item). Called once per recommendation in the
+  // live queue (status.scns); `analysis` is the model prose for THIS reco (fetched lazily on open).
+  function scenarioFrom(status, scn, analysis) {
+    if (!scn) return null;
+    var alts = (scn.alternatives || []).slice();
+    // The recommended option is the top-ranked feasible one; a blocked option can outrank on raw
+    // effect and still be refused -- that refusal is the design's key tension and it must come
+    // from the live constraint check, never a canned flag.
+    var feasible = alts.filter(function (a) { return !isBlocked(a) && a.id !== 'ACT-000'; });
+    var rec = feasible[0] || null;
+    var gapUnits = Math.max(0, (Number(scn.target) || 0) - (Number(scn.forecastBase) || 0));
+    // The engine states the expected recovery outright; only fall back to deriving it.
+    var recovery = rec
+      ? (rec.recovered != null ? Math.round(Number(rec.recovered))
+                               : Math.max(0, Math.round((Number(rec.forecastAfter) || 0) - (Number(scn.forecastBase) || 0))))
+      : 0;
+    var risk = riskFor(rec);
+    var conf = confFor(rec);
+    var st = analysis && analysis.stages ? analysis.stages : {};
+    // Prose arrives a stage later than the numbers. Where a sentence can be derived from live
+    // telemetry we derive it; where it is a genuine INFERENCE ("why is this happening"), we say the
+    // explanation is still coming rather than guess a cause. Never invent an inference.
+    var prose = function (k, fallback) {
+      var v = (analysis && analysis[k]) || (st[k] && st[k].summary);
+      return v || fallback || t('prose_pending');
+    };
+
+    var subject = scn.line || scn.targetMachine || '—';
+    // The engine names each action in human terms (`type`) and even splits a headline around a
+    // hinge word (headPre / headEm / headPost) -- which is exactly the design's "Prioritize pallet
+    // *P-104* with Forklift F07" shape. Use it; the id is a last resort, not a label.
+    var recName = rec ? (rec.type || rec.name || rec.title || rec.id) : '';
+    var recHead = rec && rec.headEm
+      ? escText(rec.headPre || '') + ' <em>' + escText(rec.headEm) + '</em> ' + escText(rec.headPost || '')
+      : escText(recName);
+    var mins = Number(scn.minutesRemaining) || 0;
+
+    // Sentences derivable from the telemetry itself, used until the model's prose lands (and if it
+    // never lands). These state only what the numbers already say.
+    var detMeasure = fmt(t('det_measure'), { subject: subject, cur: fmtNum(scn.current), tgt: fmtNum(scn.target) });
+    var detPredict = fmt(t('det_predict'), { end: fmtNum(scn.forecastBase), gap: fmtNum(gapUnits), pct: pct(scn.attainProb) });
+    var detEvaluate = fmt(t('det_evaluate'), { n: alts.length });
+    var detRecommend = recName ? fmt(t('det_recommend'), { action: recName, n: fmtNum(recovery) }) : '';
+
+    // Evidence: values + source module are real (from the simulator). Event ids/freshness/conflicts
+    // need the governed data feed, which is not connected -- so we show what we have and mark the
+    // rest, rather than dressing samples up as live provenance.
+    var evIds = scn.evidence || [];
+    var obs = [
+      { kind: 'Observed', name: { en: 'Units produced so far', vi: 'Sản lượng đến hiện tại' }, val: fmtNum(scn.current), src: 'Produce · fleet sim', fresh: '', id: evIds[0] || '', conflict: '' },
+      { kind: 'Observed', name: { en: 'Cycle time (actual)', vi: 'Thời gian chu kỳ (thực tế)' }, val: (scn.cycleActual != null ? scn.cycleActual + ' s' : '—'), src: 'Produce · fleet sim', fresh: '', id: evIds[1] || '', conflict: '' },
+      { kind: 'Observed', name: { en: 'Machine health index', vi: 'Chỉ số sức khỏe máy' }, val: (scn.machineHealth != null ? String(scn.machineHealth) : '—'), src: 'Monitor · fleet sim', fresh: '', id: evIds[2] || '', conflict: '' },
+      { kind: 'Calculated', name: { en: 'Shift target', vi: 'Mục tiêu ca' }, val: fmtNum(scn.target), src: 'Produce · fleet sim', fresh: '', id: '', conflict: '' },
+      { kind: 'Predicted', name: { en: 'Projected at current rate', vi: 'Chiếu theo tốc độ hiện tại' }, val: fmtNum(scn.forecastBase), src: 'Optimize · projection', fresh: '', id: '', conflict: '' }
+    ];
+
+    var opts = alts.map(function (a) {
+      // The rejection text is the engine's own reason (e.g. machine health below the safe limit) --
+      // the design's "blocked · machine health" chip, sourced from a real check.
+      var note = isBlocked(a)
+        ? t('opt_blocked') + ' · ' + (a.rejection || a.approval || '')
+        : (a.id === 'ACT-000' ? 'opt_baseline'
+           : (rec && a.id === rec.id ? 'opt_recommended' : (a.approval || a.cost || '')));
+      var delta = a.recovered != null
+        ? Math.round(Number(a.recovered))
+        : Math.round((Number(a.forecastAfter) || 0) - (Number(scn.forecastBase) || 0));
+      return {
+        name: a.type || a.name || a.id,
+        note: note,
+        rec: (delta > 0 ? '+' : '') + delta,
+        blocked: isBlocked(a) ? '1' : '0'
+      };
+    });
+
+    return {
+      skill: 'recommend_operational_action',
+      status: scn.status || 'awaiting_approval',
+      execution_id: (status.audit && status.audit.execution_id) || scn.recId || '',
+      correlation_id: scn.recId || '',
+      decision_id: scn.recId || '',
+      rec_id: scn.recId || '',
+      rec_action: rec,
+      problem: scn.problem || '',
+      // Deck teaser (Today view): what the mini/hero card shows without opening the decision. All
+      // derived from this reco's real numbers. Title is problem-specific so a down machine reads as
+      // down, not merely "behind".
+      teaser: {
+        title: fmt(t('title_' + (scn.problem || 'oee')), { subject: subject }),
+        recovery: fmt(t('live_meta_recovery'), { n: fmtNum(recovery) }),
+        risk: risk.v,
+        within: fmt(t('live_meta_time'), { n: mins })
+      },
+      scope: { plant_id: status.plant || '', line_id: subject, work_order: scn.wo || '', timezone: '' },
+      _analysis: analysis || null,
+      summary: prose('measure', detMeasure),
+
+      ui: {
+        subject: subject,
+        today_sub: fmt(t('live_today_sub'), { gap: fmtNum(gapUnits) }),
+        case_title: fmt(t('live_case_title'), { subject: subject }),
+        // "Why" is an inference -- if the model has not spoken yet, say so; do not guess a cause.
+        case_body: prose('explain', ''),
+        case_meta: [
+          { text: fmt(t('live_meta_recovery'), { n: fmtNum(recovery) }), cls: '' },
+          { text: fmt(t('live_meta_risk'), { r: risk.v }), cls: '' },
+          { text: fmt(t('live_meta_time'), { n: mins }), cls: 'warn' }
+        ],
+        eyebrow: fmt(t('live_eyebrow'), { subject: subject, wo: scn.wo || '' }),
+        eyebrow_sent: fmt(t('live_eyebrow_sent'), { subject: subject }),
+        eyebrow_done: fmt(t('live_eyebrow_done'), { subject: subject }),
+        situation: fmt(t('live_situation'), { cur: '<b>' + escText(fmtNum(scn.forecastBase)) + '</b>', tgt: '<b>' + escText(fmtNum(scn.target)) + '</b>' }),
+        chart_title: t('live_chart_title'),
+        reco_title: rec ? recHead : escText(t('no_decision_t')),
+        // The engine explains each option in `why`; the model's prose is a nicer read, so prefer it
+        // and fall back to the engine's own reasoning rather than to a template.
+        reco_body: prose('recommend', (rec && (rec.why || rec.detail)) || detRecommend),
+        perf_title: fmt(t('live_perf_title'), { subject: subject }),
+        perf_chart: t('live_perf_chart')
+      },
+
+      observations: obs,
+      questions: [
+        { n: '1', kind: 'Observed', q: 'q1', a: prose('measure', detMeasure) },
+        { n: '2', kind: 'Inferred', q: 'q2', a: prose('explain', '') },   // inference: never derived
+        { n: '3', kind: 'Predicted', q: 'q3', a: prose('predict', detPredict) },
+        { n: '4', kind: null, q: 'q4', a: 'q4_lead', opts: opts },
+        // "Why is this recommended" -> the model's evaluation, else the engine's own `why`.
+        { n: '5', kind: 'Recommended', q: 'q5', a: prose('evaluate', (rec && rec.why) || detEvaluate) }
+      ],
+
+      decision: rec ? {
+        metrics: [
+          { v: fmtNum(gapUnits), l: 'units_short', cls: 'warn' },
+          // The chance of reaching target -- the PROBABILITY from simulate.attain_probability,
+          // never scn.attainBefore (a ratio). See that function's docstring.
+          { v: pct(scn.attainProb), l: 'chance_target', cls: (Number(scn.attainProb) < 0.5 ? 'warn' : '') },
+          { v: mins + ' ' + t('minutes'), l: 'to_decide', cls: '' }
+        ],
+        reco_metrics: [
+          { v: '+' + fmtNum(recovery), l: 'exp_recovery', cls: 'accent' },
+          { v: risk.v, l: 'risk', cls: risk.cls },
+          { v: conf.v, l: 'confidence', cls: conf.cls }
+        ],
+        forecast: {
+          no_action: projectSeries(scn.current, scn.forecastBase, 6),
+          with_action: projectSeries(scn.current, rec ? rec.forecastAfter : scn.forecastBase, 6),
+          target: scn.target
+        }
+      } : null,
+
+      review: {
+        // `detail` is the engine's concrete description of the action ("Release 9 product batch(es)
+        // into the intake queue -- urgent") -- exactly what a manager needs before approving.
+        will_happen: fmt(t('live_will_happen'), { action: escText((rec && (rec.detail || rec.type)) || recName), machine: escText(subject) }),
+        expected: fmt(t('live_expected_res'), { n: '<b>' + escText(fmtNum(recovery)) + '</b>', after: '<b>' + escText(fmtNum(rec ? rec.forecastAfter : scn.forecastBase)) + '</b>' }),
+        safety: '',
+        owner: t('live_owner'),
+        stop: t('live_stop')
+      },
+
+      constraints: scn.constraints || [],
+      attain_note: scn.attainProbNote || '',
+      // Raw numbers kept for the outcome measurement: to say what an action actually recovered we
+      // need where we started and how fast we were going before we touched anything.
+      raw: {
+        machine: scn.targetMachine,
+        current: Number(scn.current) || 0,
+        rate: (function () {
+          var tm = (status.machines || []).filter(function (m) { return m.id === scn.targetMachine; })[0];
+          return tm ? (Number(tm.thru) || 0) : 0;
+        })(),
+        minute: Number(status.simulation_minute) || 0,
+        minutesRemaining: mins,
+        forecastBase: Number(scn.forecastBase) || 0,
+        expected: recovery
+      },
+      execution: null,
+      validation: null,
+      data_quality: null,
+      confidence: { level: conf.v, score: (rec && rec.score) || 0, explanation: '' },
+      provenance: { source_event_ids: evIds, module_reads: ['Produce', 'Monitor'] },
+      versions: scn.versions || {},
+      audit: { principal: status.principal || t('live_operator'), required_role: '', model_versions: [] },
+
+      attn: [
+        { v: '1', l: 'attn_decision', cls: 'warn' },
+        { v: String((scn.constraints || []).filter(function (c) { return c.r !== 'passed'; }).length), l: 'attn_blocked', cls: '' },
+        { v: fmtNum(scn.current), l: 'attn_units_today', cls: 'ok' }
+      ],
+      perf_kpis: [
+        { v: fmtNum(scn.forecastBase), l: 'perf_on_pace', cls: 'warn' },
+        { v: pct(scn.attainProb), l: 'chance_target', cls: (Number(scn.attainProb) < 0.5 ? 'warn' : '') },
+        { v: fmtNum(scn.target), l: { en: 'shift target', vi: 'mục tiêu ca' }, cls: '' },
+        { v: String(scn.machineHealth != null ? scn.machineHealth : '—'), l: { en: 'machine health', vi: 'sức khỏe máy' }, cls: '' }
+      ],
+      perf_series: (status.trends && status.trends.thru) ? status.trends.thru.slice(-12) : [],
+      perf_target: scn.target,
+      history: [],
+      improvements: []
+    };
+  }
+
+  // ── Live: fetch ──────────────────────────────────────────────────────────
+  // TWO STAGES, deliberately. The telemetry (every number on the screen) comes back from
+  // simulate.py in well under a second; the prose comes from a real model call that can take tens
+  // of seconds. Waiting for the model before showing anything left the console sitting on
+  // "Reading the line..." long after the facts were already in hand. So: paint the numbers as soon
+  // as they land, then fill the prose in when it arrives. The prose is an explanation of the
+  // numbers -- never their source -- so this ordering is also the honest one.
+  var proseSeq = 0;
+  function refreshLive(showLoading) {
+    if (state.dataMode !== 'sim') return Promise.resolve();
+    if (showLoading) { state.loading = true; state.error = null; render(); }
+    var seq = ++proseSeq;
+    return bridgeJsonRetry('simulate.py', ['status'], { lang: state.lang }, 20000)
+      .then(function (status) {
+        if (!status || status.connected === false) {
+          throw new Error((status && status.error) || 'simulator not reachable');
+        }
+        var scns = status.scns || (status.scn ? [status.scn] : []);
+        // Build the whole queue from real numbers (prose pending). Each scn -> one full scenario.
+        var recos = scns.map(function (scn) { return scenarioFrom(status, scn, null); }).filter(Boolean);
+
+        var prev = state.live;
+        // Preserve fetched prose across the poll (don't re-hit the model for a reco already explained),
+        // matched by rec_id. The poll only runs while status is 'awaiting' (see startLivePoll), so we
+        // never rebuild the queue under an executing/completed decision.
+        var activeId = (state.view === 'decision' && S()) ? S().rec_id : null;
+        recos = recos.map(function (r) {
+          var old = prev && prev.recos ? prev.recos.filter(function (o) { return o.rec_id === r.rec_id; })[0] : null;
+          if (old && old._analysis) return scenarioFrom(status, findScn(status, r.rec_id), old._analysis) || r;
+          return r;
+        });
+        // Clear cooldown flags for problems the (cooldown-suppressed) backend no longer lists, so a
+        // genuinely recurring problem can surface again once its cooldown lapses.
+        var liveIds = {};
+        recos.forEach(function (r) { liveIds[r.rec_id] = true; });
+        Object.keys(state.resolvedIds).forEach(function (id) { if (!liveIds[id]) delete state.resolvedIds[id]; });
+
+        state.live = { recos: recos, history: (prev && prev.history) || [], _status: status };
+        // Keep the active reco selected across the poll (indices may shift as the queue re-ranks).
+        if (activeId) {
+          var ni = recos.map(function (r) { return r.rec_id; }).indexOf(activeId);
+          state.recoIndex = ni >= 0 ? ni : 0;
+        }
+        if (state.recoIndex >= recos.length) state.recoIndex = Math.max(0, recos.length - 1);
+        state.loading = false; state.error = null;
+        // On Today with the deck already mounted, update it IN PLACE (no full-page repaint) so it stays
+        // smooth and new recommendations can slide up. Everything else uses full render().
+        if (state.view === 'today' && document.getElementById('deck-root')) reconcileDeck();
+        else render();
+        loadHistory();
+
+        // Stage 2 -- prose for the ACTIVE reco only (lazy, targeted): explain the machine the user is
+        // looking at, not the whole fleet. Only while a decision is open.
+        if (state.view === 'decision') fetchProseForActive();
+      })
+      .catch(function (e) {
+        state.loading = false;
+        state.error = { msg: String((e && e.message) || e) };
+        state.live = null;   // never leave stale numbers on screen behind an error
+        render();
+      });
+  }
+
+  // Find the raw scn (from a status payload) matching a reco's id -- needed to re-run analyze/mapping.
+  function findScn(status, recId) {
+    var scns = status.scns || (status.scn ? [status.scn] : []);
+    return scns.filter(function (s) { return (s.recId || '') === recId; })[0] || scns[0] || null;
+  }
+
+  // Open a recommendation from the deck: make it active and go to its decision. Prose is fetched here
+  // (lazily, for THIS reco only) so the deck itself stays instant.
+  function openReco(i) {
+    var recos = activeRecos();
+    if (i < 0 || i >= recos.length) i = 0;
+    state.recoIndex = i;
+    state.view = 'decision'; state.status = 'awaiting';
+    state.howOpen = state.reviewOpen = state.evidenceOpen = false;
+    render();
+    if (state.dataMode === 'sim') fetchProseForActive();
+  }
+
+  // Fetch model prose for the active reco's machine and splice it back into the queue. The pipeline
+  // explains the scn we pass verbatim (ai._snapshot_from), so it names the opened machine.
+  function fetchProseForActive() {
+    var live = state.live, act = S();
+    if (!live || !act || act._analysis || state.dataMode !== 'sim') return;
+    var status = live._status || {};
+    var scn = findScn(status, act.rec_id);
+    if (!scn) return;
+    var seq = ++proseSeq;
+    bridgeJsonRetry('ai.py', ['analyze'], { machines: status.machines, scn: scn, lang: state.lang }, 60000)
+      .then(function (analysis) {
+        if (seq !== proseSeq || state.dataMode !== 'sim' || !analysis || !state.live) return;
+        var merged = scenarioFrom(status, scn, analysis);
+        if (!merged) return;
+        merged._analysis = analysis;
+        // carry any in-flight execution/validation on the active reco
+        if (act.execution) merged.execution = act.execution;
+        if (act.validation) merged.validation = act.validation;
+        state.live.recos = state.live.recos.map(function (r) { return r.rec_id === merged.rec_id ? merged : r; });
+        render();
+      })
+      .catch(function () { /* deterministic prose already reads fine */ });
+  }
+
+  function loadHistory() {
+    bridgeJsonRetry('optimize.py', ['list'], { limit: 8 }, 20000)
+      .then(function (r) {
+        var rows = (r && (r.decisions || r.items || r.rows)) || [];
+        if (!state.live) return;
+        state.live.history = rows.map(function (d) {
+          var st = d.status === 'completed' ? 'Worked'
+                 : d.status === 'rejected' ? 'Rejected'
+                 : d.status === 'dispatched' ? 'Executing' : 'Inconclusive';
+          return {
+            title: (d.recommended_action && (d.recommended_action.name || d.recommended_action.action)) || d.recommendation_id || d.id || '—',
+            when: String(d.updated_at || d.created_at || '').slice(11, 16),
+            actor: (d.approval && d.approval.actor && d.approval.actor.id) || '—',
+            status: st, rec_id: d.recommendation_id || d.id || ''
+          };
+        });
+        if (state.view === 'history') render();
+      })
+      .catch(function () { /* history is supplementary; its absence must not break the console */ });
+  }
+
+  // Poll whenever the deck is on screen (so new recommendations keep arriving live), or while a
+  // decision is still awaiting. NEVER while a decision is executing/completed (its numbers are frozen
+  // for the audit trail) or a drawer is open. This is VIEW-based, not status-based: the old
+  // status-only guard froze the deck after any decision left `status` non-awaiting, so returning to
+  // Today via the top nav stopped updating until a manual page refresh.
+  function shouldPoll() {
+    if (state.dataMode !== 'sim' || state.reviewOpen || state.evidenceOpen) return false;
+    if (state.view === 'today') return true;
+    if (state.view === 'decision') return state.status === 'awaiting';
+    return false;
+  }
+  function startLivePoll() {
+    stopLivePoll();
+    simTimer = setInterval(function () { if (shouldPoll()) refreshLive(false); }, 8000);
+  }
+  function stopLivePoll() { if (simTimer) { clearInterval(simTimer); simTimer = null; } }
+
+  // ── actions (data-act delegation) ────────────────────────────────────────
+  function approve() {
+    state.reviewOpen = false;
+    if (state.dataMode === 'demo') {
+      // Demo keeps the prototype's timed illusion -- and says so on the result screen.
+      state.status = 'executing'; render();
+      clearTimeout(execTimer);
+      execTimer = setTimeout(function () { state.status = 'completed'; render(); }, 1800);
+      return;
+    }
+    approveLive();
+  }
+
+  // ── Live: approve -> the real gate -> real actuation -> measured outcome ──
+  // The approval gate already exists and we ride it rather than inventing one (SKILL.md:51-55):
+  //   recommend  -> persists a packet with status `awaiting_approval` (never actuates)
+  //   approve    -> a human says yes
+  //   replan     -> REFUSES an unapproved decision; only then does it actuate the simulator
+  // So "Approve and send" is literally those three calls. If the gate ever regresses, replan comes
+  // back status=awaiting_approval and we surface that instead of pretending it worked.
+  function approveLive() {
+    var act = S();
+    if (!state.live || !act || !act.decision) return;
+    var baseline = act.raw;
+    // Quiesce ALL background traffic before dispatching. The run gateway caps in-flight scripts per
+    // session (4), and the approve chain issues several calls back-to-back; a stray poll or a
+    // still-pending prose call can occupy a slot and 429 the recommend. Stop the poll and
+    // invalidate any prose response in flight (proseSeq bump) so approve owns the channel.
+    stopLivePoll();
+    proseSeq++;
+    state.status = 'executing';
+    act.execution = { task_id: '…', resource: t('sending'), command: '', idempotency_key: '', correlation_id: act.correlation_id || '', owning_module: 'Move · fleet simulator' };
+    render();
+
+    var recId = act.rec_id;
+    // 1) persist the packet (awaiting_approval) and learn its real id. Retry the chain's calls: a
+    // background slot may still be draining when we start.
+    bridgeJsonRetry('ai.py', ['recommend'], { lang: state.lang }, 60000)
+      .then(function (r) {
+        recId = (r && (r.recommendation_id || (r.decision && r.decision.recommendation_id))) || recId;
+        if (!recId) throw new Error('no recommendation id to approve');
+        // 2) the human's approval
+        return bridgeJsonRetry('optimize.py', ['approve'], { recommendation_id: recId }, 20000);
+      })
+      .then(function (a) {
+        if (!a || a.ok === false) throw new Error('approve rejected by the store');
+        // 3) dispatch + actuate -- refuses unless step 2 really landed
+        return bridgeJsonRetry('ai.py', ['replan'], { recommendation_id: recId, lang: state.lang }, 60000);
+      })
+      .then(function (rp) {
+        if (rp && rp.status === 'awaiting_approval') {
+          throw new Error('the gate refused: decision is not approved');
+        }
+        var f = (rp && rp.findings && rp.findings[0]) || {};
+        act.execution = {
+          task_id: (rp && rp.audit && rp.audit.execution_id) || recId,
+          resource: f.machine || (baseline && baseline.machine) || '',
+          eta: '', check_at: '',
+          command: (f.action ? f.action + ' → ' + (f.machine || '') : ''),
+          idempotency_key: recId,
+          correlation_id: (rp && rp.audit && rp.audit.execution_id) || '',
+          owning_module: f.endpoint ? ('Move · ' + f.endpoint) : 'Move · fleet simulator'
+        };
+        render();
+        return measureOutcome(recId, baseline, act);
+      })
+      .catch(function (e) {
+        // The action did NOT go through. Say that plainly -- and do not leave the screen implying
+        // an approval landed when it did not.
+        state.status = 'awaiting';
+        state.error = { kind: 'send', msg: String((e && e.message) || e) };
+        render();
+      });
+  }
+
+  // Measure what the action actually did, instead of echoing back what we expected.
+  //
+  // The store's own `recovered_units` is the EXPECTED value written back at dispatch
+  // (pipeline.stage_replan: `recovered = decision.expected_effect.recovered_units`), so reading it
+  // back and calling it "measured" would be circular.
+  //
+  // What we measure is the line's THROUGHPUT RATE, before and after. That is a genuinely observed
+  // signal. We deliberately do NOT difference `scn.current`: that field is a modelled projection
+  // (`rate_now * elapsed`), not a cumulative counter, so it moves when the rate moves and
+  // differencing it produces nonsense (an idle line resuming made it read -8).
+  //
+  // Honest labelling:
+  //   rate before / rate after            -> Observed (real telemetry)
+  //   remaining shift hours at approval   -> Predicted horizon
+  //   recovered = (rate gain) x horizon   -> Calculated, and directly comparable to `expected`,
+  //                                          which the engine defines the same way
+  var MEASURE_MS = 9000;
+  function measureOutcome(recId, baseline, act) {
+    act = act || S();
+    var finish = function () {
+      state.status = 'completed';
+      // Drop the resolved reco from the deck immediately; the backend cooldown keeps it out on
+      // the next poll so it does not re-nag before the sim reflects the action.
+      if (act && act.rec_id) state.resolvedIds[act.rec_id] = true;
+      render();
+    };
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        bridgeJsonRetry('simulate.py', ['status'], { lang: state.lang }, 20000)
+          .then(function (after) {
+            var scn2 = after && after.scn;
+            if (!scn2 || !baseline) throw new Error('no post-window snapshot');
+            var minutes = Math.max(0, (Number(after.simulation_minute) || 0) - baseline.minute);
+            var tm = (after.machines || []).filter(function (m) { return m.id === baseline.machine; })[0];
+            var rateAfter = tm ? (Number(tm.thru) || 0) : 0;                       // Observed
+            var horizon = Math.max(0, (Number(baseline.minutesRemaining) || 0) / 60);
+            var recovered = Math.round((rateAfter - baseline.rate) * horizon);     // Calculated
+            var expected = Math.round(baseline.expected || 0);
+            // Write the measured value back over the expected one the pipeline stored.
+            return bridgeJsonRetry('optimize.py', ['outcome'], {
+              recommendation_id: recId, recovered_units: recovered, status: 'successful'
+            }, 20000).catch(function () { return null; }).then(function () {
+              act.validation = {
+                expected: expected,
+                measured: recovered,
+                baseline: fmt(t('meas_baseline'), { rate: fmtNum(Math.round(baseline.rate)), h: horizon.toFixed(1) }),
+                comparison: fmt(t('meas_window'), { mins: Math.round(minutes), rate: fmtNum(Math.round(rateAfter)) }),
+                method: t('meas_method'),
+                write_back: recId,
+                simulated: false
+              };
+              finish();
+              resolve();
+            });
+          })
+          .catch(function () {
+            // Could not measure -> say the outcome is not measured rather than invent one.
+            act.validation = {
+              expected: Math.round((baseline && baseline.expected) || 0),
+              measured: 0, baseline: '—', comparison: '—',
+              method: t('meas_failed'), write_back: recId, simulated: true
+            };
+            finish(); resolve();
+          });
+      }, MEASURE_MS);
+    });
+  }
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest ? ev.target.closest('[data-act]') : null;
+    if (!el) {
+      // Click-away closes the settings popover.
+      if (state.settingsOpen && !(ev.target.closest && ev.target.closest('[data-stop]'))) { state.settingsOpen = false; render(); }
+      return;
+    }
+    var a = el.getAttribute('data-act');
+    if (a === 'view') {
+      var v = el.getAttribute('data-view');
+      state.view = v; state.howOpen = false; state.reviewOpen = false; state.evidenceOpen = false; state.settingsOpen = false;
+      // Landing on Today: clear any stale decision status and re-arm the live poll, so the deck keeps
+      // updating even after you visited a decision and came back via the nav.
+      if (v === 'today') { state.status = 'awaiting'; state.recoIndex = 0; }
+      render();
+      if (v === 'today' && state.dataMode === 'sim') startLivePoll();
+    }
+    else if (a === 'go-review') { state.view = 'decision'; state.status = 'awaiting'; render(); }
+    else if (a === 'open-reco') { openReco(parseInt(el.getAttribute('data-i'), 10) || 0); }
+    else if (a === 'go-today') {
+      state.view = 'today'; state.recoIndex = 0; state.status = 'awaiting';
+      state.howOpen = state.reviewOpen = state.evidenceOpen = false;
+      render();
+      if (state.dataMode === 'sim') { refreshLive(false); startLivePoll(); }  // resume the live deck
+    }
+    else if (a === 'toggle-how') { state.howOpen = !state.howOpen; render(); }
+    else if (a === 'open-review') { state.reviewOpen = true; state.evidenceOpen = false; render(); }
+    else if (a === 'close-review') { state.reviewOpen = false; render(); }
+    else if (a === 'open-evidence') { state.evidenceOpen = true; state.reviewOpen = false; render(); }  // only one drawer at a time
+    else if (a === 'close-evidence') { state.evidenceOpen = false; render(); }
+    else if (a === 'approve') approve();
+    else if (a === 'hist-tab') { state.histTab = el.getAttribute('data-tab'); render(); }
+    else if (a === 'open-case') { state.view = 'decision'; state.status = 'completed'; state.howOpen = false; state.reviewOpen = false; render(); }
+    else if (a === 'settings') { state.settingsOpen = !state.settingsOpen; render(); }
+    else if (a === 'lang') { setLang(el.getAttribute('data-lang')); }
+    else if (a === 'theme') { setTheme(el.getAttribute('data-theme')); }
+    else if (a === 'mode') { state.settingsOpen = false; setDataMode(el.getAttribute('data-mode')); }
+    else if (a === 'retry') {
+      var wasSend = state.error && state.error.kind === 'send';
+      state.error = null;
+      // A failed send leaves the live case intact, so retrying just returns to the decision; a
+      // dead simulator needs an actual refetch.
+      if (wasSend && state.live) { state.status = 'awaiting'; render(); } else { refreshLive(true); }
+    }
+    else if (a === 'reject-dec') { rejectDecision(); }
+  });
+
+  // Reject is a real, recorded decision too -- it goes through the same store + audit trail as an
+  // approval, so History shows why nothing happened.
+  function rejectDecision() {
+    state.reviewOpen = false;
+    var act = S();
+    if (state.dataMode === 'demo' || !act || !act.rec_id) { state.view = 'today'; state.recoIndex = 0; render(); return; }
+    var recId = act.rec_id;
+    // Rejecting resolves it from the deck too (recorded, not acted). Cooldown keeps it out on re-poll.
+    state.resolvedIds[recId] = true;
+    state.view = 'today'; state.recoIndex = 0;
+    render();
+    bridgeJson('optimize.py', ['reject'], { recommendation_id: recId }, 20000)
+      .then(function () { loadHistory(); })
+      .catch(function () { /* the console must not break because the log write failed */ });
+  }
+
+  // ── init ─────────────────────────────────────────────────────────────────
+  applyTheme(state.theme);
+  applyLang(state.lang);
+  render();
+  // The clock must NOT trigger a structural render: render() replaces #app.innerHTML, which
+  // destroys element identity and silently collapses any <details> the user opened (the L3
+  // "Full decision object" / "Technical details" disclosures), loses drawer scroll position,
+  // and re-fires the drawer slide-in. The DC original got away with a full re-render because
+  // React reconciled and preserved that uncontrolled state; innerHTML does not. So patch the
+  // one node that changes. render() still paints the right clock on every real state change.
+  setInterval(function () {
+    state.clock = fmtClock(new Date());
+    var c = document.querySelector('.clock');
+    if (c) c.textContent = state.clock;
+  }, 30000);
+
+  var bridge = window.AtriaDash;
+  if (bridge && bridge.onTheme) {
+    try { bridge.onTheme(function (mode) { if ((mode === 'light' || mode === 'dark') && !readManualTheme()) { applyTheme(mode); render(); } }); } catch (e) {}
+  }
+  if (bridge && bridge.ready) { try { bridge.ready(); } catch (e) {} }
+  if (bridge && bridge.resize) { try { bridge.resize(960); } catch (e) {} }
+  // Don't burn the simulator (or the LLM) while the tab is hidden.
+  if (bridge && bridge.onVisibility) {
+    try {
+      bridge.onVisibility(function (vis) {
+        if (vis && state.dataMode === 'sim') { refreshLive(!state.live); startLivePoll(); }
+        else stopLivePoll();
+      });
+    } catch (e) {}
+  }
+
+  // Live is the default face of the console: without the bridge (standalone preview) there is no
+  // way to reach the simulator, so fall back to Demo rather than sit on a permanent error.
+  if (state.dataMode === 'sim') {
+    if (bridge && bridge.json) { refreshLive(true); startLivePoll(); }
+    else { state.dataMode = 'demo'; render(); }
+  }
+})();
+</script>
+</body>
+</html>

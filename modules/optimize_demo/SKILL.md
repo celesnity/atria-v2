@@ -82,29 +82,59 @@ with env `IIOT_FLEET_URL` (or `?fleet=` in the dashboard).
 - Control (used by Approve): `POST /api/fleet/machines/<id>/{maintenance,resolve-fault,inject-fault}`,
   `/api/fleet/control/{start,pause,resume,step,speed,reset}`.
 
-## Dashboard (4 views)
+## Dashboard — Guided (single face)
 
-Header has a **Demo / Live** toggle (defaults to **Live**) and a **☀/☾** theme toggle.
+Optimize now ships **one** dashboard, declared as a single `dashboard.tabs` entry in `manifest.json`:
 
-1. **Fleet** — 6 KPIs, a live OEE trend (real buffered history), a 20-machine status heatmap
-   (filter by state), and a run/idle/changeover/down state-mix bar. Updates every ~4 s.
-2. **Recommendation** — the AI decision loop for the at-risk line: scenario metrics, an **AI decision
-   narrative** (gpt-5.4-mini Measure→Recommend, grounded in `simulate.build_scn` numbers), the
-   recommended-action hero, a forecast projection, a predicted-loss Pareto, a constraint-checked
-   **Alternatives** table (the +8% speed option is blocked when machine health < 0.70), the rule
-   engine, and the versioned **Decision object**. **Send to Move** approves the decision AND
-   **actuates the target machine** on the live simulator (services it), which recovers it in the
-   Fleet/Machines views on the next poll.
-3. **Machines** — per-machine analytics: metric-filtered ranked bars (availability/performance/
-   quality/health), a switchable trend/loss chart (throughput/downtime/defects/FPY), and a
-   runtime-vs-health scatter — all from live data.
-4. **Ask AI** — a gpt-5.4-mini chat (`scripts/ai.py`) that answers about any machine's current status
-   and returns tables + the best-fit chart from the 9-intent taxonomy (throughput line, cycle
-   histogram, downtime Pareto, vibration/temp dual-line, state Gantt, OEE waterfall, SPC control
-   chart, peer ranked-bars, temp-vs-defects scatter). The model picks the machine + intent; the
-   dashboard draws the chart from **live** data, so the numbers are always real.
+- **Guided** (`blocks/guided.html`) — a guided operational-decision screen for a shift manager: one
+  line, one recommendation, progressive disclosure (L1 default → L2 "How did Minder reach this?" →
+  L3 evidence & audit drawer). Ported by hand from the Claude Design prototype in `design/` (see
+  `design/README.md` for why the DC runtime is not used). Four sections: Today / Decisions /
+  Performance / History.
 
-## Backend scripts (called via the AtriaDash bridge — stdin JSON → stdout JSON, always exit 0)
+The old dense **Console V2** (`dashboard.html`) has been split out into its own read-only **Monitor**
+module (`modules/monitor`) — Fleet / Machines / Ask AI. Optimize is now the *decision engine* only;
+for live fleet monitoring and free-text Q&A, use the Monitor module. `dashboard.html` is retained in
+this folder for reference but is no longer wired into the manifest.
+
+It reads the live simulator and the decision store, and uses the `optimize-mode` / `optimize-theme` /
+`optimize-lang` preferences (Monitor keeps its own `monitor-*` keys).
+
+### Guided (V3) specifics
+
+- **Live** (default) builds its whole decision case from `simulate.py status` + `ai.py analyze`;
+  **Demo** renders a frozen example scenario from the design. Demo can never call the simulator, and
+  a failed Live load shows an explicit error — it never falls back to demo numbers.
+- **Light theme by default** (Console V2 keeps dark), EN/VI, both behind a settings popover; the
+  Demo/Live control stays in the top bar because it changes what every number means.
+- **"Chance of reaching target"** is `scn.attainProb` — a real probability, P(final ≥ target),
+  estimated from the spread of the recently observed rate. It is **not** `scn.attainBefore`, which
+  is the attainment *ratio* (forecast/target) that Console V2 renders as "Attainment". They answer
+  different questions and can point opposite ways — a line on pace for 820/1000 has a 0.82 ratio but
+  a low chance of reaching 1000. Never feed the ratio to that label.
+- The forecast lines are **straight-line projections at the current rate** (`forecast_base =
+  current + rate * remaining`), labelled as such — not a forecast model.
+- **Approve and send** runs the real gate: `ai.py recommend` (persists `awaiting_approval`) →
+  `optimize.py approve` → `ai.py replan` (refuses unless approved, then actuates the simulator).
+  The outcome is then **measured**: hold a baseline, let the accelerated sim run, and compare actual
+  output against what the pre-action rate would have produced. That measured value overwrites the
+  expected one `stage_replan` writes back. If the window can't be measured, the screen says so.
+
+## Guided dashboard — the decision loop
+
+The Guided screen runs the AI decision loop for the at-risk line: a ranked recommendation deck, an
+**AI decision narrative** (gpt-5.4-mini Measure→Recommend, grounded in `simulate.build_scn` numbers),
+the recommended-action hero, a forecast projection, a predicted-loss Pareto, a constraint-checked
+**Alternatives** view (the +8% speed option is blocked when machine health < 0.70), and the versioned
+**Decision object**. **Approve and send** approves the decision AND **actuates the target machine** on
+the live simulator, which recovers it on the next poll — then measures the real outcome. "Chance of
+reaching target" is `scn.attainProb` (a probability), never `scn.attainBefore` (the ratio).
+
+> **Monitoring (Fleet / Machines / Ask AI) lives in the Monitor module now.** The dense fleet console,
+> per-machine analytics, and the free-text gpt-5.4-mini Ask-AI were split out into `modules/monitor`
+> (read-only). Use Monitor to watch the fleet and ask questions; use Optimize (Guided) to decide and act.
+
+## Backend scripts (called via the MinderDash/AtriaDash bridge — stdin JSON → stdout JSON, always exit 0)
 
 - `scripts/simulate.py status` — read the live fleet, map to the dashboard shape, derive the
   recommendation `scn`, and return a rolling telemetry `history`/`trends` buffer (`data/history.jsonl`)
