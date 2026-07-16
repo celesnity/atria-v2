@@ -1,0 +1,40 @@
+# Single-service core deploy for Dokploy (compose type, one service).
+# Only the `minder` app runs here; Postgres, Redis and Keycloak are the REMOTE
+# ones supplied via env (Dokploy injects them from this compose's env / .env).
+# Dokploy clones the repo and runs:
+#   docker compose -f docker-compose.dokploy.yml up -d --build
+services:
+  minder:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      # LLM endpoint + model (required by the image entrypoint).
+      - MINDER_API_BASE_URL=${MINDER_API_BASE_URL}
+      - MINDER_MODEL=${MINDER_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # Remote data services (from .env).
+      - DATABASE_URL=${DATABASE_URL}
+      - MINDER_REDIS_URL=${MINDER_REDIS_URL}
+      # Remote Keycloak (from .env).
+      - AUTH_MODE=${AUTH_MODE:-keycloak}
+      - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_PUBLIC_URL=${KEYCLOAK_PUBLIC_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM:-minder}
+      - KEYCLOAK_BACKEND_CLIENT_ID=${KEYCLOAK_BACKEND_CLIENT_ID:-minder-backend}
+      - KEYCLOAK_BACKEND_CLIENT_SECRET=${KEYCLOAK_BACKEND_CLIENT_SECRET}
+      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-}
+      # Vector store (enterprise knowledge), from .env.
+      - QDRANT_URL=${QDRANT_URL:-}
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+      - EK_QDRANT_URL=${EK_QDRANT_URL:-}
+      - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
+      - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
+    volumes:
+      - minder_data:/home/minder/.minder
+      - ./modules:/app/modules
+
+volumes:
+  minder_data:
