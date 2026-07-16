@@ -32,6 +32,11 @@ services:
       - EK_QDRANT_URL=${EK_QDRANT_URL:-}
       - EK_QDRANT_API_KEY=${EK_QDRANT_API_KEY:-}
       - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
+    # Reach sibling compose services (e.g. the produce module connector) via the
+    # host gateway + their published ports — the box's public IP hairpins-fails
+    # from inside a plain-compose container.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - minder_data:/home/minder/.minder
       - ./modules:/app/modules
