@@ -12,7 +12,6 @@ from typing import Optional
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
