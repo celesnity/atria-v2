@@ -1,19 +1,21 @@
 import { useState } from 'react';
-import { useMinderTheme } from 'minder-ui-sdk';
+import { ActionIcon, Tooltip } from '@mantine/core';
+import { IconEye } from '@tabler/icons-react';
 import { api, useApi } from '../api';
 import Section from '../ui/Section';
 import DataTable from '../ui/DataTable';
 import Button from '../ui/Button';
-import { Field, TextInput, NumberInput } from '../ui/Field';
+import { Field, NumberInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
-import { statusColor } from '../theme';
+import TaskDetailModal from './TaskDetailModal';
+import { LineSelect, OperatorSelect } from '../ui/selects';
 
 export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string; mode?: 'queue' | 'board' | 'load' }) {
-  const { tokens } = useMinderTheme();
   const { notify } = useToast();
   const [lineId, setLineId] = useState(1);
   const [operator, setOperator] = useState('op1');
   const [loadShiftId, setLoadShiftId] = useState(1);
+  const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
 
   const shiftLoad = useApi<Array<Record<string, unknown>>>(apiBase, `/work/shift/${loadShiftId}/load`, [loadShiftId]);
 
@@ -32,11 +34,6 @@ export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string
   const assign = async (id: number) => {
     try { await api(apiBase, `/work/tasks/${id}/assign`, { method: 'POST', body: JSON.stringify({ assignee_id: operator }) }); active.reload(); notify('Đã gán task'); }
     catch (e) { notify(String((e as Error).message), 'err'); }
-  };
-
-  const statusCell = (r: Record<string, unknown>) => {
-    const c = statusColor(tokens, String(r.status));
-    return <span style={{ color: c, background: `${c}18`, borderRadius: 12, padding: '2px 8px', fontSize: 12 }}>{String(r.status)}</span>;
   };
 
   const statusKeys = ['queued', 'assigned', 'in_progress', 'done', 'blocked'];
@@ -68,17 +65,22 @@ export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string
     <Section
       title={mode === 'queue' ? `Hàng đợi · ${operator}` : `Board tổ · line ${lineId}`}
       actions={mode === 'queue'
-        ? <Field label="Operator"><TextInput value={operator} onChange={setOperator} /></Field>
-        : <><Field label="Line"><NumberInput value={lineId} onChange={setLineId} /></Field><Field label="Operator"><TextInput value={operator} onChange={setOperator} /></Field><Button onClick={addTask}>+ Task</Button></>}
+        ? <OperatorSelect value={operator} onChange={setOperator} />
+        : <><LineSelect apiBase={apiBase} value={lineId} onChange={setLineId} /><OperatorSelect value={operator} onChange={setOperator} /><Button onClick={addTask}>+ Task</Button></>}
     >
       <DataTable
         columns={[
           { key: 'id', label: 'ID' },
           { key: 'priority', label: 'Ưu tiên' },
           { key: 'assignee_id', label: 'Người làm' },
-          { key: 'status', label: 'Trạng thái', render: statusCell },
+          { key: 'status', label: 'Trạng thái' },
           { key: 'act', label: '', render: (r) => (
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'flex-end' }}>
+              <Tooltip label="Xem chi tiết" withArrow>
+                <ActionIcon variant="light" color="cobalt" radius="md" onClick={() => setDetail(r)} aria-label="Xem chi tiết">
+                  <IconEye size={16} />
+                </ActionIcon>
+              </Tooltip>
               <Button variant="ghost" onClick={() => claim(r.id as number)}>Claim</Button>
               {mode === 'board' && <Button variant="ghost" onClick={() => assign(r.id as number)}>Assign</Button>}
             </div>
@@ -87,6 +89,7 @@ export default function WorkPanel({ apiBase, mode = 'board' }: { apiBase: string
         rows={active.data ?? []}
         empty={mode === 'queue' ? 'Hàng đợi trống' : 'Chưa có task'}
       />
+      <TaskDetailModal apiBase={apiBase} task={detail} onClose={() => setDetail(null)} />
     </Section>
   );
 }

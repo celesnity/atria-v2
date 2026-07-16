@@ -5,6 +5,7 @@ import DataTable from '../ui/DataTable';
 import Button from '../ui/Button';
 import { Field, TextInput, NumberInput } from '../ui/Field';
 import { useToast } from '../ui/Toast';
+import { SopSelect } from '../ui/selects';
 
 export default function SopPanel({ apiBase }: { apiBase: string }) {
   const { notify } = useToast();
@@ -42,7 +43,7 @@ export default function SopPanel({ apiBase }: { apiBase: string }) {
 
   return (
     <>
-      <Section title="SOP đã phát hành" actions={<><Field label="SOP id"><NumberInput value={sopId} onChange={setSopId} /></Field><Field label="Version id"><NumberInput value={versionId} onChange={setVersionId} /></Field><Button onClick={publish}>Publish</Button></>}>
+      <Section title="SOP đã phát hành" actions={<><SopSelect apiBase={apiBase} value={sopId} onChange={setSopId} /><Field label="Version id"><NumberInput value={versionId} onChange={setVersionId} /></Field><Button onClick={publish}>Publish</Button></>}>
         <DataTable columns={[{ key: 'name', label: 'Step' }, { key: 'required', label: 'Bắt buộc', render: (r) => (r.required ? '✓' : '') }, { key: 'min', label: 'Min' }, { key: 'max', label: 'Max' }]} rows={steps} empty="Chưa có bản approved" />
       </Section>
 
@@ -55,7 +56,7 @@ export default function SopPanel({ apiBase }: { apiBase: string }) {
         <DataTable columns={[{ key: 'step_index', label: 'Bước' }, { key: 'value', label: 'Giá trị' }, { key: 'confirmed_at', label: 'Lúc' }]} rows={progress.data ?? []} empty="Chưa xác nhận bước nào" />
       </Section>
 
-      <Section title="Thay đổi so với bản trước" actions={<><Field label="SOP id"><NumberInput value={sopId} onChange={setSopId} /></Field><Button onClick={compareDiff}>So sánh</Button></>}>
+      <Section title="Thay đổi so với bản trước" actions={<><SopSelect apiBase={apiBase} value={sopId} onChange={setSopId} /><Button onClick={compareDiff}>So sánh</Button></>}>
         {diff ? (
           <div style={{ fontSize: 13 }}>
             <p>Bản hiện tại: <b>{diff.current_version}</b> · Bản trước: <b>{diff.previous_version}</b></p>

@@ -11,6 +11,8 @@ export {
   tokensFor,
 } from './theme';
 export type { MinderTheme, MinderTokens } from './theme';
+export { MinderPopupProvider, useMinderPopupTarget } from './popup';
+export type { MinderPopupProviderProps } from './popup';
 export { UI_INTENT, parseEnvelope, parseUiIntent } from './events';
 export { getSharedStream } from './stream';
 export { useModuleEvents, useAgentContext } from './agentContext';
