@@ -31,12 +31,14 @@
       "redirectUris": [
         "http://localhost:8080/*",
         "http://127.0.0.1:8080/*",
-        "http://0.0.0.0:8080/*"
+        "http://0.0.0.0:8080/*",
+        "http://14.225.206.18:8090/*"
       ],
       "webOrigins": [
         "http://localhost:8080",
         "http://127.0.0.1:8080",
-        "http://0.0.0.0:8080"
+        "http://0.0.0.0:8080",
+        "http://14.225.206.18:8090"
       ],
       "attributes": { "pkce.code.challenge.method": "S256" },
       "protocolMappers": [
