@@ -39,6 +39,7 @@ def init_db() -> None:
     from engine.config import models as _config  # noqa: F401
     from engine.execution import models as _execution  # noqa: F401
     from engine.exception import models as _exception  # noqa: F401
+    from engine.analytics import models as _analytics  # noqa: F401
 
     Base.metadata.create_all(get_engine(), checkfirst=True)
 
