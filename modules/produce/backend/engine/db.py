@@ -38,6 +38,7 @@ def init_db() -> None:
     from engine.core import eventlog as _eventlog  # noqa: F401
     from engine.config import models as _config  # noqa: F401
     from engine.execution import models as _execution  # noqa: F401
+    from engine.exception import models as _exception  # noqa: F401
 
     Base.metadata.create_all(get_engine(), checkfirst=True)
 
