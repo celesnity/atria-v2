@@ -1,0 +1,4 @@
+# fastapi + pydantic + the whole /connector/* contract come from minder-python-sdk
+# (installed from the repo root in the Dockerfile). Monitor's own logic (scripts/simulate.py,
+# analysis.py, ai.py) is stdlib-only (urllib for the fleet API + the LLM), so nothing else is needed.
+uvicorn[standard]>=0.29

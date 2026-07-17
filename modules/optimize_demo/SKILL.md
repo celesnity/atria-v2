@@ -6,6 +6,27 @@ tools: tools.py
 
 # optimize_demo
 
+## SDK connector — the decision domain (agent interface)
+
+Optimize ships a **`minder_python_sdk` connector** (`backend/app.py`) exposing the decision loop over the
+`/connector/*` contract. The agent should reason + act through these connector tools:
+
+- **`optimize_situation`** (`@conn.read`, risk none) — read the current at-risk scenario (target machine,
+  gap, forecast, ranked alternatives, constraints).
+- **`optimize_analyze`** (`@conn.tool` read-only, risk none) — run the whole Measure→Explain→Predict→
+  Evaluate→Recommend loop over one snapshot; returns the grounded per-stage envelope + a shared
+  `execution_id`. Does not act. Emits `recommendation.created`.
+- **`optimize_release_product`** / **`optimize_service_machine`** — **gated writes** (`risk="high"`, with
+  `reversible`/`undo`). They actuate the live simulator, so below `high` autonomy the SDK returns a
+  **decision packet** and runs only on human approval (`POST /connector/decision`) — the SDK-native port
+  of the old recommend→approve→replan gate. Every accepted write emits the SDK's `action.invoked/
+  completed/failed` events. `@conn.graph` provides a scenario→machine→action decision-context graph.
+
+Run it locally with `minder-module dev optimize_demo` (uvicorn on `:9320`); Core reaches it at
+`http://127.0.0.1:9320` (static `service` block) and surfaces the four tools to the agent once it
+self-registers. The connector reuses the same `scripts/` engine as the Guided tile (one source of truth).
+The legacy in-process `tools.py` skill still works; the connector is the SDK-conformant path.
+
 **Optimize Console V2 — a manufacturing fleet console + AI decision engine (demo).**
 
 UI ported from the "Optimize Console V2" Claude Design (project
