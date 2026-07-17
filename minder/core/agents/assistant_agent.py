@@ -9,6 +9,7 @@ via the `agent_mode` config field (env: MINDER_AGENT_MODE=assistant).
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from minder.core.agents.main_agent.agent import MainAgent, _build_skill_schemas
@@ -65,6 +66,11 @@ class AssistantAgent(MainAgent):
             logger.warning("Failed to build module SKILL block for assistant prompt: %s", exc)
             block = ""
         full = base + ("\n\n" + block if block else "")
+        # Replace default identity with the tenant persona/background when present.
+        from minder.core.knowledge.assistant_profile import apply_profile
+
+        tenant_id = getattr(self, "_tenant_id", None) or os.environ.get("KNOWLEDGE_DEV_TENANT")
+        full = apply_profile(full, tenant_id)
         self._system_stable = full
         self._system_dynamic = ""
         return full
