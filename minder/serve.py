@@ -9,6 +9,13 @@ from pathlib import Path
 
 
 def main() -> None:
+    # Delegate `minder knowledge …` to the knowledge CLI.
+    if len(sys.argv) > 1 and sys.argv[1] == "knowledge":
+        from minder.cli import main as knowledge_main
+
+        knowledge_main()
+        return
+
     parser = argparse.ArgumentParser(description="Start the Minder web server.")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8080, help="Port to bind (default: 8080)")
