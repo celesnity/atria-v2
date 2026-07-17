@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from minder.core.agents.prompts.loader import load_tool_description
 
 SCHEMAS: list[dict[str, Any]] = [
     # ===== Send Image Tool (web UI) =====

@@ -58,12 +58,11 @@ FROM python:3.12-slim AS runtime
 
 WORKDIR /app
 
-# Runtime-only shared libraries:
-#   git                    -> gitpython shells out to the git binary
-#   libpango* / libharfbuzz -> weasyprint PDF rendering
+# Runtime-only shared library:
+#   git -> the app shells out to the `git` binary (snapshots, plugin clone/pull,
+#          shadow-history, current-branch detection).
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
-        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user (best practice: don't run the server as root).
