@@ -1,0 +1,181 @@
+"""E11 Config & master data — logic thuần trên DB (không side-effect ngoài DB).
+
+FDE/Admin: định nghĩa line/station/operation (P-CFG-01) và master data part có
+phiên bản (P-CFG-02). Part mới không ghi đè bản cũ — tạo version kế tiếp.
+"""
+
+from __future__ import annotations
+
+from sqlalchemy import select
+
+from db import db_session
+
+from .models import (
+    PrLine,
+    PrOperation,
+    PrOperatorSkill,
+    PrPart,
+    PrSkill,
+    PrStation,
+    PrThreshold,
+)
+
+
+# --- Line -----------------------------------------------------------------------
+def create_line(code: str, name: str) -> dict:
+    with db_session() as s:
+        line = PrLine(code=code, name=name)
+        s.add(line)
+        s.flush()
+        return line.as_dict()
+
+
+def list_lines() -> list[dict]:
+    with db_session() as s:
+        return [r.as_dict() for r in s.scalars(select(PrLine).order_by(PrLine.id)).all()]
+
+
+# --- Station --------------------------------------------------------------------
+def create_station(line_id: int, code: str, name: str, seq: int = 0) -> dict:
+    with db_session() as s:
+        st = PrStation(line_id=line_id, code=code, name=name, seq=seq)
+        s.add(st)
+        s.flush()
+        return st.as_dict()
+
+
+def list_stations(line_id: int) -> list[dict]:
+    with db_session() as s:
+        stmt = select(PrStation).where(PrStation.line_id == line_id).order_by(PrStation.seq)
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+# --- Operation (P-CFG-01) -------------------------------------------------------
+def create_operation(
+    line_id: int,
+    code: str,
+    name: str,
+    steps: list[dict] | None = None,
+    station_id: int | None = None,
+    required_skill_id: int | None = None,
+) -> dict:
+    with db_session() as s:
+        op = PrOperation(
+            line_id=line_id,
+            code=code,
+            name=name,
+            steps=steps or [],
+            station_id=station_id,
+            required_skill_id=required_skill_id,
+        )
+        s.add(op)
+        s.flush()
+        return op.as_dict()
+
+
+def list_operations(line_id: int) -> list[dict]:
+    with db_session() as s:
+        stmt = select(PrOperation).where(PrOperation.line_id == line_id).order_by(PrOperation.id)
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+# --- Part master data, versioned (P-CFG-02) -------------------------------------
+def create_part_version(
+    code: str, name: str, ideal_cycle_time: float | None = None
+) -> dict:
+    """Tạo bản version kế tiếp cho `code` (không ghi đè bản cũ)."""
+    with db_session() as s:
+        latest = s.scalars(
+            select(PrPart).where(PrPart.code == code).order_by(PrPart.version.desc())
+        ).first()
+        next_version = (latest.version + 1) if latest else 1
+        part = PrPart(
+            code=code, version=next_version, name=name, ideal_cycle_time=ideal_cycle_time
+        )
+        s.add(part)
+        s.flush()
+        return part.as_dict()
+
+
+def latest_part(code: str) -> dict | None:
+    with db_session() as s:
+        row = s.scalars(
+            select(PrPart).where(PrPart.code == code).order_by(PrPart.version.desc())
+        ).first()
+        return row.as_dict() if row else None
+
+
+def list_parts() -> list[dict]:
+    with db_session() as s:
+        return [r.as_dict() for r in s.scalars(select(PrPart).order_by(PrPart.code, PrPart.version)).all()]
+
+
+# --- Threshold (P-CFG-04) -------------------------------------------------------
+def create_threshold(line_id: int, metric: str, op: str, value: float) -> dict:
+    with db_session() as s:
+        th = PrThreshold(line_id=line_id, metric=metric, op=op, value=value)
+        s.add(th)
+        s.flush()
+        return th.as_dict()
+
+
+def list_thresholds(line_id: int) -> list[dict]:
+    with db_session() as s:
+        stmt = select(PrThreshold).where(PrThreshold.line_id == line_id).order_by(PrThreshold.id)
+        return [r.as_dict() for r in s.scalars(stmt).all()]
+
+
+# --- Skill (P-CFG-03) -----------------------------------------------------------
+def create_skill(code: str, name: str) -> dict:
+    with db_session() as s:
+        sk = PrSkill(code=code, name=name)
+        s.add(sk)
+        s.flush()
+        return sk.as_dict()
+
+
+def list_skills() -> list[dict]:
+    with db_session() as s:
+        return [r.as_dict() for r in s.scalars(select(PrSkill).order_by(PrSkill.id)).all()]
+
+
+def grant_operator_skill(operator_id: str, skill_id: int) -> dict:
+    """Cấp một kỹ năng cho operator (P-CFG-03). Idempotent theo (operator, skill)."""
+    with db_session() as s:
+        existing = s.scalars(
+            select(PrOperatorSkill).where(
+                PrOperatorSkill.operator_id == operator_id, PrOperatorSkill.skill_id == skill_id
+            )
+        ).first()
+        if existing:
+            return existing.as_dict()
+        os_ = PrOperatorSkill(operator_id=operator_id, skill_id=skill_id)
+        s.add(os_)
+        s.flush()
+        return os_.as_dict()
+
+
+def operator_skills(operator_id: str) -> list[int]:
+    with db_session() as s:
+        stmt = select(PrOperatorSkill.skill_id).where(PrOperatorSkill.operator_id == operator_id)
+        return [int(r) for r in s.scalars(stmt).all()]
+
+
+def operator_can_operate(operator_id: str, operation_id: int | None) -> bool:
+    """True nếu operation không yêu cầu kỹ năng, hoặc operator có kỹ năng đó (P-WORK-03).
+
+    operation_id None (task chưa gắn operation) coi như không ràng buộc.
+    """
+    if operation_id is None:
+        return True
+    with db_session() as s:
+        op = s.get(PrOperation, operation_id)
+        if op is None or op.required_skill_id is None:
+            return True
+        has = s.scalars(
+            select(PrOperatorSkill).where(
+                PrOperatorSkill.operator_id == operator_id,
+                PrOperatorSkill.skill_id == op.required_skill_id,
+            )
+        ).first()
+        return has is not None
