@@ -3,42 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Optimize Console V2</title>
+<title>Monitor · Fleet</title>
 <!--
-  Optimize Console V2 — a self-contained manufacturing fleet + decision console.
-  Ported from the "Optimize Console V2" Claude Design (project
-  73b8309d-b935-460e-816a-12b69de9435b, file "Optimize Console V2.dc.html"),
-  built on the Celesnity / Minder AI design system (dark-first, electric indigo).
-  Faithful vanilla-JS port of the DCLogic component: all fleet math + inline-SVG
-  charts run client-side (no React, no CDN — works offline in Docker). Seven views
-  (Fleet / Recommendation / Availability / Throughput / Quality / Health / Ask AI).
-  Runs standalone AND inside Atria via the OPTIONAL AtriaDash bridge, which persists
-  decision history + audit events on the Recommendation view by calling
-  scripts/optimize.py. With the bridge absent the demo still runs fully in-memory.
+  Monitor — a self-contained, READ-ONLY manufacturing fleet console (Fleet / Machines / Ask AI).
+  Split out of Optimize Console V2 (the decision engine stayed in the Optimize module), restyled
+  to the shared Celesnity / Minder AI "two-skies" design system (light-first; Cosmos dark /
+  Daybreak light) with the Guided settings-popover chrome and language-conditional fonts
+  (Inter for EN, Be Vietnam Pro for VI). Vanilla JS: all fleet math + inline-SVG charts run
+  client-side (no React, no CDN — works offline in Docker). Three views. Runs standalone AND
+  inside Minder via the OPTIONAL MinderDash/AtriaDash bridge, which supplies the live fleet
+  (scripts/simulate.py status) and the Ask-AI answers (scripts/ai.py ask). Monitor never
+  actuates — it only reads. With the bridge absent the demo view still runs fully in-memory.
 -->
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,400..700&display=swap');
 
-/* ---- Celesnity / Minder AI design tokens (inlined from colors_and_type.css) ---- */
+/* ---- Celesnity "Gradient — two skies" tokens (matches the Guided/Optimize console):
+     :root = Cosmos (dark), [data-theme="light"] = Daybreak (light). One cobalt->violet->magenta
+     accent spine. ---- */
 :root{
-  --bg-0:#050508; --bg-1:#0A0A10; --bg-2:#0F0F17; --bg-3:#161621;
-  --surf:rgba(255,255,255,.025); --surf-2:rgba(255,255,255,.045);
-  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
-  --text:#EEEFF5; --text-dim:rgba(238,239,245,.68); --text-mute:rgba(238,239,245,.42); --text-faint:rgba(238,239,245,.22);
-  --accent:#4A6CF7; --accent-hi:#7B8FFF; --accent-lo:#2A3FB8; --accent-2:#5EEAD4; --accent-3:#A78BFA;
+  --bg-0:#05060F; --bg-1:#0B0A1E; --bg-2:#121030; --bg-3:#1A0E4D;
+  --surf:rgba(255,255,255,.04); --surf-2:rgba(255,255,255,.07);
+  --line:rgba(201,206,232,.12); --line-2:rgba(201,206,232,.20);
+  --text:#F8F9FE; --text-dim:#C9CEE8; --text-mute:rgba(201,206,232,.62); --text-faint:rgba(201,206,232,.34);
+  --accent:#2D44E0; --accent-hi:#9E7BEA; --accent-lo:#2436B8; --accent-2:#6E1FC6; --accent-3:#B14FD0;
   --danger:#F87171; --ok:#4ADE80; --warn:#FBBF24;
-  --glow:rgba(74,108,247,.42); --glow-soft:rgba(74,108,247,.18); --grid-line:rgba(255,255,255,.06);
-  --serif:"Newsreader","Instrument Serif",Georgia,"Times New Roman",serif;
-  --sans:"Be Vietnam Pro","Inter","Segoe UI","Helvetica Neue",Arial,sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Code",Menlo,Consolas,monospace;
+  --glow:rgba(45,68,224,.42); --glow-soft:rgba(45,68,224,.18); --grid-line:rgba(201,206,232,.08);
   --ease:cubic-bezier(.2,.7,.2,1);
 }
 :root[data-theme="light"]{
-  --bg-0:#FAF8F2; --bg-1:#F3EFE5; --bg-2:#FFFFFF; --bg-3:#F7F3EA;
-  --surf:rgba(17,18,22,.025); --surf-2:rgba(17,18,22,.05);
-  --line:rgba(17,18,22,.08); --line-2:rgba(17,18,22,.14);
-  --text:#0F1014; --text-dim:rgba(15,16,20,.68); --text-mute:rgba(15,16,20,.48); --text-faint:rgba(15,16,20,.26);
-  --glow-soft:rgba(74,108,247,.15); --grid-line:rgba(17,18,22,.05);
+  --bg-0:#F8F9FE; --bg-1:#FFFFFF; --bg-2:#EEECF8; --bg-3:#E6E3F4;
+  --surf:rgba(28,34,64,.03); --surf-2:rgba(28,34,64,.06);
+  --line:rgba(28,34,64,.10); --line-2:rgba(28,34,64,.16);
+  --text:#1C2240; --text-dim:rgba(28,34,64,.72); --text-mute:rgba(28,34,64,.52); --text-faint:rgba(28,34,64,.32);
+  --accent:#2D44E0; --accent-hi:#8739E0; --accent-lo:#2436B8; --accent-2:#8739E0; --accent-3:#BC67D5;
+  --danger:#DC2626; --ok:#16A34A; --warn:#D97706;
+  --glow:rgba(45,68,224,.28); --glow-soft:rgba(45,68,224,.15); --grid-line:rgba(28,34,64,.06);
+}
+/* Language-conditional fonts (matches Guided): Inter for EN, Be Vietnam Pro/Newsreader/JetBrains
+   for VI (diacritics). Driven by data-lang on <html>. */
+:root, :root[data-lang="vi"]{
+  --serif:"Newsreader","Instrument Serif",Georgia,"Times New Roman",serif;
+  --sans:"Be Vietnam Pro","Inter","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Code",Menlo,Consolas,monospace;
+}
+:root[data-lang="en"]{
+  --sans:"Inter",system-ui,"Segoe UI",sans-serif;
+  --serif:"Inter",system-ui,sans-serif;
+  --mono:"Inter",ui-monospace,SFMono-Regular,monospace;
 }
 
 /* ---- Scoped dashboard styles (verbatim from the design's inline <style>) ---- */
@@ -61,7 +74,7 @@ a:hover{color:var(--accent-hi)}
 .sq{width:15px;height:15px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-radius:4px;box-shadow:0 0 12px var(--glow-soft)}
 .ver{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.12em}
 .ctx{font:500 12px var(--sans);color:var(--text-dim)}
-.head-r{margin-left:auto;display:flex;align-items:center;gap:14px}
+.head-r{position:relative;margin-left:auto;display:flex;align-items:center;gap:14px}
 .opdot{display:flex;align-items:center;gap:7px;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
 .clock{font:500 13px var(--mono);color:var(--text-dim);min-width:74px;text-align:right}
 .theme-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;background:var(--surf);border:1px solid var(--line);border-radius:8px;color:var(--text-dim);font-size:14px;line-height:1;cursor:pointer;transition:all .18s var(--ease)}
@@ -70,6 +83,13 @@ a:hover{color:var(--accent-hi)}
 .mseg{background:none;border:none;border-radius:999px;color:var(--text-mute);font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;cursor:pointer;transition:all .18s var(--ease)}
 .mseg:hover{color:var(--text)}
 .mseg[data-on="1"]{background:var(--accent);color:#fff}
+/* Settings gear + popover (Language / Appearance) — matches the Optimize/Guided chrome. */
+.mseg-w{display:inline-flex;flex:none;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:2px}
+.gear{appearance:none;border:0;background:transparent;cursor:pointer;color:var(--text-mute);padding:5px;border-radius:8px;display:inline-flex;align-items:center;transition:color .15s,background .15s}
+.gear:hover{color:var(--text);background:var(--surf)}
+.pop{position:absolute;top:calc(100% + 10px);right:0;z-index:40;min-width:172px;display:flex;flex-direction:column;gap:7px;padding:13px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 38px rgba(0,0,0,.28)}
+.pop-s{font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--text-faint)}
+.pop-s:not(:first-child){margin-top:5px}
 .simbanner{display:flex;align-items:center;gap:10px;padding:11px 14px;background:color-mix(in srgb,var(--danger) 8%,var(--bg-1));border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:12px}
 .simbanner.load{background:color-mix(in srgb,var(--warn) 8%,var(--bg-1));border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
 .simbanner-t{font:500 12.5px var(--sans);color:var(--text-dim)}
@@ -349,8 +369,8 @@ a:hover{color:var(--accent-hi)}
     analysis: null, analyzing: false, analysisFor: null, actuateMsg: null,
     recStage: null, machSel: null,
     chatMsgs: [], chatDraft: '', chatTyping: false,
-    expandHist: null, histData: null, histLoading: false, histFor: null,
-    theme: readManualTheme() || (qs.get('mode') === 'light' ? 'light' : 'dark'),
+    settingsOpen: false,
+    theme: readManualTheme() || (qs.get('mode') === 'dark' ? 'dark' : 'light'),
     lang: readLang(),
     // data mode: 'demo' (static) | 'sim' (live fleet). Simulation mode reads the IIOT fleet API.
     dataMode: readDataMode(), simConnected: false, simError: null, simPlant: null, simLoading: false
@@ -360,20 +380,22 @@ a:hover{color:var(--accent-hi)}
   var _simPoll = null;
 
   // ── theme (light / dark) ──────────────────────────────────────────────────
-  function readManualTheme() { try { var t = localStorage.getItem('optimize-theme'); return (t === 'light' || t === 'dark') ? t : null; } catch (e) { return null; } }
+  function readManualTheme() { try { var t = localStorage.getItem('monitor-theme'); return (t === 'light' || t === 'dark') ? t : null; } catch (e) { return null; } }
   function applyTheme(mode) { state.theme = mode; try { document.documentElement.setAttribute('data-theme', mode); } catch (e) {} }
-  function setThemeManual(mode) { applyTheme(mode); try { localStorage.setItem('optimize-theme', mode); } catch (e) {} render(); }
+  function setThemeManual(mode) { if (mode !== 'light' && mode !== 'dark') return; applyTheme(mode); try { localStorage.setItem('monitor-theme', mode); } catch (e) {} render(); }
   function toggleTheme() { setThemeManual(state.theme === 'dark' ? 'light' : 'dark'); }
 
   // ── language (English / Vietnamese) ───────────────────────────────────────
   // Mirrors the theme/mode toggles: localStorage + a data-act button + a render().
   // t(key) resolves a UI string; L({en,vi}) resolves an inline pair. Switching also
   // invalidates the cached AI narrative so the next fetch re-requests prose in the new language.
-  function readLang() { try { var l = localStorage.getItem('optimize-lang'); if (l === 'en' || l === 'vi') return l; } catch (e) {} return qs.get('lang') === 'vi' ? 'vi' : 'en'; }
-  function saveLang(l) { try { localStorage.setItem('optimize-lang', l); } catch (e) {} }
+  function readLang() { try { var l = localStorage.getItem('monitor-lang'); if (l === 'en' || l === 'vi') return l; } catch (e) {} return qs.get('lang') === 'vi' ? 'vi' : 'en'; }
+  function saveLang(l) { try { localStorage.setItem('monitor-lang', l); } catch (e) {} }
+  // active language drives a data-lang attribute the CSS keys off — mirrors applyTheme's data-theme.
+  function applyLang(l) { try { document.documentElement.setAttribute('data-lang', l); } catch (e) {} }
   function L(pair) { if (!pair || typeof pair !== 'object') return pair || ''; return (state.lang === 'vi' && pair.vi) ? pair.vi : (pair.en != null ? pair.en : pair.vi || ''); }
   function t(key) { var s = STRINGS[key]; return s ? L(s) : key; }
-  function setLang(l) { if (l !== 'en' && l !== 'vi') return; state.lang = l; saveLang(l); state.analysis = null; state.analysisFor = null; state.askResult = null; render(); if (state.dataMode === 'sim') refreshSim(true); }
+  function setLang(l) { if (l !== 'en' && l !== 'vi') return; state.lang = l; saveLang(l); applyLang(l); state.askResult = null; render(); if (state.dataMode === 'sim') refreshSim(true); }
 
   // ── UI string table (English / Vietnamese) ────────────────────────────────
   // {en, vi} per key; t('key') resolves via state.lang. Numbers/telemetry are never here — only chrome.
@@ -433,13 +455,18 @@ a:hover{color:var(--accent-hi)}
     ctab_thru: { en: 'Throughput', vi: 'Sản lượng' },
     ctab_downtime: { en: 'Downtime', vi: 'Thời gian dừng' },
     ctab_defects: { en: 'Defects', vi: 'Lỗi' },
-    ctab_fpy: { en: 'FPY', vi: 'FPY' }
+    ctab_fpy: { en: 'FPY', vi: 'FPY' },
+    settings: { en: 'Settings', vi: 'Cài đặt' },
+    language: { en: 'Language', vi: 'Ngôn ngữ' },
+    appearance: { en: 'Appearance', vi: 'Giao diện' },
+    theme_light: { en: 'Light', vi: 'Sáng' },
+    theme_dark: { en: 'Dark', vi: 'Tối' }
   };
 
   // ── data mode: demo (static) / sim (live IIOT fleet) ──────────────────────
   var FLEET_URL = qs.get('fleet') || 'http://127.0.0.1:5050';
-  function readDataMode() { try { var m = localStorage.getItem('optimize-mode'); if (m === 'sim' || m === 'demo') return m; } catch (e) {} return qs.get('src') === 'demo' ? 'demo' : 'sim'; }
-  function saveDataMode(m) { try { localStorage.setItem('optimize-mode', m); } catch (e) {} }
+  function readDataMode() { try { var m = localStorage.getItem('monitor-mode'); if (m === 'sim' || m === 'demo') return m; } catch (e) {} return qs.get('src') === 'demo' ? 'demo' : 'sim'; }
+  function saveDataMode(m) { try { localStorage.setItem('monitor-mode', m); } catch (e) {} }
   function loadDemo() { M = buildMachines(); fleet = buildFleet(M); trends = buildTrends(M); scn = DEMO_SCN; }
   function plantLabel() { return (state.dataMode === 'sim' && state.simConnected && state.simPlant) ? state.simPlant : PLANT; }
 
@@ -477,7 +504,7 @@ a:hover{color:var(--accent-hi)}
     var bridge = window.AtriaDash || null;
     if (bridge && bridge.json) {
       bridge.json('simulate.py', ['status'], { stdin: JSON.stringify({ lang: state.lang }) }).then(function (resp) {
-        state.simLoading = false; applySim(resp, setScn); render(); if (state.view === 'recommendation') maybeAnalyze();
+        state.simLoading = false; applySim(resp, setScn); render();
       }).catch(function (e) {
         state.simLoading = false; state.simConnected = false; state.simError = 'bridge error: ' + ((e && e.message) || e); render();
       });
@@ -993,89 +1020,6 @@ a:hover{color:var(--accent-hi)}
         render(); scrollChat();
       });
   }
-  function discussRec() {
-    var A = selAlt();
-    state.view = 'ask';
-    render();
-    chatSend(L({ en: 'Tell me about ', vi: 'Cho tôi biết về ' }) + scn.recId + ' — ' + A.type + '.');
-  }
-
-  // ── Recommendation / Optimize decision loop ───────────────────────────────
-  function selAlt() { return scn.alternatives.find(function (a) { return a.id === state.recAlt; }) || scn.alternatives[0]; }
-  function pickAlt(id) { var a = scn.alternatives.find(function (x) { return x.id === id; }); state.recAlt = id; state.recStatus = a && a.feasible ? 'proposed' : 'prohibited'; render(); }
-  function recApprove() { if (!selAlt().feasible) return; state.recStatus = 'approved'; persist('approve', { recommendation_id: scn.recId, version: 1, at: '2026-07-10T' + scn.clockLabel + ':31+07:00' }); render(); }
-  function recDispatch() {
-    var A = selAlt(); if (!A.feasible) return;
-    // dispatch + record the outcome (expected vs a modeled actual) + actuate the live sim.
-    var cmd = buildCommand(A);
-    state.dispatchTask = (cmd && cmd.task) || 'MOVE-TASK-7012';
-    state.actualRecovered = Math.max(0, A.recovered - 4);
-    persist('dispatch', { recommendation_id: scn.recId, version: 1, target_module: 'move', command: cmd });
-    state.recStatus = 'completed';
-    persist('outcome', { recommendation_id: scn.recId, version: 1, recovered_units: state.actualRecovered, status: 'successful' });
-    actuateSim(scn.targetMachine, A);   // push the approved decision to the live simulator
-    render();
-  }
-  // Approve-to-simulator: the committed recovery action is pushed to the live fleet as a real
-  // control call (services the target machine) so the decision visibly recovers the machine.
-  function actuateSim(machine, A) {
-    var b = window.AtriaDash || null;
-    if (!b || !b.json || state.dataMode !== 'sim' || !machine) return;
-    var action = (A && A.kind === 'release') ? 'release' : ((A && (A.kind === 'speed' || /speed/i.test(A.type || ''))) ? 'speed' : 'service');
-    var payload = { machine: machine, action: action };
-    if (action === 'release' && typeof scn !== 'undefined' && scn && scn.intake) payload.count = scn.intake.starved_count || 1;
-    state.actuateMsg = 'Sending to ' + machine + '…';
-    b.json('simulate.py', ['actuate'], { stdin: JSON.stringify(payload), timeout_ms: 15000 })
-      .then(function (res) { state.actuateMsg = (res && res.actuated) ? ('Actuated ' + machine + ' → ' + (res.endpoint || '') + '; recovering…') : ('Actuate failed: ' + ((res && res.error) || 'unreachable')); refreshSim(true); })
-      .catch(function (e) { state.actuateMsg = 'Actuate error: ' + ((e && e.message) || e); render(); });
-  }
-  // AI decision narrative (gpt-5.4-mini via ai.py analyze) for the Measure→…→Recommend stages.
-  function maybeAnalyze() { if (scn && state.analysisFor !== scn.recId && !state.analyzing) fetchAnalysis(); }
-  function fetchAnalysis() {
-    var b = window.AtriaDash || null; if (!b || !b.json || !scn) return;
-    state.analyzing = true; state.analysisFor = scn.recId; render();
-    b.json('ai.py', ['analyze'], { stdin: JSON.stringify({ machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
-      .then(function (res) { state.analyzing = false; state.analysis = res || null; render(); })
-      .catch(function () { state.analyzing = false; state.analysis = null; render(); });
-  }
-  function recRecalc() {
-    if (state.dataMode === 'sim') { refreshSim(true); return; } // re-read live fleet + recompute
-    state.recAlt = 'ACT-001'; state.recStatus = 'proposed';
-    persist('save', recDecisionObj());
-    render();
-  }
-  function buildCommand(A) {
-    return { id: 'CMD-2026-00881', source_recommendation_id: scn.recId, type: slug(A.type), target_module: 'move', task: 'MOVE-TASK-7012', payload: A.id === 'ACT-001' ? { pallet_id: 'P-104', material_id: 'MAT-220', assigned_resource: 'Forklift-F07', destination: scn.line } : {} };
-  }
-  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
-  function recForecastChart(A) {
-    var s = scn, n = 7, no = [], yes = [];
-    for (var i = 0; i < n; i++) { var f = i / (n - 1); no.push(Math.round(s.current + (s.forecastBase - s.current) * f)); yes.push(Math.round(s.current + (A.forecastAfter - s.current) * f)); }
-    var series = [{ data: no, color: 'var(--text-mute)', dash: '5 4', dots: false }];
-    if (A.feasible && A.id !== 'ACT-000') series.push({ data: yes, color: 'var(--accent)', w: 2.5, fill: true, dots: false });
-    // auto-scale to the actual values + target (demo target ~1000, live target can be several k)
-    var allv = no.concat(yes).concat([s.target]);
-    var lo = Math.min.apply(null, allv), hi = Math.max.apply(null, allv), pad = (hi - lo) * 0.1 || 1;
-    return lineC('recFc', { H: 250, series: series, target: s.target, targetLabel: 'TARGET ' + kfmt(s.target), yMin: Math.max(0, lo - pad), yMax: hi + pad, yTicks: 4, xLabels: ['11:00', '', '', 'now', '', '', '15:40'], fmt: function (v) { return kfmt(v); } });
-  }
-  function recLossChart() { var items = scn.losses.map(function (l) { return { label: l.short, value: l.units }; }); return pareto('recLoss', { items: items, H: 240 }); }
-  function recDecisionObj() {
-    var s = scn, A = selAlt();
-    return {
-      schema_version: '1.0', recommendation_id: s.recId, recommendation_version: 1, status: state.recStatus,
-      scope: { plant: 'Plant-1', line: s.line, work_order: s.wo, shift: s.shift },
-      current_state: { current_good_output: s.current, target_output: s.target, forecast_output: s.forecastBase, forecast_gap: s.gap, target_attainment_probability: s.attainBefore },
-      recommended_action: { action_id: A.id, type: slug(A.type), parameters: A.id === 'ACT-001' ? { pallet_id: 'P-104', material_id: 'MAT-220', assigned_resource: 'Forklift-F07', destination: s.line } : {} },
-      expected_effect: { forecast_output_after_action: A.forecastAfter, recovered_units: A.recovered, target_attainment_probability_after: A.attainAfter },
-      alternatives: s.alternatives.map(function (a) { var o = { action_id: a.id, type: slug(a.type), score: +(a.score || 0).toFixed(2), feasibility: a.feasible ? 'feasible' : 'prohibited', expected_recovered_units: a.recovered, risk_level: a.risk }; if (a.rejection) o.rejection_reason = a.rejection; return o; }),
-      confidence: { overall: A.confidence }, risk: { level: A.risk },
-      constraints: { result: A.feasible ? 'passed' : 'failed', checks: s.constraints.map(function (c) { return { constraint: slug(c.c), result: c.r }; }) },
-      evidence: { event_ids: s.evidence },
-      approval: { required: !!A.approval, required_role: A.approval || null },
-      versions: s.versions
-    };
-  }
-  function recDecisionJson() { return JSON.stringify(recDecisionObj(), null, 2); }
 
   // ── KPI rows ──────────────────────────────────────────────────────────────
   function kpisFor(v) {
@@ -1150,26 +1094,42 @@ a:hover{color:var(--accent-hi)}
   };
   function tSide() {
     var v = state.view;
-    var tabs = [['fleet', 'tab_fleet'], ['recommendation', 'tab_recommendation'], ['history', 'tab_history'], ['machines', 'tab_machines'], ['ask', 'tab_ask']];
+    var tabs = [['fleet', 'tab_fleet'], ['machines', 'tab_machines'], ['ask', 'tab_ask']];
     var nav = tabs.map(function (tb) {
       return '<button class="oc-tab" data-on="' + (v === tb[0] ? '1' : '0') + '" data-act="view" data-view="' + tb[0] + '">' + ICONS[tb[0]] + '<span>' + t(tb[1]) + '</span></button>';
     }).join('');
     return '<aside class="oc-side">'
-      + '<div class="side-brand"><span class="sq"></span>OPTIMIZE<span class="ver">V2</span></div>'
+      + '<div class="side-brand"><span class="sq"></span>MONITOR</div>'
       + '<nav class="side-nav"><div class="side-lab">' + t('side_console') + '</div>' + nav + '</nav>'
       + '<div class="side-foot"><span class="dot livedot"></span>' + t('side_foot') + '</div>'
       + '</aside>';
   }
   function tHead() {
+    // Demo/Live stays in the bar (it changes what every number MEANS). Language + theme are quieter
+    // prefs and live behind the settings gear popover — matching the Optimize/Guided chrome.
     return '<header class="oc-head">'
       + '<div class="ctx">' + escText(plantLabel()) + '</div>'
       + '<div class="head-r">' + tModeSeg() + tConnDot()
       + '<span class="clock">' + state.clock + '</span>'
-      + '<div class="modeseg" title="English / Tiếng Việt">'
-      + '<button class="mseg" data-on="' + (state.lang === 'en' ? '1' : '0') + '" data-act="lang" data-lang="en">EN</button>'
-      + '<button class="mseg" data-on="' + (state.lang === 'vi' ? '1' : '0') + '" data-act="lang" data-lang="vi">VI</button></div>'
-      + '<button class="theme-btn" data-act="theme" title="Switch light / dark theme" aria-label="Switch light or dark theme">' + (state.theme === 'dark' ? '☀' : '☾') + '</button>'
+      + '<button class="gear" data-act="settings" aria-label="' + escAttr(t('settings')) + '" title="' + escAttr(t('settings')) + '">' + GEAR_SVG + '</button>'
+      + (state.settingsOpen ? settingsPop() : '')
       + '</div></header>';
+  }
+  var GEAR_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
+    + '<circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/>'
+    + '<path d="M8 1.6v1.7M8 12.7v1.7M14.4 8h-1.7M3.3 8H1.6M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2M12.5 12.5l-1.2-1.2M4.7 4.7L3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  function settingsPop() {
+    return '<div class="pop" data-stop="1">'
+      + '<div class="pop-s">' + escText(t('language')) + '</div>'
+      + '<div class="mseg-w">'
+      + '<button class="mseg" data-on="' + (state.lang === 'en' ? '1' : '0') + '" data-act="lang" data-lang="en">EN</button>'
+      + '<button class="mseg" data-on="' + (state.lang === 'vi' ? '1' : '0') + '" data-act="lang" data-lang="vi">VI</button>'
+      + '</div>'
+      + '<div class="pop-s">' + escText(t('appearance')) + '</div>'
+      + '<div class="mseg-w">'
+      + '<button class="mseg" data-on="' + (state.theme === 'light' ? '1' : '0') + '" data-act="theme" data-theme="light">' + escText(t('theme_light')) + '</button>'
+      + '<button class="mseg" data-on="' + (state.theme === 'dark' ? '1' : '0') + '" data-act="theme" data-theme="dark">' + escText(t('theme_dark')) + '</button>'
+      + '</div></div>';
   }
   function tKpis(v) {
     return '<div class="kpis">' + kpisFor(v).map(function (k) { return '<div class="kpi"><div class="kl">' + k.kl + '</div><div class="kv ' + (k.red ? 'red' : '') + '">' + k.kv + '</div><div class="ks">' + k.ks + '</div></div>'; }).join('') + '</div>';
@@ -1184,174 +1144,6 @@ a:hover{color:var(--accent-hi)}
       + '</div>';
   }
 
-  // A clickable stage's detail card — live scn numbers + that stage's gpt-5.4-mini sentence.
-  function stageCard(i) {
-    var s = scn, A = selAlt(), an = state.analysis || {};
-    var names = [t('stage_measure'), t('stage_explain'), t('stage_predict'), t('stage_evaluate'), t('stage_recommend'), t('stage_approve')];
-    var keys = ['measure', 'explain', 'predict', 'evaluate', 'recommend', null];
-    var pctv = function (x) { return Math.round((x || 0) * 100) + '%'; };
-    function rows(pairs) { return '<div class="stg-rows">' + pairs.map(function (p) { return '<div class="stg-row"><span class="stg-k">' + p[0] + '</span><span class="stg-v ' + (p[2] ? 'red' : '') + '">' + escText(String(p[1])) + '</span></div>'; }).join('') + '</div>'; }
-    var body = '';
-    if (i === 0) {
-      body = rows([
-        ['Current output', kfmt(s.current) + ' units'],
-        ['Cycle time', s.cycleActual + 's vs ' + s.cycleExpected + 's expected', s.cycleActual > s.cycleExpected],
-        ['Machine health', pctv(s.machineHealth), (s.machineHealth || 0) < 0.7],
-        ['Minutes remaining', (s.minutesRemaining || 0) + ' min']
-      ]) + '<div class="stg-ev">Evidence · ' + escText((s.evidence || []).join(' · ')) + '</div>';
-    } else if (i === 1) {
-      var tu = (s.losses || []).reduce(function (a, l) { return a + (l.units || 0); }, 0);
-      var tm = (s.losses || []).reduce(function (a, l) { return a + (l.min || 0); }, 0);
-      body = '<div class="stg-losstable"><div class="stg-lr" data-h="1"><span>Cause</span><span>Min</span><span>Units</span></div>'
-        + (s.losses || []).map(function (l, li) { return '<div class="stg-lr"' + (li === 0 ? ' data-primary="1"' : '') + '><span>' + escText(l.type) + (li === 0 ? ' · primary' : '') + '</span><span>' + l.min + '</span><span>' + l.units + '</span></div>'; }).join('')
-        + '<div class="stg-lr" data-total="1"><span>Total</span><span>' + tm + '</span><span>' + tu + '</span></div></div>';
-    } else if (i === 2) {
-      body = rows([['Forecast (no action)', kfmt(s.forecastBase) + ' units'], ['Gap', s.gap + ' units', true], ['Attainment', pctv(s.attainBefore), true]])
-        + '<div class="stg-ev">' + escText(s.versions ? (s.versions.forecast_model + ' · ' + s.versions.impact_model) : '') + '</div>';
-    } else if (i === 3) {
-      var alts = s.alternatives || [], feas = alts.filter(function (a) { return a.feasible; }).length;
-      var blocked = alts.filter(function (a) { return !a.feasible; });
-      body = rows([['Feasible actions', feas + ' of ' + alts.length], ['Blocked', blocked.map(function (a) { return a.type; }).join(', ') || 'none', blocked.length > 0]])
-        + '<div class="stg-ev">' + (s.constraints || []).map(function (c) { return (c.r === 'passed' ? '✓ ' : '✕ ') + escText(c.c); }).join('  ·  ') + '</div>'
-        + '<div class="stg-formula">score = 0.45·recovery + 0.20·attainment + 0.15·confidence − 0.10·cost − 0.10·risk</div>';
-    } else if (i === 4) {
-      body = rows([['Action', A.type], ['Score', (A.score || 0).toFixed(2)], ['Recovered', (A.recovered > 0 ? '+' : '') + A.recovered + ' units'], ['Attainment after', pctv(A.attainAfter)], ['Confidence', pctv(A.confidence)], ['Risk', A.risk]])
-        + '<div class="stg-ev">Decision ' + escText(s.recId) + ' · open “Decision object” below for the full JSON.</div>';
-    } else {
-      var life = ['proposed', 'approved', 'dispatched', 'completed'], cur = state.recStatus;
-      body = '<div class="stg-life">' + life.map(function (x) { return '<span class="stg-lp" data-on="' + (x === cur ? '1' : '0') + '">' + x + '</span>'; }).join('<span class="stg-arrow">→</span>') + '</div>'
-        + rows([['Required role', A.approval || 'none'], ['Status', cur]])
-        + (cur === 'completed' ? '<div class="stg-ev">Outcome · 75 expected → 71 actual · Successful</div>' : '');
-    }
-    var ai = keys[i] ? (an[keys[i]] || (state.analyzing ? 'Analyzing live telemetry…' : '')) : '';
-    var aiBlock = ai ? '<div class="stg-ai"><span class="stg-ai-tag">gpt-5.4-mini</span>' + escText(ai) + '</div>'
-      : (keys[i] ? '<div class="stg-ai"><button class="btn-ghost" data-act="reexplain">' + t('btn_generate') + '</button></div>' : '');
-    return '<div class="panel stage-d"><div class="panel-h"><span class="pnum">' + (i + 1) + '</span><span class="ptitle">' + names[i] + '</span><span class="psub" style="margin-left:auto">stage ' + (i + 1) + ' of 6</span></div>' + aiBlock + body + '</div>';
-  }
-  // The read-only 5-phase result summary — one deterministic line per phase from the LIVE scn
-  // (matches the design's phase templates). The 5th line is dynamic on the selected alternative.
-  function recPhases(s, A) {
-    var feas = s.alternatives.filter(function (a) { return a.feasible; }).length;
-    var blocked = s.alternatives.length - feas;
-    var top = (s.losses && s.losses[0]) || {};
-    var p5;
-    if (!A.feasible) p5 = { ph: L({ en: 'Blocked', vi: 'Bị chặn' }), r: A.id + ' ' + L({ en: 'fails the health constraint', vi: 'vi phạm ràng buộc sức khỏe máy' }), cls: 'danger' };
-    else if (A.id === 'ACT-000') p5 = { ph: L({ en: 'Act', vi: 'Hành động' }), r: L({ en: 'No action · drifts to ', vi: 'Không hành động · trôi về ' }) + kfmt(A.forecastAfter), cls: '' };
-    else p5 = { ph: t('stage_recommend'), r: A.id + ' · +' + A.recovered + ' ' + L({ en: 'units · ', vi: 'sản phẩm · ' }) + Math.round(A.attainAfter * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'accent' };
-    return [
-      { ph: t('stage_measure'), r: kfmt(s.current) + ' / ' + kfmt(s.target) + ' ' + L({ en: 'units · cycle ', vi: 'sản phẩm · chu kỳ ' }) + s.cycleActual + 's vs ' + s.cycleExpected + 's', cls: '' },
-      { ph: t('stage_explain'), r: (top.type || '—') + ' — ' + (top.units || 0) + ' ' + L({ en: 'units, top of ', vi: 'sản phẩm, đứng đầu ' }) + s.losses.length + L({ en: ' causes', vi: ' nguyên nhân' }), cls: '' },
-      { ph: t('stage_predict'), r: L({ en: 'Forecast ', vi: 'Dự báo ' }) + kfmt(s.forecastBase) + ' · ' + s.gap + ' ' + L({ en: 'gap · ', vi: 'thiếu · ' }) + Math.round(s.attainBefore * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'danger' },
-      { ph: t('stage_evaluate'), r: s.alternatives.length + ' ' + L({ en: 'candidates · ', vi: 'phương án · ' }) + blocked + ' ' + L({ en: 'blocked · ', vi: 'bị chặn · ' }) + feas + ' ' + L({ en: 'feasible', vi: 'khả thi' }), cls: '' },
-      p5
-    ];
-  }
-
-  function viewRec() {
-    var s = scn, A = selAlt(), st = state.recStatus;
-    var statusMap = { proposed: [L({ en: 'Proposed', vi: 'Đề xuất' }), 'var(--accent)'], approved: [L({ en: 'Approved', vi: 'Đã duyệt' }), 'var(--ok)'], dispatched: [L({ en: 'Dispatched · executing', vi: 'Đã điều phối · đang chạy' }), 'var(--warn)'], completed: [L({ en: 'Completed', vi: 'Hoàn thành' }), 'var(--ok)'], prohibited: [L({ en: 'Blocked', vi: 'Bị chặn' }), 'var(--danger)'] };
-    var done = st === 'dispatched' || st === 'completed';
-    var scnMetrics = [
-      { l: L({ en: 'Target', vi: 'Mục tiêu' }), v: kfmt(s.target), t: L({ en: 'units this shift', vi: 'sản phẩm ca này' }) },
-      { l: L({ en: 'Current', vi: 'Hiện tại' }), v: kfmt(s.current), t: L({ en: 'good output @ ', vi: 'sản lượng tốt @ ' }) + s.clockLabel },
-      { l: L({ en: 'Forecast', vi: 'Dự báo' }), v: kfmt(s.forecastBase), t: L({ en: 'end of shift, no action', vi: 'cuối ca, không hành động' }) },
-      { l: L({ en: 'Gap', vi: 'Chênh lệch' }), v: s.gap, t: L({ en: 'units short of target', vi: 'sản phẩm thiếu' }), red: true },
-      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '%', t: L({ en: 'probability of hitting target', vi: 'xác suất đạt mục tiêu' }), red: true }
-    ];
-    var recMetrics = [
-      { l: L({ en: 'Recovered', vi: 'Phục hồi' }), v: (A.recovered > 0 ? '+' : '') + A.recovered, u: L({ en: 'units', vi: 'sản phẩm' }), cls: A.recovered > 0 ? 'accent' : '' },
-      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '→' + Math.round(A.attainAfter * 100) + '%', u: L({ en: 'target prob', vi: 'xác suất' }), cls: '' },
-      { l: L({ en: 'Risk', vi: 'Rủi ro' }), v: A.risk.charAt(0).toUpperCase() + A.risk.slice(1), u: L({ en: 'operational', vi: 'vận hành' }), cls: A.risk === 'high' ? 'danger' : '' },
-      { l: L({ en: 'Confidence', vi: 'Tin cậy' }), v: Math.round(A.confidence * 100) + '%', u: L({ en: 'overall', vi: 'tổng thể' }), cls: '' },
-      { l: L({ en: 'Approval', vi: 'Phê duyệt' }), v: A.approval || L({ en: 'None', vi: 'Không' }), u: A.approval ? L({ en: 'required', vi: 'bắt buộc' }) : L({ en: 'not required', vi: 'không cần' }), cls: '' }
-    ];
-    var canApprove = A.feasible && !!A.approval && st === 'proposed';
-    var canDispatch = A.feasible && (st === 'proposed' || st === 'approved');
-    var sitRisk = s.attainBefore < 0.4 ? 'high' : (s.attainBefore < 0.7 ? 'medium' : 'low');
-
-    var scnPanel = '<div class="panel scn">'
-      + '<div class="scn-top"><div class="scn-id"><span class="scn-live"><span class="dot livedot"></span>' + L({ en: 'Optimize · live decision', vi: 'Optimize · quyết định trực tiếp' }) + '</span><span class="scn-rec">' + escText(s.recId) + '</span></div>'
-      + '<div class="scn-head">' + escText(s.line + ' · ' + s.wo + ' · ' + s.shift) + '</div>'
-      + '<div class="scn-r"><span class="risk-pill">' + L({ en: 'Risk: ', vi: 'Rủi ro: ' }) + sitRisk + '</span><span class="scn-clock">' + s.clockLabel + '</span></div></div>'
-      + '<div class="scn-metrics">' + scnMetrics.map(function (m) { return '<div class="scn-m"><div class="scn-ml">' + m.l + '</div><div class="scn-mv ' + (m.red ? 'red' : '') + '">' + m.v + '</div><div class="scn-mt">' + m.t + '</div></div>'; }).join('') + '</div>'
-      + '<div class="phases">' + recPhases(s, A).map(function (p, i) { return '<div class="phase"><div class="phase-h"><span class="phase-n">' + (i + 1) + '</span><span class="phase-ph">' + p.ph + '</span></div><div class="phase-r ' + p.cls + '">' + escText(p.r) + '</div></div>'; }).join('') + '</div>'
-      + '<div class="scn-fc"><div class="scn-fc-h"><span class="ptitle">' + L({ en: 'Forecast projection', vi: 'Dự báo sản lượng' }) + '</span><span class="psub">' + L({ en: 'no action vs recommended', vi: 'không hành động vs khuyến nghị' }) + '</span></div>'
-      + chartDiv('recFc', recForecastChart(A))
-      + '<div class="fc-legend"><span class="fc-lg"><span class="fc-swatch" style="background:var(--accent)"></span>' + L({ en: 'With action', vi: 'Có hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch dash"></span>' + L({ en: 'No action', vi: 'Không hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch warn"></span>' + L({ en: 'Target', vi: 'Mục tiêu' }) + '</span></div></div>'
-      + '</div>';
-
-    var actions = '';
-    if (canApprove) actions += '<button class="btn-2" data-act="approve">' + t('btn_approve') + '</button>';
-    if (canDispatch) actions += '<button class="btn-1" data-act="dispatch">' + t('btn_send_move') + '</button>';
-    actions += '<button class="btn-ghost" data-act="recalc">' + t('btn_recalc') + '</button>';
-    actions += '<button class="btn-ghost" data-act="toggle-json">' + t('btn_decision_obj') + '</button>';
-    actions += '<button class="btn-2" data-act="discuss">' + t('btn_discuss') + '</button>';
-
-    var outcome = '';
-    if (done) {
-      var taskId = state.dispatchTask || 'MOVE-TASK-7012';
-      outcome = '<div class="rh-outcome"><div class="rh-oc-row"><span class="rh-oc-k">' + L({ en: 'Move task', vi: 'Tác vụ Move' }) + '</span><span class="rh-oc-v">' + escText(taskId) + ' · ' + L({ en: 'accepted', vi: 'đã nhận' }) + '</span></div>';
-      if (st === 'completed') { var actu = state.actualRecovered != null ? state.actualRecovered : Math.max(0, A.recovered - 4); outcome += '<div class="rh-oc-grid"><div><div class="rh-oc-num">' + A.recovered + '</div><div class="rh-oc-lab">' + L({ en: 'expected units', vi: 'sản phẩm kỳ vọng' }) + '</div></div><div><div class="rh-oc-num">' + actu + '</div><div class="rh-oc-lab">' + L({ en: 'actual units', vi: 'sản phẩm thực tế' }) + '</div></div><div><div class="rh-oc-num ok">' + L({ en: 'Successful', vi: 'Thành công' }) + '</div><div class="rh-oc-lab">' + L({ en: 'outcome', vi: 'kết quả' }) + '</div></div></div>'; }
-      outcome += '</div>';
-    }
-
-    var hero = '<div class="panel rec-hero" data-blocked="' + (!A.feasible) + '">'
-      + '<div class="rh-top"><span class="rh-eyebrow">' + L({ en: 'Recommended action', vi: 'Hành động khuyến nghị' }) + '</span><span class="rh-status" style="color:' + statusMap[st][1] + ';border-color:' + statusMap[st][1] + '">' + statusMap[st][0] + '</span></div>'
-      + '<h2 class="rh-head">' + escText(A.headPre) + ' <em>' + escText(A.headEm) + '</em> ' + escText(A.headPost) + '</h2>'
-      + '<div class="rh-detail">' + escText(A.detail) + '</div>'
-      + '<div class="rh-metrics">' + recMetrics.map(function (m) { return '<div class="rh-m"><div class="rh-mv ' + m.cls + '">' + m.v + '</div><div class="rh-ml">' + m.l + '</div><div class="rh-mu">' + m.u + '</div></div>'; }).join('') + '</div>'
-      + '<div class="rh-why"><span class="rh-why-lab">' + L({ en: 'Why', vi: 'Vì sao' }) + '</span>' + escText(A.feasible ? A.why : A.rejection) + '</div>'
-      + '<div class="rh-actions">' + actions + '</div>'
-      + outcome
-      + '</div>';
-
-    var altPanel = '<div class="panel"><div class="panel-h"><span class="pnum">≡</span><span class="ptitle">' + L({ en: 'Alternatives evaluated', vi: 'Phương án đã đánh giá' }) + '</span><span class="psub">' + L({ en: 'select to re-rank', vi: 'chọn để xếp lại' }) + '</span></div>'
-      + '<div class="alt-table"><div class="alt-h"><span>' + L({ en: 'Action', vi: 'Hành động' }) + '</span><span>' + L({ en: 'Units', vi: 'SP' }) + '</span><span>' + L({ en: 'Risk', vi: 'Rủi ro' }) + '</span><span>' + L({ en: 'Feasible', vi: 'Khả thi' }) + '</span><span>' + L({ en: 'Approval', vi: 'Duyệt' }) + '</span></div>'
-      + s.alternatives.map(function (a) {
-        var riskColor = a.risk === 'high' ? 'var(--danger)' : (a.risk === 'medium' ? 'var(--warn)' : 'var(--ok)');
-        var feasColor = a.feasible ? 'var(--ok)' : 'var(--danger)';
-        return '<button class="alt-row" data-on="' + (a.id === state.recAlt ? '1' : '0') + '" data-act="pick-alt" data-id="' + a.id + '">'
-          + '<span class="alt-type">' + escText(a.type) + '</span>'
-          + '<span class="alt-units">' + (a.feasible ? '+' + a.recovered : a.recovered) + '</span>'
-          + '<span class="alt-risk" style="color:' + riskColor + '">' + (a.risk.charAt(0).toUpperCase() + a.risk.slice(1)) + '</span>'
-          + '<span class="alt-feas" style="color:' + feasColor + '">' + (a.feasible ? L({ en: 'Feasible', vi: 'Khả thi' }) : L({ en: 'Blocked', vi: 'Chặn' })) + '</span>'
-          + '<span class="alt-appr">' + escText(a.approval || '—') + '</span></button>';
-      }).join('') + '</div></div>';
-
-    var jsonPanel = state.showJson ? '<div class="panel"><div class="panel-h"><span class="pnum">{ }</span><span class="ptitle">' + t('btn_decision_obj') + '</span><span class="psub">versioned · executable</span></div><pre class="jsonbox">' + escText(recDecisionJson()) + '</pre></div>' : '';
-
-    var actMsg = state.actuateMsg ? '<div class="panel" style="border-color:var(--accent-lo)"><div class="body-sm" style="color:var(--accent-hi)">' + escText(state.actuateMsg) + '</div></div>' : '';
-    return '<div class="stack">' + scnPanel
-      + '<div class="g21">' + hero + altPanel + '</div>'
-      + actMsg
-      + jsonPanel
-      + '</div>';
-  }
-
-  function viewAvail() {
-    return '<div class="stack">'
-      + panel('a', 'Downtime Pareto', 'by reason · min', chartDiv('dtPareto', chartDtPareto()))
-      + panel('b', 'Availability by machine', 'ranked · red below threshold', H(rankedAvail()))
-      + '</div>';
-  }
-  function viewThru() {
-    return '<div class="stack">'
-      + panel('a', 'Throughput vs target', 'last 12 shifts · units', chartDiv('thruTrend', chartThruTrend()))
-      + panel('b', 'Performance by machine', 'ranked · red below threshold', H(rankedPerf()))
-      + '</div>';
-  }
-  function viewQual() {
-    return '<div class="g2">'
-      + panel('a', 'First-pass yield trend', 'last 12 shifts', chartDiv('fpyTrend', chartFpyTrend()))
-      + panel('b', 'Defects by type', 'Pareto · count', chartDiv('defPareto', chartDefPareto()))
-      + '</div>';
-  }
-  function viewHealth() {
-    return '<div class="g2">'
-      + panel('a', 'Health index by machine', 'ranked · red below 60%', H(rankedHealth()))
-      + panel('b', 'Runtime vs health', 'red = at-risk', chartDiv('hScatter', chartHealthScatter()))
-      + '</div>';
-  }
   function rankedQual() { var rows = M.slice().sort(function (a, b) { return b.qual - a.qual; }).map(function (m) { return { id: m.id, value: m.qual, raw: m.qual, disp: (m.qual * 100).toFixed(1) + '%' }; }); return rankedBars(rows, { redBelow: 0.95 }); }
   // Machines view — merges the old Availability / Throughput / Quality / Health tabs into one
   // per-machine analytics screen (design "Machines" tab): a metric-filtered ranked-bar board, a
@@ -1458,85 +1250,13 @@ a:hover{color:var(--accent-hi)}
     return '<div class="stack">' + chat + guide + '</div>';
   }
 
-  // ── Approved History (Demo: canned; Live: reads the decision store back) ───
-  function ahStat(v, l, cls) { return '<div class="ah-s"><div class="ah-sv ' + (cls || '') + '">' + v + '</div><div class="ah-sl">' + l + '</div></div>'; }
-  function histStatusColor(st) { return /complet/i.test(st) ? 'var(--ok)' : /dispatch/i.test(st) ? 'var(--warn)' : /block|reject|prohibit/i.test(st) ? 'var(--danger)' : 'var(--accent)'; }
-  function liveHistRow(d) {
-    if (!d || !d.recommendation_id) return null;
-    var ra = d.recommended_action || {}, ee = d.expected_effect || {}, sc = d.scope || {}, ap = d.approval || {};
-    var sm = { awaiting_approval: 'Awaiting', approved: 'Approved', dispatched: 'Dispatched', completed: 'Completed', rejected: 'Rejected', superseded: 'Superseded' };
-    return {
-      time: (ap.approved_at || '').slice(11, 16) || '—', id: d.recommendation_id,
-      action: ra.type || '—', scope: [sc.line, sc.work_order].filter(Boolean).join(' · '),
-      approver: ap.approved_by || (d.status === 'completed' || d.status === 'dispatched' ? 'Auto-dispatch' : '—'),
-      expected: ee.recovered_units, actual: d.status === 'completed' ? ee.recovered_units : null,
-      status: sm[d.status] || d.status,
-      outcome: d.status === 'completed' ? 'Successful' : (d.status === 'dispatched' ? 'Executing' : (d.status === 'awaiting_approval' ? 'Awaiting approval' : '')),
-      ok: true, _decision: d
-    };
-  }
-  function histTranscript(h, demo) {
-    if (!demo && h._decision && h._decision.consideration_log) {
-      var log = h._decision.consideration_log.map(function (e) { return { who: 'a', tag: e.stage, text: e.text }; });
-      log.push({ who: 'a', tag: 'Act · ' + h.status, text: h.outcome || (h.action + ' — ' + h.status) });
-      return log;
-    }
-    var cap = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
-    return [
-      { who: 'a', tag: 'Measure · ' + (h.time || ''), text: (h.scope || '') + ' — ' + h.measure + '.' },
-      { who: 'u', text: L({ en: 'Why are we behind?', vi: 'Vì sao chúng ta chậm?' }) },
-      { who: 'a', tag: 'Explain', text: L({ en: 'Primary cause: ', vi: 'Nguyên nhân chính: ' }) + h.cause + '.' },
-      { who: 'a', tag: 'Predict', text: cap(h.predict) + '.' },
-      { who: 'u', text: L({ en: 'What are my options?', vi: 'Có những lựa chọn nào?' }) },
-      { who: 'a', tag: 'Evaluate', text: cap(h.evaluate) + '.' },
-      { who: 'a', tag: 'Recommend · ' + h.id, text: L({ en: 'Chose to ', vi: 'Đã chọn ' }) + h.recommend + '.' },
-      { who: 'u', text: (h.approver && h.approver.indexOf('Auto') >= 0) ? L({ en: 'Auto-dispatched.', vi: 'Tự động điều phối.' }) : (L({ en: 'Approved — ', vi: 'Đã duyệt — ' }) + h.approver + '.') },
-      { who: 'a', tag: 'Act · ' + h.status, text: cap(h.act) + '.' }
-    ];
-  }
-  function ahRow(h, demo) {
-    var open = state.expandHist === h.id;
-    var actualColor = h.ok === false ? 'var(--warn)' : (h.ok ? 'var(--ok)' : 'var(--text)');
-    var sc = histStatusColor(h.status);
-    var row = '<button class="ah-row" data-act="hist-toggle" data-id="' + escAttr(h.id) + '">'
-      + '<span class="ah-caret">▾</span>'
-      + '<span class="ah-c"><span class="ah-time">' + escText(h.time || '') + '</span><span class="ah-id">' + escText(h.id) + '</span></span>'
-      + '<span class="ah-c ah-what"><span class="ah-act">' + escText(h.action) + '</span><span class="ah-scope">' + escText(h.scope || '') + '</span></span>'
-      + '<span class="ah-c"><span class="ah-k">' + t('hist_approver') + '</span><span class="ah-v">' + escText(h.approver || '—') + '</span></span>'
-      + '<span class="ah-c"><span class="ah-k">' + t('hist_expected') + '</span><span class="ah-v">' + (h.expected != null ? '+' + h.expected : '—') + '</span></span>'
-      + '<span class="ah-c"><span class="ah-k">' + t('hist_actual') + '</span><span class="ah-v" style="color:' + actualColor + '">' + (h.actual != null ? '+' + h.actual : '—') + '</span></span>'
-      + '<span class="ah-c ah-end"><span class="ah-status" style="color:' + sc + ';border-color:' + sc + '">' + escText(h.status) + '</span><span class="ah-out">' + escText(h.outcome || '') + '</span></span>'
-      + '</button>';
-    var detail = open ? '<div class="ah-detail"><div class="ah-dl">' + t('hist_process') + '</div><div class="rlog">' + histTranscript(h, demo).map(function (e) { return '<div class="cmsg" data-who="' + e.who + '"><div class="cbubble" data-who="' + e.who + '">' + (e.tag ? '<div class="ctag">' + escText(e.tag) + '</div>' : '') + escText(e.text) + '</div></div>'; }).join('') + '</div></div>' : '';
-    return '<div class="ah-item" data-open="' + (open ? '1' : '0') + '">' + row + detail + '</div>';
-  }
-  function viewHistory() {
-    if (state.dataMode === 'sim' && !state.histData && !state.histLoading) loadHistory();
-    if (state.histLoading) return '<div class="panel"><div class="gen"><span class="spin"></span>' + L({ en: 'Loading history…', vi: 'Đang tải lịch sử…' }) + '</div></div>';
-    var data = state.histData;
-    var demo = !data || data.demo;
-    var recs = demo ? DEMO_HISTORY : ((data && data.decisions) || []).map(liveHistRow).filter(Boolean);
-    var rows = demo ? recs : recs.slice().reverse();
-    var completed = rows.filter(function (h) { return /complet/i.test(h.status); });
-    var good = completed.filter(function (h) { return h.ok; }).length;
-    var approvedToday = rows.filter(function (h) { return /dispatch|complet|approv/i.test(h.status); }).length;
-    var recovered = completed.reduce(function (s, h) { return s + (h.actual != null ? h.actual : (h.expected || 0)); }, 0);
-    var summary = '<div class="panel"><div class="panel-h"><span class="pnum">a</span><span class="ptitle">' + t('hist_activity') + '</span><span class="psub">' + t('hist_thisshift') + '</span></div>'
-      + '<div class="ah-summary">' + ahStat(approvedToday, t('hist_approved'), '') + ahStat(completed.length + ' / ' + rows.length, t('hist_completed'), '') + ahStat(good + ' / ' + (completed.length || 0), t('hist_met'), 'ok') + ahStat('+' + recovered, t('hist_recovered'), 'accent') + '</div></div>';
-    var list = rows.length
-      ? '<div class="panel"><div class="panel-h"><span class="pnum">b</span><span class="ptitle">' + t('hist_title') + '</span><span class="psub">' + t('hist_sub') + '</span></div><div class="ah-list">' + rows.map(function (h) { return ahRow(h, demo); }).join('') + '</div></div>'
-      : '<div class="panel"><div class="empty">' + escText(t('hist_empty')) + '</div></div>';
-    return '<div class="stack">' + summary + list + '</div>';
-  }
 
   function screen() {
     var v = state.view;
     if (v === 'fleet') return viewFleet();
-    if (v === 'recommendation') return viewRec();
-    if (v === 'history') return viewHistory();
     if (v === 'machines') return viewMachines();
     if (v === 'ask') return viewAsk();
-    return '';
+    return viewFleet();
   }
 
   // ── render + chart measure ────────────────────────────────────────────────
@@ -1551,7 +1271,7 @@ a:hover{color:var(--accent-hi)}
   }
   function render() {
     var v = state.view;
-    var showKpis = v !== 'ask' && v !== 'recommendation' && v !== 'history';
+    var showKpis = v === 'fleet' || v === 'machines';
     app.innerHTML = '<div class="oc-shell">' + tSide()
       + '<div class="oc-body">' + tHead()
       + '<main class="oc-main">' + tSimBanner() + (showKpis ? tKpis(v) : '') + screen() + '</main>'
@@ -1573,23 +1293,21 @@ a:hover{color:var(--accent-hi)}
   // ── events (delegation on #app) ───────────────────────────────────────────
   function onClick(e) {
     var el = e.target.closest ? e.target.closest('[data-act]') : null;
+    // Click-away closes the settings popover (anything outside the popover / the gear that opened it).
+    if (state.settingsOpen && !(el && (el.getAttribute('data-act') === 'settings'))
+        && !(e.target.closest && e.target.closest('[data-stop]'))) {
+      state.settingsOpen = false; render();
+    }
     if (!el) return;
     var a = el.getAttribute('data-act');
-    if (a === 'view') { state.view = el.getAttribute('data-view'); render(); if (state.view === 'history') loadHistory(); }
-    else if (a === 'reexplain') { state.analysisFor = null; fetchAnalysis(); }
-    else if (a === 'discuss') discussRec();
+    if (a === 'view') { state.view = el.getAttribute('data-view'); render(); }
     else if (a === 'chat-send') { var ci = document.getElementById('chatq'); chatSend(ci ? ci.value : ''); }
     else if (a === 'chat-suggest') chatSend(el.getAttribute('data-q'));
-    else if (a === 'hist-toggle') { var hid = el.getAttribute('data-id'); state.expandHist = (state.expandHist === hid ? null : hid); render(); }
     else if (a === 'heatfilter') { state.heatFilter = el.getAttribute('data-id'); render(); }
-    else if (a === 'pick-alt') pickAlt(el.getAttribute('data-id'));
-    else if (a === 'approve') recApprove();
-    else if (a === 'dispatch') recDispatch();
-    else if (a === 'recalc') recRecalc();
-    else if (a === 'toggle-json') { state.showJson = !state.showJson; render(); }
-    else if (a === 'theme') toggleTheme();
-    else if (a === 'lang') setLang(el.getAttribute('data-lang'));
-    else if (a === 'mode') setDataMode(el.getAttribute('data-mode'));
+    else if (a === 'settings') { state.settingsOpen = !state.settingsOpen; render(); }
+    else if (a === 'theme') { state.settingsOpen = false; setThemeManual(el.getAttribute('data-theme')); }
+    else if (a === 'lang') { state.settingsOpen = false; setLang(el.getAttribute('data-lang')); }
+    else if (a === 'mode') { state.settingsOpen = false; setDataMode(el.getAttribute('data-mode')); }
     else if (a === 'sim-retry') refreshSim(true);
     else if (a === 'intent') generate(state.askMachine, el.getAttribute('data-id'));
     else if (a === 'mach-metric') { state.machMetric = el.getAttribute('data-id'); render(); }
@@ -1620,52 +1338,21 @@ a:hover{color:var(--accent-hi)}
 
   // ── bridge init (optional persistence) ────────────────────────────────────
   var bridge = window.AtriaDash || null;
-  function persist(cmd, payload) {
-    if (!bridge || !bridge.json) return;
-    try { bridge.json('optimize.py', [cmd], { stdin: JSON.stringify(payload) }).catch(function () {}); }
-    catch (e) {}
-  }
-  // Read helper (Promise) — persist() is fire-and-forget; Approved History needs to read back.
-  function bridgeRead(script, args, stdin) {
-    var b = window.AtriaDash || null;
-    if (!b || !b.json) return Promise.reject(new Error('no bridge'));
-    var opt = { timeout_ms: 20000 };
-    if (stdin != null) opt.stdin = JSON.stringify(stdin);
-    return b.json(script, args || [], opt);
-  }
-  // Demo Approved-History (from MACHINES_SIM_SPEC) — shown in Demo mode; Live mode reads the store.
-  var DEMO_HISTORY = [
-    { time: '11:06', id: 'REC-2026-00452', action: 'Prioritize pallet P-104', scope: 'Line-2 · WO-4521', approver: 'Auto-dispatch', expected: 75, actual: 71, status: 'Dispatched', outcome: 'Executing — actuating Forklift F07', ok: true, measure: 'produced 530 / 1,000 units, cycle 14.8s vs 12s', cause: 'material starvation (96 units)', predict: 'forecast 820 · 18% attainment without action', evaluate: '5 candidates, 1 blocked on health, 4 feasible', recommend: 'prioritize pallet P-104 (+75 units)', act: 'dispatched to Move · MOVE-TASK-7012 accepted' },
-    { time: '10:12', id: 'REC-2026-00447', action: 'Resequence Job C ahead of Job B', scope: 'Line-2 · WO-4519', approver: 'A. Planner', expected: 62, actual: 64, status: 'Completed', outcome: 'Successful — target recovered', ok: true, measure: 'produced 410 / 900 units', cause: 'job sequencing loss (58 units)', predict: 'forecast 812 · 41% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'resequence Job C ahead of Job B (+62 units)', act: 'completed · 64 units recovered' },
-    { time: '09:03', id: 'REC-2026-00441', action: 'Move operator from Line 1', scope: 'Line-4 · WO-4510', approver: 'S. Supervisor', expected: 48, actual: 45, status: 'Completed', outcome: 'Successful', ok: true, measure: 'produced 360 / 820 units', cause: 'operator unavailable (44 units)', predict: 'forecast 790 · 38% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'move a certified operator from Line 1 (+48 units)', act: 'completed · 45 units recovered' },
-    { time: '07:41', id: 'REC-2026-00436', action: 'Prioritize maintenance inspection', scope: 'Line-3 · WO-4502', approver: 'Auto-dispatch', expected: 30, actual: 33, status: 'Completed', outcome: 'Successful — machine stabilized', ok: true, measure: 'produced 210 / 700 units', cause: 'equipment degradation (28 units)', predict: 'forecast 660 · 31% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'raise a maintenance inspection task (+30 units)', act: 'completed · 33 units recovered' },
-    { time: '06:20', id: 'REC-2026-00431', action: 'Reduce line speed (quality hold)', scope: 'Line-5 · WO-4498', approver: 'Q. Lead', expected: 40, actual: 22, status: 'Completed', outcome: 'Partial — quality recovered, output short', ok: false, measure: 'produced 180 / 650 units', cause: 'process drift raising scrap (36 units)', predict: 'forecast 600 · 24% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'reduce line speed to hold quality (+40 units)', act: 'completed · 22 units recovered (below expected)' }
-  ];
-  function loadHistory() {
-    if (state.dataMode !== 'sim') { state.histData = { decisions: DEMO_HISTORY, demo: true }; render(); return; }
-    if (state.histLoading) return;
-    state.histLoading = true; state.histFor = 'sim'; render();
-    bridgeRead('optimize.py', ['list'], {})
-      .then(function (res) { state.histLoading = false; state.histData = { decisions: (res && res.decisions) || [], demo: false }; render(); })
-      .catch(function () { state.histLoading = false; state.histData = { decisions: [], demo: false }; render(); });
-  }
 
   // light build: static clock (set once at mount, no per-second timer)
 
   // ── mount ─────────────────────────────────────────────────────────────────
   applyTheme(state.theme); // apply saved/default theme before first paint
+  applyLang(state.lang);   // language-conditional fonts (Inter for EN, Be Vietnam Pro for VI)
   if (bridge) {
     try { bridge.ready(); } catch (e) {}
-    // follow Atria's theme ONLY until the user makes a manual choice (then the toggle wins)
+    // follow Minder's theme ONLY until the user makes a manual choice (then the toggle wins)
     if (bridge.onTheme) { try { bridge.onTheme(function (mode) { if ((mode === 'light' || mode === 'dark') && !readManualTheme()) { applyTheme(mode); render(); } }); } catch (e) {} }
     if (bridge.resize) { try { bridge.resize(960); } catch (e) {} }
   }
   render();
-  if (state.dataMode === 'sim') {
-    refreshSim(true); startSimPoll(); // read live fleet + poll every 4s
-  } else {
-    persist('save', recDecisionObj()); // demo: seed the decision history
-  }
+  // Monitor is read-only: it only ever reads the live fleet (no decision history to seed in demo).
+  if (state.dataMode === 'sim') { refreshSim(true); startSimPoll(); } // read live fleet + poll every 4s
 })();
 </script>
 </body>

@@ -19,8 +19,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 # Terminal lifecycle states that must not be overwritten by a later transition.
 _TERMINAL = {"rejected", "completed", "superseded", "expired"}
@@ -29,14 +34,15 @@ _TERMINAL = {"rejected", "completed", "superseded", "expired"}
 def data_dir() -> Path:
     """Resolve the module's ``data/`` directory.
 
-    Prefers ``ATRIA_MODULE_ROOT`` (set by the dashboard run gateway); falls back
-    to the module root inferred from this file's location. Honors
-    ``OPTIMIZE_DATA_DIR`` as an explicit override (used by tests).
+    Prefers ``MINDER_MODULE_ROOT`` (set by the dashboard run gateway; the pre-rebrand
+    ``ATRIA_MODULE_ROOT`` still works as a deprecated fallback); falls back to the module
+    root inferred from this file's location. Honors ``OPTIMIZE_DATA_DIR`` as an explicit
+    override (used by tests).
     """
     override = os.environ.get("OPTIMIZE_DATA_DIR")
     if override:
         return Path(override)
-    root = os.environ.get("ATRIA_MODULE_ROOT")
+    root = os.environ.get("MINDER_MODULE_ROOT") or os.environ.get("ATRIA_MODULE_ROOT")
     base = Path(root) if root else Path(__file__).resolve().parent.parent
     return base / "data"
 
@@ -58,7 +64,12 @@ def _read(path: Path) -> list[dict[str, Any]]:
         return []
     if not text.strip():
         return []
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        # A truncated / concurrently-written store file must never crash a read (e.g. the Approved
+        # History view). Degrade to empty rather than propagating; the next write rewrites it cleanly.
+        return []
     return data if isinstance(data, list) else []
 
 
@@ -164,6 +175,9 @@ def set_status(
         return None
     rec.setdefault("approval", {})
     rec["status"] = status
+    # Stamp when the status changed so the recommendation queue can apply a cooldown (don't re-surface
+    # a problem the user just acted on before the sim reflects it). Real wall-clock, always present.
+    rec["status_at"] = at or _now_iso()
     if status == "approved" and isinstance(rec.get("approval"), dict):
         rec["approval"]["approved_by"] = (actor or {}).get("id")
         if at is not None:
@@ -224,6 +238,39 @@ def dispatch(
         "task_id": task_id,
         "command": command or {},
     }
+
+
+# ── pipeline snapshots ───────────────────────────────────────────────────────
+# One live-fleet snapshot per pipeline run, keyed by execution_id, so a chained run
+# (measure -> ... -> recommend) reads the SAME numbers at every stage instead of
+# re-polling the drifting simulator. Bounded, gitignored runtime data.
+
+_SNAPSHOTS_MAX = 50
+
+
+def _snapshots_path() -> Path:
+    return data_dir() / "pipeline_runs.json"
+
+
+def save_snapshot(execution_id: str, snapshot: dict[str, Any], at: str | None = None) -> dict[str, Any]:
+    """Persist (or replace) one run snapshot by execution_id; keep the most recent N."""
+    if not execution_id:
+        raise ValueError("execution_id is required")
+    rows = _read(_snapshots_path())
+    rows = [r for r in rows if r.get("execution_id") != execution_id]
+    row = {"execution_id": execution_id, "snapshot": snapshot, "created_at": at}
+    rows.append(row)
+    _write(_snapshots_path(), rows[-_SNAPSHOTS_MAX:])
+    return row
+
+
+def get_snapshot(execution_id: str) -> dict[str, Any] | None:
+    if not execution_id:
+        return None
+    for r in _read(_snapshots_path()):
+        if r.get("execution_id") == execution_id:
+            return r.get("snapshot")
+    return None
 
 
 # ── audit ──────────────────────────────────────────────────────────────────
