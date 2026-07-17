@@ -45,6 +45,15 @@ class KnowledgeRepository:
             await s.commit()
             return doc.id
 
+    async def get_document(self, document_id: int) -> dict[str, Any] | None:
+        async with self._sm() as s:
+            row = (
+                await s.execute(
+                    select(KnowledgeDocument).where(KnowledgeDocument.id == document_id)
+                )
+            ).scalar_one_or_none()
+            return _doc_to_dict(row) if row else None
+
     async def find_document_by_hash(self, tenant_id: str, content_hash: str) -> dict[str, Any] | None:
         async with self._sm() as s:
             row = (
