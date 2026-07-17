@@ -1,0 +1,6 @@
+# Runtime decision store + audit trail (bootstrapped on first write).
+data/
+# Python bytecode + dependency stamp.
+__pycache__/
+*.pyc
+.deps.sha256

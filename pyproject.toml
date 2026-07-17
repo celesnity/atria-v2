@@ -109,7 +109,10 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["minder*"]
+# "minder*" also matched the sibling minder_python_sdk/ and minder_ui_sdk/ dirs, so the
+# editable finder claimed them as minder's own top-level packages and shadowed the real
+# SDK with an empty namespace package. Match only minder and its subpackages.
+include = ["minder", "minder.*"]
 exclude = ["tests*", "docs*", "_archived_tests*"]
 
 [tool.setuptools.package-data]
@@ -141,5 +144,6 @@ warn_unused_configs = true
 testpaths = [
     "tests",
     "minder/skills/builtin/deep_research/tests",
+    "minder_python_sdk/tests",
 ]
 asyncio_mode = "auto"
