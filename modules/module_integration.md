@@ -744,3 +744,47 @@ isolated in the module's own container, with **zero edits to Minder source**.
 - **SDK showcase (every feature, one tool each):** [`modules/module_template/`](./module_template) — for a runnable example that exercises **every** SDK capability, see this directory; `README.md` maps each feature to its handler.
 - Real-world module: [`modules/maintenance_copilot/`](./maintenance_copilot) — RAG-backed module with federated block, citations, and bridged follow-ups.
 - Design spec: `docs/superpowers/specs/2026-07-10-sdk-self-registering-modules-design.md`
+
+---
+
+## Produce — Track A standalone MES (no SDK)
+
+Unlike `module_template` and `maintenance_copilot`, [`modules/produce/`](./produce)
+is a hybrid. By default it runs as pure human-operated software (Track A): it does
+**not** import `minder_python_sdk`, declares no `@conn.tool`, exposes no
+`/connector/*` route, and needs **no connector / Keycloak** wiring. It does reuse
+the shared **MinIO** for defect photos (P-SCRAP-03, bucket `produce`, `PR_S3_*`).
+
+**Optional Track B agent surface.** Setting `PR_AGENT_ENABLED=1` layers a Minder
+co-work surface (Read / Event / Command / Guidance) on top of Track A *additively*
+via `minder_python_sdk`. When enabled, `produce-web` builds the connector ASGI —
+exposing `/connector/*` (health, manifest with reads `read_*`, tools
+`cmd_*`/`guide_*`, and event types) alongside the unchanged Track A REST epics — and
+announces itself to Minder like any other service module. When `PR_AGENT_ENABLED` is
+unset/falsy, produce runs byte-identically to Track A (no connector, no announce).
+The announce env for the enabled case (`MINDER_URL`,
+`MINDER_MODULE_CONNECTOR_URL`, `MINDER_MODULE_REMOTE_ENTRY`,
+`MINDER_DEFAULT_AUTONOMY`, and the Keycloak client creds — see §4.2) is set on
+`produce-web` in `docker-compose.yml`.
+
+- **Module id:** `produce`.
+- **Service port:** `9310` (`produce-web` serves the REST API and the built React
+  SPA at `/`; the `produce-worker` Celery service has no port).
+- **Environment:**
+  - `PR_DATABASE_URL` — shared Postgres DSN (the module owns only `pr_*` tables).
+  - `PR_REDIS_URL` — Celery broker/backend (Redis DB `/3`).
+  - `PR_PUBLIC_BASE` — browser-facing base for federated asset URLs (default
+    `http://localhost:9310`).
+  - `PR_S3_*` — shared MinIO endpoint/bucket/creds for defect photos (bucket
+    `produce`); boto3 is imported lazily so the app runs without S3 in dev.
+- **Table prefix:** `pr_*` — the module creates and writes only these tables and
+  never touches Minder tables.
+- **Deploy (independent module, runtime registration):** the core stack does NOT
+  bundle this module. Bring core up first (it creates the shared `minder_net`
+  network), then run the module's own compose which joins that network and
+  announces to Minder:
+  `docker compose -f modules/produce/docker-compose.yml up -d --build`. Stop it
+  with `... down` and it disappears from Minder.
+
+See [`modules/produce/README.md`](./produce/README.md) for epics, UI personas, and
+run/test instructions.

@@ -27,6 +27,11 @@ export default defineConfig({
   },
   resolve: {
     alias: { 'minder-ui-sdk': resolve(sdk, 'index.ts') },
+    // minder_ui_sdk is consumed from source (outside this app's root); its bare
+    // `zod` import would otherwise resolve against the SDK dir, which has no
+    // node_modules in Docker (dockerignore). dedupe forces resolution from THIS
+    // app's node_modules.
+    dedupe: ['zod', 'fast-json-patch', 'react', 'react-dom'],
   },
   plugins: [
     react(),
