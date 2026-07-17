@@ -181,6 +181,20 @@ class KnowledgeRepository:
         )
         return [f"{r['document_id']}#{r['chunk_index']}" for r in rows]
 
+    def chunk_payload(
+        self, tenant_id: str, document_id: int, chunk_index: int
+    ) -> dict[str, Any] | None:
+        """Fetch a chunk's payload (text, citation, title) by document and chunk index."""
+        rows = pg.fetch_all(
+            "SELECT text, citation, "
+            "(SELECT title FROM knowledge_documents d WHERE d.id = c.document_id) "
+            "AS title "
+            "FROM knowledge_chunks c "
+            "WHERE c.tenant_id = $1 AND c.document_id = $2 AND c.chunk_index = $3",
+            [tenant_id, document_id, chunk_index],
+        )
+        return rows[0] if rows else None
+
 
 def _doc_to_dict(doc: KnowledgeDocument) -> dict[str, Any]:
     return {
