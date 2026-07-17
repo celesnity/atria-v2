@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optimize Console V2</title>
+<!--
+  Optimize Console V2 — a self-contained manufacturing fleet + decision console.
+  Ported from the "Optimize Console V2" Claude Design (project
+  73b8309d-b935-460e-816a-12b69de9435b, file "Optimize Console V2.dc.html"),
+  built on the Celesnity / Minder AI design system (dark-first, electric indigo).
+  Faithful vanilla-JS port of the DCLogic component: all fleet math + inline-SVG
+  charts run client-side (no React, no CDN — works offline in Docker). Seven views
+  (Fleet / Recommendation / Availability / Throughput / Quality / Health / Ask AI).
+  Runs standalone AND inside Atria via the OPTIONAL AtriaDash bridge, which persists
+  decision history + audit events on the Recommendation view by calling
+  scripts/optimize.py. With the bridge absent the demo still runs fully in-memory.
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ---- Celesnity / Minder AI design tokens (inlined from colors_and_type.css) ---- */
+:root{
+  --bg-0:#050508; --bg-1:#0A0A10; --bg-2:#0F0F17; --bg-3:#161621;
+  --surf:rgba(255,255,255,.025); --surf-2:rgba(255,255,255,.045);
+  --line:rgba(255,255,255,.07); --line-2:rgba(255,255,255,.12);
+  --text:#EEEFF5; --text-dim:rgba(238,239,245,.68); --text-mute:rgba(238,239,245,.42); --text-faint:rgba(238,239,245,.22);
+  --accent:#4A6CF7; --accent-hi:#7B8FFF; --accent-lo:#2A3FB8; --accent-2:#5EEAD4; --accent-3:#A78BFA;
+  --danger:#F87171; --ok:#4ADE80; --warn:#FBBF24;
+  --glow:rgba(74,108,247,.42); --glow-soft:rgba(74,108,247,.18); --grid-line:rgba(255,255,255,.06);
+  --serif:"Newsreader","Instrument Serif",Georgia,"Times New Roman",serif;
+  --sans:"Be Vietnam Pro","Inter","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Code",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+:root[data-theme="light"]{
+  --bg-0:#FAF8F2; --bg-1:#F3EFE5; --bg-2:#FFFFFF; --bg-3:#F7F3EA;
+  --surf:rgba(17,18,22,.025); --surf-2:rgba(17,18,22,.05);
+  --line:rgba(17,18,22,.08); --line-2:rgba(17,18,22,.14);
+  --text:#0F1014; --text-dim:rgba(15,16,20,.68); --text-mute:rgba(15,16,20,.48); --text-faint:rgba(15,16,20,.26);
+  --glow-soft:rgba(74,108,247,.15); --grid-line:rgba(17,18,22,.05);
+}
+
+/* ---- Scoped dashboard styles (verbatim from the design's inline <style>) ---- */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg-0);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+/* ---- Sidebar shell (redesign) ---- */
+.oc-shell{display:flex;min-height:100vh}
+.oc-side{position:sticky;top:0;align-self:flex-start;height:100vh;flex:none;width:212px;display:flex;flex-direction:column;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-right:1px solid var(--line);z-index:20}
+.side-brand{display:flex;align-items:center;gap:9px;font:600 15px var(--mono);letter-spacing:.14em;color:var(--text);padding:16px 18px;border-bottom:1px solid var(--line)}
+.side-brand .ver{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.12em}
+.side-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1;overflow-y:auto}
+.side-lab{font:500 9px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--text-faint);padding:8px 10px 6px}
+.side-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:7px;font:500 9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute)}
+.oc-body{flex:1;min-width:0;display:flex;flex-direction:column}
+.oc-head{position:sticky;top:0;z-index:19;display:flex;align-items:center;gap:14px;padding:13px 22px;background:color-mix(in srgb,var(--text) 5%,var(--bg-0));border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+.brand{display:flex;align-items:center;gap:9px;font:600 15px var(--mono);letter-spacing:.14em;color:var(--text)}
+.sq{width:15px;height:15px;background:linear-gradient(180deg,var(--accent-hi),var(--accent-lo));border-radius:4px;box-shadow:0 0 12px var(--glow-soft)}
+.ver{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.12em}
+.ctx{font:500 12px var(--sans);color:var(--text-dim)}
+.head-r{margin-left:auto;display:flex;align-items:center;gap:14px}
+.opdot{display:flex;align-items:center;gap:7px;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.clock{font:500 13px var(--mono);color:var(--text-dim);min-width:74px;text-align:right}
+.theme-btn{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:none;background:var(--surf);border:1px solid var(--line);border-radius:8px;color:var(--text-dim);font-size:14px;line-height:1;cursor:pointer;transition:all .18s var(--ease)}
+.theme-btn:hover{color:var(--text);border-color:var(--line-2);background:var(--surf-2)}
+.modeseg{display:inline-flex;flex:none;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:2px}
+.mseg{background:none;border:none;border-radius:999px;color:var(--text-mute);font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;cursor:pointer;transition:all .18s var(--ease)}
+.mseg:hover{color:var(--text)}
+.mseg[data-on="1"]{background:var(--accent);color:#fff}
+.simbanner{display:flex;align-items:center;gap:10px;padding:11px 14px;background:color-mix(in srgb,var(--danger) 8%,var(--bg-1));border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:12px}
+.simbanner.load{background:color-mix(in srgb,var(--warn) 8%,var(--bg-1));border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.simbanner-t{font:500 12.5px var(--sans);color:var(--text-dim)}
+.simretry{margin-left:auto;padding:6px 12px;flex:none}
+.oc-tab{display:flex;align-items:center;gap:11px;background:none;border:none;border-radius:10px;color:var(--text-mute);font:500 13px var(--sans);letter-spacing:.01em;padding:10px 12px;cursor:pointer;white-space:nowrap;text-align:left;width:100%;transition:all .16s var(--ease)}
+.oc-tab svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.oc-tab:hover{color:var(--text-dim);background:var(--surf)}
+.oc-tab[data-on="1"]{color:var(--text);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.oc-tab[data-on="1"] svg{stroke:var(--accent-hi)}
+.oc-main{max-width:1320px;width:100%;margin:0 auto;padding:22px;display:flex;flex-direction:column;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;border:1px solid var(--line);background:var(--line);border-radius:14px;overflow:hidden}
+.kpi{background:var(--bg-1);padding:15px 18px;display:flex;flex-direction:column;gap:5px}
+.kl{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.kv{font:500 29px var(--sans);letter-spacing:-.045em;color:var(--text);line-height:1}
+.kv.red{color:var(--danger)}
+.ks{font:400 11px var(--sans);color:var(--text-dim)}
+.stack{display:grid;gap:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g21{display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
+@media(max-width:940px){.g2,.g21{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);background:var(--bg-1);border-radius:16px;padding:18px 18px 16px}
+.panel-h{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-bottom:14px}
+.pnum{font:500 10px var(--mono);color:var(--accent);letter-spacing:.14em}
+.ptitle{font:500 15px var(--sans);letter-spacing:-.01em;color:var(--text)}
+.psub{margin-left:auto;font:500 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.hfilter{margin-left:auto;display:flex;flex-wrap:nowrap;gap:2px;background:var(--surf);border:1px solid var(--line);border-radius:999px;padding:2px}
+.hf{white-space:nowrap}
+.hf{display:inline-flex;align-items:center;gap:7px;background:none;border:none;border-radius:999px;color:var(--text-mute);font:500 11px var(--sans);letter-spacing:.01em;padding:6px 12px;cursor:pointer;transition:all .18s var(--ease)}
+.hf:hover{color:var(--text)}
+.hf[data-on="1"]{background:var(--bg-3);color:var(--text)}
+.hfn{font:600 9.5px var(--mono);color:var(--text-mute)}
+.hf[data-on="1"] .hfn{color:var(--accent-hi)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surf);border:1px solid var(--line);border-radius:999px;color:var(--text-dim);font:500 12px var(--sans);padding:7px 14px;cursor:pointer;transition:all .18s var(--ease)}
+.chip:hover{border-color:var(--line-2);color:var(--text)}
+.chip[data-on="1"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.mrow{display:flex;flex-wrap:wrap;align-items:center;gap:14px 20px;margin-bottom:16px}
+.mlab{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.msel{background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text);font:500 13px var(--sans);padding:9px 12px;min-width:230px;cursor:pointer}
+.gen{display:flex;align-items:center;gap:12px;color:var(--text-dim);font:500 13px var(--sans);justify-content:center;padding:48px}
+.spin{width:16px;height:16px;border:2px solid var(--line-2);border-top-color:var(--accent);border-radius:999px}
+.empty{padding:40px;text-align:center;color:var(--text-mute);font:400 14px var(--sans)}
+.why{display:flex;flex-direction:column;gap:14px}
+.why-eyebrow{font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px}
+.why-body{font:400 14px var(--sans);line-height:1.55;color:var(--text-dim);margin:0}
+.why-ctx{font:500 11px var(--mono);color:var(--text-mute);letter-spacing:.04em}
+.fu-lab{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);margin-bottom:9px}
+.guide{display:flex;flex-direction:column}
+.grow{display:grid;grid-template-columns:150px 200px 1fr;gap:16px;padding:11px 0;border-top:1px solid var(--line);align-items:baseline}
+.gintent{font:500 12.5px var(--sans);color:var(--text)}
+.gchart{font:500 11px var(--mono);color:var(--accent-hi);letter-spacing:.02em}
+.gwhy{font:400 12.5px var(--sans);color:var(--text-dim);line-height:1.5}
+@media(max-width:720px){.grow{grid-template-columns:1fr;gap:3px}}
+.dot{display:inline-block;width:7px;height:7px;border-radius:999px}
+.livedot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+/* ---- Recommendation view ---- */
+.scn{display:flex;flex-direction:column;gap:18px}
+.scn-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.scn-id{display:flex;flex-direction:column;gap:3px}
+.scn-live{display:inline-flex;align-items:center;gap:7px;font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.scn-rec{font:500 10px var(--mono);letter-spacing:.08em;color:var(--text-mute)}
+.scn-head{font:500 17px var(--sans);letter-spacing:-.01em;color:var(--text)}
+.scn-r{margin-left:auto;display:flex;align-items:center;gap:12px}
+.risk-pill{white-space:nowrap;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--danger);background:color-mix(in srgb,var(--danger) 14%,transparent);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);border-radius:999px;padding:5px 12px}
+.scn-clock{font:500 13px var(--mono);color:var(--text-dim)}
+.scn-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.scn-m{background:var(--bg-2);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.scn-ml{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.scn-mv{font:500 27px var(--sans);letter-spacing:-.045em;color:var(--text);line-height:1}
+.scn-mv.red{color:var(--danger)}
+.scn-mt{font:400 10.5px var(--sans);color:var(--text-dim)}
+.loop{display:flex;flex-wrap:wrap;gap:6px}
+.loop-step{flex:1;min-width:96px;display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg-2)}
+.loop-step[data-s="done"]{border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.loop-step[data-s="active"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg-2))}
+.loop-n{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:999px;font:600 10px var(--mono);color:var(--text-mute);border:1px solid var(--line-2)}
+.loop-step[data-s="done"] .loop-n{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent-hi);border-color:transparent}
+.loop-step[data-s="active"] .loop-n{background:var(--accent);color:#fff;border-color:transparent}
+.loop-name{font:500 12px var(--sans);color:var(--text-dim)}
+.loop-step[data-s="active"] .loop-name{color:var(--text)}
+.loop-step{cursor:pointer;transition:border-color .15s var(--ease),background .15s var(--ease)}
+.loop-step:hover{border-color:var(--line-2)}
+.loop-step[data-open="1"]{border-color:var(--accent-hi);background:color-mix(in srgb,var(--accent) 14%,var(--bg-2))}
+.stage-d{display:flex;flex-direction:column;gap:12px;border-color:var(--line-2)}
+.stg-ai{display:block;font:400 13.5px var(--sans);color:var(--text-dim);line-height:1.5;background:color-mix(in srgb,var(--accent) 6%,var(--bg-2));border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);border-radius:10px;padding:11px 13px}
+.stg-ai-tag{display:inline-block;margin-right:8px;font:600 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent-hi);vertical-align:middle}
+.stg-rows{display:flex;flex-direction:column}
+.stg-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
+.stg-k{font:500 12px var(--sans);color:var(--text-mute)}
+.stg-v{font:600 13px var(--mono);color:var(--text)}
+.stg-v.red{color:var(--danger)}
+.stg-ev{font:500 11px var(--mono);letter-spacing:.04em;color:var(--text-mute)}
+.stg-formula{font:500 11px var(--mono);color:var(--accent-hi);background:rgba(74,108,247,.07);border:1px solid rgba(74,108,247,.16);border-radius:8px;padding:8px 10px}
+.stg-losstable{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stg-lr{display:grid;grid-template-columns:1fr 60px 70px;gap:8px;padding:8px 12px;font:500 12px var(--sans);color:var(--text-dim);border-bottom:1px solid var(--line)}
+.stg-lr:last-child{border-bottom:none}
+.stg-lr[data-h="1"]{font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.stg-lr[data-primary="1"]{color:var(--danger);background:color-mix(in srgb,var(--danger) 6%,transparent)}
+.stg-lr[data-total="1"]{color:var(--text);border-top:1px solid var(--line-2);font-weight:600}
+.stg-lr span:nth-child(2),.stg-lr span:nth-child(3){text-align:right;font-family:var(--mono)}
+.stg-life{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stg-lp{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-mute);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.stg-lp[data-on="1"]{color:#fff;background:var(--accent);border-color:transparent}
+.stg-arrow{color:var(--text-faint);font-size:11px}
+.mdet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mdet-c{background:var(--bg-2);padding:10px 12px}
+.mdet-l{font:500 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.mdet-v{font:600 15px var(--sans);color:var(--text);margin-top:3px}
+.mdet-cmp{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.mdet-cr{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 20px;gap:8px;padding:8px 12px;font:500 12px var(--sans);color:var(--text-dim);border-bottom:1px solid var(--line);align-items:center}
+.mdet-cr:last-child{border-bottom:none}
+.mdet-cr[data-h="1"]{font:500 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.mdet-cr span:nth-child(n+2){font-family:var(--mono);font-size:12px}
+.mdet-warn{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.mdet-wc{font:600 9.5px var(--mono);letter-spacing:.06em;color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:999px;padding:3px 9px}
+.rec-hero{display:flex;flex-direction:column;gap:16px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 7%,var(--bg-1)),var(--bg-1) 60%);border-color:var(--line-2)}
+.rec-hero[data-blocked="true"]{background:linear-gradient(160deg,color-mix(in srgb,var(--danger) 8%,var(--bg-1)),var(--bg-1) 60%);border-color:color-mix(in srgb,var(--danger) 40%,transparent)}
+.rh-top{display:flex;align-items:center;gap:12px}
+.rh-eyebrow{font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.rh-status{margin-left:auto;font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid;border-radius:999px;padding:4px 11px}
+.rh-head{margin:0;font-family:var(--sans);font-weight:500;font-size:clamp(26px,3vw,36px);line-height:1.05;letter-spacing:-.035em;color:var(--text)}
+.rh-head em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.01em;background:linear-gradient(180deg,var(--accent-hi),var(--accent) 60%,var(--accent-lo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.rec-hero[data-blocked="true"] .rh-head em{background:none;-webkit-text-fill-color:var(--danger);color:var(--danger)}
+.rh-detail{font:400 13px var(--sans);color:var(--text-dim);margin-top:-6px}
+.rh-metrics{display:flex;flex-wrap:wrap;gap:10px}
+.rh-m{flex:1;min-width:96px;display:flex;flex-direction:column;gap:3px;padding:12px 14px;background:var(--surf);border:1px solid var(--line);border-radius:10px}
+.rh-mv{font:500 21px var(--sans);letter-spacing:-.03em;color:var(--text);line-height:1}
+.rh-mv.accent{color:var(--accent-hi)}
+.rh-mv.danger{color:var(--danger)}
+.rh-ml{font:500 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute)}
+.rh-mu{font:400 10px var(--sans);color:var(--text-faint)}
+.rh-why{font:400 13px/1.55 var(--sans);color:var(--text-dim);padding:13px 15px;background:var(--surf);border-radius:10px;border-left:2px solid var(--accent)}
+.rec-hero[data-blocked="true"] .rh-why{border-left-color:var(--danger)}
+.rh-why-lab{display:block;font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute);margin-bottom:5px}
+.rh-actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn-1{background:linear-gradient(180deg,var(--accent-hi),var(--accent));border:1px solid var(--accent-lo);border-radius:10px;color:#fff;font:500 13px var(--sans);padding:10px 18px;cursor:pointer;box-shadow:0 6px 18px -8px var(--glow);transition:all .18s var(--ease)}
+.btn-1:hover{box-shadow:0 8px 22px -8px var(--glow),inset 0 1px rgba(255,255,255,.4)}
+.btn-2{background:var(--surf-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text);font:500 13px var(--sans);padding:10px 18px;cursor:pointer;transition:all .18s var(--ease)}
+.btn-2:hover{border-color:var(--accent);color:var(--accent-hi)}
+.btn-ghost{background:none;border:1px solid var(--line);border-radius:10px;color:var(--text-mute);font:500 13px var(--sans);padding:10px 16px;cursor:pointer;transition:all .18s var(--ease)}
+.btn-ghost:hover{color:var(--text);border-color:var(--line-2)}
+.rh-outcome{display:flex;flex-direction:column;gap:12px;padding:14px 16px;background:color-mix(in srgb,var(--ok) 7%,var(--bg-2));border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);border-radius:12px}
+.rh-oc-row{display:flex;justify-content:space-between;gap:10px;font:500 12px var(--mono)}
+.rh-oc-k{color:var(--text-mute);letter-spacing:.08em;text-transform:uppercase}
+.rh-oc-v{color:var(--ok)}
+.rh-oc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rh-oc-num{font:500 24px var(--sans);letter-spacing:-.04em;color:var(--text)}
+.rh-oc-num.ok{color:var(--ok);font-size:18px}
+.rh-oc-lab{font:500 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-mute);margin-top:3px}
+.fc-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
+.fc-lg{display:flex;align-items:center;gap:7px;font:500 11px var(--sans);color:var(--text-dim)}
+.fc-swatch{width:16px;height:3px;border-radius:2px;background:var(--accent)}
+.fc-swatch.dash{background:repeating-linear-gradient(90deg,var(--text-mute) 0 4px,transparent 4px 7px)}
+.fc-swatch.warn{background:var(--warn)}
+.losslist{display:flex;flex-direction:column;margin-top:14px}
+.loss-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:9px 0;border-top:1px solid var(--line);align-items:baseline}
+.loss-t{font:500 12.5px var(--sans);color:var(--text)}
+.loss-min{font:500 11px var(--mono);color:var(--text-mute)}
+.loss-u{font:500 11px var(--mono);color:var(--accent-hi);min-width:64px;text-align:right}
+.alt-table{display:flex;flex-direction:column}
+.alt-h,.alt-row{display:grid;grid-template-columns:1.7fr .7fr .8fr .9fr .9fr;gap:8px;align-items:center;text-align:left}
+.alt-h{padding:0 10px 8px;font:500 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.alt-row{background:none;border:1px solid transparent;border-top-color:var(--line);border-radius:8px;padding:11px 10px;cursor:pointer;transition:all .16s var(--ease)}
+.alt-row:hover{background:var(--surf)}
+.alt-row[data-on="1"]{background:color-mix(in srgb,var(--accent) 10%,transparent);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.alt-type{font:500 12.5px var(--sans);color:var(--text)}
+.alt-units{font:500 12px var(--mono);color:var(--text)}
+.alt-risk,.alt-feas{font:500 11px var(--mono)}
+.alt-appr{font:400 11px var(--sans);color:var(--text-dim)}
+.constraints{display:flex;flex-direction:column}
+.con-row{display:grid;grid-template-columns:20px 1fr auto;gap:10px;padding:9px 0;border-top:1px solid var(--line);align-items:center}
+.con-ok{color:var(--ok);font:600 13px var(--sans)}
+.con-c{font:500 12.5px var(--sans);color:var(--text-dim)}
+.con-r{font:500 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
+.evidence{margin-top:14px;font:500 11px var(--mono);color:var(--text-mute);letter-spacing:.03em}
+.ev-lab{display:block;color:var(--text-faint);letter-spacing:.12em;text-transform:uppercase;font-size:9.5px;margin-bottom:5px}
+.jsonbox{margin:0;font:500 11px/1.55 var(--mono);color:var(--accent-hi);background:var(--bg-0);border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;max-height:420px;white-space:pre}
+@media(max-width:640px){.alt-h{display:none}.alt-row{grid-template-columns:1fr 1fr;gap:4px 10px}.alt-type{grid-column:1/3}}
+/* overflow safety: grid children default to min-width:auto and can push h-scroll */
+.g2>*,.g21>*,.stack>*,.oc-main>*,.navwrap>*{min-width:0}
+/* narrow screens: let the fixed-width header wrap instead of forcing page h-scroll */
+@media(max-width:640px){.oc-head{flex-wrap:wrap;gap:8px 14px}.ctx{order:4;flex-basis:100%}.hfilter{flex-wrap:wrap}}
+/* ---- Recommendation: merged forecast + read-only phase summary (redesign) ---- */
+.scn-fc{border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px;background:var(--bg-2)}
+.scn-fc-h{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.scn-fc-h .ptitle{font:500 14px var(--sans);letter-spacing:-.01em;color:var(--text)}
+.scn-fc-h .psub{margin-left:auto}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:2px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.phase{background:var(--bg-2);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.phase-h{display:flex;align-items:center;gap:8px}
+.phase-n{width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:999px;font:600 9.5px var(--mono);color:var(--accent-hi);background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.phase-ph{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.phase-r{font:500 12.5px/1.4 var(--sans);color:var(--text-dim)}
+.phase-r.accent{color:var(--accent-hi)}
+.phase-r.danger{color:var(--danger)}
+/* ---- Ask Minder chatbot ---- */
+.chatlog{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow-y:auto;padding:4px 2px;margin-bottom:14px;scroll-behavior:smooth}
+.cmsg{display:flex}
+.cmsg[data-who="u"]{justify-content:flex-end}
+.cbubble{max-width:78%;padding:12px 15px;border-radius:14px;font:400 13.5px/1.5 var(--sans)}
+.cbubble[data-who="u"]{background:var(--accent);color:#fff;border-radius:14px 14px 4px 14px}
+.cbubble[data-who="a"]{background:var(--surf);border:1px solid var(--line);color:var(--text-dim);border-radius:14px 14px 14px 4px}
+.cbubble[data-chart="1"]{width:100%;max-width:720px}
+.ctag{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent-hi);margin-bottom:6px}
+.tdots{display:inline-flex;gap:4px;padding:3px 0}
+.tdots span{width:6px;height:6px;border-radius:999px;background:var(--text-mute);animation:tb 1.2s infinite}
+.tdots span:nth-child(2){animation-delay:.2s}
+.tdots span:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.chat-in{display:flex;gap:8px}
+.cinput{flex:1;min-width:0;background:var(--bg-2);border:1px solid var(--line-2);border-radius:10px;color:var(--text);font:400 13.5px var(--sans);padding:11px 14px;outline:none;transition:border-color .18s var(--ease)}
+.cinput:focus{border-color:var(--accent)}
+.cinput::placeholder{color:var(--text-faint)}
+/* ---- Approved history ---- */
+.ah-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ah-s{background:var(--bg-2);padding:15px 18px;display:flex;flex-direction:column;gap:5px}
+.ah-sv{font:500 27px var(--sans);letter-spacing:-.045em;color:var(--text);line-height:1}
+.ah-sv.ok{color:var(--ok)}
+.ah-sv.accent{color:var(--accent-hi)}
+.ah-sl{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-mute)}
+.ah-list{display:flex;flex-direction:column}
+.ah-item{border-top:1px solid var(--line)}
+.ah-item[data-open="1"]{background:var(--surf)}
+.ah-row{display:grid;grid-template-columns:16px 1fr 2fr 1.1fr .9fr .9fr 1.2fr;gap:14px;align-items:center;padding:14px 6px;width:100%;background:none;border:none;text-align:left;cursor:pointer;font:inherit;transition:background .16s var(--ease)}
+.ah-row:hover{background:var(--surf)}
+.ah-caret{font-size:9px;color:var(--text-faint);transition:transform .16s var(--ease)}
+.ah-item[data-open="1"] .ah-caret{transform:rotate(180deg);color:var(--accent-hi)}
+.ah-detail{padding:4px 6px 18px}
+.ah-dl{font:500 9.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin:0 0 12px}
+.ah-c{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ah-time{font:500 13px var(--mono);color:var(--text)}
+.ah-id{font:500 10px var(--mono);color:var(--text-mute);letter-spacing:.04em}
+.ah-act{font:500 13px var(--sans);color:var(--text)}
+.ah-scope{font:400 11px var(--sans);color:var(--text-dim)}
+.ah-k{font:500 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint)}
+.ah-v{font:500 13px var(--sans);color:var(--text)}
+.ah-end{align-items:flex-end}
+.ah-status{font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.ah-out{font:400 11px var(--sans);color:var(--text-dim)}
+.ah-what{grid-column:1/4}
+.rlog{display:flex;flex-direction:column;gap:10px}
+.rlog .cbubble{max-width:82%}
+.rlog .cbubble[data-who="a"]{max-width:100%}
+@media(max-width:720px){.ah-row{grid-template-columns:16px 1fr 1.2fr;gap:8px}.ah-end,.ah-row .ah-c:nth-child(n+4){display:none}.ah-what{grid-column:2/4}}
+/* ---- Sidebar collapse on narrow screens ---- */
+@media(max-width:820px){
+  .oc-shell{flex-direction:column}
+  .oc-side{position:sticky;top:0;height:auto;width:100%;flex-direction:row;align-items:center;border-right:none;border-bottom:1px solid var(--line);overflow-x:auto}
+  .side-brand{border-bottom:none;border-right:1px solid var(--line);white-space:nowrap;padding:12px 16px}
+  .side-nav{flex-direction:row;flex:none;padding:8px 10px;overflow-x:visible}
+  .side-lab,.side-foot{display:none}
+  .oc-tab svg{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="__bridge.js"></script>
+<script>window.AtriaDash = window.AtriaDash || window.MinderDash || null;</script>
+<script>
+(function () {
+  "use strict";
+
+  // ── props (overridable via URL for standalone preview) ────────────────────
+  var qs = new URLSearchParams(location.search);
+  var props = {
+    startView: qs.get('view') || 'fleet',
+    unhealthyThreshold: qs.get('threshold') != null ? parseFloat(qs.get('threshold')) : 0.8,
+    showChartGuide: qs.get('guide') !== '0'
+  };
+
+  var state = {
+    view: props.startView, clock: fmtClock(new Date()), askMachine: 'M-01', askIntent: null,
+    asking: false, heatFilter: 'all', recAlt: 'ACT-001', recStatus: 'proposed', recalc: false, showJson: false,
+    machMetric: 'avail', machChart: 'thru',
+    askQuestion: '', askThinking: false, askResult: null, simHistory: {},
+    analysis: null, analyzing: false, analysisFor: null, actuateMsg: null,
+    recStage: null, machSel: null,
+    chatMsgs: [], chatDraft: '', chatTyping: false,
+    expandHist: null, histData: null, histLoading: false, histFor: null,
+    theme: readManualTheme() || (qs.get('mode') === 'light' ? 'light' : 'dark'),
+    lang: readLang(),
+    // data mode: 'demo' (static) | 'sim' (live fleet). Simulation mode reads the IIOT fleet API.
+    dataMode: readDataMode(), simConnected: false, simError: null, simPlant: null, simLoading: false
+  };
+  var chartW = {};
+  var _measuring = false;
+  var _simPoll = null;
+
+  // ── theme (light / dark) ──────────────────────────────────────────────────
+  function readManualTheme() { try { var t = localStorage.getItem('optimize-theme'); return (t === 'light' || t === 'dark') ? t : null; } catch (e) { return null; } }
+  function applyTheme(mode) { state.theme = mode; try { document.documentElement.setAttribute('data-theme', mode); } catch (e) {} }
+  function setThemeManual(mode) { applyTheme(mode); try { localStorage.setItem('optimize-theme', mode); } catch (e) {} render(); }
+  function toggleTheme() { setThemeManual(state.theme === 'dark' ? 'light' : 'dark'); }
+
+  // ── language (English / Vietnamese) ───────────────────────────────────────
+  // Mirrors the theme/mode toggles: localStorage + a data-act button + a render().
+  // t(key) resolves a UI string; L({en,vi}) resolves an inline pair. Switching also
+  // invalidates the cached AI narrative so the next fetch re-requests prose in the new language.
+  function readLang() { try { var l = localStorage.getItem('optimize-lang'); if (l === 'en' || l === 'vi') return l; } catch (e) {} return qs.get('lang') === 'vi' ? 'vi' : 'en'; }
+  function saveLang(l) { try { localStorage.setItem('optimize-lang', l); } catch (e) {} }
+  function L(pair) { if (!pair || typeof pair !== 'object') return pair || ''; return (state.lang === 'vi' && pair.vi) ? pair.vi : (pair.en != null ? pair.en : pair.vi || ''); }
+  function t(key) { var s = STRINGS[key]; return s ? L(s) : key; }
+  function setLang(l) { if (l !== 'en' && l !== 'vi') return; state.lang = l; saveLang(l); state.analysis = null; state.analysisFor = null; state.askResult = null; render(); if (state.dataMode === 'sim') refreshSim(true); }
+
+  // ── UI string table (English / Vietnamese) ────────────────────────────────
+  // {en, vi} per key; t('key') resolves via state.lang. Numbers/telemetry are never here — only chrome.
+  var STRINGS = {
+    tab_fleet: { en: 'Fleet', vi: 'Đội máy' },
+    tab_recommendation: { en: 'Recommendation', vi: 'Khuyến nghị' },
+    tab_history: { en: 'Approved History', vi: 'Lịch sử duyệt' },
+    tab_machines: { en: 'Machines', vi: 'Máy móc' },
+    tab_ask: { en: 'Ask AI', vi: 'Hỏi AI' },
+    side_console: { en: 'Console', vi: 'Bảng điều khiển' },
+    side_foot: { en: 'All systems monitored', vi: 'Đang giám sát toàn bộ' },
+    btn_discuss: { en: 'Discuss with Minder', vi: 'Trao đổi với Minder' },
+    chat_title: { en: 'Ask Minder', vi: 'Hỏi Minder' },
+    chat_sub: { en: 'fleet & machine chatbot', vi: 'trợ lý đội máy' },
+    chat_placeholder: { en: 'Message Minder…', vi: 'Nhắn cho Minder…' },
+    chat_send: { en: 'Send', vi: 'Gửi' },
+    chat_greet: { en: 'Ask me about any machine or the fleet — I answer with live data and the right chart.', vi: 'Hỏi tôi về bất kỳ máy nào hoặc cả đội — tôi trả lời bằng dữ liệu trực tiếp và biểu đồ phù hợp.' },
+    guide_title: { en: 'Chart-selection guide', vi: 'Hướng dẫn chọn biểu đồ' },
+    hist_activity: { en: 'Approval activity', vi: 'Hoạt động phê duyệt' },
+    hist_thisshift: { en: 'this shift', vi: 'ca này' },
+    hist_title: { en: 'Approved history', vi: 'Lịch sử đã duyệt' },
+    hist_sub: { en: 'dispatched decisions · newest first', vi: 'quyết định đã điều phối · mới nhất trước' },
+    hist_approved: { en: 'Approved today', vi: 'Đã duyệt hôm nay' },
+    hist_completed: { en: 'Completed', vi: 'Hoàn thành' },
+    hist_met: { en: 'Met expected', vi: 'Đạt kỳ vọng' },
+    hist_recovered: { en: 'Units recovered', vi: 'Sản phẩm phục hồi' },
+    hist_process: { en: 'Consideration process', vi: 'Quá trình cân nhắc' },
+    hist_empty: { en: 'No dispatched decisions yet. Approve and send a recommendation to build history.', vi: 'Chưa có quyết định nào được điều phối. Duyệt và gửi một khuyến nghị để tạo lịch sử.' },
+    hist_approver: { en: 'Approver', vi: 'Người duyệt' },
+    hist_expected: { en: 'Expected', vi: 'Kỳ vọng' },
+    hist_actual: { en: 'Actual', vi: 'Thực tế' },
+    mach_analysis: { en: 'Machine analysis', vi: 'Phân tích máy' },
+    mach_analysis_sub: { en: 'AI picks the right chart', vi: 'AI chọn biểu đồ phù hợp' },
+    mode_demo: { en: 'Demo', vi: 'Demo' },
+    mode_live: { en: 'Live', vi: 'Trực tiếp' },
+    st_demo: { en: 'Demo data', vi: 'Dữ liệu demo' },
+    st_connected: { en: 'Live · connected', vi: 'Trực tiếp · đã kết nối' },
+    st_connecting: { en: 'Live · connecting', vi: 'Trực tiếp · đang kết nối' },
+    st_offline: { en: 'Live · offline', vi: 'Trực tiếp · ngoại tuyến' },
+    stage_measure: { en: 'Measure', vi: 'Đo lường' },
+    stage_explain: { en: 'Explain', vi: 'Giải thích' },
+    stage_predict: { en: 'Predict', vi: 'Dự báo' },
+    stage_evaluate: { en: 'Evaluate', vi: 'Đánh giá' },
+    stage_recommend: { en: 'Recommend', vi: 'Khuyến nghị' },
+    stage_approve: { en: 'Approve', vi: 'Phê duyệt' },
+    btn_generate: { en: 'Generate AI narrative', vi: 'Tạo diễn giải AI' },
+    btn_approve: { en: 'Approve', vi: 'Phê duyệt' },
+    btn_send_move: { en: 'Send to Move', vi: 'Gửi tới Move' },
+    btn_recalc: { en: 'Recalculate', vi: 'Tính lại' },
+    btn_decision_obj: { en: 'Decision object', vi: 'Đối tượng quyết định' },
+    ask_placeholder: { en: 'Ask about a machine or the fleet…', vi: 'Hỏi về một máy hoặc cả đội…' },
+    ask_send: { en: 'Ask', vi: 'Hỏi' },
+    mtab_avail: { en: 'Availability', vi: 'Khả dụng' },
+    mtab_perf: { en: 'Performance', vi: 'Hiệu suất' },
+    mtab_qual: { en: 'Quality', vi: 'Chất lượng' },
+    mtab_health: { en: 'Health', vi: 'Sức khỏe' },
+    ctab_thru: { en: 'Throughput', vi: 'Sản lượng' },
+    ctab_downtime: { en: 'Downtime', vi: 'Thời gian dừng' },
+    ctab_defects: { en: 'Defects', vi: 'Lỗi' },
+    ctab_fpy: { en: 'FPY', vi: 'FPY' }
+  };
+
+  // ── data mode: demo (static) / sim (live IIOT fleet) ──────────────────────
+  var FLEET_URL = qs.get('fleet') || 'http://127.0.0.1:5050';
+  function readDataMode() { try { var m = localStorage.getItem('optimize-mode'); if (m === 'sim' || m === 'demo') return m; } catch (e) {} return qs.get('src') === 'demo' ? 'demo' : 'sim'; }
+  function saveDataMode(m) { try { localStorage.setItem('optimize-mode', m); } catch (e) {} }
+  function loadDemo() { M = buildMachines(); fleet = buildFleet(M); trends = buildTrends(M); scn = DEMO_SCN; }
+  function plantLabel() { return (state.dataMode === 'sim' && state.simConnected && state.simPlant) ? state.simPlant : PLANT; }
+
+  // fleet-JSON -> dashboard machine shape (only the no-bridge direct-fetch fallback needs this;
+  // via the bridge, simulate.py already returns machines in this shape).
+  function mapFleetMachine(fm) {
+    return { id: fm.id, num: (fm.index || 0) + 1, n: (fm.index || 0) + 1, cell: fm.cell, type: fm.type, state: fm.status,
+      avail: fm.availability, perf: fm.performance, qual: fm.quality, oee: fm.oee, health: fm.health,
+      target: fm.target_per_hour, thru: fm.throughput_per_hour, temp: fm.temperature_c, vib: fm.vibration_mms,
+      runtime: fm.runtime_hours, since: fm.hours_since_service, defect: fm.defect_rate, downMin: fm.downtime_minutes,
+      atRisk: !!fm.at_risk, reason: fm.status_reason, baseline: fm.baseline, diff: fm.diff, warnings: fm.warning_codes || [] };
+  }
+
+  // real fleet trend history (from simulate.py) -> the dashboard's {oee,act,tgt,fpy} trend shape.
+  function adaptTrends(rt) {
+    var tgt = M.reduce(function (s, m) { return s + (m.target || 0); }, 0);
+    return { oee: rt.oee.map(function (x) { return x / 100; }), act: rt.thru.slice(), tgt: tgt, fpy: rt.fpy.slice() };
+  }
+  function applySim(resp, setScn) {
+    if (!resp || !resp.connected || !resp.machines || !resp.machines.length) {
+      state.simConnected = false; state.simError = (resp && resp.error) || 'Simulator not connected'; return false;
+    }
+    M = resp.machines; fleet = buildFleet(M);
+    // Use REAL evolving trends once we have enough buffered samples; else synthesize for shape.
+    trends = (resp.trends && resp.trends.oee && resp.trends.oee.length >= 2) ? adaptTrends(resp.trends) : buildTrends(M);
+    state.simHistory = resp.history || {};      // per-machine series, consumed by Ask AI (phase 2)
+    state.simMinute = resp.simulation_minute || 0;
+    if (setScn && resp.scn) { scn = resp.scn; state.recAlt = 'ACT-001'; state.recStatus = 'proposed'; state.showJson = false; }
+    state.simConnected = true; state.simError = null; state.simPlant = resp.plant || null; return true;
+  }
+
+  function refreshSim(setScn) {
+    if (state.dataMode !== 'sim') return;
+    state.simLoading = true;
+    var bridge = window.AtriaDash || null;
+    if (bridge && bridge.json) {
+      bridge.json('simulate.py', ['status'], { stdin: JSON.stringify({ lang: state.lang }) }).then(function (resp) {
+        state.simLoading = false; applySim(resp, setScn); render(); if (state.view === 'recommendation') maybeAnalyze();
+      }).catch(function (e) {
+        state.simLoading = false; state.simConnected = false; state.simError = 'bridge error: ' + ((e && e.message) || e); render();
+      });
+    } else {
+      // standalone preview (no Atria bridge): read the fleet directly (CORS *). No live recommendation
+      // here (the engine is server-side in simulate.py) — keep the demo decision on the Recommendation view.
+      fetch(FLEET_URL + '/api/fleet/snapshot').then(function (r) { return r.json(); }).then(function (snap) {
+        state.simLoading = false;
+        var mm = (snap.machines || []).map(mapFleetMachine);
+        if (mm.length) { M = mm; fleet = buildFleet(M); trends = buildTrends(M); state.simConnected = true; state.simError = null; state.simPlant = snap.plant || null; }
+        else { state.simConnected = false; state.simError = 'no machines returned'; }
+        render();
+      }).catch(function (e) {
+        state.simLoading = false; state.simConnected = false; state.simError = 'cannot reach fleet (needs Atria bridge or the fleet server on ' + FLEET_URL + ')'; render();
+      });
+    }
+  }
+
+  function stopSimPoll() { if (_simPoll) { clearInterval(_simPoll); _simPoll = null; } }
+  function startSimPoll() { stopSimPoll(); _simPoll = setInterval(function () { refreshSim(false); }, 4000); }
+  function setDataMode(mode) {
+    if (mode === state.dataMode) return;
+    state.dataMode = mode; saveDataMode(mode); state.simConnected = false; state.simError = null;
+    if (mode === 'sim') { refreshSim(true); startSimPoll(); }
+    else { stopSimPoll(); state.simPlant = null; loadDemo(); render(); }
+  }
+
+  // ── tiny string-serializing hyperscript (replaces React.createElement) ────
+  var ATTRMAP = { textAnchor: 'text-anchor' };
+  function kebab(k) { return k.replace(/[A-Z]/g, function (m) { return '-' + m.toLowerCase(); }); }
+  function styleStr(o) { var s = ''; for (var k in o) { if (!o.hasOwnProperty(k)) continue; var v = o[k]; if (v == null) continue; s += kebab(k) + ':' + v + ';'; } return s; }
+  function escText(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function escAttr(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  function raw(x) { if (x == null || x === false || x === true) return ''; if (typeof x === 'object' && x.__html != null) return x.__html; return escText(String(x)); }
+  function ser(kids) { var out = ''; for (var i = 0; i < kids.length; i++) { var c = kids[i]; if (Array.isArray(c)) out += ser(c); else out += raw(c); } return out; }
+  function h(tag, props) {
+    var kids = Array.prototype.slice.call(arguments, 2);
+    var attrs = '';
+    if (props) {
+      for (var k in props) {
+        if (!props.hasOwnProperty(k) || k === 'key') continue;
+        var v = props[k];
+        if (v == null) continue;
+        if (k === 'style') attrs += ' style="' + escAttr(styleStr(v)) + '"';
+        else attrs += ' ' + (ATTRMAP[k] || k) + '="' + escAttr(String(v)) + '"';
+      }
+    }
+    return { __html: '<' + tag + attrs + '>' + ser(kids) + '</' + tag + '>' };
+  }
+  function H(x) { return raw(x); } // extract markup string for template embedding
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+  function fmtClock(d) { var p = function (n) { return String(n).padStart(2, '0'); }; return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); }
+  function rnd(i, k) { var x = Math.sin((i + 1) * 97.13 + k * 57.7) * 43758.5453; return x - Math.floor(x); }
+  function kfmt(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n)); }
+  function threshold() { var t = props.unhealthyThreshold; return (t == null || isNaN(t)) ? 0.8 : t; }
+  function guideOn() { return props.showChartGuide !== false; }
+  function labels12() { return Array.from({ length: 12 }, function (_, i) { return i % 2 === 0 ? ('S' + (i + 1)) : ''; }); }
+
+  // ── static data ───────────────────────────────────────────────────────────
+  var INTENTS = [
+    { id: 'throughput', label: 'Live throughput', chart: 'Time-series line + band', why: 'Best for one metric over time; the target band shows deviation instantly.' },
+    { id: 'cycle', label: 'Cycle-time stability', chart: 'Histogram', why: 'Shows the spread and outliers that a line chart hides.' },
+    { id: 'downtime', label: 'Downtime causes', chart: 'Pareto', why: 'Ranks causes and overlays the cumulative 80/20 curve so you fix the biggest first.' },
+    { id: 'vibtemp', label: 'Vibration & temp', chart: 'Dual-line + warning band', why: 'Surfaces how close the machine is running to its thermal and vibration limits.' },
+    { id: 'state', label: 'Run / idle / down', chart: 'State timeline (Gantt)', why: 'Reveals utilization and stoppage patterns across the whole shift.' },
+    { id: 'oee', label: 'OEE breakdown', chart: 'Waterfall', why: 'Decomposes 100% into availability, performance and quality losses down to OEE.' },
+    { id: 'anomaly', label: 'Anomaly detection', chart: 'SPC control chart', why: 'Separates real anomalies from normal process variation using control limits.' },
+    { id: 'peer', label: 'Peer comparison', chart: 'Ranked bars vs fleet', why: 'Shows this machine’s relative standing on a KPI, highlighted against all peers.' },
+    { id: 'corr', label: 'Temp vs defects', chart: 'Scatter', why: 'Reveals whether two variables move together — a correlation a trend hides.' }
+  ];
+
+  var DEMO_SCN = {
+    recId: 'REC-2026-00452', line: 'Line-2', wo: 'WO-4521', shift: 'SHIFT-A', clockLabel: '11:04',
+    target: 1000, current: 530, forecastBase: 820, gap: -180, attainBefore: 0.18, minutesRemaining: 280,
+    cycleExpected: 12, cycleActual: 14.8, machineHealth: 0.68,
+    losses: [
+      { type: 'Material starvation', short: 'Material', min: 32, units: 96 },
+      { type: 'Micro-stops', short: 'Micro-stop', min: 18, units: 54 },
+      { type: 'Reduced speed', short: 'Reduced', min: 12, units: 36 },
+      { type: 'Quality hold', short: 'Quality', min: 8, units: 24 }
+    ],
+    alternatives: [
+      { id: 'ACT-001', headPre: 'Prioritize pallet', headEm: 'P-104', headPost: 'with Forklift F07', type: 'Prioritize pallet P-104', detail: 'Forklift F07 → Line-2 · urgent', recovered: 75, cost: 'Low', risk: 'low', feasible: true, approval: null, score: 0.87, attainAfter: 0.52, confidence: 0.84, forecastAfter: 895, arrival: '11:16', why: 'Pallet P-104 is the critical material constraint. Forklift F07 is available and cuts the predicted material delay by 25 minutes.' },
+      { id: 'ACT-003', headPre: 'Resequence', headEm: 'Job C', headPost: 'ahead of Job B', type: 'Change Job B ↔ Job C', detail: 'Job C already line-side', recovered: 62, cost: 'Low', risk: 'medium', feasible: true, approval: 'Planner', score: 0.66, attainAfter: 0.44, confidence: 0.72, forecastAfter: 882, why: 'Job C material is already line-side and precedence allows the swap, avoiding idle wait on Job B.' },
+      { id: 'ACT-002', headPre: 'Move an operator', headEm: 'from Line 1', headPost: 'to Line-2', type: 'Move operator from Line 1', detail: 'Authorized · temporary', recovered: 48, cost: 'Medium', risk: 'medium', feasible: true, approval: 'Supervisor', score: 0.61, attainAfter: 0.38, confidence: 0.70, forecastAfter: 868, why: 'Line 1 has temporary spare labor and the operator is authorized for this cell.' },
+      { id: 'ACT-004', headPre: 'Increase', headEm: 'line speed', headPost: 'by 8%', type: 'Increase machine speed', detail: '+8% throughput', recovered: 90, cost: 'Low', risk: 'high', feasible: false, approval: 'Not allowed', score: 0, attainAfter: 0, confidence: 0, forecastAfter: 910, rejection: 'Machine health 0.68 is below the 0.70 operating limit — prohibited by the asset-health constraint.' },
+      { id: 'ACT-000', headPre: 'Continue', headEm: 'no action', headPost: '', type: 'No action', detail: 'Continue as-is', recovered: 0, cost: 'None', risk: 'high', feasible: true, approval: null, score: 0.05, attainAfter: 0.18, confidence: 0.90, forecastAfter: 820, why: 'Baseline — output drifts to the current forecast with no intervention.' }
+    ],
+    constraints: [
+      { c: 'Material status', r: 'passed' }, { c: 'Forklift availability', r: 'passed' }, { c: 'Operator authorization', r: 'passed' }, { c: 'Safety route open', r: 'passed' }, { c: 'Machine health limit', r: 'passed' }
+    ],
+    evidence: ['EV-8113', 'EV-8114', 'EV-8138'],
+    versions: { forecast_model: 'production-forecast-0.1', impact_model: 'material-recovery-0.1', ruleset: 'operational-constraints-0.1', optimizer: 'weighted-ranking-0.1' }
+  };
+  var scn = DEMO_SCN; // active decision object (swapped to live data in Simulation mode)
+
+  // ── deterministic fleet simulation ────────────────────────────────────────
+  function buildMachines() {
+    var cells = ['Cutting', 'Welding', 'Assembly', 'Paint', 'Packaging'];
+    var types = { Cutting: 'Laser cutter', Welding: 'Robotic welder', Assembly: 'Assembly cell', Paint: 'Paint booth', Packaging: 'Case packer' };
+    var down = ['M-03', 'M-06'], idle = ['M-08'], chg = ['M-05'];
+    var arr = [];
+    for (var i = 0; i < 8; i++) {
+      var num = i + 1;
+      var id = 'M-' + String(num).padStart(2, '0');
+      var cell = cells[i % 5];
+      var state = 'running';
+      if (down.indexOf(id) >= 0) state = 'down';
+      else if (idle.indexOf(id) >= 0) state = 'idle';
+      else if (chg.indexOf(id) >= 0) state = 'changeover';
+      var avail, perf, qual;
+      if (state === 'down') { avail = 0.45 + rnd(i, 1) * 0.10; perf = 0.70 + rnd(i, 2) * 0.08; qual = 0.93 + rnd(i, 3) * 0.04; }
+      else if (state === 'idle') { avail = 0.60 + rnd(i, 1) * 0.08; perf = 0.78 + rnd(i, 2) * 0.06; qual = 0.95 + rnd(i, 3) * 0.03; }
+      else if (state === 'changeover') { avail = 0.68 + rnd(i, 1) * 0.07; perf = 0.80 + rnd(i, 2) * 0.05; qual = 0.95 + rnd(i, 3) * 0.03; }
+      else { avail = 0.87 + rnd(i, 1) * 0.10; perf = 0.85 + rnd(i, 2) * 0.12; qual = 0.955 + rnd(i, 3) * 0.04; }
+      avail = Math.min(avail, 0.99); perf = Math.min(perf, 0.99); qual = Math.min(qual, 0.998);
+      var oee = avail * perf * qual;
+      var health = state === 'down' ? 0.45 + rnd(i, 4) * 0.15 : 0.55 + rnd(i, 4) * 0.40;
+      health = Math.min(health, 0.96);
+      var target = Math.round(380 + rnd(i, 5) * 120);
+      var thru = state === 'down' ? Math.round(target * (0.12 + rnd(i, 9) * 0.18)) : Math.round(target * (perf * (0.92 + rnd(i, 9) * 0.12)));
+      var temp = Math.round((56 + rnd(i, 6) * 20) * 10) / 10;
+      var vib = Math.round((2 + rnd(i, 7) * 4) * 100) / 100;
+      var runtime = Math.round(2000 + rnd(i, 8) * 16000);
+      var since = Math.round(rnd(i, 10) * 900);
+      var defect = Math.round((0.3 + rnd(i, 11) * 3.7) * 100) / 100;
+      var downMin = state === 'down' ? Math.round(60 + rnd(i, 12) * 300) : Math.round(rnd(i, 12) * 38);
+      var atRisk = health < 0.6 && runtime > 10000;
+      arr.push({ id: id, num: num, n: num, cell: cell, type: types[cell], state: state, avail: avail, perf: perf, qual: qual, oee: oee, health: health, target: target, thru: thru, temp: temp, vib: vib, runtime: runtime, since: since, defect: defect, downMin: downMin, atRisk: atRisk });
+    }
+    return arr;
+  }
+  function buildFleet(M) {
+    var avg = function (k) { return M.reduce(function (s, m) { return s + m[k]; }, 0) / M.length; };
+    var count = function (s) { return M.filter(function (m) { return m.state === s; }).length; };
+    return {
+      oee: avg('oee'), avail: avg('avail'), perf: avg('perf'), qual: avg('qual'),
+      running: count('running'), idle: count('idle'), changeover: count('changeover'), down: count('down'), total: M.length,
+      unitsToday: M.reduce(function (s, m) { return s + m.thru; }, 0) * 8,
+      targetToday: M.reduce(function (s, m) { return s + m.target; }, 0) * 8,
+      downMin: M.reduce(function (s, m) { return s + m.downMin; }, 0),
+      scrap: M.reduce(function (s, m) { return s + m.defect; }, 0) / M.length,
+      atRisk: M.filter(function (m) { return m.atRisk; }).length,
+      overdue: M.filter(function (m) { return m.since > 720; }).length,
+      avgHealth: avg('health'), avgSince: avg('since')
+    };
+  }
+  function buildTrends(M) {
+    var f = buildFleet(M);
+    var oee = [], act = [], fpy = [];
+    var actBase = M.reduce(function (s, m) { return s + m.thru; }, 0);
+    for (var s = 0; s < 12; s++) {
+      var w = Math.sin(s * 0.9 + 1) * 0.028 + (rnd(s, 71) - 0.5) * 0.02;
+      oee.push(Math.max(0.45, Math.min(0.88, f.oee + w)));
+      act.push(Math.round(actBase * (0.9 + 0.14 * (0.5 + Math.sin(s * 0.8) * 0.5) + (rnd(s, 72) - 0.5) * 0.06)));
+      fpy.push(Math.max(90, Math.min(99.4, (100 - f.scrap) + Math.sin(s * 1.1) * 1.2 + (rnd(s, 73) - 0.5) * 1.3)));
+    }
+    return { oee: oee, act: act, fpy: fpy, tgt: M.reduce(function (s, m) { return s + m.target; }, 0) };
+  }
+
+  var M = buildMachines();
+  var fleet = buildFleet(M);
+  var trends = buildTrends(M);
+
+  // ── SVG chart builders (ported from React.createElement to string h()) ────
+  function lineC(key, opt) {
+    var H = opt.H || 240, W = chartW[key] || 640;
+    var padL = 46, padR = opt.padR || 16, padT = 14, padB = opt.xLabels ? 26 : 14;
+    var x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var all = []; opt.series.forEach(function (s) { s.data.forEach(function (v) { all.push(v); }); });
+    if (opt.target != null) all.push(opt.target);
+    var mn = opt.yMin != null ? opt.yMin : Math.min.apply(null, all);
+    var mx = opt.yMax != null ? opt.yMax : Math.max.apply(null, all);
+    if (mn === mx) mx = mn + 1;
+    var n = opt.series[0].data.length;
+    var sx = function (i) { return n <= 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1); };
+    var sy = function (v) { return y1 - (y1 - y0) * (v - mn) / (mx - mn); };
+    var kids = [], ticks = opt.yTicks || 4;
+    for (var t = 0; t <= ticks; t++) {
+      var v = mn + (mx - mn) * t / ticks, y = sy(v);
+      kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)', strokeWidth: 1 } }));
+      kids.push(h('text', { x: x0 - 8, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 10px var(--mono)' } }, opt.fmt ? opt.fmt(v) : Math.round(v)));
+    }
+    if (opt.target != null) {
+      var yt = sy(opt.target);
+      kids.push(h('line', { x1: x0, x2: x1, y1: yt, y2: yt, style: { stroke: 'var(--warn)', strokeWidth: 1.5, strokeDasharray: '5 4' } }));
+      kids.push(h('text', { x: x1, y: yt - 5, textAnchor: 'end', style: { fill: 'var(--warn)', font: '500 9px var(--mono)' } }, opt.targetLabel || 'TARGET'));
+    }
+    opt.series.forEach(function (s, si) {
+      var line = s.data.map(function (v, i) { return sx(i) + ' ' + sy(v); }).join(' L ');
+      if (s.fill) {
+        var area = 'M ' + sx(0) + ' ' + y1 + ' L ' + line + ' L ' + sx(n - 1) + ' ' + y1 + ' Z';
+        kids.push(h('path', { d: area, style: { fill: s.fillColor || 'var(--accent)', opacity: 0.13 } }));
+      }
+      kids.push(h('polyline', { points: s.data.map(function (v, i) { return sx(i) + ',' + sy(v); }).join(' '), style: { fill: 'none', stroke: s.color || 'var(--accent)', strokeWidth: s.w || 2, strokeDasharray: s.dash || 'none', strokeLinejoin: 'round', strokeLinecap: 'round' } }));
+      if (s.dots !== false) s.data.forEach(function (v, i) { kids.push(h('circle', { cx: sx(i), cy: sy(v), r: 2.4, style: { fill: s.color || 'var(--accent)' } })); });
+    });
+    if (opt.xLabels) opt.xLabels.forEach(function (lb, i) { if (!lb) return; kids.push(h('text', { x: sx(i), y: H - 7, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, lb)); });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function pareto(key, opt) {
+    var H = opt.H || 280, W = chartW[key] || 640;
+    var items = opt.items.slice().sort(function (a, b) { return b.value - a.value; });
+    var total = items.reduce(function (s, i) { return s + i.value; }, 0);
+    var cum = 0; var cumPct = items.map(function (i) { cum += i.value; return cum / total * 100; });
+    var vmax = items[0].value || 1;
+    var padL = 40, padR = 42, padT = 14, padB = 46, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var bw = (x1 - x0) / items.length, kids = [];
+    for (var t = 0; t <= 4; t++) {
+      var y = y1 - (y1 - y0) * t / 4;
+      kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } }));
+      kids.push(h('text', { x: x0 - 6, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, Math.round(vmax * t / 4)));
+      kids.push(h('text', { x: x1 + 6, y: y + 3, style: { fill: 'var(--text-faint)', font: '500 9px var(--mono)' } }, (100 * t / 4) + '%'));
+    }
+    items.forEach(function (it, i) {
+      var bh = (y1 - y0) * it.value / vmax, bx = x0 + i * bw;
+      kids.push(h('rect', { x: bx + 4, y: y1 - bh, width: Math.max(1, bw - 8), height: bh, rx: 2, style: { fill: i === 0 ? 'var(--danger)' : 'var(--accent)', opacity: i === 0 ? 0.95 : 0.78 } }));
+      kids.push(h('text', { x: bx + bw / 2, y: H - 26, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 8.5px var(--mono)' } }, it.label));
+      kids.push(h('text', { x: bx + bw / 2, y: H - 14, textAnchor: 'middle', style: { fill: 'var(--text-faint)', font: '500 8px var(--mono)' } }, it.value));
+    });
+    var cy = function (p) { return y1 - (y1 - y0) * p / 100; };
+    kids.push(h('polyline', { points: cumPct.map(function (p, i) { return (x0 + i * bw + bw / 2) + ',' + cy(p); }).join(' '), style: { fill: 'none', stroke: 'var(--accent-hi)', strokeWidth: 2, strokeLinejoin: 'round' } }));
+    cumPct.forEach(function (p, i) { kids.push(h('circle', { cx: x0 + i * bw + bw / 2, cy: cy(p), r: 2.6, style: { fill: 'var(--accent-hi)' } })); });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function histogram(key, opt) {
+    var H = opt.H || 260, W = chartW[key] || 640;
+    var vals = opt.values, bins = opt.bins || 9;
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), bw0 = (mx - mn) / bins || 1;
+    var counts = new Array(bins).fill(0);
+    vals.forEach(function (v) { var b = Math.floor((v - mn) / bw0); if (b >= bins) b = bins - 1; if (b < 0) b = 0; counts[b]++; });
+    var cmax = Math.max.apply(null, counts) || 1;
+    var padL = 34, padR = 12, padT = 12, padB = 26, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var bwid = (x1 - x0) / bins, kids = [];
+    for (var t = 0; t <= 3; t++) { var y = y1 - (y1 - y0) * t / 3; kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } })); kids.push(h('text', { x: x0 - 6, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, Math.round(cmax * t / 3))); }
+    counts.forEach(function (c, i) { var bh = (y1 - y0) * c / cmax, bx = x0 + i * bwid; kids.push(h('rect', { x: bx + 2, y: y1 - bh, width: bwid - 4, height: bh, rx: 1.5, style: { fill: 'var(--accent)', opacity: 0.82 } })); });
+    kids.push(h('text', { x: x0, y: H - 7, style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, mn.toFixed(1) + (opt.unit || '')));
+    kids.push(h('text', { x: x1, y: H - 7, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, mx.toFixed(1) + (opt.unit || '')));
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function dualLine(key, opt) {
+    var H = opt.H || 260, W = chartW[key] || 640;
+    var t = opt.t, v = opt.v, n = t.length;
+    var padL = 40, padR = 42, padT = 18, padB = opt.xLabels ? 26 : 16, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var tMin = opt.tMin != null ? opt.tMin : 50, tMax = opt.tMax != null ? opt.tMax : 82;
+    var vMin = 0, vMax = opt.vMax || 8;
+    var sx = function (i) { return x0 + (x1 - x0) * i / (n - 1); };
+    var syT = function (val) { return y1 - (y1 - y0) * (val - tMin) / (tMax - tMin); };
+    var syV = function (val) { return y1 - (y1 - y0) * (val - vMin) / (vMax - vMin); };
+    var kids = [];
+    for (var g = 0; g <= 4; g++) { var yy = y0 + (y1 - y0) * g / 4; kids.push(h('line', { x1: x0, x2: x1, y1: yy, y2: yy, style: { stroke: 'var(--grid-line)' } })); }
+    if (opt.tThresh) { var yb = syT(opt.tThresh); kids.push(h('rect', { x: x0, y: y0, width: x1 - x0, height: Math.max(0, yb - y0), style: { fill: 'var(--danger)', opacity: 0.07 } })); kids.push(h('line', { x1: x0, x2: x1, y1: yb, y2: yb, style: { stroke: 'var(--danger)', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.55 } })); }
+    for (var g2 = 0; g2 <= 4; g2++) { var val = tMin + (tMax - tMin) * g2 / 4; kids.push(h('text', { x: x0 - 6, y: syT(val) + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, Math.round(val))); }
+    for (var g3 = 0; g3 <= 4; g3++) { var val2 = vMin + (vMax - vMin) * g3 / 4; kids.push(h('text', { x: x1 + 6, y: syV(val2) + 3, style: { fill: 'var(--accent-3)', font: '500 9px var(--mono)' } }, val2.toFixed(1))); }
+    kids.push(h('polyline', { points: t.map(function (val, i) { return sx(i) + ',' + syT(val); }).join(' '), style: { fill: 'none', stroke: 'var(--danger)', strokeWidth: 2, strokeLinejoin: 'round' } }));
+    kids.push(h('polyline', { points: v.map(function (val, i) { return sx(i) + ',' + syV(val); }).join(' '), style: { fill: 'none', stroke: 'var(--accent-3)', strokeWidth: 2, strokeLinejoin: 'round' } }));
+    kids.push(h('text', { x: x0 - 6, y: y0 - 5, style: { fill: 'var(--danger)', font: '500 9px var(--mono)' } }, '°C'));
+    kids.push(h('text', { x: x1 + 6, y: y0 - 5, textAnchor: 'end', style: { fill: 'var(--accent-3)', font: '500 9px var(--mono)' } }, 'mm/s'));
+    if (opt.xLabels) opt.xLabels.forEach(function (lb, i) { if (!lb) return; kids.push(h('text', { x: sx(i), y: H - 7, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, lb)); });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function gantt(key, opt) {
+    var H = opt.H || 170, W = chartW[key] || 640;
+    var segs = opt.segments, padL = 8, padR = 8, padT = 34, barH = 42, x0 = padL, x1 = W - padR, y = padT;
+    var total = segs.reduce(function (s, g) { return s + g.frac; }, 0);
+    var C = { running: 'var(--accent)', idle: 'color-mix(in srgb,var(--text) 28%,transparent)', changeover: 'var(--warn)', down: 'var(--danger)' };
+    var cx = x0; var kids = [];
+    segs.forEach(function (g, i) { var w = (x1 - x0) * g.frac / total; kids.push(h('rect', { x: cx, y: y, width: Math.max(0, w - 1.5), height: barH, rx: 3, style: { fill: C[g.state] || 'var(--accent)' } })); cx += w; });
+    for (var hh = 0; hh <= 8; hh++) { var xx = x0 + (x1 - x0) * hh / 8; kids.push(h('line', { x1: xx, x2: xx, y1: y + barH + 3, y2: y + barH + 8, style: { stroke: 'var(--line-2)' } })); kids.push(h('text', { x: xx, y: y + barH + 22, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, hh + 'h')); }
+    var leg = [['running', 'Running'], ['idle', 'Idle'], ['changeover', 'Changeover'], ['down', 'Down']];
+    leg.forEach(function (l, i) { var lx = x0 + i * 118; kids.push(h('rect', { x: lx, y: 8, width: 10, height: 10, rx: 2, style: { fill: C[l[0]] } })); kids.push(h('text', { x: lx + 15, y: 17, style: { fill: 'var(--text-dim)', font: '500 10px var(--mono)' } }, l[1])); });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function waterfall(key, opt) {
+    var H = opt.H || 280, W = chartW[key] || 640;
+    var a = opt.avail, p = opt.perf, q = opt.qual;
+    var afterA = 100 * a, afterP = 100 * a * p, afterQ = 100 * a * p * q;
+    var bars = [
+      { label: 'Ideal', lo: 0, hi: 100, c: 'color-mix(in srgb,var(--text) 45%,transparent)', val: '100%' },
+      { label: 'Avail', lo: afterA, hi: 100, c: 'var(--danger)', val: '−' + (100 - afterA).toFixed(0) },
+      { label: 'Perf', lo: afterP, hi: afterA, c: 'var(--warn)', val: '−' + (afterA - afterP).toFixed(0) },
+      { label: 'Qual', lo: afterQ, hi: afterP, c: 'var(--accent-3)', val: '−' + (afterP - afterQ).toFixed(0) },
+      { label: 'OEE', lo: 0, hi: afterQ, c: 'var(--accent)', val: afterQ.toFixed(0) + '%' }
+    ];
+    var padL = 34, padR = 12, padT = 18, padB = 42, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var sy = function (v) { return y1 - (y1 - y0) * v / 100; }, bw = (x1 - x0) / bars.length, kids = [];
+    for (var t = 0; t <= 4; t++) { var y = sy(t * 25); kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } })); kids.push(h('text', { x: x0 - 6, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, t * 25)); }
+    bars.forEach(function (b, i) {
+      var bx = x0 + i * bw + 7, yTop = sy(b.hi), yBot = sy(b.lo);
+      if (i > 0) { var py = sy(bars[i - 1].lo); kids.push(h('line', { x1: x0 + (i - 1) * bw + 7, x2: bx + bw - 14, y1: py, y2: py, style: { stroke: 'var(--line-2)', strokeDasharray: '3 3' } })); }
+      kids.push(h('rect', { x: bx, y: yTop, width: bw - 14, height: Math.max(2, yBot - yTop), rx: 2, style: { fill: b.c } }));
+      kids.push(h('text', { x: bx + (bw - 14) / 2, y: H - 24, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 9.5px var(--mono)' } }, b.label));
+      kids.push(h('text', { x: bx + (bw - 14) / 2, y: yTop - 5, textAnchor: 'middle', style: { fill: 'var(--text-dim)', font: '500 9.5px var(--mono)' } }, b.val));
+    });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function control(key, opt) {
+    var H = opt.H || 260, W = chartW[key] || 640;
+    var vals = opt.values, n = vals.length;
+    var mean = vals.reduce(function (s, v) { return s + v; }, 0) / n;
+    var sd = Math.sqrt(vals.reduce(function (s, v) { return s + (v - mean) * (v - mean); }, 0) / n);
+    var ucl = mean + 3 * sd, lcl = Math.max(0, mean - 3 * sd);
+    var padL = 44, padR = 30, padT = 16, padB = 24, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var mn = lcl - sd, mx = ucl + sd;
+    var sx = function (i) { return x0 + (x1 - x0) * i / (n - 1); }, sy = function (v) { return y1 - (y1 - y0) * (v - mn) / (mx - mn); }, kids = [];
+    kids.push(h('rect', { x: x0, y: sy(ucl), width: x1 - x0, height: sy(lcl) - sy(ucl), style: { fill: 'var(--accent)', opacity: 0.05 } }));
+    [['UCL', ucl, 'var(--danger)', 1], ['x̄', mean, 'var(--accent-hi)', 0], ['LCL', lcl, 'var(--danger)', 1]].forEach(function (c, i) {
+      var y = sy(c[1]);
+      kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: c[2], strokeWidth: 1, strokeDasharray: c[3] ? '5 4' : 'none', opacity: 0.8 } }));
+      kids.push(h('text', { x: x1 + 5, y: y + 3, style: { fill: c[2], font: '500 8.5px var(--mono)' } }, c[0]));
+    });
+    kids.push(h('polyline', { points: vals.map(function (v, i) { return sx(i) + ',' + sy(v); }).join(' '), style: { fill: 'none', stroke: 'var(--text-mute)', strokeWidth: 1.4 } }));
+    vals.forEach(function (v, i) { var out = v > ucl || v < lcl; kids.push(h('circle', { cx: sx(i), cy: sy(v), r: out ? 3.6 : 2.4, style: { fill: out ? 'var(--danger)' : 'var(--accent)' } })); });
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  function scatter(key, opt) {
+    var H = opt.H || 280, W = chartW[key] || 640;
+    var pts = opt.points, padL = 44, padR = 14, padT = 16, padB = 36, x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
+    var sx = function (v) { return x0 + (x1 - x0) * (v - opt.xMin) / (opt.xMax - opt.xMin); }, sy = function (v) { return y1 - (y1 - y0) * (v - opt.yMin) / (opt.yMax - opt.yMin); }, kids = [];
+    for (var t = 0; t <= 4; t++) {
+      var y = y0 + (y1 - y0) * t / 4; kids.push(h('line', { x1: x0, x2: x1, y1: y, y2: y, style: { stroke: 'var(--grid-line)' } }));
+      var val = opt.yMax - (opt.yMax - opt.yMin) * t / 4; kids.push(h('text', { x: x0 - 6, y: y + 3, textAnchor: 'end', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, Math.round(val) + (opt.yUnit || '')));
+    }
+    for (var t2 = 0; t2 <= 4; t2++) { var x = x0 + (x1 - x0) * t2 / 4, val2 = opt.xMin + (opt.xMax - opt.xMin) * t2 / 4; kids.push(h('text', { x: x, y: H - 18, textAnchor: 'middle', style: { fill: 'var(--text-mute)', font: '500 9px var(--mono)' } }, Math.round(val2))); }
+    pts.forEach(function (p, i) { kids.push(h('circle', { cx: sx(p.x), cy: sy(p.y), r: p.flag ? 5 : 3.6, style: { fill: p.flag ? 'var(--danger)' : 'var(--accent)', opacity: p.flag ? 0.95 : 0.65 } })); });
+    kids.push(h('text', { x: (x0 + x1) / 2, y: H - 3, textAnchor: 'middle', style: { fill: 'var(--text-faint)', font: '500 9px var(--mono)' } }, opt.xLabel || ''));
+    return h('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: H + 'px', display: 'block' } }, kids);
+  }
+
+  // ── HTML visualizations ───────────────────────────────────────────────────
+  function heatFilters() {
+    var f = fleet, cur = state.heatFilter;
+    var defs = [['all', 'All', f.total], ['running', 'Running', f.running], ['idle', 'Idle', f.idle], ['changeover', 'Changeover', f.changeover], ['down', 'Down', f.down]];
+    return defs.map(function (d) { return { id: d[0], label: d[1], count: d[2], on: cur === d[0] ? '1' : '0' }; });
+  }
+  function heatmap() {
+    var th = threshold();
+    var stC = { running: 'var(--accent)', idle: 'var(--text-mute)', changeover: 'var(--warn)', down: 'var(--danger)' };
+    var stLabel = { running: 'Running', idle: 'Idle', changeover: 'Changeover', down: 'Down' };
+    var flt = state.heatFilter;
+    var list = flt === 'all' ? M : M.filter(function (m) { return m.state === flt; });
+    if (!list.length) return h('div', { style: { padding: '28px 8px', font: '400 13px var(--sans)', color: 'var(--text-mute)', textAlign: 'center' } }, 'No machines in this state.');
+    var cells = list.map(function (m) {
+      var c = stC[m.state];
+      var bad = m.state === 'down' || m.oee < th;
+      var barC = bad ? 'var(--danger)' : (m.oee >= 0.85 ? 'var(--accent)' : 'var(--warn)');
+      return h('div', { style: { position: 'relative', background: 'var(--bg-2)', border: '1px solid ' + (bad ? 'var(--danger)' : 'var(--line-2)'), borderRadius: '12px', padding: '12px 13px 13px', display: 'flex', flexDirection: 'column', gap: '10px', minHeight: '92px', overflow: 'hidden' } },
+        h('div', { style: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: c } }),
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' } },
+          h('span', { style: { font: '600 12px var(--mono)', color: 'var(--text)', letterSpacing: '.04em' } }, m.id),
+          h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'color-mix(in srgb,' + c + ' 14%, transparent)', border: '1px solid color-mix(in srgb,' + c + ' 35%, transparent)', borderRadius: '999px', padding: '2px 7px 2px 6px' } },
+            h('span', { style: { width: '6px', height: '6px', borderRadius: '999px', background: c, boxShadow: m.state === 'running' ? '0 0 5px ' + c : 'none' } }),
+            h('span', { style: { font: '500 8.5px var(--mono)', letterSpacing: '.08em', textTransform: 'uppercase', color: c } }, stLabel[m.state]))),
+        h('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' } },
+          h('span', { style: { font: '500 26px var(--sans)', letterSpacing: '-.045em', color: 'var(--text)', lineHeight: 1 } }, Math.round(m.oee * 100) + '%'),
+          h('span', { style: { font: '500 8.5px var(--mono)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-faint)' } }, 'OEE')),
+        h('div', { style: { height: '5px', background: 'var(--surf-2)', borderRadius: '999px', overflow: 'hidden' } },
+          h('div', { style: { width: (m.oee * 100).toFixed(0) + '%', height: '100%', background: barC, borderRadius: '999px' } })));
+    });
+    return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: '10px' } }, cells);
+  }
+  function stateMix() {
+    var f = fleet, total = f.total;
+    var segs = [
+      { k: 'running', label: 'Running', c: 'var(--accent)', n: f.running },
+      { k: 'idle', label: 'Idle', c: 'color-mix(in srgb,var(--text) 42%,transparent)', n: f.idle },
+      { k: 'changeover', label: 'Changeover', c: 'color-mix(in srgb,var(--text) 25%,transparent)', n: f.changeover },
+      { k: 'down', label: 'Down', c: 'var(--danger)', n: f.down }
+    ];
+    var bar = h('div', { style: { display: 'flex', height: '36px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--line)' } },
+      segs.filter(function (s) { return s.n > 0; }).map(function (s) { return h('div', { title: s.label, style: { width: (s.n / total * 100) + '%', background: s.c, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.k === 'idle' || s.k === 'changeover' ? 'var(--bg-0)' : '#fff', font: '600 12px var(--mono)' } }, s.n); }));
+    var legend = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '18px', marginTop: '14px' } },
+      segs.map(function (s) { return h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+        h('span', { style: { width: '11px', height: '11px', borderRadius: '3px', background: s.c } }),
+        h('span', { style: { font: '500 12px var(--sans)', color: 'var(--text-dim)' } }, s.label),
+        h('span', { style: { font: '600 12px var(--mono)', color: 'var(--text)' } }, s.n)); }));
+    return h('div', null, bar, legend);
+  }
+  function rankedBars(rows, opt) {
+    var max = Math.max.apply(null, rows.map(function (r) { return r.value; })) || 1;
+    return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '5px' } }, rows.map(function (r) {
+      var red = opt.redBelow != null && r.raw < opt.redBelow;
+      var barC = red ? 'var(--danger)' : (r.hi ? 'var(--accent-hi)' : 'var(--accent)');
+      return h('div', { style: { display: 'grid', gridTemplateColumns: '46px 1fr 48px', alignItems: 'center', gap: '10px', background: r.hi ? 'var(--surf)' : 'transparent', borderRadius: '4px', padding: r.hi ? '2px 4px' : '2px 0' } },
+        h('span', { style: { font: '600 11px var(--mono)', color: r.hi ? 'var(--accent-hi)' : 'var(--text-dim)' } }, r.id),
+        h('div', { style: { height: '13px', background: 'var(--surf-2)', borderRadius: '3px', overflow: 'hidden' } },
+          h('div', { style: { width: (r.value / max * 100) + '%', height: '100%', background: barC, borderRadius: '3px', transition: 'width .4s var(--ease)' } })),
+        h('span', { style: { font: '500 11px var(--mono)', textAlign: 'right', color: red ? 'var(--danger)' : 'var(--text)' } }, r.disp));
+    }));
+  }
+
+  // ── view charts ───────────────────────────────────────────────────────────
+  function chartOeeTrend() { return lineC('oeeTrend', { H: 240, series: [{ data: trends.oee.map(function (x) { return x * 100; }), color: 'var(--accent)', fill: true }], yMin: 40, yMax: 90, yTicks: 4, xLabels: labels12(), fmt: function (v) { return Math.round(v) + '%'; } }); }
+  function chartThruTrend() { var d = trends.act; return lineC('thruTrend', { H: 260, series: [{ data: d, color: 'var(--accent)', fill: true }], target: trends.tgt, targetLabel: 'TARGET', yMin: Math.min(trends.tgt * 0.8, Math.min.apply(null, d) * 0.95), yMax: Math.max(trends.tgt * 1.08, Math.max.apply(null, d) * 1.05), xLabels: labels12(), fmt: function (v) { return kfmt(v); } }); }
+  function chartFpyTrend() { return lineC('fpyTrend', { H: 240, series: [{ data: trends.fpy, color: 'var(--accent-2)', fill: true, fillColor: 'var(--accent-2)' }], yMin: 88, yMax: 100, yTicks: 4, xLabels: labels12(), fmt: function (v) { return Math.round(v) + '%'; } }); }
+  // Downtime Pareto from LIVE per-machine downtime, grouped by real cause (status_reason / state).
+  function chartDtPareto() {
+    var causeMap = { unplanned_downtime: 'Breakdown', material_starvation: 'Material', planned_changeover: 'Changeover' };
+    var agg = {};
+    M.forEach(function (m) {
+      if (!(m.downMin > 0)) return;
+      var c = causeMap[m.reason] || (m.state === 'down' ? 'Breakdown' : m.state === 'idle' ? 'Material' : m.state === 'changeover' ? 'Changeover' : 'Minor stops');
+      agg[c] = (agg[c] || 0) + m.downMin;
+    });
+    var items = Object.keys(agg).map(function (k) { return { label: k, value: Math.round(agg[k]) }; });
+    if (!items.length) items = [{ label: 'Minor stops', value: Math.max(1, Math.round(fleet.downMin || 0)) }];
+    return pareto('dtPareto', { items: items, H: 300 });
+  }
+  // Defect units by cell from LIVE per-machine defect-rate × throughput.
+  function chartDefPareto() {
+    var agg = {};
+    M.forEach(function (m) { agg[m.cell] = (agg[m.cell] || 0) + (m.defect || 0) / 100 * (m.thru || 0); });
+    var items = Object.keys(agg).map(function (k) { return { label: k, value: Math.max(0, Math.round(agg[k])) }; });
+    if (!items.length) items = [{ label: '—', value: 1 }];
+    return pareto('defPareto', { items: items, H: 300 });
+  }
+  function rankedAvail() { var rows = M.slice().sort(function (a, b) { return b.avail - a.avail; }).map(function (m) { return { id: m.id, value: m.avail, raw: m.avail, disp: Math.round(m.avail * 100) + '%' }; }); return rankedBars(rows, { redBelow: threshold() }); }
+  function rankedPerf() { var rows = M.slice().sort(function (a, b) { return b.perf - a.perf; }).map(function (m) { return { id: m.id, value: m.perf, raw: m.perf, disp: Math.round(m.perf * 100) + '%' }; }); return rankedBars(rows, { redBelow: threshold() }); }
+  function rankedHealth() { var rows = M.slice().sort(function (a, b) { return b.health - a.health; }).map(function (m) { return { id: m.id, value: m.health, raw: m.health, disp: Math.round(m.health * 100) + '%' }; }); return rankedBars(rows, { redBelow: 0.6 }); }
+  function chartHealthScatter() { var pts = M.map(function (m) { return { x: m.since, y: m.health * 100, flag: m.atRisk }; }); return scatter('hScatter', { points: pts, xMin: 0, xMax: 900, yMin: 40, yMax: 100, xLabel: 'Hours since service →', yUnit: '%', H: 280 }); }
+
+  // ── Ask AI ────────────────────────────────────────────────────────────────
+  function pickIntent(m) {
+    if (m.state === 'down') return 'downtime';
+    if (m.atRisk) return 'vibtemp';
+    if (m.perf < 0.86) return 'oee';
+    if (m.state === 'changeover') return 'state';
+    return 'throughput';
+  }
+  function generate(id, intent) {
+    // light build: no simulated latency — show the chart immediately
+    state.askMachine = id; state.asking = false; state.askIntent = intent; render();
+  }
+  // Ask AI (gpt-5.4-mini via the bridge → scripts/ai.py). The model answers + picks the chart
+  // intent/machine; we draw the chart here from LIVE data so the numbers are always real.
+  function askAI(question) {
+    question = (question || '').trim(); if (!question) return;
+    state.askQuestion = question; state.askThinking = true; state.askResult = null; render();
+    var b = window.AtriaDash || null;
+    if (!b || !b.json) { state.askThinking = false; state.askResult = { answer: 'Ask AI runs through the Atria bridge — open the Optimize tile inside Atria.', charts: [], follow_ups: [], source: 'none' }; render(); return; }
+    b.json('ai.py', ['ask'], { stdin: JSON.stringify({ question: question, machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
+      .then(function (res) { state.askThinking = false; state.askResult = res || {}; render(); })
+      .catch(function (e) { state.askThinking = false; state.askResult = { answer: 'AI error: ' + ((e && e.message) || e), charts: [], follow_ups: [], source: 'error' }; render(); });
+  }
+  function askResultBlock() {
+    if (state.askThinking) return '<div class="panel"><div class="gen"><span class="spin"></span>Thinking…</div></div>';
+    var r = state.askResult; if (!r) return '';
+    var srcBadge = r.source && r.source !== 'none' ? '<span class="psub" style="margin-left:auto">' + escText(r.source === 'fallback' ? 'offline analysis' : String(r.source)) + '</span>' : '';
+    var html = '<div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">Answer</span>' + srcBadge + '</div>'
+      + '<p class="body" style="margin:0 0 6px">' + escText(r.answer || '') + '</p>';
+    if (r.table && r.table.rows && r.table.rows.length) {
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font:500 12px var(--mono)">'
+        + '<tr>' + (r.table.columns || []).map(function (c) { return '<th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);color:var(--text-mute)">' + escText(String(c)) + '</th>'; }).join('') + '</tr>'
+        + r.table.rows.map(function (row) { return '<tr>' + row.map(function (cell) { return '<td style="padding:5px 8px;border-bottom:1px solid var(--line);color:var(--text-dim)">' + escText(String(cell)) + '</td>'; }).join('') + '</tr>'; }).join('')
+        + '</table></div>';
+    }
+    html += '</div>';
+    (r.charts || []).slice(0, 2).forEach(function (c, i) {
+      var mm = M.find(function (x) { return x.id === c.machine; }); var it = INTENTS.find(function (x) { return x.id === c.intent; });
+      if (!mm || !it) return;
+      html += '<div class="panel"><div class="panel-h"><span class="pnum">◆</span><span class="ptitle">' + mm.id + ' · ' + it.chart + '</span><span class="psub">' + it.label + '</span></div>' + chartDiv('airesult' + i, buildAskChart(mm, c.intent)) + '</div>';
+    });
+    if (r.follow_ups && r.follow_ups.length) {
+      html += '<div class="chips">' + r.follow_ups.slice(0, 4).map(function (q) { return '<button class="chip" data-act="ask-suggest" data-q="' + escAttr(String(q)) + '">' + escText(String(q)) + '</button>'; }).join('') + '</div>';
+    }
+    return html;
+  }
+  function histOf(m, key) { var h = (state.simHistory || {})[m.id]; return (h && h[key] && h[key].length >= 3) ? h[key] : null; }
+  function buildAskChart(m, intent) {
+    if (intent === 'throughput') { var real = histOf(m, 'thru'); var n = real ? real.length : 16, d = real ? real.map(function (x) { return Math.round(x); }) : []; if (!real) for (var i = 0; i < n; i++) d.push(Math.round(m.thru * (0.85 + rnd(m.num, 30 + i) * 0.28))); return lineC('askchart', { H: 290, series: [{ data: d, color: 'var(--accent)', fill: true }], target: m.target, targetLabel: 'TARGET ' + m.target + '/h', yMin: Math.min(m.target * 0.72, Math.min.apply(null, d) * 0.9), yMax: Math.max(m.target * 1.12, Math.max.apply(null, d) * 1.05), xLabels: Array.from({ length: n }, function (_, i) { return i % 3 === 0 ? ('t' + (i + 1)) : ''; }), fmt: function (v) { return Math.round(v); } }); }
+    if (intent === 'cycle') { var mean = 3600 / m.target, vals = []; for (var i2 = 0; i2 < 60; i2++) vals.push(mean * (1 + (rnd(m.num, 40 + i2) - 0.5) * 0.28)); return histogram('askchart', { values: vals, bins: 9, H: 290, unit: 's' }); }
+    if (intent === 'downtime') { var rs = ['Material', 'Micro-stop', 'Changeover', 'Breakdown', 'Setup', 'Quality']; var items = rs.map(function (r, ri) { return { label: r, value: Math.round(6 + rnd(m.num, 50 + ri) * 40 + ((r === 'Breakdown' && m.state === 'down') ? m.downMin : 0)) }; }); return pareto('askchart', { items: items, H: 300 }); }
+    if (intent === 'vibtemp') { var rt = histOf(m, 'temp'), rv = histOf(m, 'vib'); var n2 = rt ? rt.length : 16, t = [], v = []; if (rt && rv) { t = rt.map(function (x) { return Math.round(x * 10) / 10; }); v = rv.map(function (x) { return Math.round(x * 100) / 100; }); } else { for (var i3 = 0; i3 < n2; i3++) { t.push(Math.round((m.temp - 5 + i3 * 0.6 + (rnd(m.num, 60 + i3) - 0.5) * 2.4) * 10) / 10); v.push(Math.round((m.vib * (0.85 + i3 * 0.015) + (rnd(m.num, 80 + i3) - 0.5) * 0.5) * 100) / 100); } } return dualLine('askchart', { t: t, v: v, tThresh: 75, tMin: 50, tMax: 82, vMax: 8, H: 290, xLabels: Array.from({ length: n2 }, function (_, i) { return i % 3 === 0 ? ('t' + (i + 1)) : ''; }) }); }
+    if (intent === 'state') { var segs; if (m.state === 'down') segs = [{ state: 'running', frac: 0.35 }, { state: 'down', frac: 0.4 }, { state: 'running', frac: 0.25 }]; else if (m.state === 'changeover') segs = [{ state: 'running', frac: 0.3 }, { state: 'changeover', frac: 0.15 }, { state: 'running', frac: 0.4 }, { state: 'idle', frac: 0.05 }, { state: 'running', frac: 0.1 }]; else if (m.state === 'idle') segs = [{ state: 'running', frac: 0.4 }, { state: 'idle', frac: 0.25 }, { state: 'running', frac: 0.35 }]; else segs = [{ state: 'running', frac: 0.45 }, { state: 'idle', frac: 0.04 }, { state: 'running', frac: 0.3 }, { state: 'changeover', frac: 0.06 }, { state: 'running', frac: 0.15 }]; return gantt('askchart', { segments: segs, H: 180 }); }
+    if (intent === 'oee') return waterfall('askchart', { avail: m.avail, perf: m.perf, qual: m.qual, H: 290 });
+    if (intent === 'anomaly') { var mean2 = 3600 / m.target, vals2 = []; for (var i4 = 0; i4 < 28; i4++) { var base = mean2 * (1 + (rnd(m.num, 90 + i4) - 0.5) * 0.12); if (i4 === 9 || i4 === 20) base *= 1.35; vals2.push(base); } return control('askchart', { values: vals2, H: 290 }); }
+    if (intent === 'peer') { var rows2 = M.slice().sort(function (a, b) { return b.oee - a.oee; }).map(function (x) { return { id: x.id, value: x.oee, raw: x.oee, disp: Math.round(x.oee * 100) + '%', hi: x.id === m.id }; }); return rankedBars(rows2, { redBelow: threshold() }); }
+    if (intent === 'corr') { var pts = M.map(function (x) { return { x: x.temp, y: x.defect, flag: x.id === m.id }; }); var ym = Math.max.apply(null, M.map(function (x) { return x.defect; })) + 0.5; return scatter('askchart', { points: pts, xMin: 54, xMax: 78, yMin: 0, yMax: ym, xLabel: 'Temp °C →', yUnit: '%', H: 290 }); }
+    return null;
+  }
+
+  // ── Ask Minder chatbot (ai.py ask, grounded in live data) ─────────────────
+  function scrollChat() { try { var el = document.querySelector('.chatlog'); if (el) el.scrollTop = el.scrollHeight; } catch (e) {} }
+  function chatSend(q) {
+    q = (q || '').trim(); if (!q) return;
+    state.chatDraft = '';
+    state.chatMsgs = state.chatMsgs.concat([{ who: 'u', text: q }]);
+    state.chatTyping = true; render(); scrollChat();
+    var b = window.AtriaDash || null;
+    if (!b || !b.json) {
+      state.chatTyping = false;
+      state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: L({ en: 'Ask Minder runs through the Atria bridge — open the Optimize tile inside Atria.', vi: 'Hỏi Minder chạy qua cầu nối Atria — mở thẻ Optimize trong Atria.' }) }]);
+      render(); scrollChat(); return;
+    }
+    b.json('ai.py', ['ask'], { stdin: JSON.stringify({ question: q, machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
+      .then(function (res) {
+        state.chatTyping = false;
+        var c = (res && res.charts && res.charts[0]) || null;
+        state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: (res && res.answer) || '', mId: c && c.machine, intent: c && c.intent, source: res && res.source }]);
+        render(); scrollChat();
+      })
+      .catch(function (e) {
+        state.chatTyping = false;
+        state.chatMsgs = state.chatMsgs.concat([{ who: 'a', text: 'AI error: ' + ((e && e.message) || e) }]);
+        render(); scrollChat();
+      });
+  }
+  function discussRec() {
+    var A = selAlt();
+    state.view = 'ask';
+    render();
+    chatSend(L({ en: 'Tell me about ', vi: 'Cho tôi biết về ' }) + scn.recId + ' — ' + A.type + '.');
+  }
+
+  // ── Recommendation / Optimize decision loop ───────────────────────────────
+  function selAlt() { return scn.alternatives.find(function (a) { return a.id === state.recAlt; }) || scn.alternatives[0]; }
+  function pickAlt(id) { var a = scn.alternatives.find(function (x) { return x.id === id; }); state.recAlt = id; state.recStatus = a && a.feasible ? 'proposed' : 'prohibited'; render(); }
+  function recApprove() { if (!selAlt().feasible) return; state.recStatus = 'approved'; persist('approve', { recommendation_id: scn.recId, version: 1, at: '2026-07-10T' + scn.clockLabel + ':31+07:00' }); render(); }
+  function recDispatch() {
+    var A = selAlt(); if (!A.feasible) return;
+    // dispatch + record the outcome (expected vs a modeled actual) + actuate the live sim.
+    var cmd = buildCommand(A);
+    state.dispatchTask = (cmd && cmd.task) || 'MOVE-TASK-7012';
+    state.actualRecovered = Math.max(0, A.recovered - 4);
+    persist('dispatch', { recommendation_id: scn.recId, version: 1, target_module: 'move', command: cmd });
+    state.recStatus = 'completed';
+    persist('outcome', { recommendation_id: scn.recId, version: 1, recovered_units: state.actualRecovered, status: 'successful' });
+    actuateSim(scn.targetMachine, A);   // push the approved decision to the live simulator
+    render();
+  }
+  // Approve-to-simulator: the committed recovery action is pushed to the live fleet as a real
+  // control call (services the target machine) so the decision visibly recovers the machine.
+  function actuateSim(machine, A) {
+    var b = window.AtriaDash || null;
+    if (!b || !b.json || state.dataMode !== 'sim' || !machine) return;
+    var action = (A && A.kind === 'release') ? 'release' : ((A && (A.kind === 'speed' || /speed/i.test(A.type || ''))) ? 'speed' : 'service');
+    var payload = { machine: machine, action: action };
+    if (action === 'release' && typeof scn !== 'undefined' && scn && scn.intake) payload.count = scn.intake.starved_count || 1;
+    state.actuateMsg = 'Sending to ' + machine + '…';
+    b.json('simulate.py', ['actuate'], { stdin: JSON.stringify(payload), timeout_ms: 15000 })
+      .then(function (res) { state.actuateMsg = (res && res.actuated) ? ('Actuated ' + machine + ' → ' + (res.endpoint || '') + '; recovering…') : ('Actuate failed: ' + ((res && res.error) || 'unreachable')); refreshSim(true); })
+      .catch(function (e) { state.actuateMsg = 'Actuate error: ' + ((e && e.message) || e); render(); });
+  }
+  // AI decision narrative (gpt-5.4-mini via ai.py analyze) for the Measure→…→Recommend stages.
+  function maybeAnalyze() { if (scn && state.analysisFor !== scn.recId && !state.analyzing) fetchAnalysis(); }
+  function fetchAnalysis() {
+    var b = window.AtriaDash || null; if (!b || !b.json || !scn) return;
+    state.analyzing = true; state.analysisFor = scn.recId; render();
+    b.json('ai.py', ['analyze'], { stdin: JSON.stringify({ machines: M, scn: scn, lang: state.lang }), timeout_ms: 60000 })
+      .then(function (res) { state.analyzing = false; state.analysis = res || null; render(); })
+      .catch(function () { state.analyzing = false; state.analysis = null; render(); });
+  }
+  function recRecalc() {
+    if (state.dataMode === 'sim') { refreshSim(true); return; } // re-read live fleet + recompute
+    state.recAlt = 'ACT-001'; state.recStatus = 'proposed';
+    persist('save', recDecisionObj());
+    render();
+  }
+  function buildCommand(A) {
+    return { id: 'CMD-2026-00881', source_recommendation_id: scn.recId, type: slug(A.type), target_module: 'move', task: 'MOVE-TASK-7012', payload: A.id === 'ACT-001' ? { pallet_id: 'P-104', material_id: 'MAT-220', assigned_resource: 'Forklift-F07', destination: scn.line } : {} };
+  }
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+  function recForecastChart(A) {
+    var s = scn, n = 7, no = [], yes = [];
+    for (var i = 0; i < n; i++) { var f = i / (n - 1); no.push(Math.round(s.current + (s.forecastBase - s.current) * f)); yes.push(Math.round(s.current + (A.forecastAfter - s.current) * f)); }
+    var series = [{ data: no, color: 'var(--text-mute)', dash: '5 4', dots: false }];
+    if (A.feasible && A.id !== 'ACT-000') series.push({ data: yes, color: 'var(--accent)', w: 2.5, fill: true, dots: false });
+    // auto-scale to the actual values + target (demo target ~1000, live target can be several k)
+    var allv = no.concat(yes).concat([s.target]);
+    var lo = Math.min.apply(null, allv), hi = Math.max.apply(null, allv), pad = (hi - lo) * 0.1 || 1;
+    return lineC('recFc', { H: 250, series: series, target: s.target, targetLabel: 'TARGET ' + kfmt(s.target), yMin: Math.max(0, lo - pad), yMax: hi + pad, yTicks: 4, xLabels: ['11:00', '', '', 'now', '', '', '15:40'], fmt: function (v) { return kfmt(v); } });
+  }
+  function recLossChart() { var items = scn.losses.map(function (l) { return { label: l.short, value: l.units }; }); return pareto('recLoss', { items: items, H: 240 }); }
+  function recDecisionObj() {
+    var s = scn, A = selAlt();
+    return {
+      schema_version: '1.0', recommendation_id: s.recId, recommendation_version: 1, status: state.recStatus,
+      scope: { plant: 'Plant-1', line: s.line, work_order: s.wo, shift: s.shift },
+      current_state: { current_good_output: s.current, target_output: s.target, forecast_output: s.forecastBase, forecast_gap: s.gap, target_attainment_probability: s.attainBefore },
+      recommended_action: { action_id: A.id, type: slug(A.type), parameters: A.id === 'ACT-001' ? { pallet_id: 'P-104', material_id: 'MAT-220', assigned_resource: 'Forklift-F07', destination: s.line } : {} },
+      expected_effect: { forecast_output_after_action: A.forecastAfter, recovered_units: A.recovered, target_attainment_probability_after: A.attainAfter },
+      alternatives: s.alternatives.map(function (a) { var o = { action_id: a.id, type: slug(a.type), score: +(a.score || 0).toFixed(2), feasibility: a.feasible ? 'feasible' : 'prohibited', expected_recovered_units: a.recovered, risk_level: a.risk }; if (a.rejection) o.rejection_reason = a.rejection; return o; }),
+      confidence: { overall: A.confidence }, risk: { level: A.risk },
+      constraints: { result: A.feasible ? 'passed' : 'failed', checks: s.constraints.map(function (c) { return { constraint: slug(c.c), result: c.r }; }) },
+      evidence: { event_ids: s.evidence },
+      approval: { required: !!A.approval, required_role: A.approval || null },
+      versions: s.versions
+    };
+  }
+  function recDecisionJson() { return JSON.stringify(recDecisionObj(), null, 2); }
+
+  // ── KPI rows ──────────────────────────────────────────────────────────────
+  function kpisFor(v) {
+    var f = fleet, pct = function (x) { return Math.round(x * 100) + '%'; };
+    if (v === 'fleet') return [
+      { kl: 'Fleet OEE', kv: pct(f.oee), ks: f.total + '-machine avg' },
+      { kl: 'Availability', kv: pct(f.avail), ks: 'uptime ratio' },
+      { kl: 'Performance', kv: pct(f.perf), ks: 'vs ideal rate' },
+      { kl: 'Quality', kv: pct(f.qual), ks: 'good-part ratio' },
+      { kl: 'Running', kv: f.running + ' / ' + f.total, ks: f.idle + ' idle · ' + f.changeover + ' chg' },
+      { kl: 'Down', kv: String(f.down), ks: 'needs attention', red: f.down > 0 }
+    ];
+    if (v === 'availability') { var fail = f.down * 3 + f.changeover * 2 + 6; return [
+      { kl: 'Avg availability', kv: pct(f.avail), ks: 'fleet uptime' },
+      { kl: 'Downtime', kv: f.downMin + 'm', ks: 'total, this shift' },
+      { kl: 'MTTR', kv: Math.round(f.downMin / fail) + 'm', ks: 'mean time to repair' },
+      { kl: 'MTBF', kv: Math.round(f.total * 720 / fail) + 'h', ks: 'between failures' }
+    ]; }
+    if (v === 'throughput') { var vt = Math.round(f.unitsToday / f.targetToday * 100); return [
+      { kl: 'Units today', kv: kfmt(f.unitsToday), ks: 'across fleet' },
+      { kl: 'vs Target', kv: vt + '%', ks: kfmt(f.targetToday) + ' target', red: vt < 90 },
+      { kl: 'Avg performance', kv: pct(f.perf), ks: 'rate efficiency' },
+      { kl: 'Cycle drift', kv: '+' + ((1 / f.perf - 1) * 100).toFixed(1) + '%', ks: 'vs ideal cycle' }
+    ]; }
+    if (v === 'quality') return [
+      { kl: 'Fleet FPY', kv: (100 - f.scrap).toFixed(1) + '%', ks: 'first-pass yield' },
+      { kl: 'Scrap', kv: f.scrap.toFixed(1) + '%', ks: 'avg defect rate' },
+      { kl: 'Top defect', kv: 'Dimensional', ks: 'most frequent' },
+      { kl: 'NCRs open', kv: String(Math.round(f.scrap * 3) + 2), ks: 'non-conformance' }
+    ];
+    if (v === 'health') return [
+      { kl: 'Avg health', kv: pct(f.avgHealth), ks: 'condition index' },
+      { kl: 'At-risk', kv: String(f.atRisk), ks: 'low health + runtime', red: f.atRisk > 0 },
+      { kl: 'Overdue PM', kv: String(f.overdue), ks: 'service > 720h', red: f.overdue > 0 },
+      { kl: 'Since service', kv: Math.round(f.avgSince) + 'h', ks: 'fleet average' }
+    ];
+    if (v === 'machines') return [
+      { kl: 'Units today', kv: kfmt(f.unitsToday), ks: 'across fleet' },
+      { kl: 'vs Target', kv: Math.round(f.unitsToday / f.targetToday * 100) + '%', ks: kfmt(f.targetToday) + ' target', red: (f.unitsToday / f.targetToday) < 0.9 },
+      { kl: 'Avg availability', kv: pct(f.avail), ks: 'fleet uptime' },
+      { kl: 'Fleet FPY', kv: (100 - f.scrap).toFixed(1) + '%', ks: 'first-pass yield' },
+      { kl: 'Avg health', kv: pct(f.avgHealth), ks: 'condition index' },
+      { kl: 'At-risk', kv: String(f.atRisk), ks: 'low health + runtime', red: f.atRisk > 0 }
+    ];
+    return [];
+  }
+
+  // ── template builders (HTML strings + data-act delegation) ────────────────
+  var PLANT = 'Sài Gòn Plant · 8 machines · 5 cells';
+  function panel(num, title, sub, body) { return '<div class="panel"><div class="panel-h"><span class="pnum">' + num + '</span><span class="ptitle">' + title + '</span><span class="psub">' + sub + '</span></div>' + body + '</div>'; }
+  function chartDiv(key, chartObj) { return '<div data-chartw="' + key + '" style="width:100%">' + H(chartObj) + '</div>'; }
+
+  function tModeSeg() {
+    var d = state.dataMode;
+    return '<div class="modeseg" title="Demo (static) or Live (IIOT fleet simulator)">'
+      + '<button class="mseg" data-on="' + (d === 'demo' ? '1' : '0') + '" data-act="mode" data-mode="demo">' + t('mode_demo') + '</button>'
+      + '<button class="mseg" data-on="' + (d === 'sim' ? '1' : '0') + '" data-act="mode" data-mode="sim">' + t('mode_live') + '</button></div>';
+  }
+  function tConnDot() {
+    if (state.dataMode !== 'sim') return '<span class="opdot"><span class="dot" style="background:var(--text-mute)"></span>' + t('st_demo') + '</span>';
+    if (state.simConnected) return '<span class="opdot"><span class="dot livedot"></span>' + t('st_connected') + '</span>';
+    if (state.simLoading) return '<span class="opdot"><span class="dot" style="background:var(--warn)"></span>' + t('st_connecting') + '</span>';
+    return '<span class="opdot"><span class="dot" style="background:var(--danger)"></span>' + t('st_offline') + '</span>';
+  }
+  // Sidebar nav icons (inline SVG, from the design's icon map).
+  var ICONS = {
+    fleet: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>',
+    recommendation: '<svg viewBox="0 0 24 24"><path d="M12 3l2.09 5.26L20 9l-4 3.5L17 19l-5-3-5 3 1-6.5L4 9l5.91-.74z"/></svg>',
+    history: '<svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    machines: '<svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8"/><path d="M17 4h4v4"/></svg>',
+    ask: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/></svg>'
+  };
+  function tSide() {
+    var v = state.view;
+    var tabs = [['fleet', 'tab_fleet'], ['recommendation', 'tab_recommendation'], ['history', 'tab_history'], ['machines', 'tab_machines'], ['ask', 'tab_ask']];
+    var nav = tabs.map(function (tb) {
+      return '<button class="oc-tab" data-on="' + (v === tb[0] ? '1' : '0') + '" data-act="view" data-view="' + tb[0] + '">' + ICONS[tb[0]] + '<span>' + t(tb[1]) + '</span></button>';
+    }).join('');
+    return '<aside class="oc-side">'
+      + '<div class="side-brand"><span class="sq"></span>OPTIMIZE<span class="ver">V2</span></div>'
+      + '<nav class="side-nav"><div class="side-lab">' + t('side_console') + '</div>' + nav + '</nav>'
+      + '<div class="side-foot"><span class="dot livedot"></span>' + t('side_foot') + '</div>'
+      + '</aside>';
+  }
+  function tHead() {
+    return '<header class="oc-head">'
+      + '<div class="ctx">' + escText(plantLabel()) + '</div>'
+      + '<div class="head-r">' + tModeSeg() + tConnDot()
+      + '<span class="clock">' + state.clock + '</span>'
+      + '<div class="modeseg" title="English / Tiếng Việt">'
+      + '<button class="mseg" data-on="' + (state.lang === 'en' ? '1' : '0') + '" data-act="lang" data-lang="en">EN</button>'
+      + '<button class="mseg" data-on="' + (state.lang === 'vi' ? '1' : '0') + '" data-act="lang" data-lang="vi">VI</button></div>'
+      + '<button class="theme-btn" data-act="theme" title="Switch light / dark theme" aria-label="Switch light or dark theme">' + (state.theme === 'dark' ? '☀' : '☾') + '</button>'
+      + '</div></header>';
+  }
+  function tKpis(v) {
+    return '<div class="kpis">' + kpisFor(v).map(function (k) { return '<div class="kpi"><div class="kl">' + k.kl + '</div><div class="kv ' + (k.red ? 'red' : '') + '">' + k.kv + '</div><div class="ks">' + k.ks + '</div></div>'; }).join('') + '</div>';
+  }
+
+  function viewFleet() {
+    var hf = '<div class="hfilter">' + heatFilters().map(function (f) { return '<button class="hf" data-on="' + f.on + '" data-act="heatfilter" data-id="' + f.id + '">' + f.label + '<span class="hfn">' + f.count + '</span></button>'; }).join('') + '</div>';
+    return '<div class="stack">'
+      + panel('a', 'Fleet OEE trend', 'last 12 shifts', chartDiv('oeeTrend', chartOeeTrend()))
+      + '<div class="panel"><div class="panel-h"><span class="pnum">b</span><span class="ptitle">' + M.length + '-machine status</span>' + hf + '</div>' + H(heatmap()) + '</div>'
+      + panel('c', 'State mix', 'right now', H(stateMix()))
+      + '</div>';
+  }
+
+  // A clickable stage's detail card — live scn numbers + that stage's gpt-5.4-mini sentence.
+  function stageCard(i) {
+    var s = scn, A = selAlt(), an = state.analysis || {};
+    var names = [t('stage_measure'), t('stage_explain'), t('stage_predict'), t('stage_evaluate'), t('stage_recommend'), t('stage_approve')];
+    var keys = ['measure', 'explain', 'predict', 'evaluate', 'recommend', null];
+    var pctv = function (x) { return Math.round((x || 0) * 100) + '%'; };
+    function rows(pairs) { return '<div class="stg-rows">' + pairs.map(function (p) { return '<div class="stg-row"><span class="stg-k">' + p[0] + '</span><span class="stg-v ' + (p[2] ? 'red' : '') + '">' + escText(String(p[1])) + '</span></div>'; }).join('') + '</div>'; }
+    var body = '';
+    if (i === 0) {
+      body = rows([
+        ['Current output', kfmt(s.current) + ' units'],
+        ['Cycle time', s.cycleActual + 's vs ' + s.cycleExpected + 's expected', s.cycleActual > s.cycleExpected],
+        ['Machine health', pctv(s.machineHealth), (s.machineHealth || 0) < 0.7],
+        ['Minutes remaining', (s.minutesRemaining || 0) + ' min']
+      ]) + '<div class="stg-ev">Evidence · ' + escText((s.evidence || []).join(' · ')) + '</div>';
+    } else if (i === 1) {
+      var tu = (s.losses || []).reduce(function (a, l) { return a + (l.units || 0); }, 0);
+      var tm = (s.losses || []).reduce(function (a, l) { return a + (l.min || 0); }, 0);
+      body = '<div class="stg-losstable"><div class="stg-lr" data-h="1"><span>Cause</span><span>Min</span><span>Units</span></div>'
+        + (s.losses || []).map(function (l, li) { return '<div class="stg-lr"' + (li === 0 ? ' data-primary="1"' : '') + '><span>' + escText(l.type) + (li === 0 ? ' · primary' : '') + '</span><span>' + l.min + '</span><span>' + l.units + '</span></div>'; }).join('')
+        + '<div class="stg-lr" data-total="1"><span>Total</span><span>' + tm + '</span><span>' + tu + '</span></div></div>';
+    } else if (i === 2) {
+      body = rows([['Forecast (no action)', kfmt(s.forecastBase) + ' units'], ['Gap', s.gap + ' units', true], ['Attainment', pctv(s.attainBefore), true]])
+        + '<div class="stg-ev">' + escText(s.versions ? (s.versions.forecast_model + ' · ' + s.versions.impact_model) : '') + '</div>';
+    } else if (i === 3) {
+      var alts = s.alternatives || [], feas = alts.filter(function (a) { return a.feasible; }).length;
+      var blocked = alts.filter(function (a) { return !a.feasible; });
+      body = rows([['Feasible actions', feas + ' of ' + alts.length], ['Blocked', blocked.map(function (a) { return a.type; }).join(', ') || 'none', blocked.length > 0]])
+        + '<div class="stg-ev">' + (s.constraints || []).map(function (c) { return (c.r === 'passed' ? '✓ ' : '✕ ') + escText(c.c); }).join('  ·  ') + '</div>'
+        + '<div class="stg-formula">score = 0.45·recovery + 0.20·attainment + 0.15·confidence − 0.10·cost − 0.10·risk</div>';
+    } else if (i === 4) {
+      body = rows([['Action', A.type], ['Score', (A.score || 0).toFixed(2)], ['Recovered', (A.recovered > 0 ? '+' : '') + A.recovered + ' units'], ['Attainment after', pctv(A.attainAfter)], ['Confidence', pctv(A.confidence)], ['Risk', A.risk]])
+        + '<div class="stg-ev">Decision ' + escText(s.recId) + ' · open “Decision object” below for the full JSON.</div>';
+    } else {
+      var life = ['proposed', 'approved', 'dispatched', 'completed'], cur = state.recStatus;
+      body = '<div class="stg-life">' + life.map(function (x) { return '<span class="stg-lp" data-on="' + (x === cur ? '1' : '0') + '">' + x + '</span>'; }).join('<span class="stg-arrow">→</span>') + '</div>'
+        + rows([['Required role', A.approval || 'none'], ['Status', cur]])
+        + (cur === 'completed' ? '<div class="stg-ev">Outcome · 75 expected → 71 actual · Successful</div>' : '');
+    }
+    var ai = keys[i] ? (an[keys[i]] || (state.analyzing ? 'Analyzing live telemetry…' : '')) : '';
+    var aiBlock = ai ? '<div class="stg-ai"><span class="stg-ai-tag">gpt-5.4-mini</span>' + escText(ai) + '</div>'
+      : (keys[i] ? '<div class="stg-ai"><button class="btn-ghost" data-act="reexplain">' + t('btn_generate') + '</button></div>' : '');
+    return '<div class="panel stage-d"><div class="panel-h"><span class="pnum">' + (i + 1) + '</span><span class="ptitle">' + names[i] + '</span><span class="psub" style="margin-left:auto">stage ' + (i + 1) + ' of 6</span></div>' + aiBlock + body + '</div>';
+  }
+  // The read-only 5-phase result summary — one deterministic line per phase from the LIVE scn
+  // (matches the design's phase templates). The 5th line is dynamic on the selected alternative.
+  function recPhases(s, A) {
+    var feas = s.alternatives.filter(function (a) { return a.feasible; }).length;
+    var blocked = s.alternatives.length - feas;
+    var top = (s.losses && s.losses[0]) || {};
+    var p5;
+    if (!A.feasible) p5 = { ph: L({ en: 'Blocked', vi: 'Bị chặn' }), r: A.id + ' ' + L({ en: 'fails the health constraint', vi: 'vi phạm ràng buộc sức khỏe máy' }), cls: 'danger' };
+    else if (A.id === 'ACT-000') p5 = { ph: L({ en: 'Act', vi: 'Hành động' }), r: L({ en: 'No action · drifts to ', vi: 'Không hành động · trôi về ' }) + kfmt(A.forecastAfter), cls: '' };
+    else p5 = { ph: t('stage_recommend'), r: A.id + ' · +' + A.recovered + ' ' + L({ en: 'units · ', vi: 'sản phẩm · ' }) + Math.round(A.attainAfter * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'accent' };
+    return [
+      { ph: t('stage_measure'), r: kfmt(s.current) + ' / ' + kfmt(s.target) + ' ' + L({ en: 'units · cycle ', vi: 'sản phẩm · chu kỳ ' }) + s.cycleActual + 's vs ' + s.cycleExpected + 's', cls: '' },
+      { ph: t('stage_explain'), r: (top.type || '—') + ' — ' + (top.units || 0) + ' ' + L({ en: 'units, top of ', vi: 'sản phẩm, đứng đầu ' }) + s.losses.length + L({ en: ' causes', vi: ' nguyên nhân' }), cls: '' },
+      { ph: t('stage_predict'), r: L({ en: 'Forecast ', vi: 'Dự báo ' }) + kfmt(s.forecastBase) + ' · ' + s.gap + ' ' + L({ en: 'gap · ', vi: 'thiếu · ' }) + Math.round(s.attainBefore * 100) + '% ' + L({ en: 'attainment', vi: 'đạt mục tiêu' }), cls: 'danger' },
+      { ph: t('stage_evaluate'), r: s.alternatives.length + ' ' + L({ en: 'candidates · ', vi: 'phương án · ' }) + blocked + ' ' + L({ en: 'blocked · ', vi: 'bị chặn · ' }) + feas + ' ' + L({ en: 'feasible', vi: 'khả thi' }), cls: '' },
+      p5
+    ];
+  }
+
+  function viewRec() {
+    var s = scn, A = selAlt(), st = state.recStatus;
+    var statusMap = { proposed: [L({ en: 'Proposed', vi: 'Đề xuất' }), 'var(--accent)'], approved: [L({ en: 'Approved', vi: 'Đã duyệt' }), 'var(--ok)'], dispatched: [L({ en: 'Dispatched · executing', vi: 'Đã điều phối · đang chạy' }), 'var(--warn)'], completed: [L({ en: 'Completed', vi: 'Hoàn thành' }), 'var(--ok)'], prohibited: [L({ en: 'Blocked', vi: 'Bị chặn' }), 'var(--danger)'] };
+    var done = st === 'dispatched' || st === 'completed';
+    var scnMetrics = [
+      { l: L({ en: 'Target', vi: 'Mục tiêu' }), v: kfmt(s.target), t: L({ en: 'units this shift', vi: 'sản phẩm ca này' }) },
+      { l: L({ en: 'Current', vi: 'Hiện tại' }), v: kfmt(s.current), t: L({ en: 'good output @ ', vi: 'sản lượng tốt @ ' }) + s.clockLabel },
+      { l: L({ en: 'Forecast', vi: 'Dự báo' }), v: kfmt(s.forecastBase), t: L({ en: 'end of shift, no action', vi: 'cuối ca, không hành động' }) },
+      { l: L({ en: 'Gap', vi: 'Chênh lệch' }), v: s.gap, t: L({ en: 'units short of target', vi: 'sản phẩm thiếu' }), red: true },
+      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '%', t: L({ en: 'probability of hitting target', vi: 'xác suất đạt mục tiêu' }), red: true }
+    ];
+    var recMetrics = [
+      { l: L({ en: 'Recovered', vi: 'Phục hồi' }), v: (A.recovered > 0 ? '+' : '') + A.recovered, u: L({ en: 'units', vi: 'sản phẩm' }), cls: A.recovered > 0 ? 'accent' : '' },
+      { l: L({ en: 'Attainment', vi: 'Đạt mục tiêu' }), v: Math.round(s.attainBefore * 100) + '→' + Math.round(A.attainAfter * 100) + '%', u: L({ en: 'target prob', vi: 'xác suất' }), cls: '' },
+      { l: L({ en: 'Risk', vi: 'Rủi ro' }), v: A.risk.charAt(0).toUpperCase() + A.risk.slice(1), u: L({ en: 'operational', vi: 'vận hành' }), cls: A.risk === 'high' ? 'danger' : '' },
+      { l: L({ en: 'Confidence', vi: 'Tin cậy' }), v: Math.round(A.confidence * 100) + '%', u: L({ en: 'overall', vi: 'tổng thể' }), cls: '' },
+      { l: L({ en: 'Approval', vi: 'Phê duyệt' }), v: A.approval || L({ en: 'None', vi: 'Không' }), u: A.approval ? L({ en: 'required', vi: 'bắt buộc' }) : L({ en: 'not required', vi: 'không cần' }), cls: '' }
+    ];
+    var canApprove = A.feasible && !!A.approval && st === 'proposed';
+    var canDispatch = A.feasible && (st === 'proposed' || st === 'approved');
+    var sitRisk = s.attainBefore < 0.4 ? 'high' : (s.attainBefore < 0.7 ? 'medium' : 'low');
+
+    var scnPanel = '<div class="panel scn">'
+      + '<div class="scn-top"><div class="scn-id"><span class="scn-live"><span class="dot livedot"></span>' + L({ en: 'Optimize · live decision', vi: 'Optimize · quyết định trực tiếp' }) + '</span><span class="scn-rec">' + escText(s.recId) + '</span></div>'
+      + '<div class="scn-head">' + escText(s.line + ' · ' + s.wo + ' · ' + s.shift) + '</div>'
+      + '<div class="scn-r"><span class="risk-pill">' + L({ en: 'Risk: ', vi: 'Rủi ro: ' }) + sitRisk + '</span><span class="scn-clock">' + s.clockLabel + '</span></div></div>'
+      + '<div class="scn-metrics">' + scnMetrics.map(function (m) { return '<div class="scn-m"><div class="scn-ml">' + m.l + '</div><div class="scn-mv ' + (m.red ? 'red' : '') + '">' + m.v + '</div><div class="scn-mt">' + m.t + '</div></div>'; }).join('') + '</div>'
+      + '<div class="phases">' + recPhases(s, A).map(function (p, i) { return '<div class="phase"><div class="phase-h"><span class="phase-n">' + (i + 1) + '</span><span class="phase-ph">' + p.ph + '</span></div><div class="phase-r ' + p.cls + '">' + escText(p.r) + '</div></div>'; }).join('') + '</div>'
+      + '<div class="scn-fc"><div class="scn-fc-h"><span class="ptitle">' + L({ en: 'Forecast projection', vi: 'Dự báo sản lượng' }) + '</span><span class="psub">' + L({ en: 'no action vs recommended', vi: 'không hành động vs khuyến nghị' }) + '</span></div>'
+      + chartDiv('recFc', recForecastChart(A))
+      + '<div class="fc-legend"><span class="fc-lg"><span class="fc-swatch" style="background:var(--accent)"></span>' + L({ en: 'With action', vi: 'Có hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch dash"></span>' + L({ en: 'No action', vi: 'Không hành động' }) + '</span><span class="fc-lg"><span class="fc-swatch warn"></span>' + L({ en: 'Target', vi: 'Mục tiêu' }) + '</span></div></div>'
+      + '</div>';
+
+    var actions = '';
+    if (canApprove) actions += '<button class="btn-2" data-act="approve">' + t('btn_approve') + '</button>';
+    if (canDispatch) actions += '<button class="btn-1" data-act="dispatch">' + t('btn_send_move') + '</button>';
+    actions += '<button class="btn-ghost" data-act="recalc">' + t('btn_recalc') + '</button>';
+    actions += '<button class="btn-ghost" data-act="toggle-json">' + t('btn_decision_obj') + '</button>';
+    actions += '<button class="btn-2" data-act="discuss">' + t('btn_discuss') + '</button>';
+
+    var outcome = '';
+    if (done) {
+      var taskId = state.dispatchTask || 'MOVE-TASK-7012';
+      outcome = '<div class="rh-outcome"><div class="rh-oc-row"><span class="rh-oc-k">' + L({ en: 'Move task', vi: 'Tác vụ Move' }) + '</span><span class="rh-oc-v">' + escText(taskId) + ' · ' + L({ en: 'accepted', vi: 'đã nhận' }) + '</span></div>';
+      if (st === 'completed') { var actu = state.actualRecovered != null ? state.actualRecovered : Math.max(0, A.recovered - 4); outcome += '<div class="rh-oc-grid"><div><div class="rh-oc-num">' + A.recovered + '</div><div class="rh-oc-lab">' + L({ en: 'expected units', vi: 'sản phẩm kỳ vọng' }) + '</div></div><div><div class="rh-oc-num">' + actu + '</div><div class="rh-oc-lab">' + L({ en: 'actual units', vi: 'sản phẩm thực tế' }) + '</div></div><div><div class="rh-oc-num ok">' + L({ en: 'Successful', vi: 'Thành công' }) + '</div><div class="rh-oc-lab">' + L({ en: 'outcome', vi: 'kết quả' }) + '</div></div></div>'; }
+      outcome += '</div>';
+    }
+
+    var hero = '<div class="panel rec-hero" data-blocked="' + (!A.feasible) + '">'
+      + '<div class="rh-top"><span class="rh-eyebrow">' + L({ en: 'Recommended action', vi: 'Hành động khuyến nghị' }) + '</span><span class="rh-status" style="color:' + statusMap[st][1] + ';border-color:' + statusMap[st][1] + '">' + statusMap[st][0] + '</span></div>'
+      + '<h2 class="rh-head">' + escText(A.headPre) + ' <em>' + escText(A.headEm) + '</em> ' + escText(A.headPost) + '</h2>'
+      + '<div class="rh-detail">' + escText(A.detail) + '</div>'
+      + '<div class="rh-metrics">' + recMetrics.map(function (m) { return '<div class="rh-m"><div class="rh-mv ' + m.cls + '">' + m.v + '</div><div class="rh-ml">' + m.l + '</div><div class="rh-mu">' + m.u + '</div></div>'; }).join('') + '</div>'
+      + '<div class="rh-why"><span class="rh-why-lab">' + L({ en: 'Why', vi: 'Vì sao' }) + '</span>' + escText(A.feasible ? A.why : A.rejection) + '</div>'
+      + '<div class="rh-actions">' + actions + '</div>'
+      + outcome
+      + '</div>';
+
+    var altPanel = '<div class="panel"><div class="panel-h"><span class="pnum">≡</span><span class="ptitle">' + L({ en: 'Alternatives evaluated', vi: 'Phương án đã đánh giá' }) + '</span><span class="psub">' + L({ en: 'select to re-rank', vi: 'chọn để xếp lại' }) + '</span></div>'
+      + '<div class="alt-table"><div class="alt-h"><span>' + L({ en: 'Action', vi: 'Hành động' }) + '</span><span>' + L({ en: 'Units', vi: 'SP' }) + '</span><span>' + L({ en: 'Risk', vi: 'Rủi ro' }) + '</span><span>' + L({ en: 'Feasible', vi: 'Khả thi' }) + '</span><span>' + L({ en: 'Approval', vi: 'Duyệt' }) + '</span></div>'
+      + s.alternatives.map(function (a) {
+        var riskColor = a.risk === 'high' ? 'var(--danger)' : (a.risk === 'medium' ? 'var(--warn)' : 'var(--ok)');
+        var feasColor = a.feasible ? 'var(--ok)' : 'var(--danger)';
+        return '<button class="alt-row" data-on="' + (a.id === state.recAlt ? '1' : '0') + '" data-act="pick-alt" data-id="' + a.id + '">'
+          + '<span class="alt-type">' + escText(a.type) + '</span>'
+          + '<span class="alt-units">' + (a.feasible ? '+' + a.recovered : a.recovered) + '</span>'
+          + '<span class="alt-risk" style="color:' + riskColor + '">' + (a.risk.charAt(0).toUpperCase() + a.risk.slice(1)) + '</span>'
+          + '<span class="alt-feas" style="color:' + feasColor + '">' + (a.feasible ? L({ en: 'Feasible', vi: 'Khả thi' }) : L({ en: 'Blocked', vi: 'Chặn' })) + '</span>'
+          + '<span class="alt-appr">' + escText(a.approval || '—') + '</span></button>';
+      }).join('') + '</div></div>';
+
+    var jsonPanel = state.showJson ? '<div class="panel"><div class="panel-h"><span class="pnum">{ }</span><span class="ptitle">' + t('btn_decision_obj') + '</span><span class="psub">versioned · executable</span></div><pre class="jsonbox">' + escText(recDecisionJson()) + '</pre></div>' : '';
+
+    var actMsg = state.actuateMsg ? '<div class="panel" style="border-color:var(--accent-lo)"><div class="body-sm" style="color:var(--accent-hi)">' + escText(state.actuateMsg) + '</div></div>' : '';
+    return '<div class="stack">' + scnPanel
+      + '<div class="g21">' + hero + altPanel + '</div>'
+      + actMsg
+      + jsonPanel
+      + '</div>';
+  }
+
+  function viewAvail() {
+    return '<div class="stack">'
+      + panel('a', 'Downtime Pareto', 'by reason · min', chartDiv('dtPareto', chartDtPareto()))
+      + panel('b', 'Availability by machine', 'ranked · red below threshold', H(rankedAvail()))
+      + '</div>';
+  }
+  function viewThru() {
+    return '<div class="stack">'
+      + panel('a', 'Throughput vs target', 'last 12 shifts · units', chartDiv('thruTrend', chartThruTrend()))
+      + panel('b', 'Performance by machine', 'ranked · red below threshold', H(rankedPerf()))
+      + '</div>';
+  }
+  function viewQual() {
+    return '<div class="g2">'
+      + panel('a', 'First-pass yield trend', 'last 12 shifts', chartDiv('fpyTrend', chartFpyTrend()))
+      + panel('b', 'Defects by type', 'Pareto · count', chartDiv('defPareto', chartDefPareto()))
+      + '</div>';
+  }
+  function viewHealth() {
+    return '<div class="g2">'
+      + panel('a', 'Health index by machine', 'ranked · red below 60%', H(rankedHealth()))
+      + panel('b', 'Runtime vs health', 'red = at-risk', chartDiv('hScatter', chartHealthScatter()))
+      + '</div>';
+  }
+  function rankedQual() { var rows = M.slice().sort(function (a, b) { return b.qual - a.qual; }).map(function (m) { return { id: m.id, value: m.qual, raw: m.qual, disp: (m.qual * 100).toFixed(1) + '%' }; }); return rankedBars(rows, { redBelow: 0.95 }); }
+  // Machines view — merges the old Availability / Throughput / Quality / Health tabs into one
+  // per-machine analytics screen (design "Machines" tab): a metric-filtered ranked-bar board, a
+  // switchable trend/loss chart, and the runtime-vs-health scatter. All fed by the live fleet.
+  function viewMachines() {
+    var metric = state.machMetric || 'avail', mchart = state.machChart || 'thru';
+    var mtabs = [['avail', 'mtab_avail'], ['perf', 'mtab_perf'], ['qual', 'mtab_qual'], ['health', 'mtab_health']];
+    var mf = '<div class="hfilter">' + mtabs.map(function (tb) { return '<button class="hf" data-on="' + (metric === tb[0] ? '1' : '0') + '" data-act="mach-metric" data-id="' + tb[0] + '">' + t(tb[1]) + '</button>'; }).join('') + '</div>';
+    var rb = metric === 'perf' ? rankedPerf() : metric === 'qual' ? rankedQual() : metric === 'health' ? rankedHealth() : rankedAvail();
+    var ctabs = [['thru', 'ctab_thru'], ['downtime', 'ctab_downtime'], ['defects', 'ctab_defects'], ['fpy', 'ctab_fpy']];
+    var cf = '<div class="hfilter">' + ctabs.map(function (tb) { return '<button class="hf" data-on="' + (mchart === tb[0] ? '1' : '0') + '" data-act="mach-chart" data-id="' + tb[0] + '">' + t(tb[1]) + '</button>'; }).join('') + '</div>';
+    var chart = mchart === 'downtime' ? chartDiv('mChart', chartDtPareto()) : mchart === 'defects' ? chartDiv('mChart', chartDefPareto()) : mchart === 'fpy' ? chartDiv('mChart', chartFpyTrend()) : chartDiv('mChart', chartThruTrend());
+    return '<div class="stack">'
+      + '<div class="panel"><div class="panel-h"><span class="pnum">a</span><span class="ptitle">By machine</span><span class="psub">ranked · red below threshold</span>' + mf + '</div>' + H(rb) + '</div>'
+      + '<div class="g2">'
+      + '<div class="panel"><div class="panel-h"><span class="pnum">b</span><span class="ptitle">Trend &amp; losses</span>' + cf + '</div>' + chart + '</div>'
+      + panel('c', 'Runtime vs health', 'red = at-risk', chartDiv('mScatter', chartHealthScatter()))
+      + '</div>'
+      + machineDetail()
+      + machineAnalysis()
+      + '</div>';
+  }
+  // "Machine analysis" — AI picks the best-fit chart for a machine + intent (relocated from Ask AI).
+  function machineAnalysis() {
+    var mId = state.askMachine, m = M.find(function (x) { return x.id === mId; }) || M[0];
+    var control = '<div class="mrow"><span class="mlab">' + L({ en: 'Machine', vi: 'Máy' }) + '</span><select class="msel" data-act="machine">'
+      + M.map(function (x) { return '<option value="' + x.id + '"' + (x.id === mId ? ' selected' : '') + '>' + x.id + '  ·  ' + x.cell + '  ·  ' + x.type + '</option>'; }).join('')
+      + '</select></div>'
+      + '<div class="chips">' + INTENTS.map(function (it) { return '<button class="chip" data-on="' + (state.askIntent === it.id ? '1' : '0') + '" data-act="intent" data-id="' + it.id + '">' + it.label + '</button>'; }).join('') + '</div>';
+    var body;
+    if (state.asking) body = '<div class="gen"><span class="spin"></span>' + L({ en: 'Generating chart…', vi: 'Đang tạo biểu đồ…' }) + '</div>';
+    else if (state.askIntent && m) {
+      var it = INTENTS.find(function (x) { return x.id === state.askIntent; });
+      body = '<div class="g21" style="margin-top:14px"><div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">' + m.id + ' · ' + it.chart + '</span><span class="psub">' + it.label + '</span></div>'
+        + chartDiv('askchart', buildAskChart(m, state.askIntent)) + '</div>'
+        + '<div class="panel why"><div><div class="why-eyebrow"><span class="dot" style="background:var(--accent)"></span>' + L({ en: 'Why this chart', vi: 'Vì sao biểu đồ này' }) + '</div><p class="why-body">' + it.why + '</p></div>'
+        + '<div class="why-ctx">' + escText(m.type + ' · ' + m.cell + ' · ' + m.state) + '</div></div></div>';
+    } else body = '<div class="empty" style="padding:24px">' + L({ en: 'Pick a machine + intent — Minder draws the best-fit chart.', vi: 'Chọn máy + mục đích — Minder vẽ biểu đồ phù hợp.' }) + '</div>';
+    return '<div class="panel"><div class="panel-h"><span class="pnum">d</span><span class="ptitle">' + t('mach_analysis') + '</span><span class="psub">' + t('mach_analysis_sub') + '</span></div>' + control + body + '</div>';
+  }
+  // Per-machine live detail: current telemetry + a baseline-vs-live comparison (from the sim's
+  // baseline/diff) + a live vibration/temperature chart for the picked machine.
+  function machineDetail() {
+    var selId = state.machSel || (M.slice().sort(function (a, b) { return a.oee - b.oee; })[0] || {}).id;
+    var m = M.find(function (x) { return x.id === selId; }) || M[0];
+    if (!m) return '';
+    var p = function (x) { return Math.round((x || 0) * 100) + '%'; };
+    var sel = '<select class="msel" data-act="mach-sel">' + M.map(function (x) { return '<option value="' + x.id + '"' + (x.id === m.id ? ' selected' : '') + '>' + x.id + '  ·  ' + x.cell + '  ·  ' + x.type + '</option>'; }).join('') + '</select>';
+    var tel = [['State', m.state], ['OEE', p(m.oee)], ['Availability', p(m.avail)], ['Performance', p(m.perf)], ['Quality', p(m.qual)], ['Health', p(m.health)], ['Temp', (Math.round(m.temp * 10) / 10) + '°C'], ['Vibration', (Math.round(m.vib * 100) / 100) + ' mm/s'], ['Throughput', m.thru + ' / ' + m.target + '/h'], ['Downtime', m.downMin + ' min'], ['Defect', (Math.round((m.defect || 0) * 100) / 100) + '%'], ['Since service', m.since + ' h']];
+    var telHtml = '<div class="mdet-grid">' + tel.map(function (t) { return '<div class="mdet-c"><div class="mdet-l">' + t[0] + '</div><div class="mdet-v">' + escText(String(t[1])) + '</div></div>'; }).join('') + '</div>';
+    var cmp;
+    if (m.baseline && m.diff) {
+      var b = m.baseline, d = m.diff;
+      var arrow = function (x) { return x > 0.001 ? '<span style="color:var(--danger)">▲</span>' : x < -0.001 ? '<span style="color:var(--ok)">▼</span>' : '<span style="color:var(--text-mute)">–</span>'; };
+      var comp = [
+        ['Temperature', b.normal_temperature_c + '°C', (Math.round(m.temp * 10) / 10) + '°C', (d.temperature_c > 0 ? '+' : '') + d.temperature_c + '°C', d.temperature_c],
+        ['Vibration', b.normal_vibration_mms + ' mm/s', (Math.round(m.vib * 100) / 100) + ' mm/s', (d.vibration_mms > 0 ? '+' : '') + d.vibration_mms + ' mm/s', d.vibration_mms],
+        ['Performance', p(b.performance), p(m.perf), (d.performance_pp > 0 ? '+' : '') + d.performance_pp + ' pp', -d.performance_pp],
+        ['Health', p(b.health), p(m.health), (d.health_pp > 0 ? '+' : '') + d.health_pp + ' pp', -d.health_pp],
+        ['OEE', b.oee_pct + '%', p(m.oee), (d.oee_pp > 0 ? '+' : '') + d.oee_pp + ' pp', -d.oee_pp]
+      ];
+      cmp = '<div class="mdet-cmp"><div class="mdet-cr" data-h="1"><span>Metric</span><span>Baseline</span><span>Current</span><span>Δ</span><span></span></div>'
+        + comp.map(function (r) { return '<div class="mdet-cr"><span>' + r[0] + '</span><span>' + escText(String(r[1])) + '</span><span>' + escText(String(r[2])) + '</span><span>' + escText(String(r[3])) + '</span><span>' + arrow(r[4]) + '</span></div>'; }).join('') + '</div>';
+    } else {
+      cmp = '<div class="body-sm" style="color:var(--text-mute)">Baseline-vs-live comparison is available in Live (simulator) mode.</div>';
+    }
+    var warn = (m.warnings && m.warnings.length) ? '<div class="mdet-warn">' + m.warnings.map(function (w) { return '<span class="mdet-wc">' + escText(w) + '</span>'; }).join('') + '</div>' : '';
+    return '<div class="panel"><div class="panel-h"><span class="pnum">d</span><span class="ptitle">Machine detail · live vs baseline</span><span style="margin-left:auto">' + sel + '</span></div>'
+      + warn + telHtml
+      + '<div class="g2" style="margin-top:12px"><div>' + cmp + '</div>' + chartDiv('mdetChart', buildAskChart(m, 'vibtemp')) + '</div></div>';
+  }
+  // One chat message bubble; assistant messages with a chart intent embed the best-fit chart.
+  function chatBubble(mm, i) {
+    if (mm.who === 'u') return '<div class="cmsg" data-who="u"><div class="cbubble" data-who="u">' + escText(mm.text) + '</div></div>';
+    var chartMachine = mm.mId ? M.find(function (x) { return x.id === mm.mId; }) : null;
+    var it = mm.intent ? INTENTS.find(function (x) { return x.id === mm.intent; }) : null;
+    var hasChart = chartMachine && it;
+    var inner = '';
+    if (hasChart) inner += '<div class="ctag">' + chartMachine.id + ' · ' + it.chart + '</div>';
+    inner += '<div class="ctext">' + escText(mm.text) + '</div>';
+    if (hasChart) inner += chartDiv('chatchart' + i, buildAskChart(chartMachine, mm.intent));
+    return '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a"' + (hasChart ? ' data-chart="1"' : '') + '>' + inner + '</div></div>';
+  }
+  function viewAsk() {
+    var suggestions = [
+      L({ en: 'Why is M-04 down?', vi: 'Vì sao M-04 dừng?' }),
+      L({ en: 'Compare M-12 to the fleet', vi: 'So sánh M-12 với cả đội' }),
+      L({ en: 'Is M-17 overheating?', vi: 'M-17 có quá nhiệt không?' }),
+      L({ en: 'OEE breakdown for M-13', vi: 'Phân rã OEE cho M-13' })
+    ];
+    var log = state.chatMsgs.length
+      ? state.chatMsgs.map(function (mm, i) { return chatBubble(mm, i); }).join('')
+      : '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a">' + escText(t('chat_greet')) + '</div></div>';
+    if (state.chatTyping) log += '<div class="cmsg" data-who="a"><div class="cbubble" data-who="a"><span class="tdots"><span></span><span></span><span></span></span></div></div>';
+    var chat = '<div class="panel"><div class="panel-h"><span class="pnum">✦</span><span class="ptitle">' + t('chat_title') + '</span><span class="psub">' + t('chat_sub') + '</span></div>'
+      + '<div class="chatlog">' + log + '</div>'
+      + '<div class="chips" style="margin-bottom:10px">' + suggestions.map(function (q) { return '<button class="chip" data-act="chat-suggest" data-q="' + escAttr(q) + '">' + escText(q) + '</button>'; }).join('') + '</div>'
+      + '<div class="chat-in"><input id="chatq" class="cinput" placeholder="' + escAttr(t('chat_placeholder')) + '" value="' + escAttr(state.chatDraft || '') + '"><button class="btn-1" data-act="chat-send">' + t('chat_send') + '</button></div></div>';
+
+    var guide = '';
+    if (guideOn()) guide = '<div class="panel"><div class="panel-h"><span class="pnum">◇</span><span class="ptitle">' + t('guide_title') + '</span><span class="psub">' + L({ en: 'the research behind the picks', vi: 'cơ sở lựa chọn biểu đồ' }) + '</span></div>'
+      + '<div class="guide">' + INTENTS.map(function (g) { return '<div class="grow"><span class="gintent">' + g.label + '</span><span class="gchart">' + g.chart + '</span><span class="gwhy">' + g.why + '</span></div>'; }).join('') + '</div></div>';
+
+    return '<div class="stack">' + chat + guide + '</div>';
+  }
+
+  // ── Approved History (Demo: canned; Live: reads the decision store back) ───
+  function ahStat(v, l, cls) { return '<div class="ah-s"><div class="ah-sv ' + (cls || '') + '">' + v + '</div><div class="ah-sl">' + l + '</div></div>'; }
+  function histStatusColor(st) { return /complet/i.test(st) ? 'var(--ok)' : /dispatch/i.test(st) ? 'var(--warn)' : /block|reject|prohibit/i.test(st) ? 'var(--danger)' : 'var(--accent)'; }
+  function liveHistRow(d) {
+    if (!d || !d.recommendation_id) return null;
+    var ra = d.recommended_action || {}, ee = d.expected_effect || {}, sc = d.scope || {}, ap = d.approval || {};
+    var sm = { awaiting_approval: 'Awaiting', approved: 'Approved', dispatched: 'Dispatched', completed: 'Completed', rejected: 'Rejected', superseded: 'Superseded' };
+    return {
+      time: (ap.approved_at || '').slice(11, 16) || '—', id: d.recommendation_id,
+      action: ra.type || '—', scope: [sc.line, sc.work_order].filter(Boolean).join(' · '),
+      approver: ap.approved_by || (d.status === 'completed' || d.status === 'dispatched' ? 'Auto-dispatch' : '—'),
+      expected: ee.recovered_units, actual: d.status === 'completed' ? ee.recovered_units : null,
+      status: sm[d.status] || d.status,
+      outcome: d.status === 'completed' ? 'Successful' : (d.status === 'dispatched' ? 'Executing' : (d.status === 'awaiting_approval' ? 'Awaiting approval' : '')),
+      ok: true, _decision: d
+    };
+  }
+  function histTranscript(h, demo) {
+    if (!demo && h._decision && h._decision.consideration_log) {
+      var log = h._decision.consideration_log.map(function (e) { return { who: 'a', tag: e.stage, text: e.text }; });
+      log.push({ who: 'a', tag: 'Act · ' + h.status, text: h.outcome || (h.action + ' — ' + h.status) });
+      return log;
+    }
+    var cap = function (s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
+    return [
+      { who: 'a', tag: 'Measure · ' + (h.time || ''), text: (h.scope || '') + ' — ' + h.measure + '.' },
+      { who: 'u', text: L({ en: 'Why are we behind?', vi: 'Vì sao chúng ta chậm?' }) },
+      { who: 'a', tag: 'Explain', text: L({ en: 'Primary cause: ', vi: 'Nguyên nhân chính: ' }) + h.cause + '.' },
+      { who: 'a', tag: 'Predict', text: cap(h.predict) + '.' },
+      { who: 'u', text: L({ en: 'What are my options?', vi: 'Có những lựa chọn nào?' }) },
+      { who: 'a', tag: 'Evaluate', text: cap(h.evaluate) + '.' },
+      { who: 'a', tag: 'Recommend · ' + h.id, text: L({ en: 'Chose to ', vi: 'Đã chọn ' }) + h.recommend + '.' },
+      { who: 'u', text: (h.approver && h.approver.indexOf('Auto') >= 0) ? L({ en: 'Auto-dispatched.', vi: 'Tự động điều phối.' }) : (L({ en: 'Approved — ', vi: 'Đã duyệt — ' }) + h.approver + '.') },
+      { who: 'a', tag: 'Act · ' + h.status, text: cap(h.act) + '.' }
+    ];
+  }
+  function ahRow(h, demo) {
+    var open = state.expandHist === h.id;
+    var actualColor = h.ok === false ? 'var(--warn)' : (h.ok ? 'var(--ok)' : 'var(--text)');
+    var sc = histStatusColor(h.status);
+    var row = '<button class="ah-row" data-act="hist-toggle" data-id="' + escAttr(h.id) + '">'
+      + '<span class="ah-caret">▾</span>'
+      + '<span class="ah-c"><span class="ah-time">' + escText(h.time || '') + '</span><span class="ah-id">' + escText(h.id) + '</span></span>'
+      + '<span class="ah-c ah-what"><span class="ah-act">' + escText(h.action) + '</span><span class="ah-scope">' + escText(h.scope || '') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_approver') + '</span><span class="ah-v">' + escText(h.approver || '—') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_expected') + '</span><span class="ah-v">' + (h.expected != null ? '+' + h.expected : '—') + '</span></span>'
+      + '<span class="ah-c"><span class="ah-k">' + t('hist_actual') + '</span><span class="ah-v" style="color:' + actualColor + '">' + (h.actual != null ? '+' + h.actual : '—') + '</span></span>'
+      + '<span class="ah-c ah-end"><span class="ah-status" style="color:' + sc + ';border-color:' + sc + '">' + escText(h.status) + '</span><span class="ah-out">' + escText(h.outcome || '') + '</span></span>'
+      + '</button>';
+    var detail = open ? '<div class="ah-detail"><div class="ah-dl">' + t('hist_process') + '</div><div class="rlog">' + histTranscript(h, demo).map(function (e) { return '<div class="cmsg" data-who="' + e.who + '"><div class="cbubble" data-who="' + e.who + '">' + (e.tag ? '<div class="ctag">' + escText(e.tag) + '</div>' : '') + escText(e.text) + '</div></div>'; }).join('') + '</div></div>' : '';
+    return '<div class="ah-item" data-open="' + (open ? '1' : '0') + '">' + row + detail + '</div>';
+  }
+  function viewHistory() {
+    if (state.dataMode === 'sim' && !state.histData && !state.histLoading) loadHistory();
+    if (state.histLoading) return '<div class="panel"><div class="gen"><span class="spin"></span>' + L({ en: 'Loading history…', vi: 'Đang tải lịch sử…' }) + '</div></div>';
+    var data = state.histData;
+    var demo = !data || data.demo;
+    var recs = demo ? DEMO_HISTORY : ((data && data.decisions) || []).map(liveHistRow).filter(Boolean);
+    var rows = demo ? recs : recs.slice().reverse();
+    var completed = rows.filter(function (h) { return /complet/i.test(h.status); });
+    var good = completed.filter(function (h) { return h.ok; }).length;
+    var approvedToday = rows.filter(function (h) { return /dispatch|complet|approv/i.test(h.status); }).length;
+    var recovered = completed.reduce(function (s, h) { return s + (h.actual != null ? h.actual : (h.expected || 0)); }, 0);
+    var summary = '<div class="panel"><div class="panel-h"><span class="pnum">a</span><span class="ptitle">' + t('hist_activity') + '</span><span class="psub">' + t('hist_thisshift') + '</span></div>'
+      + '<div class="ah-summary">' + ahStat(approvedToday, t('hist_approved'), '') + ahStat(completed.length + ' / ' + rows.length, t('hist_completed'), '') + ahStat(good + ' / ' + (completed.length || 0), t('hist_met'), 'ok') + ahStat('+' + recovered, t('hist_recovered'), 'accent') + '</div></div>';
+    var list = rows.length
+      ? '<div class="panel"><div class="panel-h"><span class="pnum">b</span><span class="ptitle">' + t('hist_title') + '</span><span class="psub">' + t('hist_sub') + '</span></div><div class="ah-list">' + rows.map(function (h) { return ahRow(h, demo); }).join('') + '</div></div>'
+      : '<div class="panel"><div class="empty">' + escText(t('hist_empty')) + '</div></div>';
+    return '<div class="stack">' + summary + list + '</div>';
+  }
+
+  function screen() {
+    var v = state.view;
+    if (v === 'fleet') return viewFleet();
+    if (v === 'recommendation') return viewRec();
+    if (v === 'history') return viewHistory();
+    if (v === 'machines') return viewMachines();
+    if (v === 'ask') return viewAsk();
+    return '';
+  }
+
+  // ── render + chart measure ────────────────────────────────────────────────
+  var app = document.getElementById('app');
+  function tSimBanner() {
+    if (state.dataMode !== 'sim' || state.simConnected) return '';
+    var loading = state.simLoading;
+    var msg = loading ? 'Connecting to the fleet simulator…' : ('Simulator not connected — ' + (state.simError || 'no response') + '. Showing last data.');
+    return '<div class="simbanner' + (loading ? ' load' : '') + '"><span class="dot" style="background:' + (loading ? 'var(--warn)' : 'var(--danger)') + '"></span>'
+      + '<span class="simbanner-t">' + escText(msg) + '</span>'
+      + '<button class="btn-ghost simretry" data-act="sim-retry">Retry</button></div>';
+  }
+  function render() {
+    var v = state.view;
+    var showKpis = v !== 'ask' && v !== 'recommendation' && v !== 'history';
+    app.innerHTML = '<div class="oc-shell">' + tSide()
+      + '<div class="oc-body">' + tHead()
+      + '<main class="oc-main">' + tSimBanner() + (showKpis ? tKpis(v) : '') + screen() + '</main>'
+      + '</div></div>';
+    measureCharts();
+  }
+  function measureCharts() {
+    if (_measuring) return;
+    var changed = false;
+    var nodes = app.querySelectorAll('[data-chartw]');
+    for (var i = 0; i < nodes.length; i++) {
+      var key = nodes[i].getAttribute('data-chartw');
+      var w = Math.round(nodes[i].clientWidth);
+      if (w > 0 && chartW[key] !== w) { chartW[key] = w; changed = true; }
+    }
+    if (changed) { _measuring = true; render(); _measuring = false; }
+  }
+
+  // ── events (delegation on #app) ───────────────────────────────────────────
+  function onClick(e) {
+    var el = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!el) return;
+    var a = el.getAttribute('data-act');
+    if (a === 'view') { state.view = el.getAttribute('data-view'); render(); if (state.view === 'history') loadHistory(); }
+    else if (a === 'reexplain') { state.analysisFor = null; fetchAnalysis(); }
+    else if (a === 'discuss') discussRec();
+    else if (a === 'chat-send') { var ci = document.getElementById('chatq'); chatSend(ci ? ci.value : ''); }
+    else if (a === 'chat-suggest') chatSend(el.getAttribute('data-q'));
+    else if (a === 'hist-toggle') { var hid = el.getAttribute('data-id'); state.expandHist = (state.expandHist === hid ? null : hid); render(); }
+    else if (a === 'heatfilter') { state.heatFilter = el.getAttribute('data-id'); render(); }
+    else if (a === 'pick-alt') pickAlt(el.getAttribute('data-id'));
+    else if (a === 'approve') recApprove();
+    else if (a === 'dispatch') recDispatch();
+    else if (a === 'recalc') recRecalc();
+    else if (a === 'toggle-json') { state.showJson = !state.showJson; render(); }
+    else if (a === 'theme') toggleTheme();
+    else if (a === 'lang') setLang(el.getAttribute('data-lang'));
+    else if (a === 'mode') setDataMode(el.getAttribute('data-mode'));
+    else if (a === 'sim-retry') refreshSim(true);
+    else if (a === 'intent') generate(state.askMachine, el.getAttribute('data-id'));
+    else if (a === 'mach-metric') { state.machMetric = el.getAttribute('data-id'); render(); }
+    else if (a === 'mach-chart') { state.machChart = el.getAttribute('data-id'); render(); }
+    else if (a === 'ask-send') { var qi = document.getElementById('askq'); askAI(qi ? qi.value : ''); }
+    else if (a === 'ask-suggest') askAI(el.getAttribute('data-q'));
+  }
+  function onChange(e) {
+    var el = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!el) return;
+    var a = el.getAttribute('data-act');
+    if (a === 'machine') { var id = el.value; generate(id, pickIntent(M.find(function (x) { return x.id === id; }))); }
+    else if (a === 'mach-sel') { state.machSel = el.value; render(); }
+  }
+  app.addEventListener('click', onClick);
+  app.addEventListener('change', onChange);
+  app.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || !e.target) return;
+    if (e.target.id === 'askq') { e.preventDefault(); askAI(e.target.value); }
+    else if (e.target.id === 'chatq') { e.preventDefault(); chatSend(e.target.value); }
+  });
+
+  var _rz = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(_rz);
+    _rz = setTimeout(function () { for (var k in chartW) delete chartW[k]; render(); }, 120);
+  });
+
+  // ── bridge init (optional persistence) ────────────────────────────────────
+  var bridge = window.AtriaDash || null;
+  function persist(cmd, payload) {
+    if (!bridge || !bridge.json) return;
+    try { bridge.json('optimize.py', [cmd], { stdin: JSON.stringify(payload) }).catch(function () {}); }
+    catch (e) {}
+  }
+  // Read helper (Promise) — persist() is fire-and-forget; Approved History needs to read back.
+  function bridgeRead(script, args, stdin) {
+    var b = window.AtriaDash || null;
+    if (!b || !b.json) return Promise.reject(new Error('no bridge'));
+    var opt = { timeout_ms: 20000 };
+    if (stdin != null) opt.stdin = JSON.stringify(stdin);
+    return b.json(script, args || [], opt);
+  }
+  // Demo Approved-History (from MACHINES_SIM_SPEC) — shown in Demo mode; Live mode reads the store.
+  var DEMO_HISTORY = [
+    { time: '11:06', id: 'REC-2026-00452', action: 'Prioritize pallet P-104', scope: 'Line-2 · WO-4521', approver: 'Auto-dispatch', expected: 75, actual: 71, status: 'Dispatched', outcome: 'Executing — actuating Forklift F07', ok: true, measure: 'produced 530 / 1,000 units, cycle 14.8s vs 12s', cause: 'material starvation (96 units)', predict: 'forecast 820 · 18% attainment without action', evaluate: '5 candidates, 1 blocked on health, 4 feasible', recommend: 'prioritize pallet P-104 (+75 units)', act: 'dispatched to Move · MOVE-TASK-7012 accepted' },
+    { time: '10:12', id: 'REC-2026-00447', action: 'Resequence Job C ahead of Job B', scope: 'Line-2 · WO-4519', approver: 'A. Planner', expected: 62, actual: 64, status: 'Completed', outcome: 'Successful — target recovered', ok: true, measure: 'produced 410 / 900 units', cause: 'job sequencing loss (58 units)', predict: 'forecast 812 · 41% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'resequence Job C ahead of Job B (+62 units)', act: 'completed · 64 units recovered' },
+    { time: '09:03', id: 'REC-2026-00441', action: 'Move operator from Line 1', scope: 'Line-4 · WO-4510', approver: 'S. Supervisor', expected: 48, actual: 45, status: 'Completed', outcome: 'Successful', ok: true, measure: 'produced 360 / 820 units', cause: 'operator unavailable (44 units)', predict: 'forecast 790 · 38% attainment', evaluate: '4 candidates, 3 feasible', recommend: 'move a certified operator from Line 1 (+48 units)', act: 'completed · 45 units recovered' },
+    { time: '07:41', id: 'REC-2026-00436', action: 'Prioritize maintenance inspection', scope: 'Line-3 · WO-4502', approver: 'Auto-dispatch', expected: 30, actual: 33, status: 'Completed', outcome: 'Successful — machine stabilized', ok: true, measure: 'produced 210 / 700 units', cause: 'equipment degradation (28 units)', predict: 'forecast 660 · 31% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'raise a maintenance inspection task (+30 units)', act: 'completed · 33 units recovered' },
+    { time: '06:20', id: 'REC-2026-00431', action: 'Reduce line speed (quality hold)', scope: 'Line-5 · WO-4498', approver: 'Q. Lead', expected: 40, actual: 22, status: 'Completed', outcome: 'Partial — quality recovered, output short', ok: false, measure: 'produced 180 / 650 units', cause: 'process drift raising scrap (36 units)', predict: 'forecast 600 · 24% attainment', evaluate: '3 candidates, 2 feasible', recommend: 'reduce line speed to hold quality (+40 units)', act: 'completed · 22 units recovered (below expected)' }
+  ];
+  function loadHistory() {
+    if (state.dataMode !== 'sim') { state.histData = { decisions: DEMO_HISTORY, demo: true }; render(); return; }
+    if (state.histLoading) return;
+    state.histLoading = true; state.histFor = 'sim'; render();
+    bridgeRead('optimize.py', ['list'], {})
+      .then(function (res) { state.histLoading = false; state.histData = { decisions: (res && res.decisions) || [], demo: false }; render(); })
+      .catch(function () { state.histLoading = false; state.histData = { decisions: [], demo: false }; render(); });
+  }
+
+  // light build: static clock (set once at mount, no per-second timer)
+
+  // ── mount ─────────────────────────────────────────────────────────────────
+  applyTheme(state.theme); // apply saved/default theme before first paint
+  if (bridge) {
+    try { bridge.ready(); } catch (e) {}
+    // follow Atria's theme ONLY until the user makes a manual choice (then the toggle wins)
+    if (bridge.onTheme) { try { bridge.onTheme(function (mode) { if ((mode === 'light' || mode === 'dark') && !readManualTheme()) { applyTheme(mode); render(); } }); } catch (e) {} }
+    if (bridge.resize) { try { bridge.resize(960); } catch (e) {} }
+  }
+  render();
+  if (state.dataMode === 'sim') {
+    refreshSim(true); startSimPoll(); // read live fleet + poll every 4s
+  } else {
+    persist('save', recDecisionObj()); // demo: seed the decision history
+  }
+})();
+</script>
+</body>
+</html>
