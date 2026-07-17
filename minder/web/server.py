@@ -120,6 +120,31 @@ async def lifespan(app: FastAPI):
     # Ensure sessionmaker is initialized
     await get_sessionmaker()
 
+    # Start knowledge base background tasks (non-fatal: missing DB/env is ok).
+    try:
+        from minder.core.knowledge.wiring import _knowledge_seed_and_drain
+        from minder.core.scheduler import BackgroundScheduler
+
+        _kb_scheduler = BackgroundScheduler()
+        _kb_scheduler.add_task(
+            "knowledge_drain",
+            lambda: asyncio.ensure_future(_knowledge_seed_and_drain()),
+            30,
+        )
+        _kb_scheduler.add_task(
+            "knowledge_seed",
+            _knowledge_seed_and_drain,
+            3600,
+        )
+        _kb_scheduler.start_all()
+        app.state._kb_scheduler = _kb_scheduler
+    except Exception:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning(
+            "Knowledge scheduler failed to start; background ingestion disabled."
+        )
+
     # Start the modules filesystem watcher: reloads the in-memory registry on
     # disk changes and broadcasts a ``modules.changed`` event to all WS clients.
     def _broadcast_modules_changed(name: str) -> None:
@@ -189,6 +214,9 @@ async def lifespan(app: FastAPI):
         stop_global_watcher()
         stop_liveness_subscriber()
         stop_connector_reconciler()
+        kb_scheduler = getattr(app.state, "_kb_scheduler", None)
+        if kb_scheduler is not None:
+            kb_scheduler.stop_all()
         try:
             from minder.web.connect_runtime import get_connect_manager
 
@@ -253,6 +281,29 @@ def create_app() -> FastAPI:
 
     app.include_router(maps_facade_router)
     app.include_router(knowledge_facade_router)
+
+    # Knowledge base routes (rescan + document listing). Non-fatal: a missing
+    # DATABASE_URL or unavailable service will not crash app startup.
+    try:
+        from minder.core.knowledge.wiring import build_knowledge_service, run_seed_scan
+        from minder.web.routes.knowledge import build_router as build_knowledge_router
+
+        app.include_router(
+            build_knowledge_router(
+                service_factory=build_knowledge_service,
+                tenant_factory=lambda req: getattr(
+                    getattr(req.state, "principal", None), "tenant_id", None
+                )
+                or os.environ.get("KNOWLEDGE_DEV_TENANT"),
+                seed_scan=run_seed_scan,
+            )
+        )
+    except Exception:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning(
+            "Knowledge router failed to register; /knowledge routes unavailable."
+        )
     app.include_router(modules_router)
     app.include_router(transcribe_router)
     app.include_router(blocks_router)
