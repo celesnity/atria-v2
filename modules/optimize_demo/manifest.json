@@ -3,19 +3,43 @@
   "tooltip": "Live manufacturing fleet console · 20-machine OEE/availability/throughput/quality/health streaming from the fleet simulator, a gpt-5.4-mini Ask-AI that answers machine status with the right chart, and an AI decision loop (measure→recommend) that approves a recovery action to the simulator machine (demo)",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Optimize · Fleet Console",
+    "title": "Optimize · Guided",
     "default_height": 960,
-    "badge_color": "info"
+    "badge_color": "info",
+    "tabs": [
+      { "id": "guided", "label": "Guided", "entry": "blocks/guided.html" }
+    ]
+  },
+  "service": {
+    "connector_url": "http://127.0.0.1:9320",
+    "health_path": "/connector/health",
+    "streaming": false,
+    "min_core_version": "2",
+    "tools": [
+      { "name": "optimize_situation", "description": "Read the current at-risk production scenario (target machine, gap, forecast, ranked alternatives).", "parameters": { "type": "object", "properties": { "url": { "type": "string" }, "lang": { "type": "string" } } } },
+      { "name": "optimize_analyze", "description": "Run the whole Measure→Explain→Predict→Evaluate→Recommend loop over one snapshot (read-only).", "parameters": { "type": "object", "properties": { "url": { "type": "string" }, "lang": { "type": "string" }, "execution_id": { "type": "string" } } } },
+      { "name": "optimize_release_product", "description": "GATED write: release product batches into intake so starved washers resume (needs approval).", "parameters": { "type": "object", "properties": { "count": { "type": "integer" }, "product": { "type": "string" } } } },
+      { "name": "optimize_service_machine", "description": "GATED write: full-service a machine on the live plant (needs approval).", "parameters": { "type": "object", "properties": { "machine_id": { "type": "string" } }, "required": ["machine_id"] } }
+    ]
   },
   "activity": {
     "default": { "running": "Working…", "done": "Done" },
     "actions": {
       "status":   { "running": "Reading fleet…",     "done": "Live" },
+      "analyze":  { "running": "Running the loop…",   "done": "Analyzed" },
+      "measure":  { "running": "Measuring…",          "done": "Measured" },
+      "explain":  { "running": "Explaining…",         "done": "Explained" },
+      "predict":  { "running": "Predicting…",         "done": "Predicted" },
+      "evaluate": { "running": "Evaluating options…", "done": "Evaluated" },
+      "recommend":{ "running": "Recommending…",       "done": "Recommended" },
+      "replan":   { "running": "Dispatching…",        "done": "Dispatched" },
+      "actuate":  { "running": "Actuating machine…",  "done": "Actuated" },
       "save":     { "running": "Saving decision…",   "done": "Saved" },
       "get":      { "running": "Loading decision…",   "done": "Loaded" },
       "list":     { "running": "Loading history…",    "done": "Loaded" },
       "approve":  { "running": "Approving…",          "done": "Approved" },
       "reject":   { "running": "Rejecting…",          "done": "Rejected" },
+      "outcome":  { "running": "Recording outcome…",  "done": "Recorded" },
       "dispatch": { "running": "Dispatching…",        "done": "Dispatched" }
     }
   },

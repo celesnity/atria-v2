@@ -1,0 +1,133 @@
+"""ai.py — the Monitor console's Ask-AI backend (gpt-5.4-mini), called via the MinderDash bridge.
+
+Read-only: this is the MONITOR module (Fleet/Machines/Ask-AI). It exposes ONE command, ``ask`` — a
+grounded Q&A over the live fleet that returns prose + a chart intent. The decision engine (analyze +
+the six pipeline stages) lives in the Optimize module, not here.
+
+Contract: ``python scripts/ai.py ask`` with a JSON payload on **stdin** and one JSON object on
+**stdout**. Always exits 0 and prints valid JSON — on a missing key / network error / bad model reply
+it falls back to the deterministic analysis in ``analysis.py`` (the bridge throws on non-zero exit).
+
+    ask   stdin = {question, machines, scn, lang?}  -> {ok, answer, table, charts, follow_ups, source}
+
+The model reuses Minder's env config: ``OPENAI_API_KEY``, ``MINDER_MODEL`` (default gpt-5.4-mini),
+``MINDER_API_BASE_URL`` (an OpenAI-compatible /chat/completions endpoint); the pre-rebrand ``ATRIA_*``
+names still work as a deprecated fallback. Numbers are never invented — the model only writes prose
+and picks the machine + chart intent (``analysis.normalize_ask`` enforces it); the dashboard draws
+the chart from the live data.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+# Monitor is read-only: it needs only `ask` (analysis + a live snapshot). The decision engine
+# (pipeline/store/optimize) is NOT part of this module, so it is not imported.
+try:  # allow both `python scripts/ai.py` and `python -m ...`
+    from . import analysis, simulate
+except ImportError:  # pragma: no cover - direct-invocation path
+    import analysis  # type: ignore[no-redef]
+    import simulate  # type: ignore[no-redef]
+
+DEFAULT_BASE = "https://api.openai.com/v1/chat/completions"
+DEFAULT_MODEL = "gpt-5.4-mini"
+
+
+def env_setting(name: str, default: str | None = None) -> str | None:
+    """Read a MINDER_* setting, falling back to the pre-rebrand ATRIA_* name.
+
+    The rebrand renamed the setters but missed these readers, so ``ATRIA_MODEL`` was still being
+    consulted while ``.env`` shipped ``MINDER_MODEL`` -- masked only because the defaults happened
+    to match. Prefer MINDER_*, keep ATRIA_* working for anyone with an old environment.
+    """
+    return os.environ.get("MINDER_" + name) or os.environ.get("ATRIA_" + name) or default
+
+
+def model_name() -> str:
+    return env_setting("MODEL", DEFAULT_MODEL) or DEFAULT_MODEL
+
+
+def _api_key() -> str | None:
+    return os.environ.get("OPENAI_API_KEY") or os.environ.get("IIOT_AI_API_KEY") or None
+
+
+def llm_chat(system: str, user: str, max_tokens: int = 900, timeout: float = 55.0) -> str:
+    """One OpenAI-compatible chat call via stdlib urllib. Raises on any failure."""
+    key = _api_key()
+    if not key:
+        raise RuntimeError("no API key (OPENAI_API_KEY)")
+    base = env_setting("API_BASE_URL", DEFAULT_BASE)
+    model = model_name()
+    # gpt-5 / o-series family: use max_completion_tokens and DO NOT send a custom temperature.
+    body = {
+        "model": model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "max_completion_tokens": max_tokens,
+    }
+    req = urllib.request.Request(
+        base,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    return data["choices"][0]["message"]["content"]
+
+
+def cmd_ask(payload: dict) -> dict:
+    question = str(payload.get("question") or "").strip()
+    machines = payload.get("machines") or []
+    scn = payload.get("scn")
+    lang = payload.get("lang") or "en"
+    if not question:
+        return {
+            "ok": True,
+            "answer": 'Ask about a machine (e.g. "why is M-02 degrading?") or the ' "fleet.",
+            "table": None,
+            "charts": [],
+            "follow_ups": [],
+            "source": "none",
+        }
+    try:
+        system, user = analysis.build_ask_messages(question, machines, scn, lang=lang)
+        obj = analysis.parse_json(llm_chat(system, user))
+        out = analysis.normalize_ask(obj, machines, scn)
+        out["source"] = model_name()
+    except Exception as exc:  # noqa: BLE001 - always degrade gracefully to a valid JSON reply
+        out = analysis.deterministic_ask(question, machines, scn)
+        out["source"] = "fallback"
+        out["note"] = "{}: {}".format(type(exc).__name__, exc)[:160]
+    out["ok"] = True
+    return out
+
+
+def handle(cmd: str, payload: dict) -> dict:
+    # Monitor exposes only `ask` (read-only Q&A over the live fleet). The decision-engine commands
+    # (analyze / the six stages) belong to Optimize, not this monitoring module.
+    if cmd == "ask":
+        return cmd_ask(payload)
+    return {"ok": False, "error": "unknown command: %r (monitor supports: ask)" % cmd}
+
+
+def main(argv: list[str]) -> int:
+    cmd = argv[1] if len(argv) > 1 else ""
+    raw = sys.stdin.read() if not sys.stdin.isatty() else ""
+    try:
+        payload = json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    out = handle(cmd, payload)
+    sys.stdout.write(json.dumps(out))
+    # Always exit 0 so the AtriaDash bridge resolves; errors are carried inside the JSON.
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
