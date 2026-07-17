@@ -54,10 +54,10 @@ def start_step(
     wi = session.get(PrWorkItem, work_item_id)
     auth.require(principal, "execute", wi.scope_path)
     graph = _graph(session, wi)
-    step = contract.get_step(graph, step_key)
+    contract.node_by_key(graph, step_key)  # validate key exists
 
-    # Enforce order: every step in `entry` must have a completed run.
-    for required in step.get("entry", []):
+    # Enforce order: every predecessor must have a completed run.
+    for required in contract.predecessors(graph, step_key):
         done = (
             session.query(PrStepRun)
             .filter_by(work_item_id=wi.id, step_key=required, status="completed")
@@ -101,10 +101,10 @@ def submit_output(
     wi = session.get(PrWorkItem, run.work_item_id)
     auth.require(principal, "submit_output", wi.scope_path)
     graph = _graph(session, wi)
-    step = contract.get_step(graph, run.step_key)
+    node = contract.node_by_key(graph, run.step_key)
 
     try:
-        contract.validate_output(step, data)
+        contract.validate_output(node, data)
     except jsonschema.ValidationError as err:
         if override_reason is None:
             el.emit(
@@ -135,7 +135,7 @@ def submit_output(
         work_item_id=wi.id, step_run_id=run.id,
     )
 
-    if not contract.next_steps(graph, run.step_key):
+    if not contract.out_edges(graph, run.step_key):
         wi.status = "completed"
         wi.current_step_key = None
         el.emit(

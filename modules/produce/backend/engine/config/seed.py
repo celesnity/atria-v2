@@ -8,38 +8,27 @@ from engine.config.models import PrWorkflow, PrWorkflowVersion
 
 DEMO_GRAPH = {
     "nodes": [
-        {
-            "key": "prepare",
-            "name": "Prepare",
-            "assignment_rule": {"by": "role", "value": "worker"},
-            "output_contract": {"type": "object"},
-            "entry": [],
-            "instructions": "Prepare the work item.",
-        },
-        {
-            "key": "measure",
-            "name": "Measure",
-            "assignment_rule": {"by": "role", "value": "worker"},
-            "output_contract": {
-                "type": "object",
-                "properties": {"value": {"type": "number", "minimum": 0, "maximum": 10}},
-                "required": ["value"],
-            },
-            "entry": ["prepare"],
-            "instructions": "Record the measured value (0-10).",
-        },
-        {
-            "key": "finish",
-            "name": "Finish",
-            "assignment_rule": {"by": "role", "value": "worker"},
-            "output_contract": {"type": "object"},
-            "entry": ["measure"],
-            "instructions": "Complete the work item.",
-        },
+        {"uid": "n-prepare", "node_type": "human", "key": "prepare", "label": "Prepare",
+         "position": {"x": 0, "y": 0},
+         "config": {"output_contract": {"type": "object"},
+                    "instructions": "Prepare the work item.",
+                    "assignment_rule": {"by": "role", "value": "worker"}}},
+        {"uid": "n-measure", "node_type": "human", "key": "measure", "label": "Measure",
+         "position": {"x": 200, "y": 0},
+         "config": {"output_contract": {"type": "object",
+                        "properties": {"value": {"type": "number", "minimum": 0, "maximum": 10}},
+                        "required": ["value"]},
+                    "instructions": "Record the measured value (0-10).",
+                    "assignment_rule": {"by": "role", "value": "worker"}}},
+        {"uid": "n-finish", "node_type": "human", "key": "finish", "label": "Finish",
+         "position": {"x": 400, "y": 0},
+         "config": {"output_contract": {"type": "object"},
+                    "instructions": "Complete the work item.",
+                    "assignment_rule": {"by": "role", "value": "worker"}}},
     ],
     "edges": [
-        {"from": "prepare", "to": "measure"},
-        {"from": "measure", "to": "finish"},
+        {"from": "prepare", "to": "measure", "branch": "default"},
+        {"from": "measure", "to": "finish", "branch": "default"},
     ],
 }
 
