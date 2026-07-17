@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 sqlalchemy
+jsonschema
 psycopg2-binary
 celery
 redis
