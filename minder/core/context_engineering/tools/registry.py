@@ -205,6 +205,21 @@ class ToolRegistry(InlineToolsMixin):
         for _name, _spec in self._skill_specs.items():
             self._handlers[_name] = self._make_skill_handler(_spec)
 
+        # Core-owned knowledge_query tool (registered like a skill spec so it
+        # gets an LLM schema via _build_skill_schemas and appears in the
+        # assistant allowlist). Never fatal if wiring is unavailable.
+        try:
+            from minder.core.knowledge.wiring import build_knowledge_tool_spec_default
+
+            _kspec = build_knowledge_tool_spec_default()
+            if _kspec is not None:
+                self._skill_specs[_kspec.name] = _kspec
+                self._handlers[_kspec.name] = self._make_skill_handler(_kspec)
+        except Exception as _kexc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning("knowledge tool not registered: %s", _kexc)
+
         # Initialize batch handler now that _handlers is set up
         self._batch_handler = BatchToolHandler(self)
 

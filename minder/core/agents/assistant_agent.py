@@ -9,6 +9,7 @@ via the `agent_mode` config field (env: MINDER_AGENT_MODE=assistant).
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from minder.core.agents.main_agent.agent import MainAgent, _build_skill_schemas
@@ -41,6 +42,7 @@ class AssistantAgent(MainAgent):
         mode_manager: Any,
         working_dir: Any = None,
         env_context: Any = None,
+        tenant_id: str | None = None,
     ) -> None:
         super().__init__(
             config,
@@ -50,6 +52,9 @@ class AssistantAgent(MainAgent):
             allowed_tools=assistant_allowed_tools(tool_registry),
             env_context=env_context,
         )
+        # I2: wire the acting tenant so apply_profile can inject the right persona.
+        # Falls back to the dev env var (None in prod without a tenant).
+        self._tenant_id: str | None = tenant_id
 
     def build_system_prompt(self, thinking_visible: bool = False) -> str:
         """Assistant-first prompt: identity template + module SKILL block."""
@@ -65,6 +70,11 @@ class AssistantAgent(MainAgent):
             logger.warning("Failed to build module SKILL block for assistant prompt: %s", exc)
             block = ""
         full = base + ("\n\n" + block if block else "")
+        # Replace default identity with the tenant persona/background when present.
+        from minder.core.knowledge.assistant_profile import apply_profile
+
+        tenant_id = getattr(self, "_tenant_id", None) or os.environ.get("KNOWLEDGE_DEV_TENANT")
+        full = apply_profile(full, tenant_id)
         self._system_stable = full
         self._system_dynamic = ""
         return full
