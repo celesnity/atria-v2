@@ -71,6 +71,9 @@ dependencies = [
     "pyjwt[crypto]>=2.8",
     # WS client for proxying streaming speech-to-text to the ASR sidecar
     "websockets>=12",
+    # Knowledge base: Qdrant vector store (dense search) + Neo4j knowledge graph
+    "qdrant-client>=1.11",
+    "neo4j>=5.24",
 ]
 
 [project.optional-dependencies]
