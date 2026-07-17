@@ -42,6 +42,7 @@ class AssistantAgent(MainAgent):
         mode_manager: Any,
         working_dir: Any = None,
         env_context: Any = None,
+        tenant_id: str | None = None,
     ) -> None:
         super().__init__(
             config,
@@ -51,6 +52,9 @@ class AssistantAgent(MainAgent):
             allowed_tools=assistant_allowed_tools(tool_registry),
             env_context=env_context,
         )
+        # I2: wire the acting tenant so apply_profile can inject the right persona.
+        # Falls back to the dev env var (None in prod without a tenant).
+        self._tenant_id: str | None = tenant_id
 
     def build_system_prompt(self, thinking_visible: bool = False) -> str:
         """Assistant-first prompt: identity template + module SKILL block."""

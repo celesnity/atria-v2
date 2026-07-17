@@ -66,18 +66,24 @@ class DocumentsProvider(SearchProvider):
             )
             ranked = merge_graph_hits(ranked, graph_ids, cap=limit + _MAX_NEIGHBORS)
 
+        # I1: assign graph-only hits a small positive score so they survive the
+        # final slice and rank below vector/FTS hits rather than scoring 0.0.
+        min_fused_score = min(fused.values(), default=0.0) if fused else 0.0
+        _GRAPH_SCORE = max(min_fused_score * 0.5, 1e-6)
+
         hits: list[SearchHit] = []
         for external_id in ranked[:limit]:
             payload = payloads.get(external_id) or self._hydrate(external_id, tenant_id)
             if payload is None:
                 continue
+            score = fused.get(external_id, _GRAPH_SCORE)
             hits.append(
                 SearchHit(
                     id=external_id,
                     source=self.name,
                     title=payload.get("title", ""),
                     snippet=payload.get("text", "")[:700],
-                    score=fused.get(external_id, 0.0),
+                    score=score,
                     metadata={"citation": payload.get("citation", "")},
                 )
             )

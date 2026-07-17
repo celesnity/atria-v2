@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from minder.db.models import Base, KnowledgeChunk, KnowledgeDocument
@@ -33,3 +34,12 @@ async def test_document_and_chunk_roundtrip():
         await s.commit()
         assert doc.id is not None
         assert doc.status == "pending"
+
+    # M2: read the chunk back to verify FK linkage and chunk persistence.
+    async with sm() as s:
+        result = await s.execute(
+            select(KnowledgeChunk).where(KnowledgeChunk.document_id == doc.id)
+        )
+        chunk = result.scalar_one()
+        assert chunk.text == "hello"
+        assert chunk.citation == "Policy [1] · 1#0"

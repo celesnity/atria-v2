@@ -123,12 +123,16 @@ def _write_chunk(tx, tenant_id, document_id, chunk_id, entities, relations):
 
 
 def _expand(tx, tenant_id, seed_ids, hops, max_neighbors):
+    # C2: Neo4j does not allow a query parameter inside a variable-length bound
+    # (*1..$hops).  Inline the validated integer via f-string; hops is already
+    # coerced to int by graph_hops() before reaching here.
+    safe_hops = int(hops)
     result = tx.run(
-        "MATCH (c:KChunk)-[:MENTIONS]->(:KEntity)-[:RELATED_TO*1..$hops]-"
+        f"MATCH (c:KChunk)-[:MENTIONS]->(:KEntity)-[:RELATED_TO*1..{safe_hops}]-"
         "(:KEntity)<-[:MENTIONS]-(n:KChunk) "
         "WHERE c.chunk_id IN $seed_ids AND n.tenant_id=$tenant_id "
         "AND NOT n.chunk_id IN $seed_ids "
         "RETURN DISTINCT n.chunk_id AS chunk_id LIMIT $max_neighbors",
-        seed_ids=seed_ids, tenant_id=tenant_id, hops=hops, max_neighbors=max_neighbors,
+        seed_ids=seed_ids, tenant_id=tenant_id, max_neighbors=max_neighbors,
     )
     return [record["chunk_id"] for record in result]

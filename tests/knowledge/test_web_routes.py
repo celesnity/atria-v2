@@ -14,11 +14,23 @@ class FakeService:
         return 2
 
 
+# service_factory and seed_scan are now async callables (C1 fix).
+async def _fake_service_factory():
+    return FakeService()
+
+
+async def _fake_seed_scan():
+    return 3
+
+
 def test_list_documents_endpoint():
     app = FastAPI()
     app.include_router(
-        build_router(service_factory=lambda: FakeService(), tenant_factory=lambda req: "t1",
-                     seed_scan=lambda: 3)
+        build_router(
+            service_factory=_fake_service_factory,
+            tenant_factory=lambda req: "t1",
+            seed_scan=_fake_seed_scan,
+        )
     )
     client = TestClient(app)
     resp = client.get("/knowledge/documents")
@@ -29,8 +41,11 @@ def test_list_documents_endpoint():
 def test_rescan_endpoint_reports_counts():
     app = FastAPI()
     app.include_router(
-        build_router(service_factory=lambda: FakeService(), tenant_factory=lambda req: "t1",
-                     seed_scan=lambda: 3)
+        build_router(
+            service_factory=_fake_service_factory,
+            tenant_factory=lambda req: "t1",
+            seed_scan=_fake_seed_scan,
+        )
     )
     client = TestClient(app)
     resp = client.post("/knowledge/rescan")
