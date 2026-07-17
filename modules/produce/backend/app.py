@@ -19,6 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import db
+from engine import db as engine_db
+from engine.config.models import PrWorkflow
+from engine.config.seed import seed_demo_workflow
+from engine.routes import router as engine_router
 from domain.config import routes as config_routes
 from domain.work import routes as work_routes
 from domain.sop import routes as sop_routes
@@ -38,6 +42,11 @@ def _build_track_a_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         db.init_db()
+        # Bootstrap the generic workflow engine (owns pr_* tables, shared Postgres).
+        engine_db.init_db()
+        with engine_db.db_session() as s:
+            if not s.query(PrWorkflow).filter_by(key="demo").first():
+                seed_demo_workflow(s)
         yield
 
     app = FastAPI(title="Produce", version="0.1.0", lifespan=lifespan)
@@ -66,6 +75,10 @@ def _build_track_a_app() -> FastAPI:
         report_routes,
     ):
         app.include_router(mod.router)
+
+    # Generic workflow engine (builder + execution) under its own prefix so the
+    # dashboard frontend reaches it same-origin at /engine/*.
+    app.include_router(engine_router, prefix="/engine")
 
     @app.get("/health")
     def health() -> dict:
