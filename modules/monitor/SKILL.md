@@ -13,6 +13,31 @@ light) with the Guided settings-popover chrome. Self-contained vanilla `dashboar
 charts, no React/CDN, works offline in Docker. It runs against the **live, evolving 20-machine fleet
 simulator** (the IIOT fleet API) and is driven by a **real gpt-5.4-mini** brain for the Ask-AI.
 
+## SDK connector — the agent's interface (preferred)
+
+Monitor ships a **`minder_python_sdk` connector** (`backend/app.py`) exposing its data over the
+`/connector/*` contract. **The agent should read the fleet through these connector tools**, not the
+`/run` scripts:
+
+- **`monitor_fleet`** — read the whole live fleet (every machine's state/OEE/availability/health + a
+  fleet summary + the at-risk scenario). A pure read (`@conn.read`, risk none). This is the sensory
+  snapshot other domains read from.
+- **`monitor_machine`** (`machine_id`) — read one machine's live telemetry.
+- **`monitor_ask`** (`question`, `lang?`) — a grounded, carded answer (gpt-5.4-mini). Read-only; the
+  model writes prose + picks a chart intent while the numbers come from the live snapshot (it never
+  invents them — `analysis.normalize_ask`).
+
+It also provides an **Operational Graph** (`@conn.graph`: plant → line → machine → alarm) — Monitor is
+the *sensory substrate* other domains query — and emits sensory **domain events**
+(`machine.at_risk` / `machine.recovered`) on real transitions. It exposes **no write/actuation tool**:
+Monitor is read-only, so every connector tool is risk `none` and never gated. The decision/actuation
+loop lives in the Optimize module.
+
+Run it locally with `minder-module dev monitor` (uvicorn on `:9310`); Core reaches it at
+`http://127.0.0.1:9310` (static `service` block) and, once it self-registers, surfaces the three tools
+to the agent. The connector reuses the same `scripts/` as the dashboard tile (one source of truth), so
+both stay consistent.
+
 Monitor is **read-only**: it observes the fleet and answers questions. It never actuates a machine.
 The AI decision loop (Measure → Explain → Predict → Evaluate → Recommend → dispatch, with the
 human-approval gate) lives in the **Optimize** module, not here.

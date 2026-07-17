@@ -10,6 +10,18 @@
       { "id": "guided", "label": "Guided", "entry": "blocks/guided.html" }
     ]
   },
+  "service": {
+    "connector_url": "http://127.0.0.1:9320",
+    "health_path": "/connector/health",
+    "streaming": false,
+    "min_core_version": "2",
+    "tools": [
+      { "name": "optimize_situation", "description": "Read the current at-risk production scenario (target machine, gap, forecast, ranked alternatives).", "parameters": { "type": "object", "properties": { "url": { "type": "string" }, "lang": { "type": "string" } } } },
+      { "name": "optimize_analyze", "description": "Run the whole Measure→Explain→Predict→Evaluate→Recommend loop over one snapshot (read-only).", "parameters": { "type": "object", "properties": { "url": { "type": "string" }, "lang": { "type": "string" }, "execution_id": { "type": "string" } } } },
+      { "name": "optimize_release_product", "description": "GATED write: release product batches into intake so starved washers resume (needs approval).", "parameters": { "type": "object", "properties": { "count": { "type": "integer" }, "product": { "type": "string" } } } },
+      { "name": "optimize_service_machine", "description": "GATED write: full-service a machine on the live plant (needs approval).", "parameters": { "type": "object", "properties": { "machine_id": { "type": "string" } }, "required": ["machine_id"] } }
+    ]
+  },
   "activity": {
     "default": { "running": "Working…", "done": "Done" },
     "actions": {
