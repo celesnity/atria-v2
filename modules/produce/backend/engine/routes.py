@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from engine.analytics import service as an
@@ -236,15 +238,15 @@ def duplicate_workflow(wid: int, principal: Principal = Depends(get_principal)):
         def go():
             src = s.get(PrWorkflow, wid)
             auth.require(principal, "configure", src.scope_path)
-            copy = PrWorkflow(
+            dup = PrWorkflow(
                 key=src.key + "-copy",
                 name=src.name + " (copy)",
                 scope_path=src.scope_path,
-                draft_graph=src.draft_graph,
+                draft_graph=copy.deepcopy(src.draft_graph),
             )
-            s.add(copy)
+            s.add(dup)
             s.flush()
-            return {"id": copy.id}
+            return {"id": dup.id}
         return _guard(go)
 
 

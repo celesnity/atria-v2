@@ -28,3 +28,18 @@ def test_delete_hides_template():
             "scope_path": "site/lineA", "config": {}}); s.flush()
         ts.delete_template(s, p, t.id); s.flush()
         assert ts.list_templates(s, "site/lineA") == []
+
+def test_sibling_scope_template_not_visible():
+    with db.db_session() as s:
+        # Create lineB scope and grant configurator
+        sc_b = scope.create(s, "site/lineB", kind="line", name="site/lineB"); s.flush()
+        s.add(grant.PrGrant(subject="cfgB", role="configurator", scope_id=sc_b.id)); s.flush()
+        p_b = auth.load_principal(s, "cfgB")
+
+        ts.create_template(s, p_b, {"key": "lineB-tmpl", "name": "LineB Template",
+            "base_kind": "human", "scope_path": "site/lineB",
+            "config": {}}); s.flush()
+
+        # lineA query must NOT see the lineB template
+        visible = ts.list_templates(s, "site/lineA")
+        assert all(t.scope_path != "site/lineB" for t in visible)

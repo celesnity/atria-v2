@@ -107,16 +107,25 @@ def test_update_workflow_name(client):
 
 
 def test_duplicate_workflow(client):
-    """POST /workflows/{wid}/duplicate creates a copy."""
+    """POST /workflows/{wid}/duplicate creates an independent deep copy."""
+    from engine.config.models import PrWorkflow
+
     wf = client.post("/workflows", json={
         "key": "wf-orig",
         "name": "Original",
         "scope_path": "site/lineA",
     }).json()
     wid = wf["id"]
+    # Set a known draft_graph before duplicating
+    client.put(f"/workflows/{wid}/draft", json={"graph": GOOD})
     resp = client.post(f"/workflows/{wid}/duplicate")
     assert resp.status_code == 200
-    assert resp.json()["id"] != wid
+    dup_id = resp.json()["id"]
+    assert dup_id != wid
+    # The duplicated workflow's draft_graph must equal the source's
+    with db.db_session() as s:
+        dup_graph = s.get(PrWorkflow, dup_id).draft_graph
+    assert dup_graph == GOOD
 
 
 def test_list_versions(client):
@@ -136,20 +145,32 @@ def test_list_versions(client):
 
 
 def test_revert_version(client):
-    """POST /workflows/{wid}/versions/{v}/revert restores a draft."""
+    """POST /workflows/{wid}/versions/{v}/revert restores the draft to the published graph."""
+    from engine.config.models import PrWorkflow
+
     wf = client.post("/workflows", json={
         "key": "wf-revert",
         "name": "Revert WF",
         "scope_path": "site/lineA",
     }).json()
     wid = wf["id"]
+    # Publish GOOD as v1
     client.put(f"/workflows/{wid}/draft", json={"graph": GOOD})
     client.post(f"/workflows/{wid}/publish", json={})
-    # Now overwrite the draft with empty and revert back
-    client.put(f"/workflows/{wid}/draft", json={"graph": {"nodes": [], "edges": []}})
+    # Overwrite draft with a DIFFERENT graph
+    different = {"nodes": [
+        {"uid": "x", "node_type": "begin", "key": "s", "config": {}},
+        {"uid": "y", "node_type": "end", "key": "e", "config": {}},
+    ], "edges": [{"from": "s", "to": "e", "branch": "default"}]}
+    client.put(f"/workflows/{wid}/draft", json={"graph": different})
+    # Revert to v1
     resp = client.post(f"/workflows/{wid}/versions/1/revert")
     assert resp.status_code == 200
     assert resp.json()["id"] == wid
+    # Verify draft was restored to GOOD
+    with db.db_session() as s:
+        restored = s.get(PrWorkflow, wid).draft_graph
+    assert restored == GOOD
 
 
 def test_node_template_crud(client):

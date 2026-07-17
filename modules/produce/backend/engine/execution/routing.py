@@ -12,12 +12,18 @@ from engine.execution.models import PrStepRun
 
 
 def _completed_outputs(session: Session, wi_id: int) -> dict[str, dict]:
-    rows = session.query(PrStepRun).filter_by(work_item_id=wi_id, status="completed").all()
+    rows = (session.query(PrStepRun)
+            .filter_by(work_item_id=wi_id, status="completed")
+            .order_by(PrStepRun.id).all())
     return {r.step_key: (r.output or {}) for r in rows}
 
 
 def resolve_decisions(session: Session, wi, graph: dict, from_key: str, actor: str) -> None:
-    """Walk default edges from `from_key`; fire each decision until a human/end/dead-end."""
+    """Walk default edges from `from_key`; fire each decision until a human/end/dead-end.
+
+    A decision that loops back (else → …) must route to a human step that re-produces
+    the output its condition reads, or the loop cannot converge.
+    """
     cur = contract.next_default(graph, from_key)
     guard = len(graph["nodes"]) + 10
     while cur is not None and guard > 0:

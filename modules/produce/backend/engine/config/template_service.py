@@ -12,7 +12,7 @@ from engine.config.template_models import PrNodeTemplate
 
 
 def list_templates(session: Session, scope_path: str) -> list[PrNodeTemplate]:
-    """Return active templates whose scope contains or is contained by scope_path.
+    """Return active templates whose scope contains scope_path (ancestor-or-equal).
 
     Args:
         session: SQLAlchemy session.
@@ -22,7 +22,7 @@ def list_templates(session: Session, scope_path: str) -> list[PrNodeTemplate]:
         List of matching active PrNodeTemplate rows.
     """
     rows = session.query(PrNodeTemplate).filter_by(is_active=True, deleted_at=None).all()
-    return [t for t in rows if contains(t.scope_path, scope_path) or contains(scope_path, t.scope_path)]
+    return [t for t in rows if contains(t.scope_path, scope_path)]
 
 
 def create_template(session: Session, principal: Principal, data: dict) -> PrNodeTemplate:
