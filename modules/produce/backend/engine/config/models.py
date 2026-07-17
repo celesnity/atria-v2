@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.types import DateTime, JSON
 
 from engine.db import Base
@@ -21,6 +21,8 @@ class PrWorkflow(Base):
 
 class PrWorkflowVersion(Base):
     __tablename__ = "pr_workflow_version"
+
+    __table_args__ = (UniqueConstraint("workflow_id", "version"),)
 
     id = Column(Integer, primary_key=True)
     workflow_id = Column(Integer, ForeignKey("pr_workflow.id"), nullable=False)

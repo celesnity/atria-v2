@@ -127,6 +127,8 @@ def _seed(s, complete_on_pass: bool) -> int:
 
 def test_pass_completes():
     """value=5 <=10 -> check fires 'pass' -> done -> work item completed."""
+    from engine.core.eventlog import PrEvent, WORK_ITEM_COMPLETED, STEP_OUTPUT_SUBMITTED
+
     with db.db_session() as s:
         principal = _lead(s)
         ver_id = _seed(s, complete_on_pass=True)
@@ -151,6 +153,18 @@ def test_pass_completes():
 
         wi = s.query(models.PrWorkItem).filter_by(id=wi_id).one()
         assert wi.status == "completed"
+
+        # Event log assertions
+        completed_events = (s.query(PrEvent)
+                             .filter_by(type=WORK_ITEM_COMPLETED, work_item_id=wi_id)
+                             .all())
+        assert len(completed_events) == 1
+
+        submitted_for_check = (s.query(PrEvent)
+                                .filter_by(type=STEP_OUTPUT_SUBMITTED, work_item_id=wi_id)
+                                .all())
+        assert any(e.payload.get("step_run_id") == check_run.id
+                   for e in submitted_for_check)
 
 
 def test_pass_branch_reachability():
@@ -215,3 +229,102 @@ def test_else_routes_to_rework():
         # pack is NOT on the taken branch - should raise
         with pytest.raises(ValueError):
             service.start_step(s, principal, wi_id, "pack")
+
+_GRAPH_LOOP = {
+    "nodes": [
+        {
+            "uid": "n1", "key": "measure", "node_type": "human",
+            "config": {
+                "output_contract": {
+                    "type": "object",
+                    "properties": {"value": {"type": "number"}},
+                    "required": ["value"],
+                }
+            },
+        },
+        {
+            "uid": "n2", "key": "check", "node_type": "decision",
+            "config": {
+                "condition": {
+                    "left": "{{ nodes.measure.output.value }}",
+                    "operator": "<=",
+                    "right": 10,
+                }
+            },
+        },
+        {
+            "uid": "n3", "key": "done", "node_type": "end",
+            "config": {},
+        },
+    ],
+    "edges": [
+        {"from": "measure", "to": "check", "branch": "default"},
+        {"from": "check", "to": "done", "branch": "pass"},
+        {"from": "check", "to": "measure", "branch": "else"},
+    ],
+}
+
+
+def _seed_loop(s) -> int:
+    """Seed a workflow version using _GRAPH_LOOP."""
+    wf = PrWorkflow(key="dec-loop", name="Dec Loop", scope_path="site/lineA")
+    s.add(wf)
+    s.flush()
+    ver = PrWorkflowVersion(
+        workflow_id=wf.id, version=1, status="published", graph=_GRAPH_LOOP
+    )
+    s.add(ver)
+    s.flush()
+    return ver.id
+
+
+def test_else_reworks_then_converges():
+    """else branch loops back; second attempt with passing value completes the work item."""
+    with db.db_session() as s:
+        principal = _lead(s)
+        ver_id = _seed_loop(s)
+        s.flush()
+
+        wi = service.create_work_item(s, principal, ver_id, "site/lineA")
+        s.flush()
+        wi_id = wi.id
+        service.claim(s, principal, wi_id)
+
+        # Round 1: submit failing value → check fires "else" → loops back to measure
+        service.start_step(s, principal, wi_id, "measure")
+        service.submit_output(s, principal,
+                              s.query(models.PrStepRun)
+                               .filter_by(work_item_id=wi_id, step_key="measure")
+                               .one().id,
+                              {"value": 42})
+        s.flush()
+
+        # After round 1: work item is NOT completed; a check run with "else" exists
+        wi_state = s.query(models.PrWorkItem).filter_by(id=wi_id).one()
+        assert wi_state.status != "completed"
+        else_run = (s.query(models.PrStepRun)
+                     .filter_by(work_item_id=wi_id, step_key="check", status="completed")
+                     .order_by(models.PrStepRun.id.desc())
+                     .first())
+        assert else_run is not None and else_run.output == {"branch": "else"}
+
+        # Round 2: submit passing value → check fires "pass" → work item completed
+        service.start_step(s, principal, wi_id, "measure")
+        service.submit_output(s, principal,
+                              s.query(models.PrStepRun)
+                               .filter_by(work_item_id=wi_id, step_key="measure",
+                                          status="completed")
+                               .order_by(models.PrStepRun.id.desc())
+                               .first().id,
+                              {"value": 5.0})
+        s.flush()
+
+        wi_final = s.query(models.PrWorkItem).filter_by(id=wi_id).one()
+        assert wi_final.status == "completed"
+
+        # The LATEST check run must output "pass"
+        latest_check = (s.query(models.PrStepRun)
+                         .filter_by(work_item_id=wi_id, step_key="check", status="completed")
+                         .order_by(models.PrStepRun.id.desc())
+                         .first())
+        assert latest_check.output == {"branch": "pass"}

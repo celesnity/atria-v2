@@ -1,6 +1,8 @@
 """Draft validation, publish (freeze snapshot), and revert."""
 from __future__ import annotations
 
+import copy
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -61,7 +63,7 @@ def publish(
         workflow_id=wf.id,
         version=n + 1,
         status="published",
-        graph=wf.draft_graph,
+        graph=copy.deepcopy(wf.draft_graph),
         note=note or None,
         published_by=principal.subject,
         published_at=now(),
@@ -100,5 +102,5 @@ def revert(
         .filter_by(workflow_id=wf.id, version=version)
         .one()
     )
-    wf.draft_graph = v.graph
+    wf.draft_graph = copy.deepcopy(v.graph)
     return wf

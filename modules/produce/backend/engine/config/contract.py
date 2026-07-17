@@ -101,4 +101,19 @@ def validate_graph(graph: dict) -> list[str]:
                 issues.append(f"decision '{n['key']}' has no outgoing edges")
             elif not any(e.get("branch") == "else" for e in oe):
                 issues.append(f"decision '{n['key']}' must have an 'else' branch")
+            else:
+                labels = {e.get("branch") for e in out_edges(graph, n["key"])}
+                extra = labels - {"pass", "else"}
+                if extra:
+                    issues.append(
+                        f"decision '{n['key']}' has unsupported branch labels: {sorted(extra)}"
+                    )
+                if "pass" not in labels:
+                    issues.append(f"decision '{n['key']}' must have a 'pass' branch")
+        else:
+            bad = {e.get("branch", "default") for e in out_edges(graph, n["key"])} - {"default"}
+            if bad:
+                issues.append(
+                    f"node '{n['key']}' ({n['node_type']}) may only have 'default' out-edges"
+                )
     return issues
