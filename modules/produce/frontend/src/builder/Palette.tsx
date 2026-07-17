@@ -36,11 +36,12 @@ export interface PaletteProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ICON_MAP: Record<NodeType, React.FC<{ size?: number; color?: string }>> = {
-  begin: IconPlayerPlay,
-  end: IconFlag,
-  human: IconUser,
-  decision: IconGitFork,
+type AnyIconComponent = React.ComponentType<{ size?: number; color?: string }>;
+const ICON_MAP: Record<NodeType, AnyIconComponent> = {
+  begin: IconPlayerPlay as AnyIconComponent,
+  end: IconFlag as AnyIconComponent,
+  human: IconUser as AnyIconComponent,
+  decision: IconGitFork as AnyIconComponent,
 };
 
 function NodeIcon({
