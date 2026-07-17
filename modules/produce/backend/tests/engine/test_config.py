@@ -12,8 +12,9 @@ def test_seed_creates_published_version_with_dag():
         v = s.get(models.PrWorkflowVersion, vid)
         assert v.status == "published"
         graph = v.graph
-        assert contract.entry_step(graph)["key"] == "prepare"
-        assert contract.next_steps(graph, "prepare") == ["measure"]
+        # "prepare" is the entry step (no AND-join predecessors) and flows to "measure"
+        assert contract.predecessors(graph, "prepare") == []
+        assert contract.next_default(graph, "prepare") == "measure"
 
 
 def test_validate_output_enforces_threshold():
@@ -21,7 +22,7 @@ def test_validate_output_enforces_threshold():
         vid = seed.seed_demo_workflow(s)
         s.flush()
         graph = s.get(models.PrWorkflowVersion, vid).graph
-        step = contract.get_step(graph, "measure")
-        contract.validate_output(step, {"value": 5.0})  # within [0, 10]
+        node = contract.node_by_key(graph, "measure")
+        contract.validate_output(node, {"value": 5.0})  # within [0, 10]
         with pytest.raises(jsonschema.ValidationError):
-            contract.validate_output(step, {"value": 99.0})  # over threshold
+            contract.validate_output(node, {"value": 99.0})  # over threshold
