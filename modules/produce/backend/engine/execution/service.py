@@ -11,6 +11,7 @@ from engine.core import auth, eventlog as el
 from engine.core.auth import Principal
 from engine.db import now
 from engine.execution.models import PrStepRun, PrWorkItem
+from engine.execution.routing import resolve_decisions
 
 
 def _graph(session: Session, work_item: PrWorkItem) -> dict:
@@ -65,6 +66,17 @@ def start_step(
         )
         if not done:
             raise ValueError(f"step '{step_key}' blocked: '{required}' not completed")
+
+    # Decision-branch reachability guard: if this step is gated by a decision node,
+    # verify the taken branch points here.
+    for e in [e for e in graph["edges"] if e["to"] == step_key
+              and contract.node_by_key(graph, e["from"])["node_type"] == "decision"]:
+        dec = (session.query(PrStepRun)
+               .filter_by(work_item_id=wi.id, step_key=e["from"], status="completed")
+               .order_by(PrStepRun.id.desc()).first())
+        chosen = (dec.output or {}).get("branch") if dec else None
+        if contract.branch_target(graph, e["from"], chosen) != step_key:
+            raise ValueError(f"step '{step_key}' not on the taken branch of '{e['from']}'")
 
     first = wi.status == "claimed"
     wi.status = "in_progress"
@@ -138,9 +150,9 @@ def submit_output(
     if not contract.out_edges(graph, run.step_key):
         wi.status = "completed"
         wi.current_step_key = None
-        el.emit(
-            session, type=el.WORK_ITEM_COMPLETED, scope_path=wi.scope_path,
-            actor_subject=principal.subject, payload={"work_item_id": wi.id},
-            work_item_id=wi.id,
-        )
+        el.emit(session, type=el.WORK_ITEM_COMPLETED, scope_path=wi.scope_path,
+                actor_subject=principal.subject, payload={"work_item_id": wi.id},
+                work_item_id=wi.id)
+    else:
+        resolve_decisions(session, wi, graph, run.step_key, principal.subject)
     return run
