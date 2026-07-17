@@ -75,4 +75,8 @@ class IngestionService:
     def _resolve_text(self, doc: dict[str, Any]) -> str:
         if doc.get("source_path"):
             return parse_file(doc["source_path"])
-        raise ValueError("document has no source_path (artifact resolution is Task 12)")
+        if doc.get("artifact_id"):
+            from minder.core.knowledge.artifact_bytes import artifact_path
+
+            return parse_file(artifact_path(doc["artifact_id"]))
+        raise ValueError("document has neither source_path nor artifact_id")
