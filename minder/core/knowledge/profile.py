@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+# I3: module-level heading constants so they are discoverable and configurable
+# without hunting for hard-coded strings inside methods.
+HEADING_BACKGROUND: str = "## Bối cảnh tổ chức"
+HEADING_PERSONA: str = "## Vai trò của bạn"
+
 
 class ProfileInjector:
     """Assembles tenant persona + company background into a prompt section."""
@@ -26,9 +31,9 @@ class ProfileInjector:
         persona = [d["summary"] for d in docs if d["category"] == "persona"]
         parts: list[str] = []
         if background:
-            parts.append("## Bối cảnh tổ chức\n" + "\n\n".join(background))
+            parts.append(HEADING_BACKGROUND + "\n" + "\n\n".join(background))
         if persona:
-            parts.append("## Vai trò của bạn\n" + "\n\n".join(persona))
+            parts.append(HEADING_PERSONA + "\n" + "\n\n".join(persona))
         block = "\n\n".join(parts)
         if len(block) > self._max_chars:
             block = block[: self._max_chars] + "…"

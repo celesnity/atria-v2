@@ -16,6 +16,9 @@ def artifact_path(artifact_id: int) -> str:
     wired here. Artifact ingest is verified in integration, not in the unit
     test suite.
     """
+    # M1: artifact-upload ingest is a known v1 gap.  IngestionService.ingest_document
+    # catches this NotImplementedError via its broad except clause and marks the
+    # document as status=failed, so sibling documents continue ingesting safely.
     raise NotImplementedError(
         f"artifact_path({artifact_id!r}): ArtifactService exposes only async resolution "
         "(_resolve_working_dir + _resolve_artifact_file). Wire a sessionmaker or a "

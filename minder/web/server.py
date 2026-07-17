@@ -126,9 +126,10 @@ async def lifespan(app: FastAPI):
         from minder.core.scheduler import BackgroundScheduler
 
         _kb_scheduler = BackgroundScheduler()
+        # Both callbacks are async; PeriodicTask._run awaits them directly.
         _kb_scheduler.add_task(
             "knowledge_drain",
-            lambda: asyncio.ensure_future(_knowledge_seed_and_drain()),
+            _knowledge_seed_and_drain,
             30,
         )
         _kb_scheduler.add_task(
@@ -285,17 +286,27 @@ def create_app() -> FastAPI:
     # Knowledge base routes (rescan + document listing). Non-fatal: a missing
     # DATABASE_URL or unavailable service will not crash app startup.
     try:
-        from minder.core.knowledge.wiring import build_knowledge_service, run_seed_scan
+        from minder.core.knowledge.wiring import (
+            abuild_knowledge_service,
+            arun_seed_scan,
+        )
         from minder.web.routes.knowledge import build_router as build_knowledge_router
+
+        def _resolve_web_tenant(req: Any) -> str | None:
+            """Resolve tenant from principal; dev-env fallback only when MINDER_ENV=dev."""
+            tid = getattr(getattr(req.state, "principal", None), "tenant_id", None)
+            if tid:
+                return tid
+            # C3: gate dev fallback exactly like wiring._resolve_tenant.
+            if os.environ.get("MINDER_ENV") == "dev":
+                return os.environ.get("KNOWLEDGE_DEV_TENANT")
+            return None
 
         app.include_router(
             build_knowledge_router(
-                service_factory=build_knowledge_service,
-                tenant_factory=lambda req: getattr(
-                    getattr(req.state, "principal", None), "tenant_id", None
-                )
-                or os.environ.get("KNOWLEDGE_DEV_TENANT"),
-                seed_scan=run_seed_scan,
+                service_factory=abuild_knowledge_service,
+                tenant_factory=_resolve_web_tenant,
+                seed_scan=arun_seed_scan,
             )
         )
     except Exception:  # noqa: BLE001
