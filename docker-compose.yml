@@ -62,7 +62,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${MINDER_HOST_PORT:-8080}:8080"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
@@ -97,7 +97,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -140,78 +140,24 @@ services:
       - module_template_media:/data
     restart: unless-stopped
 
-  # module_template connector (web). Reuses the shared `db` (own mt_* tables +
-  # read-only Minder reads), `redis` (DB index /2), and `minio`. Announces to
-  # Minder on :8080 and reverse-pushes via the minder-module Keycloak client.
-  module-template-web:
-    build:
-      context: .
-      dockerfile: modules/module_template/backend/Dockerfile
-    ports:
-      - "9300:9300"
-    environment:
-      - MINDER_URL=http://minder:8080
-      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
-      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
-      - MT_PUBLIC_BASE=http://localhost:9300
-      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
-      - MT_REDIS_URL=redis://redis:6379/2
-      - MT_S3_ENDPOINT=http://minio:9000
-      - MT_S3_BUCKET=module-template
-      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
-      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
-      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
-      - MINDER_MODULE_CLIENT_ID=minder-module
-      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
-      # Minder's connector registry is in-memory and cleared on every Minder restart.
-      # A short heartbeat re-registers this live module quickly (<=10s) rather than
-      # leaving the dashboard's health poll 400ing for up to the 30s default.
-      - MINDER_MODULE_HEARTBEAT_SEC=10
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_started
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9300/connector/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
-  # module_template Celery worker — runs background jobs; reverse-pushes live
-  # progress blocks + artifacts. Same DB/Redis/S3 + announce creds as the web.
-  module-template-worker:
-    build:
-      context: .
-      dockerfile: modules/module_template/worker/Dockerfile
-    environment:
-      - MT_DATABASE_URL=postgresql://minder:minder@db:5432/minder
-      - MT_REDIS_URL=redis://redis:6379/2
-      - MT_S3_ENDPOINT=http://minio:9000
-      - MT_S3_BUCKET=module-template
-      - MT_S3_ACCESS_KEY=${MT_S3_ACCESS_KEY:-minioadmin}
-      - MT_S3_SECRET_KEY=${MT_S3_SECRET_KEY:-minioadmin}
-      - MINDER_URL=http://minder:8080
-      - MINDER_MODULE_CONNECTOR_URL=http://module-template-web:9300
-      - MINDER_MODULE_REMOTE_ENTRY=http://localhost:9300/dashboard/remoteEntry.js
-      - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
-      - MINDER_MODULE_CLIENT_ID=minder-module
-      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_started
-    restart: unless-stopped
+  # ---- Modules run as INDEPENDENT compose projects (runtime registration) ----
+  # Module app/worker services are NOT defined here. Each module has its own
+  # docker-compose.yml that joins the shared `minder_net` network and announces
+  # to a running Minder — start it and it appears live in Minder; stop it and it
+  # disappears. `minio` above stays as shared module infra (it is not a Minder
+  # module, so it does not "appear" in Minder).
+  #   docker compose -f modules/produce/docker-compose.yml         up -d --build
+  #   docker compose -f modules/module_template/docker-compose.yml up -d --build
 
 volumes:
   minder_data:
   postgres_data:
   asr_models:
   module_template_media:
+
+# Stable network name so INDEPENDENT module compose projects can join it as
+# `external`. Every core service (base + local override) lands on `minder_net`;
+# modules reach `minder`/`db`/`redis`/`minio`/`keycloak` by name across projects.
+networks:
+  default:
+    name: minder_net

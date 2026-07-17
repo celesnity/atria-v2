@@ -12,19 +12,23 @@ const Dash = defineDashboard({
   panels: { home: Probe },
 });
 
+// Celesnity Daybreak (light) / Cosmos (dark) surface tokens.
+const LIGHT_SURFACE = 'hsl(228 60% 99%)';
+const DARK_SURFACE = 'hsl(224 45% 12%)';
+
 it('tokensFor returns the light/dark palette and defaults to dark', () => {
-  expect(tokensFor('light').surface).toBe('#FFFFFF');
-  expect(tokensFor('dark').surface).toBe('#111A2E');
-  expect(tokensFor(null).surface).toBe('#111A2E');
-  expect(tokensFor(undefined).surface).toBe('#111A2E');
+  expect(tokensFor('light').surface).toBe(LIGHT_SURFACE);
+  expect(tokensFor('dark').surface).toBe(DARK_SURFACE);
+  expect(tokensFor(null).surface).toBe(DARK_SURFACE);
+  expect(tokensFor(undefined).surface).toBe(DARK_SURFACE);
 });
 
 it('provides the host theme to panels via context', () => {
   render(<Dash apiBase="/api" activeTab="home" theme="light" />);
-  expect(screen.getByTestId('probe').textContent).toBe('light|#FFFFFF');
+  expect(screen.getByTestId('probe').textContent).toBe(`light|${LIGHT_SURFACE}`);
 });
 
 it('defaults to the dark sky when the host passes no theme', () => {
   render(<Dash apiBase="/api" activeTab="home" />);
-  expect(screen.getByTestId('probe').textContent).toBe('dark|#111A2E');
+  expect(screen.getByTestId('probe').textContent).toBe(`dark|${DARK_SURFACE}`);
 });

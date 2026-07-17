@@ -134,8 +134,7 @@ class ProcessToolHandler:
             operation.approved = True
             return True
 
-        # Auto-approve sessions (e.g. headless background TaskIQ workers running
-        # dispatched subagents) must never block on an interactive prompt. Honor
+        # Auto-approve sessions must never block on an interactive prompt. Honor
         # auto_approve_remaining directly — otherwise the force_prompt path below
         # tries to open a prompt_toolkit menu, which crashes in the worker.
         if getattr(approval_manager, "auto_approve_remaining", False):

@@ -43,6 +43,7 @@ def _client_for(base_url: str) -> httpx.Client:
             _CLIENTS[base_url] = client
         return client
 
+
 # Connector contract version this core speaks (docs/connector-contract.md). A
 # module can declare service.min_core_version; core warns if it needs a newer one.
 CORE_CONNECTOR_VERSION = 2
@@ -139,7 +140,9 @@ def _ladder_autonomy(level: Optional[str]) -> Optional[str]:
 
 
 def _auth_headers(
-    name: str, principal: Optional[dict], session_id: Optional[str] = None,
+    name: str,
+    principal: Optional[dict],
+    session_id: Optional[str] = None,
     autonomy: Optional[str] = None,
 ) -> dict:
     """Best-effort identity + secret headers for a connector call (v2 + v3 autonomy)."""
@@ -194,8 +197,12 @@ class RemoteConnector:
     # -- tool calls -----------------------------------------------------------
 
     def call_tool(
-        self, tool: str, arguments: dict, timeout: float = 110.0,
-        principal: Optional[dict] = None, session_id: Optional[str] = None,
+        self,
+        tool: str,
+        arguments: dict,
+        timeout: float = 110.0,
+        principal: Optional[dict] = None,
+        session_id: Optional[str] = None,
         autonomy: Optional[str] = None,
     ) -> dict:
         try:
@@ -212,10 +219,15 @@ class RemoteConnector:
             raise ConnectorUnreachable(str(exc)) from exc
 
     # ponytail: no Minder-side stream client — the ReAct tool loop is sync
-    def stream_tool(self, tool: str, arguments: dict,
-                    timeout: float = 300.0, principal: Optional[dict] = None,
-                    session_id: Optional[str] = None,
-                    autonomy: Optional[str] = None) -> "Iterator[dict]":
+    def stream_tool(
+        self,
+        tool: str,
+        arguments: dict,
+        timeout: float = 300.0,
+        principal: Optional[dict] = None,
+        session_id: Optional[str] = None,
+        autonomy: Optional[str] = None,
+    ) -> "Iterator[dict]":
         """Yield decoded SSE events from ``/connector/tools/{tool}/stream``.
 
         The tool handler consumes these synchronously (pumping progress/card
@@ -224,17 +236,21 @@ class RemoteConnector:
         ``ConnectorUnreachable`` if the stream can't be opened.
         """
         try:
-            with self._client.stream("POST", f"/connector/tools/{tool}/stream",
-                                     json={"arguments": arguments},
-                                     headers={**_auth_headers(self.name, principal, session_id,
-                                                              autonomy),
-                                              "Accept": "text/event-stream"},
-                                     timeout=timeout) as r:
+            with self._client.stream(
+                "POST",
+                f"/connector/tools/{tool}/stream",
+                json={"arguments": arguments},
+                headers={
+                    **_auth_headers(self.name, principal, session_id, autonomy),
+                    "Accept": "text/event-stream",
+                },
+                timeout=timeout,
+            ) as r:
                 r.raise_for_status()
                 for line in r.iter_lines():
                     if not line or not line.startswith("data:"):
                         continue
-                    payload = line[len("data:"):].strip()
+                    payload = line[len("data:") :].strip()
                     if not payload:
                         continue
                     try:
@@ -283,7 +299,9 @@ class RemoteConnector:
             return None
 
     def fetch_context(
-        self, timeout: float = 5.0, principal: Optional[dict] = None,
+        self,
+        timeout: float = 5.0,
+        principal: Optional[dict] = None,
         session_id: Optional[str] = None,
     ) -> Optional[dict]:
         """Fetch the live ``/connector/context`` (autonomy, actions, live
@@ -326,9 +344,15 @@ def _broadcast_progress(ctx: "SkillToolContext", module: str, evt: dict) -> None
     if not ctx.broadcaster:
         return
     try:
-        ctx.broadcaster({"type": "module_progress", "module": module,
-                         "message": evt.get("message", ""), "pct": evt.get("pct"),
-                         "output": evt.get("output")})
+        ctx.broadcaster(
+            {
+                "type": "module_progress",
+                "module": module,
+                "message": evt.get("message", ""),
+                "pct": evt.get("pct"),
+                "output": evt.get("output"),
+            }
+        )
     except Exception as exc:  # noqa: BLE001
         ctx.logger.warning("progress broadcast failed: %s", exc)
 
@@ -359,8 +383,11 @@ def _emit_response(ctx: "SkillToolContext", conn: "RemoteConnector", resp: dict)
 def _unavailable_result(ctx: "SkillToolContext", conn: "RemoteConnector", query: str) -> dict:
     card = unavailable_card(query, conn.name)
     _broadcast_card(ctx, f"{conn.name}_card", card)
-    return {"success": True, "output": card,
-            "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name)}
+    return {
+        "success": True,
+        "output": card,
+        "_llm_suffix": UNAVAILABLE_SUFFIX.format(module=conn.name),
+    }
 
 
 def _ctx_autonomy(ctx: "SkillToolContext") -> Optional[str]:
@@ -375,16 +402,21 @@ def _ctx_autonomy(ctx: "SkillToolContext") -> Optional[str]:
         return None
 
 
-def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
-                tool_name: str, kwargs: dict, query: str) -> dict:
+def _run_stream(
+    ctx: "SkillToolContext", conn: "RemoteConnector", tool_name: str, kwargs: dict, query: str
+) -> dict:
     """Consume the tool's SSE stream: pump progress/card events to the UI live,
     then return the ``final`` result to the agent. Falls back to the non-stream
     endpoint if the connector doesn't actually stream."""
     final: Optional[dict] = None
     try:
-        for evt in conn.stream_tool(tool_name, kwargs,
-                                    principal=ctx.principal, session_id=ctx.session_id,
-                                    autonomy=_ctx_autonomy(ctx)):
+        for evt in conn.stream_tool(
+            tool_name,
+            kwargs,
+            principal=ctx.principal,
+            session_id=ctx.session_id,
+            autonomy=_ctx_autonomy(ctx),
+        ):
             etype = evt.get("event")
             if etype == "card":
                 _broadcast_card(ctx, _card_type(evt, conn.name), evt.get("card") or {})
@@ -395,7 +427,9 @@ def _run_stream(ctx: "SkillToolContext", conn: "RemoteConnector",
                 if ctx.push_block and blk.get("remote_entry"):
                     try:
                         ctx.push_block(blk, conn.name)
-                    except Exception as exc:  # noqa: BLE001 — a block push must never break the stream
+                    except (
+                        Exception
+                    ) as exc:  # noqa: BLE001 — a block push must never break the stream
                         ctx.logger.warning("stream block push failed for %s: %s", conn.name, exc)
             elif etype == "final":
                 final = evt
@@ -420,9 +454,13 @@ def _make_handler(
         if streaming:
             return _run_stream(ctx, conn, tool_name, kwargs, query)
         try:
-            resp = conn.call_tool(tool_name, kwargs,
-                                  principal=ctx.principal, session_id=ctx.session_id,
-                                  autonomy=_ctx_autonomy(ctx))
+            resp = conn.call_tool(
+                tool_name,
+                kwargs,
+                principal=ctx.principal,
+                session_id=ctx.session_id,
+                autonomy=_ctx_autonomy(ctx),
+            )
         except ConnectorUnreachable:
             return _unavailable_result(ctx, conn, query)
         return _emit_response(ctx, conn, resp)
@@ -477,31 +515,72 @@ def _enrich_description(tool: dict) -> str:
     return "\n\n".join(parts)
 
 
+def _live_ui_modules(reg: Any) -> list[tuple[str, str]]:
+    """READY connectors as ``(name, display_name)``; display_name best-effort."""
+    from minder.core.modules.registry import ConnectorState
+
+    out: list[tuple[str, str]] = []
+    for rec in reg.connector_records():
+        if rec.state is not ConnectorState.READY:
+            continue
+        display = rec.name
+        try:
+            module = reg.get(rec.name)
+            if module.manifest and module.manifest.display_name:
+                display = module.manifest.display_name
+        except Exception:  # noqa: BLE001 — display_name is cosmetic; never fail listing
+            pass
+        out.append((rec.name, display))
+    return out
+
+
+def _inspectable_hint(reg: Any) -> str:
+    """Human phrase listing the modules the agent can inspect (for miss messages)."""
+    live = _live_ui_modules(reg)
+    if not live:
+        return "No modules are currently live to inspect."
+    rendered = ", ".join(f"{name} ({display})" for name, display in live)
+    return f"Modules you can inspect: {rendered}. Pass one as module_name."
+
+
 def build_module_context_spec(ctx: "SkillToolContext") -> "ToolSpec":
-    """A single agent tool that reads a module's LIVE state + on-screen snapshot
-    (from /connector/context) merged with its static knowledge/notes (from the
-    connector record). The agent calls this when asked what a module shows."""
+    """A single agent tool that reads a module's LIVE on-screen UI (page, data,
+    buttons, tool actions) from /connector/context, shaped for the LLM, merged
+    with its static knowledge/notes. The agent calls this when asked what a module
+    shows. On an unknown/unreachable module it lists what can be inspected."""
     from minder.core.skill_tools import ToolSpec  # local import: avoid cycle
+    from minder.core.modules.ui_context import shape_ui_context
 
     def handler(**kwargs: Any) -> dict:
-        name = str(kwargs.get("module_name") or "").strip()
-        if not name:
-            return {"success": False, "output": "module_name is required"}
         from minder.core.modules.registry import ConnectorState, get_registry
 
-        rec = get_registry().connector(name)
+        reg = get_registry()
+        name = str(kwargs.get("module_name") or "").strip()
+        if not name:
+            return {
+                "success": False,
+                "output": f"module_name is required. {_inspectable_hint(reg)}",
+            }
+
+        rec = reg.connector(name)
         if rec is None or rec.state is not ConnectorState.READY:
-            return {"success": False, "output": f"module {name!r} is not reachable"}
+            return {
+                "success": False,
+                "output": f"module {name!r} has no live UI surface. {_inspectable_hint(reg)}",
+            }
         conn = RemoteConnector(rec.name, rec.connector_url)
         data = conn.fetch_context(principal=ctx.principal, session_id=ctx.session_id)
         if data is None:
-            return {"success": False, "output": f"module {name!r} is not reachable"}
+            return {
+                "success": False,
+                "output": f"module {name!r} has no live UI surface. {_inspectable_hint(reg)}",
+            }
         static = rec.context or {}
         return {
             "success": True,
             "output": {
+                **shape_ui_context(data),
                 "state": data.get("state", []),
-                "ui_snapshot": data.get("ui_snapshot"),
                 "knowledge": static.get("knowledge", []),
                 "notes": static.get("notes", []),
             },
@@ -510,16 +589,19 @@ def build_module_context_spec(ctx: "SkillToolContext") -> "ToolSpec":
     return ToolSpec(
         name="read_module_context",
         description=(
-            "Read a module's live state, current on-screen snapshot, domain "
-            "knowledge, and area notes. Call this when the user asks what a module "
-            "currently shows or contains."
+            "Read a module's live on-screen UI — the current page, the data fields "
+            "and values shown, the clickable buttons, and the tool actions available "
+            "(with their risk and whether they're currently allowed) — plus the "
+            "module's domain knowledge and area notes. Call this when the user asks "
+            "what a module currently shows, or before acting on a module's UI. If you "
+            "name a module that isn't live, the result lists the ones you can inspect."
         ),
         parameters={
             "type": "object",
             "properties": {
                 "module_name": {
                     "type": "string",
-                    "description": "The module to inspect, e.g. 'module_template'.",
+                    "description": "The module to inspect, e.g. 'produce'.",
                 }
             },
             "required": ["module_name"],
