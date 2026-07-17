@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sqlalchemy import Column, ForeignKey, Integer, String
-from sqlalchemy.types import JSON
+from sqlalchemy.types import DateTime, JSON
 
 from engine.db import Base
 
@@ -16,6 +16,7 @@ class PrWorkflow(Base):
     name = Column(String, nullable=False)
     scope_path = Column(String, nullable=False)
     current_version_id = Column(Integer, nullable=True)
+    draft_graph = Column(JSON, nullable=False, default=dict)
 
 
 class PrWorkflowVersion(Base):
@@ -26,6 +27,9 @@ class PrWorkflowVersion(Base):
     version = Column(Integer, nullable=False)
     status = Column(String, nullable=False, default="draft")  # draft|published|retired
     graph = Column(JSON, nullable=False, default=dict)
+    note = Column(String, nullable=True)
+    published_by = Column(String, nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class PrReasonCode(Base):
