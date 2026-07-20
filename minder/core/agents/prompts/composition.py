@@ -189,9 +189,9 @@ def create_default_composer(templates_dir: Path) -> PromptComposer:
     # Code quality and workflows - Priority 55-65
     composer.register_section("action_safety", "system/main/main-action-safety.md", priority=56)
 
-    # NOTE: read-before-edit was dropped — the main agent no longer has
-    # read_file/edit_file (those are delegated to subagents). See
-    # normal_builder.MAIN_AGENT_DENIED_TOOLS.
+    # NOTE: read-before-edit was dropped because file-operation tools are not
+    # part of the main agent's schema. The prompt must never direct the model
+    # to an unavailable helper or dispatch tool as a substitute.
 
     composer.register_section("error_recovery", "system/main/main-error-recovery.md", priority=60)
 

@@ -8,7 +8,16 @@ prompt rules alone did not hold. See normal_builder._DISABLED_TOOL_NAMES.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from minder.core.agents.components.schemas.normal_builder import ToolSchemaBuilder
+from minder.core.agents.prompts.composition import create_composer
+
+
+TEMPLATES_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "minder/core/agents/prompts/templates"
+)
 
 
 def _tool_names() -> set[str]:
@@ -18,8 +27,19 @@ def _tool_names() -> set[str]:
 
 def test_dispatch_tools_not_advertised() -> None:
     names = _tool_names()
-    for disabled in ("solve", "get_solve_result", "spawn_subagent"):
+    for disabled in ("solve", "get_solve_result", "spawn_subagent", "request_help"):
         assert disabled not in names, f"{disabled} must not be advertised to the model"
+
+
+def test_composed_prompts_do_not_reference_removed_dispatch_tools() -> None:
+    """A model must never be instructed to call a tool absent from its schema."""
+    main_prompt = create_composer(TEMPLATES_DIR, "system/main").compose(
+        {"todo_tracking_enabled": True}
+    )
+    thinking_prompt = create_composer(TEMPLATES_DIR, "system/thinking").compose({})
+
+    assert "request_help" not in main_prompt
+    assert "request_help" not in thinking_prompt
 
 
 def test_core_answering_tools_still_present() -> None:
