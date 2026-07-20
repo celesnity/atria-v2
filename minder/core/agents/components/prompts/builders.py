@@ -208,17 +208,22 @@ class BasePromptBuilder:
     def _gating_context(self) -> dict[str, Any]:
         """Compute conditional-section flags from real availability.
 
-        Todo availability is driven by the tool registry's registered handlers
-        (``list_todos`` / ``write_todos``). When the registry is not
-        introspectable, the flag falls back to prior always-on behavior so no
-        guidance is dropped.
+        Todo guidance is included only when the tool has both a handler and is
+        visible in the current schema. A registered handler alone is not enough:
+        disabled tools remain executable internally, but must not be suggested
+        to the model.
         """
         reg = self._tool_registry
         handlers = getattr(reg, "_handlers", None) if reg is not None else None
-        if isinstance(handlers, dict):
-            todo_enabled = "list_todos" in handlers or "write_todos" in handlers
-        else:
-            todo_enabled = reg is not None
+        from minder.core.agents.components.schemas.disabled_tools import load_disabled_tools
+
+        disabled_tools = load_disabled_tools()
+        todo_names = {"write_todos", "update_todo", "complete_todo", "list_todos", "clear_todos"}
+        todo_enabled = (
+            isinstance(handlers, dict)
+            and bool(todo_names & set(handlers))
+            and not bool(todo_names & disabled_tools)
+        )
         return {
             "in_git_repo": bool(self._env_context and self._env_context.is_git_repo),
             "todo_tracking_enabled": todo_enabled,

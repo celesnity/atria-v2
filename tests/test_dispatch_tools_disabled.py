@@ -9,9 +9,13 @@ prompt rules alone did not hold. See normal_builder._DISABLED_TOOL_NAMES.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from minder.core.agents.components.schemas.normal_builder import ToolSchemaBuilder
+from minder.core.agents.components.prompts.builders import SystemPromptBuilder
 from minder.core.agents.prompts.composition import create_composer
+from minder.core.context_engineering.tools.handlers.todo_handler import TodoHandler
+from minder.core.context_engineering.tools.registry_mixins.inline_tools import InlineToolsMixin
 
 
 TEMPLATES_DIR = (
@@ -40,6 +44,28 @@ def test_composed_prompts_do_not_reference_removed_dispatch_tools() -> None:
 
     assert "request_help" not in main_prompt
     assert "request_help" not in thinking_prompt
+
+
+def test_runtime_prompt_hides_disabled_todo_tools() -> None:
+    """Prompt guidance must match the schema after disabled-tool filtering."""
+    registry = SimpleNamespace(_handlers={"write_todos": object(), "list_todos": object()})
+
+    prompt = SystemPromptBuilder(registry).build()
+
+    assert "write_todos" not in prompt
+
+
+def test_empty_todo_call_is_a_safe_noop() -> None:
+    """Malformed optional tracking must not abort the user task."""
+
+    class Registry(InlineToolsMixin):
+        def __init__(self) -> None:
+            self.todo_handler = TodoHandler()
+
+    result = Registry()._write_todos({})
+
+    assert result["success"] is True
+    assert result["skipped"] is True
 
 
 def test_core_answering_tools_still_present() -> None:
