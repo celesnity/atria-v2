@@ -25,7 +25,10 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@embinder/react': resolve(embinder, 'index.ts') },
+    alias: {
+      '@embinder/react': resolve(embinder, 'index.ts'),
+      '@embinder/ghost-cursor': resolve(embinder, 'ghost-cursor.ts'),
+    },
     dedupe: ['zod', 'react', 'react-dom'],
   },
   plugins: [

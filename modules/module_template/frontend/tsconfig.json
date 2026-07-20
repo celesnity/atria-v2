@@ -5,7 +5,10 @@
     "resolveJsonModule": true, "isolatedModules": true, "noEmit": true, "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
-    "paths": { "@embinder/react": ["../../../minderSDK/packages/react/src/index.ts"] }
+    "paths": {
+      "@embinder/react": ["../../../minderSDK/packages/react/src/index.ts"],
+      "@embinder/ghost-cursor": ["../../../minderSDK/packages/react/src/ghost-cursor.ts"]
+    }
   },
   "include": ["src"]
 }

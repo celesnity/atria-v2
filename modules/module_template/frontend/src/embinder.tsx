@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -87,7 +88,26 @@ export function AgentDriverProvider({ children }: { children: ReactNode; apiBase
 }
 
 export function AgentRegistryProvider({ children }: { children: ReactNode; apiBase?: string; sessionId?: string }) {
-  return <EmbinderProvider viz chat={false}>{children}</EmbinderProvider>;
+  return <EmbinderProvider viz={false} chat={false}><EmbinderGhostCursor />{children}</EmbinderProvider>;
+}
+
+function EmbinderGhostCursor(): null {
+  const cursor = useRef<{ handle: (phase: object) => void; destroy: () => void }>();
+  useEffect(() => {
+    let disposed = false;
+    void import('@embinder/ghost-cursor').then(({ createGhostCursor }) => {
+      if (disposed) return;
+      cursor.current = createGhostCursor();
+    });
+    const onPhase = (event: Event) => cursor.current?.handle((event as CustomEvent).detail);
+    window.addEventListener('minder:embinder-phase', onPhase);
+    return () => {
+      disposed = true;
+      window.removeEventListener('minder:embinder-phase', onPhase);
+      cursor.current?.destroy();
+    };
+  }, []);
+  return null;
 }
 
 export function AgentPresence(): null { return null; }

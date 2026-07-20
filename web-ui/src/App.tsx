@@ -5,6 +5,7 @@ import { ChatPage } from './pages/ChatPage';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/Layout/AppShell';
 import { QuickChatBridge } from './components/QuickChatBridge';
+import { EmbinderCursorBridge } from './components/EmbinderCursorBridge';
 import { TenantsPage } from './pages/admin/TenantsPage';
 import { TenantUsersPage } from './pages/admin/TenantUsersPage';
 import { apiClient } from './api/client';
@@ -79,6 +80,7 @@ function App() {
         <AppRoutes />
       </Router>
       <QuickChatBridge />
+      <EmbinderCursorBridge />
     </MotionConfig>
   );
 }
