@@ -146,7 +146,6 @@ services:
   # to a running Minder — start it and it appears live in Minder; stop it and it
   # disappears. `minio` above stays as shared module infra (it is not a Minder
   # module, so it does not "appear" in Minder).
-  #   docker compose -f modules/produce/docker-compose.yml         up -d --build
   #   docker compose -f modules/module_template/docker-compose.yml up -d --build
 
 volumes:
