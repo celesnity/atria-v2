@@ -19,4 +19,11 @@ describe('module-template Embinder adapter', () => {
     expect(dashboard).toContain('name="module_template"');
     expect(adapter).not.toContain('<Embind' + 'erProvider');
   });
+
+  it('anchors mascot chat bubbles inside the right edge of the module viewport', () => {
+    const mascot = readFileSync(new URL('./ui/Mascot.tsx', import.meta.url), 'utf8');
+
+    expect(mascot).toContain('alignItems: "flex-end"');
+    expect(mascot).toContain('maxWidth: "calc(100vw - 16px)"');
+  });
 });
