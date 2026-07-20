@@ -15,10 +15,11 @@ version: 3.0.0
 - Inspect a connected module or perform one of its registered actions →
   `ui_describe`, then `ui_act`
 
-For a multi-step request, inspect state first, track the work with todos when
-available, and execute each supported step directly. If the required capability
-is not in the current schema, explain the limitation or ask the user for the
-missing access; never invent or call an unavailable tool.
+For a multi-step request, inspect state first and execute each supported step
+directly. If the required capability is not in the current schema, explain the
+limitation or ask the user for the missing access; never invent or call an
+unavailable tool. Invoke `ui_act` directly as a function tool, never through
+`run_command`.
 
 When a module is connected, prefer its direct UI bridge rather than a module
 worker, connector, relay, or MCP server. Do not assume background dispatch is
