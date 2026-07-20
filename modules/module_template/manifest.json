@@ -1,37 +1,12 @@
 {
   "display_name": "Module Template",
-  "tooltip": "SDK showcase — every minder-python-sdk capability",
+  "tooltip": "Embind UI-only dashboard surface",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Module Template · SDK showcase",
+    "title": "Module Template · Embinder",
     "default_height": 760,
     "badge_color": "info",
-    "tabs": [
-      {
-        "id": "products",
-        "label": "Products"
-      },
-      {
-        "id": "jobs",
-        "label": "Jobs"
-      },
-      {
-        "id": "media",
-        "label": "Media"
-      },
-      {
-        "id": "data",
-        "label": "Data"
-      },
-      {
-        "id": "metrics",
-        "label": "Metrics"
-      },
-      {
-        "id": "graph",
-        "label": "Graph"
-      }
-    ]
+    "tabs": []
   },
   "remote": {
     "name": "module_template",
