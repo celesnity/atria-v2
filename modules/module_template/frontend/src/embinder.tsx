@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
+import { emitEmbinderPhase } from '@embinder/react';
 
 const DIRECT_MODULE = 'module_template';
 type DirectDescriptor = {
@@ -132,6 +133,9 @@ export function AgentRegistryProvider({ children }: { children: ReactNode; apiBa
       try {
         const descriptor = directDescriptors.get(detail.action);
         if (detail.action !== '__describe__' && !descriptor?.act) throw new Error('ui_action_not_registered');
+        if (detail.action !== '__describe__') {
+          emitEmbinderPhase({ type: 'focus', name: detail.action });
+        }
         const output = detail.action === '__describe__'
           ? {
               descriptors: publicDescriptors(),
