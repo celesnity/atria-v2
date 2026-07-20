@@ -1,0 +1,14 @@
+{
+  "unknownTool": "destructive",
+  "tools": {
+    "platform_runtime": "read",
+    "select_incident": "write",
+    "analyze_incident": "write",
+    "move_incident_triage": "write",
+    "submit_mitigation": "write",
+    "approve_escalation": "destructive",
+    "reject_escalation": "destructive",
+    "reset_platform": "write"
+  },
+  "rateLimit": { "perToolPerMin": 30 }
+}

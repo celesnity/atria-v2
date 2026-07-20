@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Agent } from '../embinder';
 import type { PlatformPage } from './types';
 
 const pages: Array<{ id: PlatformPage; label: string; note: string }> = [
@@ -14,7 +15,7 @@ export function PlatformShell({ activePage, onNavigate, children }: { activePage
       <div style={{ padding: '8px 10px 20px' }}><div style={{ color: '#9ca8c8', fontSize: 11, letterSpacing: '0.12em', fontWeight: 800 }}>EMBINDER DEMO</div><strong style={{ display: 'block', marginTop: 5, fontSize: 18 }}>Operations Platform</strong></div>
       <nav aria-label="Platform pages" style={{ display: 'grid', gap: 6 }}>{pages.map((page) => {
         const active = page.id === activePage;
-        return <button key={page.id} type="button" onClick={() => onNavigate(page.id)} aria-current={active ? 'page' : undefined} style={{ textAlign: 'left', padding: '11px 10px', border: active ? '1px solid #477cf6' : '1px solid transparent', borderRadius: 10, cursor: 'pointer', color: active ? '#fff' : '#c5cde5', background: active ? 'linear-gradient(135deg, #2e6bf6, #5145a5)' : 'transparent' }}><span style={{ display: 'block', fontWeight: 750, fontSize: 13 }}>{page.label}</span><span style={{ display: 'block', marginTop: 3, color: active ? '#dbe5ff' : '#7885a8', fontSize: 11 }}>{page.note}</span></button>;
+        return <Agent.Button key={page.id} name={`navigate_${page.id.replaceAll('-', '_')}`} description={`Open the ${page.label} page`} onAct={() => onNavigate(page.id)} style={{ width: '100%', textAlign: 'left', padding: '11px 10px', border: active ? '1px solid #477cf6' : '1px solid transparent', borderRadius: 10, cursor: 'pointer', color: active ? '#fff' : '#c5cde5', background: active ? 'linear-gradient(135deg, #2e6bf6, #5145a5)' : 'transparent', boxShadow: 'none' }}><span style={{ display: 'block', fontWeight: 750, fontSize: 13 }}>{page.label}</span><span style={{ display: 'block', marginTop: 3, color: active ? '#dbe5ff' : '#7885a8', fontSize: 11 }}>{page.note}</span></Agent.Button>;
       })}</nav>
     </aside>
     <section style={{ minWidth: 0 }}>{children}</section>

@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
 
@@ -105,9 +106,13 @@ function Data({ name, description, value, children }: { name: string; descriptio
   return <div data-embinder-context={name} data-embinder-description={description} data-embinder-value={JSON.stringify(value)}>{children}</div>;
 }
 
-function Button({ name, description, onAct, children }: { name: string; description: string; onAct: () => void; children: ReactNode }) {
+function Button({ name, description, onAct, children, embinderBind, style }: { name: string; description: string; onAct: () => void; children: ReactNode; embinderBind?: { 'data-embinder-tool': string }; style?: CSSProperties }) {
   useDirectDescriptor({ name, kind: 'action', description, act: () => onAct() });
-  return <button type="button" data-embinder-tool={name} aria-label={description} onClick={onAct}>{children}</button>;
+  return <button type="button" {...embinderBind} data-embinder-tool={name} aria-label={description} onClick={onAct} style={{
+    appearance: 'none', border: 0, borderRadius: 8, padding: '10px 14px', cursor: 'pointer',
+    background: 'linear-gradient(135deg, #2e6bf6, #8b5cf6)', color: '#fff', fontWeight: 700,
+    boxShadow: '0 8px 18px rgba(46, 107, 246, 0.25)', ...style,
+  }}>{children}</button>;
 }
 
 export const Agent = { Page, Data, Button };
@@ -148,26 +153,7 @@ export function AgentRegistryProvider({ children }: { children: ReactNode; apiBa
       window.removeEventListener('minder:ui-sdk:invoke', onInvoke);
     };
   }, []);
-  return <><EmbinderGhostCursor />{children}</>;
-}
-
-function EmbinderGhostCursor(): null {
-  const cursor = useRef<{ handle: (phase: object) => void; destroy: () => void }>();
-  useEffect(() => {
-    let disposed = false;
-    void import('@embinder/ghost-cursor').then(({ createGhostCursor }) => {
-      if (disposed) return;
-      cursor.current = createGhostCursor();
-    });
-    const onPhase = (event: Event) => cursor.current?.handle((event as CustomEvent).detail);
-    window.addEventListener('minder:embinder-phase', onPhase);
-    return () => {
-      disposed = true;
-      window.removeEventListener('minder:embinder-phase', onPhase);
-      cursor.current?.destroy();
-    };
-  }, []);
-  return null;
+  return <>{children}</>;
 }
 
 export function AgentPresence(): null { return null; }
