@@ -1,18 +1,10 @@
 import {
-  AgentDiv,
-  AgentScope,
-  EmbinderProvider,
-  useEmbinder,
-} from '@embinder/react';
-import {
-  cloneElement,
   createContext,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactElement,
   type ReactNode,
 } from 'react';
 
@@ -66,19 +58,15 @@ export function normalizeDashboardProps(props: DashboardProps): { apiBase: strin
 }
 
 function Page({ name, description, children }: { name: string; description: string; children: ReactNode }) {
-  return <AgentScope name={name} summary={() => ({ description })}>{children}</AgentScope>;
+  return <div data-embinder-scope={name} data-embinder-summary={description}>{children}</div>;
 }
 
 function Data({ name, description, value, children }: { name: string; description: string; value: unknown; children: ReactNode }) {
-  return <AgentDiv name={name} description={description} context={() => value}>{children}</AgentDiv>;
+  return <div data-embinder-context={name} data-embinder-description={description} data-embinder-value={JSON.stringify(value)}>{children}</div>;
 }
 
-function Button({ name, description, onAct, children }: { name: string; description: string; onAct: () => void; children: ReactElement }) {
-  const bind = useEmbinder({ name, description, handler: () => onAct() });
-  return cloneElement(children, { ...bind, onClick: (event: React.MouseEvent) => {
-    children.props.onClick?.(event);
-    if (!event.defaultPrevented) onAct();
-  } });
+function Button({ name, description, onAct, children }: { name: string; description: string; onAct: () => void; children: ReactNode }) {
+  return <button type="button" data-embinder-tool={name} aria-label={description} onClick={onAct}>{children}</button>;
 }
 
 export const Agent = { Page, Data, Button };
@@ -88,7 +76,9 @@ export function AgentDriverProvider({ children }: { children: ReactNode; apiBase
 }
 
 export function AgentRegistryProvider({ children }: { children: ReactNode; apiBase?: string; sessionId?: string }) {
-  return <EmbinderProvider viz={false} chat={false}><EmbinderGhostCursor />{children}</EmbinderProvider>;
+  // EmbinderProvider always opens its WebMCP relay socket. This integration is
+  // relay-free: Minder owns chat/tool execution while the SDK draws the cursor.
+  return <><EmbinderGhostCursor />{children}</>;
 }
 
 function EmbinderGhostCursor(): null {

@@ -35,7 +35,7 @@ function Dashboard({ theme }: DashboardProps) {
       <AgentRegistryProvider>
         <ToastProvider>
           <Surface>
-            <Agent.Page name="module-template" description="Embind UI-only module template">
+            <Agent.Page name="module_template" description="Embind UI-only module template">
               <section style={{ maxWidth: 680 }}>
                 <p style={{ color: "#9ca8c8", fontSize: 13, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                   Embinder module template
