@@ -1,33 +1,20 @@
-# Build context is the REPO ROOT so the image can install the shared minder-python-sdk.
+# The template is a UI-only federation remote. It deliberately has no Python
+# connector runtime, module registration, heartbeat, worker, or legacy APIs.
+FROM node:20-slim AS frontend-build
 
-# --- frontend build stage ---
-FROM node:20-slim AS fe
-WORKDIR /fe
+WORKDIR /minderSDK
+COPY minderSDK/ ./
+RUN npm ci --ignore-scripts
+
+WORKDIR /frontend
 COPY modules/module_template/frontend/package.json modules/module_template/frontend/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY modules/module_template/frontend/ ./
-# minder-ui-sdk is consumed from source via a vite alias (../../../minder_ui_sdk).
-COPY minder_ui_sdk /minder_ui_sdk
-# The dashboard is a cross-origin federation remote; bundled asset URLs (mascot
-# logo, etc.) must be fully-qualified back to THIS module's public origin, so the
-# base has to be known at build time — not just at runtime (line below).
 ARG MT_PUBLIC_BASE=http://localhost:9300
 ENV MT_PUBLIC_BASE=$MT_PUBLIC_BASE
 RUN npm run build
 
-# --- python service stage ---
-FROM python:3.12-slim
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && rm -rf /var/lib/apt/lists/*
-COPY minder_python_sdk /sdk
-RUN pip install --no-cache-dir /sdk
-COPY modules/module_template/backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY modules/module_template/backend/ /app
-COPY --from=fe /fe/dist /app/frontend_dist
-ENV PYTHONUNBUFFERED=1 MT_PUBLIC_BASE=http://localhost:9300
-# Run as a non-root user (the app writes to Postgres/S3, not the local FS).
-RUN useradd --system --create-home appuser
-USER appuser
+FROM nginx:1.27-alpine
+COPY modules/module_template/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=frontend-build /frontend/dist /usr/share/nginx/html/dashboard
 EXPOSE 9300
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "9300"]

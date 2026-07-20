@@ -124,18 +124,6 @@ export function useAgentForm<T>(): {
 
 export function useAgentActivity(): undefined { return undefined; }
 
-export function useModuleEvents(apiBase: string): { connected: boolean } {
-  const [connected, setConnected] = useState(false);
-  useEffect(() => {
-    if (!apiBase) return;
-    const stream = new EventSource(`${apiBase.replace(/\/$/, '')}/connector/events`);
-    stream.onopen = () => setConnected(true);
-    stream.onerror = () => setConnected(false);
-    return () => stream.close();
-  }, [apiBase]);
-  return { connected };
-}
-
 type QuickChat = { phase: 'idle' | 'thinking' | 'streaming' | 'done' | 'error'; text: string; ask: (text: string) => void; reset: () => void };
 export function useQuickChat(): QuickChat {
   const [state, setState] = useState<Omit<QuickChat, 'ask' | 'reset'>>({ phase: 'idle', text: '' });
