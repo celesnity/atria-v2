@@ -87,7 +87,7 @@ export function AgentDriverProvider({ children }: { children: ReactNode; apiBase
 }
 
 export function AgentRegistryProvider({ children }: { children: ReactNode; apiBase?: string; sessionId?: string }) {
-  return <EmbinderProvider viz>{children}</EmbinderProvider>;
+  return <EmbinderProvider viz chat={false}>{children}</EmbinderProvider>;
 }
 
 export function AgentPresence(): null { return null; }
