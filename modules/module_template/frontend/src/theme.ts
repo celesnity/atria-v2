@@ -1,4 +1,4 @@
-import type { MinderTokens } from 'minder-ui-sdk';
+import type { MinderTokens } from './embinder';
 
 /** Map a job/task status string to the appropriate token color. */
 export function statusColor(tokens: MinderTokens, status: string): string {

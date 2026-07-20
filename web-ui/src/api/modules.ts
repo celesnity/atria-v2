@@ -47,17 +47,6 @@ export interface DataUploadResult {
   skipped: { file: string; error: string }[];
 }
 
-// Health payload for a service module's connector (GET /api/modules/{name}/health).
-// The endpoint never throws: it returns `{ok:false, error}` when the connector is
-// down, and a non-service module 400/404s (surfaced here as ok:false).
-export interface ModuleHealth {
-  ok: boolean;
-  version?: string;
-  capabilities?: { streaming?: boolean; cards?: boolean };
-  sidecars?: Record<string, string>;
-  error?: string;
-}
-
 const BASE = '/api/modules';
 
 export const ModulesApi = {
@@ -80,20 +69,6 @@ export const ModulesApi = {
     });
     if (!r.ok) throw new Error(`create module: ${r.status}`);
     return r.json();
-  },
-  async health(name: string): Promise<ModuleHealth> {
-    // Non-ok HTTP (400/404 for non-service modules, or an unreachable connector)
-    // maps to `{ok:false}` rather than throwing — the caller just wants a dot.
-    try {
-      const r = await fetch(`${BASE}/${encodeURIComponent(name)}/health`, {
-        credentials: 'include',
-      });
-      if (!r.ok) return { ok: false, error: `status ${r.status}` };
-      const data = await r.json();
-      return data && typeof data === 'object' ? data : { ok: false };
-    } catch (e: unknown) {
-      return { ok: false, error: String(e) };
-    }
   },
   async remove(name: string): Promise<void> {
     const r = await fetch(`${BASE}/${encodeURIComponent(name)}`, {

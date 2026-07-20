@@ -8,7 +8,7 @@ version: 2.0.0
 
 When a tool fails, read the error message carefully and apply the matching resolution:
 
-- **"File not found"** — Path is incorrect. Confirm it with `run_command`, or delegate the file work via `request_help`, before retrying.
+- **"File not found"** — Path is incorrect. Confirm it with `run_command` before retrying.
 - **"Permission denied"** — Insufficient permissions. Check file permissions or try a different approach.
 - **Rate limit errors** — Too many requests. The system retries automatically; if it persists, reduce concurrency.
 - **"Access denied" / "protected path"** — The path is deliberately off-limits; the error names the tool to use instead. Use that tool or report to the user. Never try another access method (bash, search, glob) on the same path.

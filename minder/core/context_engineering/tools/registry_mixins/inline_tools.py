@@ -23,6 +23,12 @@ class InlineToolsMixin:
 
     def _write_todos(self, arguments: dict[str, Any], context: Any = None) -> dict[str, Any]:
         """Execute the write_todos tool."""
+        if not arguments.get("todos"):
+            return {
+                "success": True,
+                "skipped": True,
+                "output": "No todo items were supplied. Continue without task tracking.",
+            }
         result = self.todo_handler.write_todos(arguments.get("todos", []))
         self._emit_todos(context)
         return result

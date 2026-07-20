@@ -94,6 +94,19 @@ async def init_schema() -> None:
             except Exception as _drop_err:
                 logger.warning("Failed to drop legacy table %s: %s", _legacy, _drop_err)
 
+    # Full-text index for knowledge chunks (Postgres only). Expression index over
+    # to_tsvector('simple', text) so the provider can run websearch_to_tsquery.
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS knowledge_chunks_fts "
+                    "ON knowledge_chunks USING gin (to_tsvector('simple', text))"
+                )
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to create knowledge_chunks FTS index: %s", exc)
+
     # Widen messages.role so block roles (e.g. custom_block) are not truncated.
     # Run in its own transaction so an error here never aborts create_all above.
     try:

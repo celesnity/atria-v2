@@ -17,7 +17,6 @@ from minder.web.routes.blocks import router as blocks_router
 from minder.web.routes.blocks_remote import router as blocks_remote_router
 from minder.web.routes.artifacts_remote import router as artifacts_remote_router
 from minder.web.routes.module_dashboard import router as module_dashboard_router
-from minder.web.routes.module_connector import router as module_connector_router
 from minder.web.routes.connect import router as connect_router
 from minder.web.routes.me import router as me_router
 from minder.web.routes.admin_tenants import router as admin_tenants_router
@@ -45,7 +44,6 @@ __all__ = [
     "blocks_remote_router",
     "artifacts_remote_router",
     "module_dashboard_router",
-    "module_connector_router",
     "me_router",
     "admin_tenants_router",
     "admin_tenant_users_router",

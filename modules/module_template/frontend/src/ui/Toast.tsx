@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, XCircle, Info } from "lucide-react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme } from "../embinder";
 
 type Kind = "success" | "error" | "info";
 

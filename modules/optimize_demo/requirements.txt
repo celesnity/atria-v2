@@ -1,4 +1,0 @@
-# optimize_demo has no third-party dependencies — scripts use the Python
-# standard library only (json, pathlib, hashlib, sys, os). The dashboard is a
-# self-contained static HTML file. This file is intentionally left dependency-
-# free so module load does not trigger any install.

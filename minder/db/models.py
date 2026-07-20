@@ -220,3 +220,41 @@ class PendingReview(Base):
             postgresql_where="resolved = false",
         ),
     )
+
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    artifact_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    source_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_filename: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("knowledge_documents.id"), nullable=False, index=True
+    )
+    tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    qdrant_point_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    citation: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )

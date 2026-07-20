@@ -3,10 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { federation } from '@module-federation/vite';
-import { minderTabsSync } from '../../../minder_ui_sdk/src/vitePlugin';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const sdk = resolve(here, '../../../minder_ui_sdk/src');
+const embinder = resolve(here, '../../../minderSDK/packages/react/src');
 
 // This dashboard is loaded as a cross-origin Module Federation remote: the host
 // page (a different origin) pulls in remoteEntry.js from THIS module's server.
@@ -26,19 +25,18 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { 'minder-ui-sdk': resolve(sdk, 'index.ts') },
-    // minder_ui_sdk is consumed from source (outside this app's root); its bare
-    // `zod` import would otherwise resolve against the SDK dir, which has no
-    // node_modules in Docker (dockerignore). dedupe forces resolution from THIS
-    // app's node_modules.
-    dedupe: ['zod', 'fast-json-patch', 'react', 'react-dom'],
+    alias: {
+      '@embinder/react': resolve(embinder, 'index.ts'),
+      '@embinder/ghost-cursor': resolve(embinder, 'ghost-cursor.ts'),
+    },
+    dedupe: ['zod', 'react', 'react-dom'],
   },
   plugins: [
     react(),
-    minderTabsSync(),
     federation({
       name: 'module_template',
       filename: 'remoteEntry.js',
+      dts: false,
       exposes: {
         './Dashboard': './src/dashboard.tsx',
         './ShowcaseBlock': './src/ShowcaseBlock.tsx',

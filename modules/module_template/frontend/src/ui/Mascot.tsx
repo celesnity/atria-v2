@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, useDragControls } from "motion/react";
-import { useMinderTheme, useAgentActivity, useQuickChat } from "minder-ui-sdk";
+import { useMinderTheme, useAgentActivity, useQuickChat } from "../embinder";
 import logoUrl from "./logo.png";
 
 /**
@@ -272,7 +272,9 @@ export default function Mascot() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "flex-end",
-        alignItems: "flex-start",
+        // The chat bubble is wider than the mascot body. Pin its right edge to
+        // the viewport-side of the mascot so it opens inward, never off-canvas.
+        alignItems: "flex-end",
       }}
     >
       {/* Quick-chat input — reuses the composer feel (surface + border + focus
@@ -300,6 +302,7 @@ export default function Mascot() {
               alignItems: "center",
               gap: 6,
               width: 232,
+              maxWidth: "calc(100vw - 16px)",
               background: tokens.surface,
               // Soft brand-tinted focus ring instead of the harsh global
               // :focus-visible outline that leaks in from the host shell.
@@ -377,7 +380,7 @@ export default function Mascot() {
               padding: "8px 12px",
               color: tokens.text,
               fontSize: 12.5,
-              maxWidth: 180,
+              maxWidth: "min(180px, calc(100vw - 16px))",
               lineHeight: 1.35,
             }}
           >
