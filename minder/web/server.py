@@ -36,7 +36,6 @@ from minder.web.routes import (
     blocks_remote_router,
     artifacts_remote_router,
     module_dashboard_router,
-    module_connector_router,
     connect_router,
     me_router,
     admin_tenants_router,
@@ -48,13 +47,6 @@ from minder.web.transcribe_ws import transcribe_ws_endpoint
 from minder.core.modules.watcher import (
     start_global_watcher,
     stop_global_watcher,
-    start_connector_reconciler,
-    stop_connector_reconciler,
-    kick_reconcile,
-)
-from minder.core.modules.liveness import (
-    start_liveness_subscriber,
-    stop_liveness_subscriber,
 )
 from minder.web.state import init_state, get_state
 from minder.core.runtime import ConfigManager, ModeManager
@@ -154,17 +146,6 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
-    # Realtime liveness comes from a per-connector SSE stream (push). The polling
-    # reconciler stays on only as a slow safety-net: it bootstraps tools/manifest
-    # and covers the gap before a stream first connects or while it reconnects.
-    start_connector_reconciler(
-        on_change=lambda: _broadcast_modules_changed("*"), interval_sec=60.0
-    )
-    # Each connector's ``/connector/stream`` is held open; an open stream
-    # is proof of life, so the host no longer HTTP-polls ``/health`` every tick.
-    # ``kick_reconcile`` (re)loads the manifest/tools on each (re)connect.
-    start_liveness_subscriber(bootstrap=kick_reconcile)
-
     # Start the cross-process message bus.
     from minder.web.bus import make_bus, set_bus
 
@@ -213,8 +194,6 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
-        stop_liveness_subscriber()
-        stop_connector_reconciler()
         kb_scheduler = getattr(app.state, "_kb_scheduler", None)
         if kb_scheduler is not None:
             kb_scheduler.stop_all()
@@ -321,7 +300,6 @@ def create_app() -> FastAPI:
     app.include_router(blocks_remote_router)
     app.include_router(artifacts_remote_router)
     app.include_router(module_dashboard_router)
-    app.include_router(module_connector_router)
     app.include_router(connect_router)
     app.include_router(me_router)
     app.include_router(admin_tenants_router)

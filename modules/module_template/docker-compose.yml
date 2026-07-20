@@ -8,6 +8,22 @@ networks:
     name: minder_net
 
 services:
+  module-template-embinder-relay:
+    build:
+      context: ../..
+      dockerfile: modules/module_template/relay/Dockerfile
+    environment:
+      EMBINDER_ENABLE_MCP: "false"
+      EMBINDER_ENABLE_CHAT: "false"
+      EMBINDER_HOST: "0.0.0.0"
+      EMBINDER_DIRECT_TOKEN: ${MODULE_TEMPLATE_EMBINDER_DIRECT_TOKEN:-module-template-direct}
+    volumes:
+      - ./embinder.policy.json:/module/embinder.policy.json:ro
+      - embinder-audit:/data
+    ports:
+      - "7331:7331"
+    restart: unless-stopped
+
   module-template-web:
     build:
       context: ../..
@@ -21,3 +37,6 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+volumes:
+  embinder-audit:

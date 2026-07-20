@@ -3,8 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useModulesStore } from '../../stores/modules';
-import { useModuleHealth } from '../../hooks/useModuleHealth';
-import { ModuleHealthDot } from './ModuleHealthDot';
 
 /**
  * ModuleBreadcrumb — top-bar module picker. Shows the active module and opens
@@ -20,8 +18,6 @@ export function ModuleBreadcrumb() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
-  // Connector health per service module, polled on mount + every ~30s.
-  const moduleHealth = useModuleHealth();
 
   // Populate the module list on startup.
   useEffect(() => {
@@ -95,7 +91,6 @@ export function ModuleBreadcrumb() {
                       <span className="block truncate text-[11px] text-ink/45">{m.tooltip}</span>
                     )}
                   </span>
-                  <ModuleHealthDot status={moduleHealth[m.name]} />
                 </button>
               );
             })}
