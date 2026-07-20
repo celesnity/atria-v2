@@ -8,7 +8,20 @@ prompt rules alone did not hold. See normal_builder._DISABLED_TOOL_NAMES.
 """
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
+
 from minder.core.agents.components.schemas.normal_builder import ToolSchemaBuilder
+from minder.core.agents.components.prompts.builders import SystemPromptBuilder
+from minder.core.agents.prompts.composition import create_composer
+from minder.core.context_engineering.tools.handlers.todo_handler import TodoHandler
+from minder.core.context_engineering.tools.registry_mixins.inline_tools import InlineToolsMixin
+
+
+TEMPLATES_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "minder/core/agents/prompts/templates"
+)
 
 
 def _tool_names() -> set[str]:
@@ -18,8 +31,41 @@ def _tool_names() -> set[str]:
 
 def test_dispatch_tools_not_advertised() -> None:
     names = _tool_names()
-    for disabled in ("solve", "get_solve_result", "spawn_subagent"):
+    for disabled in ("solve", "get_solve_result", "spawn_subagent", "request_help"):
         assert disabled not in names, f"{disabled} must not be advertised to the model"
+
+
+def test_composed_prompts_do_not_reference_removed_dispatch_tools() -> None:
+    """A model must never be instructed to call a tool absent from its schema."""
+    main_prompt = create_composer(TEMPLATES_DIR, "system/main").compose(
+        {"todo_tracking_enabled": True}
+    )
+    thinking_prompt = create_composer(TEMPLATES_DIR, "system/thinking").compose({})
+
+    assert "request_help" not in main_prompt
+    assert "request_help" not in thinking_prompt
+
+
+def test_runtime_prompt_hides_disabled_todo_tools() -> None:
+    """Prompt guidance must match the schema after disabled-tool filtering."""
+    registry = SimpleNamespace(_handlers={"write_todos": object(), "list_todos": object()})
+
+    prompt = SystemPromptBuilder(registry).build()
+
+    assert "write_todos" not in prompt
+
+
+def test_empty_todo_call_is_a_safe_noop() -> None:
+    """Malformed optional tracking must not abort the user task."""
+
+    class Registry(InlineToolsMixin):
+        def __init__(self) -> None:
+            self.todo_handler = TodoHandler()
+
+    result = Registry()._write_todos({})
+
+    assert result["success"] is True
+    assert result["skipped"] is True
 
 
 def test_core_answering_tools_still_present() -> None:

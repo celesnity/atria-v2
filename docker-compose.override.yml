@@ -25,13 +25,3 @@ services:
         : "$${MINDER_API_BASE_URL:?MINDER_API_BASE_URL must be set (add it to .env)}"
         printf '{"model":"%s","api_base_url":"%s","max_tokens":%s,"max_context_tokens":%s}\n' "$${MINDER_MODEL}" "$${MINDER_API_BASE_URL}" "$${MINDER_MAX_TOKENS:-4096}" "$${MINDER_MAX_CONTEXT_TOKENS:-24000}" > /home/minder/.minder/settings.json
         exec minder --host 0.0.0.0 --port 8080
-
-  # module_template full-stack services — reach in-compose db/redis/minio/minder/
-  # keycloak only; host.docker.internal added for parity.
-  module-template-web:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  module-template-worker:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"

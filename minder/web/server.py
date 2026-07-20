@@ -36,7 +36,6 @@ from minder.web.routes import (
     blocks_remote_router,
     artifacts_remote_router,
     module_dashboard_router,
-    module_connector_router,
     connect_router,
     me_router,
     admin_tenants_router,
@@ -48,13 +47,6 @@ from minder.web.transcribe_ws import transcribe_ws_endpoint
 from minder.core.modules.watcher import (
     start_global_watcher,
     stop_global_watcher,
-    start_connector_reconciler,
-    stop_connector_reconciler,
-    kick_reconcile,
-)
-from minder.core.modules.liveness import (
-    start_liveness_subscriber,
-    stop_liveness_subscriber,
 )
 from minder.web.state import init_state, get_state
 from minder.core.runtime import ConfigManager, ModeManager
@@ -120,6 +112,32 @@ async def lifespan(app: FastAPI):
     # Ensure sessionmaker is initialized
     await get_sessionmaker()
 
+    # Start knowledge base background tasks (non-fatal: missing DB/env is ok).
+    try:
+        from minder.core.knowledge.wiring import _knowledge_seed_and_drain
+        from minder.core.scheduler import BackgroundScheduler
+
+        _kb_scheduler = BackgroundScheduler()
+        # Both callbacks are async; PeriodicTask._run awaits them directly.
+        _kb_scheduler.add_task(
+            "knowledge_drain",
+            _knowledge_seed_and_drain,
+            30,
+        )
+        _kb_scheduler.add_task(
+            "knowledge_seed",
+            _knowledge_seed_and_drain,
+            3600,
+        )
+        _kb_scheduler.start_all()
+        app.state._kb_scheduler = _kb_scheduler
+    except Exception:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning(
+            "Knowledge scheduler failed to start; background ingestion disabled."
+        )
+
     # Start the modules filesystem watcher: reloads the in-memory registry on
     # disk changes and broadcasts a ``modules.changed`` event to all WS clients.
     def _broadcast_modules_changed(name: str) -> None:
@@ -128,17 +146,6 @@ async def lifespan(app: FastAPI):
             asyncio.run_coroutine_threadsafe(coro, loop)
 
     start_global_watcher(on_change=_broadcast_modules_changed)
-    # Realtime liveness comes from a per-connector SSE stream (push). The polling
-    # reconciler stays on only as a slow safety-net: it bootstraps tools/manifest
-    # and covers the gap before a stream first connects or while it reconnects.
-    start_connector_reconciler(
-        on_change=lambda: _broadcast_modules_changed("*"), interval_sec=60.0
-    )
-    # Each connector's ``/connector/stream`` is held open; an open stream
-    # is proof of life, so the host no longer HTTP-polls ``/health`` every tick.
-    # ``kick_reconcile`` (re)loads the manifest/tools on each (re)connect.
-    start_liveness_subscriber(bootstrap=kick_reconcile)
-
     # Start the cross-process message bus.
     from minder.web.bus import make_bus, set_bus
 
@@ -187,8 +194,9 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_global_watcher()
-        stop_liveness_subscriber()
-        stop_connector_reconciler()
+        kb_scheduler = getattr(app.state, "_kb_scheduler", None)
+        if kb_scheduler is not None:
+            kb_scheduler.stop_all()
         try:
             from minder.web.connect_runtime import get_connect_manager
 
@@ -253,13 +261,45 @@ def create_app() -> FastAPI:
 
     app.include_router(maps_facade_router)
     app.include_router(knowledge_facade_router)
+
+    # Knowledge base routes (rescan + document listing). Non-fatal: a missing
+    # DATABASE_URL or unavailable service will not crash app startup.
+    try:
+        from minder.core.knowledge.wiring import (
+            abuild_knowledge_service,
+            arun_seed_scan,
+        )
+        from minder.web.routes.knowledge import build_router as build_knowledge_router
+
+        def _resolve_web_tenant(req: Any) -> str | None:
+            """Resolve tenant from principal; dev-env fallback only when MINDER_ENV=dev."""
+            tid = getattr(getattr(req.state, "principal", None), "tenant_id", None)
+            if tid:
+                return tid
+            # C3: gate dev fallback exactly like wiring._resolve_tenant.
+            if os.environ.get("MINDER_ENV") == "dev":
+                return os.environ.get("KNOWLEDGE_DEV_TENANT")
+            return None
+
+        app.include_router(
+            build_knowledge_router(
+                service_factory=abuild_knowledge_service,
+                tenant_factory=_resolve_web_tenant,
+                seed_scan=arun_seed_scan,
+            )
+        )
+    except Exception:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning(
+            "Knowledge router failed to register; /knowledge routes unavailable."
+        )
     app.include_router(modules_router)
     app.include_router(transcribe_router)
     app.include_router(blocks_router)
     app.include_router(blocks_remote_router)
     app.include_router(artifacts_remote_router)
     app.include_router(module_dashboard_router)
-    app.include_router(module_connector_router)
     app.include_router(connect_router)
     app.include_router(me_router)
     app.include_router(admin_tenants_router)

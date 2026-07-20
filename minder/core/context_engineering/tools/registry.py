@@ -195,6 +195,8 @@ class ToolRegistry(InlineToolsMixin):
             "send_message": self._message_handler.handle,
             # Image push tool (web UI)
             "send_image": self._send_image_handler.send,
+            "ui_describe": self._ui_describe,
+            "ui_act": self._ui_act,
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
         }
@@ -204,6 +206,21 @@ class ToolRegistry(InlineToolsMixin):
         # calling convention used by execute_tool.
         for _name, _spec in self._skill_specs.items():
             self._handlers[_name] = self._make_skill_handler(_spec)
+
+        # Core-owned knowledge_query tool (registered like a skill spec so it
+        # gets an LLM schema via _build_skill_schemas and appears in the
+        # assistant allowlist). Never fatal if wiring is unavailable.
+        try:
+            from minder.core.knowledge.wiring import build_knowledge_tool_spec_default
+
+            _kspec = build_knowledge_tool_spec_default()
+            if _kspec is not None:
+                self._skill_specs[_kspec.name] = _kspec
+                self._handlers[_kspec.name] = self._make_skill_handler(_kspec)
+        except Exception as _kexc:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning("knowledge tool not registered: %s", _kexc)
 
         # Initialize batch handler now that _handlers is set up
         self._batch_handler = BatchToolHandler(self)
@@ -392,6 +409,8 @@ class ToolRegistry(InlineToolsMixin):
                 "update_todo",
                 "complete_todo",
                 "clear_todos",
+                "ui_describe",
+                "ui_act",
             }:
                 # Handlers requiring context
                 result = handler(arguments, context)
@@ -423,6 +442,37 @@ class ToolRegistry(InlineToolsMixin):
                 )
 
         return result
+
+    @staticmethod
+    def _ui_session_id(context: ToolExecutionContext) -> str | None:
+        return getattr(getattr(context, "ui_callback", None), "session_id", None)
+
+    def _ui_describe(self, arguments: dict[str, Any], context: ToolExecutionContext) -> dict[str, Any]:
+        session_id = self._ui_session_id(context)
+        if not session_id:
+            return {"success": False, "error": "ui_session_unavailable", "output": None}
+        from minder.web.ui_sdk_bridge import get_ui_sdk_bridge
+
+        bridge = get_ui_sdk_bridge()
+        modules = bridge.describe(session_id)
+        if not modules:
+            return {"success": False, "error": "no_ui_module_registered", "output": None}
+        contexts: dict[str, Any] = {}
+        for module in modules:
+            result = bridge.invoke(session_id, module, "__describe__", {})
+            if result.get("success"):
+                contexts[module] = result.get("output")
+        return {"success": True, "output": {"modules": modules, "context": contexts}}
+
+    def _ui_act(self, arguments: dict[str, Any], context: ToolExecutionContext) -> dict[str, Any]:
+        session_id = self._ui_session_id(context)
+        module = arguments.get("module")
+        action = arguments.get("action")
+        if not session_id or not isinstance(module, str) or not isinstance(action, str):
+            return {"success": False, "error": "module and action are required", "output": None}
+        from minder.web.ui_sdk_bridge import get_ui_sdk_bridge
+
+        return get_ui_sdk_bridge().invoke(session_id, module, action, arguments.get("args") or {})
 
     def set_mcp_manager(self, mcp_manager: Union[Any, None]) -> None:
         """Update the MCP manager and refresh the handlers."""

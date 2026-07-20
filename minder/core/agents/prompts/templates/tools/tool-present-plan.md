@@ -4,7 +4,7 @@ description: Present a plan file for user approval
 version: 1.0.0
 -->
 
-Present a plan file for user approval after the Planner subagent has finished writing it.
+Present an existing plan file for user approval.
 
 ## How This Tool Works
 
@@ -15,16 +15,16 @@ Present a plan file for user approval after the Planner subagent has finished wr
 
 ## When to Use This Tool
 
-After a Planner subagent completes and returns a plan file path, call this tool to get user sign-off before implementation.
+After a plan has been prepared and its path is known, call this tool to get user
+sign-off before implementation.
 
 ## Flow
 
-1. Spawn a Planner subagent with a plan file path
-2. Planner explores the codebase and writes the plan
-3. Call present_plan(plan_file_path="...") to show the plan
-4. Handle the result:
+1. Prepare a plan file path
+2. Call present_plan(plan_file_path="...") to show the plan
+3. Handle the result:
    - **approved**: Proceed with implementation
-   - **modify**: Re-spawn the Planner with the feedback and the same file path, then call present_plan again
+   - **modify**: Revise the plan with the feedback, then call present_plan again
    - **rejected**: Ask the user how to proceed
 
 ## Important
