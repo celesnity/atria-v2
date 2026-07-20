@@ -141,6 +141,10 @@ class WebSocketManager:
             await self._handle_block_event(websocket, data)
         elif msg_type == "block_rpc":
             await self._handle_block_rpc(websocket, data)
+        elif msg_type == "ui_sdk_register":
+            await self._handle_ui_sdk_register(data)
+        elif msg_type == "ui_sdk_result":
+            await self._handle_ui_sdk_result(data)
         elif msg_type == "ping":
             await self.send_message(websocket, {"type": WSMessageType.PONG})
         else:
@@ -152,6 +156,29 @@ class WebSocketManager:
                     "data": {"message": f"Unknown message type: {msg_type}"},
                 },
             )
+
+    async def _handle_ui_sdk_register(self, data: Dict[str, Any]) -> None:
+        payload = data.get("data") or {}
+        session_id = payload.get("session_id")
+        module = payload.get("module")
+        descriptors = payload.get("descriptors")
+        if not isinstance(session_id, str) or not isinstance(module, str) or not isinstance(descriptors, list):
+            return
+        from minder.web.ui_sdk_bridge import get_ui_sdk_bridge
+
+        get_ui_sdk_bridge().register(session_id=session_id, module=module, descriptors=descriptors)
+
+    async def _handle_ui_sdk_result(self, data: Dict[str, Any]) -> None:
+        payload = data.get("data") or {}
+        request_id = payload.get("request_id")
+        if not isinstance(request_id, str):
+            return
+        from minder.web.ui_sdk_bridge import get_ui_sdk_bridge
+
+        if payload.get("success"):
+            get_ui_sdk_bridge().resolve(request_id, payload.get("output"))
+        else:
+            get_ui_sdk_bridge().reject(request_id, str(payload.get("error") or "ui_action_failed"))
 
     async def _handle_query(self, websocket: WebSocket, data: Dict[str, Any]):
         """Handle a query message."""
