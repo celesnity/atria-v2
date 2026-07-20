@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/Layout/AppShell';
 import { QuickChatBridge } from './components/QuickChatBridge';
 import { EmbinderCursorBridge } from './components/EmbinderCursorBridge';
+import { DirectUiSdkBridge } from './components/DirectUiSdkBridge';
 import { TenantsPage } from './pages/admin/TenantsPage';
 import { TenantUsersPage } from './pages/admin/TenantUsersPage';
 import { apiClient } from './api/client';
@@ -81,6 +82,7 @@ function App() {
       </Router>
       <QuickChatBridge />
       <EmbinderCursorBridge />
+      <DirectUiSdkBridge />
     </MotionConfig>
   );
 }

@@ -8,6 +8,45 @@ import {
   type ReactNode,
 } from 'react';
 
+const DIRECT_MODULE = 'module_template';
+type DirectDescriptor = {
+  name: string;
+  kind: 'read' | 'action';
+  description: string;
+  read?: () => unknown;
+  act?: (args: Record<string, unknown>) => unknown | Promise<unknown>;
+};
+const directDescriptors = new Map<string, DirectDescriptor>();
+
+function publicDescriptors() {
+  return [...directDescriptors.values()].map(({ name, kind, description }) => ({ name, kind, description }));
+}
+
+function publishDirectRegistry() {
+  window.dispatchEvent(new CustomEvent('minder:ui-sdk:register', {
+    detail: { module: DIRECT_MODULE, descriptors: publicDescriptors() },
+  }));
+}
+
+function useDirectDescriptor(descriptor: DirectDescriptor) {
+  const latest = useRef(descriptor);
+  latest.current = descriptor;
+  useEffect(() => {
+    directDescriptors.set(descriptor.name, {
+      name: descriptor.name,
+      kind: descriptor.kind,
+      description: descriptor.description,
+      read: () => latest.current.read?.(),
+      act: (args) => latest.current.act?.(args),
+    });
+    publishDirectRegistry();
+    return () => {
+      directDescriptors.delete(descriptor.name);
+      publishDirectRegistry();
+    };
+  }, [descriptor.name, descriptor.kind, descriptor.description]);
+}
+
 export interface MinderTokens {
   bg: string;
   text: string;
@@ -62,10 +101,12 @@ function Page({ name, description, children }: { name: string; description: stri
 }
 
 function Data({ name, description, value, children }: { name: string; description: string; value: unknown; children: ReactNode }) {
+  useDirectDescriptor({ name, kind: 'read', description, read: () => value });
   return <div data-embinder-context={name} data-embinder-description={description} data-embinder-value={JSON.stringify(value)}>{children}</div>;
 }
 
 function Button({ name, description, onAct, children }: { name: string; description: string; onAct: () => void; children: ReactNode }) {
+  useDirectDescriptor({ name, kind: 'action', description, act: () => onAct() });
   return <button type="button" data-embinder-tool={name} aria-label={description} onClick={onAct}>{children}</button>;
 }
 
@@ -78,6 +119,35 @@ export function AgentDriverProvider({ children }: { children: ReactNode; apiBase
 export function AgentRegistryProvider({ children }: { children: ReactNode; apiBase?: string; sessionId?: string }) {
   // EmbinderProvider always opens its WebMCP relay socket. This integration is
   // relay-free: Minder owns chat/tool execution while the SDK draws the cursor.
+  useEffect(() => {
+    const onRequest = () => publishDirectRegistry();
+    const onInvoke = async (event: Event) => {
+      const detail = (event as CustomEvent<{ request_id?: string; module?: string; action?: string; args?: Record<string, unknown> }>).detail;
+      if (!detail?.request_id || detail.module !== DIRECT_MODULE || !detail.action) return;
+      try {
+        const descriptor = directDescriptors.get(detail.action);
+        if (detail.action !== '__describe__' && !descriptor?.act) throw new Error('ui_action_not_registered');
+        const output = detail.action === '__describe__'
+          ? {
+              descriptors: publicDescriptors(),
+              context: Object.fromEntries([...directDescriptors.values()]
+                .filter((item) => item.kind === 'read')
+                .map((item) => [item.name, item.read?.()])),
+            }
+          : await descriptor.act!(detail.args ?? {});
+        window.dispatchEvent(new CustomEvent('minder:ui-sdk:result', { detail: { request_id: detail.request_id, success: true, output } }));
+      } catch (error) {
+        window.dispatchEvent(new CustomEvent('minder:ui-sdk:result', { detail: { request_id: detail.request_id, success: false, error: String(error) } }));
+      }
+    };
+    window.addEventListener('minder:ui-sdk:request-register', onRequest);
+    window.addEventListener('minder:ui-sdk:invoke', onInvoke);
+    publishDirectRegistry();
+    return () => {
+      window.removeEventListener('minder:ui-sdk:request-register', onRequest);
+      window.removeEventListener('minder:ui-sdk:invoke', onInvoke);
+    };
+  }, []);
   return <><EmbinderGhostCursor />{children}</>;
 }
 

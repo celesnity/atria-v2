@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Agent,
   AgentRegistryProvider,
@@ -30,6 +30,7 @@ function Surface({ children }: { children: ReactNode }) {
 
 /** A UI-only federation surface; Minder owns all chat and agent execution. */
 function Dashboard({ theme }: DashboardProps) {
+  const [acknowledged, setAcknowledged] = useState(false);
   return (
     <MinderThemeProvider theme={theme}>
       <AgentRegistryProvider>
@@ -44,13 +45,20 @@ function Dashboard({ theme }: DashboardProps) {
                 <Agent.Data
                   name="runtime"
                   description="The module runs as a static federation remote; chat and agent actions are owned by Minder."
-                  value={{ runtime: "ui-only", chat: "minder", cursor: "embinder" }}
+                  value={{ runtime: "ui-only", chat: "minder", cursor: "embinder", acknowledged }}
                 >
                   <p style={{ color: "#9ca8c8", lineHeight: 1.6 }}>
                     Ask Minder through the mascot. Tool activity from the host drives the Embinder ghost cursor
                     without a connector, MCP server, Python worker, or module API.
                   </p>
                 </Agent.Data>
+                <Agent.Button
+                  name="acknowledge"
+                  description="Mark the module template as acknowledged"
+                  onAct={() => setAcknowledged(true)}
+                >
+                  Acknowledge module
+                </Agent.Button>
               </section>
             </Agent.Page>
           </Surface>
