@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default {
+  test: { environment: 'jsdom' },
   resolve: {
     alias: {
       '@embinder/react': resolve(here, '../../../minderSDK/packages/react/src/index.ts'),
