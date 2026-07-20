@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 import threading
+import urllib.request
 import uuid
 from typing import Any, Callable
 
@@ -27,8 +30,25 @@ class DirectUiSdkBridge:
             return {module: [dict(d) for d in descriptors] for module, descriptors in self._registries.get(session_id, {}).items()}
 
     def invoke(
-        self, session_id: str, module: str, action: str, args: dict[str, Any], timeout: float = 8.0
+        self, session_id: str, module: str, action: str, args: dict[str, Any], timeout: float = 120.0
     ) -> dict[str, Any]:
+        """Invoke a browser action, allowing a human approval gate to resolve."""
+        if timeout < 1.0:
+            raise ValueError("timeout must be at least one second")
+        if module == "module_template" and action in {"approve_escalation", "reject_escalation"}:
+            gate_result = self._invoke_embinder_gate(session_id, action, args, timeout)
+            if not gate_result["success"]:
+                return gate_result
+            ui_result = self._invoke_browser(session_id, module, action, args, timeout)
+            if not ui_result["success"]:
+                return ui_result
+            return {"success": True, "output": {"gate": gate_result["output"], "ui": ui_result["output"]}}
+        return self._invoke_browser(session_id, module, action, args, timeout)
+
+    def _invoke_browser(
+        self, session_id: str, module: str, action: str, args: dict[str, Any], timeout: float
+    ) -> dict[str, Any]:
+        """Invoke a registered browser descriptor and wait for its correlated result."""
         with self._lock:
             descriptors = self._registries.get(session_id, {}).get(module)
             allowed = action == "__describe__" or any(d.get("name") == action for d in descriptors or [])
@@ -61,6 +81,28 @@ class DirectUiSdkBridge:
         finally:
             with self._lock:
                 self._pending.pop(request_id, None)
+
+    @staticmethod
+    def _invoke_embinder_gate(
+        session_id: str, action: str, args: dict[str, Any], timeout: float
+    ) -> dict[str, Any]:
+        """Route destructive Module Template actions through Embinder's no-MCP gate."""
+        url = os.getenv(
+            "MODULE_TEMPLATE_EMBINDER_DIRECT_URL",
+            "http://module-template-embinder-relay:7331/internal/direct-call",
+        )
+        token = os.getenv("MODULE_TEMPLATE_EMBINDER_DIRECT_TOKEN", "module-template-direct")
+        request = urllib.request.Request(
+            url,
+            data=json.dumps({"name": action, "args": args, "session": session_id}).encode(),
+            headers={"Content-Type": "application/json", "x-embinder-direct-token": token},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return {"success": True, "output": json.loads(response.read())}
+        except Exception as exc:  # noqa: BLE001
+            return {"success": False, "error": f"embinder_gate_failed: {exc}", "output": None}
 
     def resolve(self, request_id: str, payload: dict[str, Any]) -> bool:
         with self._lock:
