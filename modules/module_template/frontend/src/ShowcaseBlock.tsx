@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme } from "./embinder";
 
 export default function ShowcaseBlock(props: any) {
   const { kind = 'block', topic = 'demo', results = [], pct, done, bridge } = props;

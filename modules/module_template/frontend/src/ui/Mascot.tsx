@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, animate, useDragControls } from "motion/react";
-import { useMinderTheme, useAgentActivity, useQuickChat } from "minder-ui-sdk";
+import { useMinderTheme, useAgentActivity, useQuickChat } from "../embinder";
 import logoUrl from "./logo.png";
 
 /**

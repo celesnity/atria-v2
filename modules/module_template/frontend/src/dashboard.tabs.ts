@@ -1,4 +1,4 @@
-import type { TabMeta } from 'minder-ui-sdk';
+import type { TabMeta } from './embinder';
 
 export const TABS: TabMeta[] = [
   { id: 'products', label: 'Products', icon: 'package' },

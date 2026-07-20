@@ -7,7 +7,7 @@ import {
   AgentPresence,
   type DashboardProps,
   type DashboardComponent,
-} from "minder-ui-sdk";
+} from "./embinder";
 import { ToastProvider } from "./ui/Toast";
 import Mascot from "./ui/Mascot";
 import StatHeader from "./ui/StatHeader";

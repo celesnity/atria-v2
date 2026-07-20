@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Share2, Package, Tag, RefreshCw, Crosshair, X } from "lucide-react";
-import { useMinderTheme, Agent } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "../embinder";
 
 /**
  * Operational Graph demo (BE-SDK-10). Reads the module's `/connector/graph`

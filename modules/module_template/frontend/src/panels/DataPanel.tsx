@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Database, RefreshCw, MessageSquare } from "lucide-react";
-import { useMinderTheme, Agent } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "../embinder";
 import StatCard from "../ui/StatCard";
 import { variants } from "../theme";
 

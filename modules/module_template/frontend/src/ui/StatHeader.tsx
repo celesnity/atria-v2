@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Briefcase, Image, Database, Activity } from "lucide-react";
-import { useMinderTheme, useModuleEvents } from "minder-ui-sdk";
+import { useMinderTheme, useModuleEvents } from "../embinder";
 import StatCard from "./StatCard";
 
 interface Props {

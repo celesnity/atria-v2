@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Play, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { useMinderTheme, Agent } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "../embinder";
 import { statusColor, variants } from "../theme";
 
 interface Job {

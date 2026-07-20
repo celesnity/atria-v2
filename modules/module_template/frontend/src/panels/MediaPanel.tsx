@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, DragEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Film, Upload } from "lucide-react";
-import { useMinderTheme, Agent } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "../embinder";
 import { useToast } from "../ui/Toast";
 import { variants } from "../theme";
 

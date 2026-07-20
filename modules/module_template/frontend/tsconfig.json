@@ -5,7 +5,7 @@
     "resolveJsonModule": true, "isolatedModules": true, "noEmit": true, "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
-    "paths": { "minder-ui-sdk": ["../../../minder_ui_sdk/src/index.ts"] }
+    "paths": { "@embinder/react": ["../../../minderSDK/packages/react/src/index.ts"] }
   },
   "include": ["src"]
 }

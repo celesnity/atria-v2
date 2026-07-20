@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Package, Plus, RefreshCw, Trash2, PackagePlus, Sparkles, Check, X, Search, Copy, ArrowUpDown } from "lucide-react";
-import { useMinderTheme, useAgentForm, Agent } from "minder-ui-sdk";
+import { useMinderTheme, useAgentForm, Agent } from "../embinder";
 import { useToast } from "../ui/Toast";
 import { mascotSay } from "../ui/Mascot";
 import { variants } from "../theme";

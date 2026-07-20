@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
-import { useMinderTheme, Agent } from "minder-ui-sdk";
+import { useMinderTheme, Agent } from "../embinder";
 import AnimatedNumber from "../ui/AnimatedNumber";
 import { statusColor } from "../theme";
 

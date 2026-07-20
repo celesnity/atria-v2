@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { useMinderTheme } from "minder-ui-sdk";
+import { useMinderTheme } from "../embinder";
 import AnimatedNumber from "./AnimatedNumber";
 
 interface StatCardProps {
