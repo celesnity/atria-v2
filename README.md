@@ -15,8 +15,9 @@ minder-py/
 │   ├── ui_textual/         # Textual TUI
 │   ├── web/                # FastAPI + WS + static UI
 │   └── skills/             # Built-in skills
-├── modules/                # Domain modules (SKILL.md + manifest.json + dashboard.html + blocks/ + data/ + scripts/)
-│   └── warehouse/          # Example: inventory mgmt module
+├── modules/                # Domain modules (each can be a Git submodule)
+│   ├── module_integration.md  # Host-side module contract
+│   └── module_template/    # Reference module (Git submodule)
 ├── web-ui/                 # React/Vite/Zustand → builds minder/web/static
 ├── tests/                  # Pytest
 ├── docs/                   # Provider setup + guides
@@ -32,6 +33,17 @@ minder-py/
 ## Docker Compose Run
 
 Req: Docker + Compose v2.
+
+### Clone with modules
+
+Clone the repository and initialize its module submodules before running a
+module-specific command:
+
+```bash
+git clone --recurse-submodules https://github.com/celesnity/atria-v2.git
+cd atria-v2
+git submodule update --init --recursive
+```
 
 ```bash
 # 1. Env

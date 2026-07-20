@@ -1,4 +1,4 @@
-.PHONY: help install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui
+.PHONY: help submodules install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui
 
 PYTHON_DIRS = minder/ tests/
 LINE_LENGTH = 100
@@ -23,12 +23,16 @@ help:
 	@echo "  make test-ui-sdk  Run the UI SDK suite (vitest)"
 	@echo "  make install-ui   Install web UI npm dependencies"
 	@echo "  make build-ui     Build web UI frontend"
+	@echo "  make submodules   Initialize and update module submodules"
 	@echo ""
 	@echo "  make core         Run the core Minder stack (docker; creates minder_net)"
 	@echo "  make <module>     Run a module stack, e.g. make produce  (run core first)"
 	@echo "  make modules-list Show modules that have a compose file"
 
 install: install-sdk
+
+submodules:
+	git submodule update --init --recursive
 
 # Shared connector SDK (separate package) for the connector tests + `minder-module`.
 # It is deliberately NOT a declared minder dependency (see pyproject.toml), so it must be
