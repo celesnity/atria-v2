@@ -1,11 +1,12 @@
-.PHONY: help install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui
+.PHONY: help submodules install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui
 
 PYTHON_DIRS = minder/ tests/
 LINE_LENGTH = 100
 
 # Docker compose stacks. Core creates the shared minder_net; modules join it.
 COMPOSE ?= docker compose
-CORE_FILES := -f docker-compose.yml -f docker-compose.local.yml
+CLOUD_COMPOSE := -f docker-compose.yml
+DEV_COMPOSE := -f docker-compose.dev.yml
 # Every module that ships its own docker-compose.yml gets `make <name>` targets.
 MODULES := $(notdir $(patsubst %/,%,$(dir $(wildcard modules/*/docker-compose.yml))))
 
@@ -23,12 +24,17 @@ help:
 	@echo "  make test-ui-sdk  Run the UI SDK suite (vitest)"
 	@echo "  make install-ui   Install web UI npm dependencies"
 	@echo "  make build-ui     Build web UI frontend"
+	@echo "  make submodules   Initialize and update Git submodules"
 	@echo ""
-	@echo "  make core         Run the core Minder stack (docker; creates minder_net)"
-	@echo "  make <module>     Run a module stack, e.g. make produce  (run core first)"
+	@echo "  make cloud        Run the cloud-infrastructure stack"
+	@echo "  make dev          Run the local-development stack"
+	@echo "  make <module>     Run a module stack after cloud or dev"
 	@echo "  make modules-list Show modules that have a compose file"
 
 install: install-sdk
+
+submodules:
+	git submodule update --init --recursive
 
 # Shared connector SDK (separate package) for the connector tests + `minder-module`.
 # It is deliberately NOT a declared minder dependency (see pyproject.toml), so it must be
@@ -89,28 +95,37 @@ build-ui: install-ui
 	cd web-ui && npm run build
 
 # ── Docker compose stacks ────────────────────────────────────────────
-# `make core` first (creates minder_net), then `make <module>` (e.g. produce).
-.PHONY: core core-down core-logs modules-list \
+# `make cloud` or `make dev` first (creates minder_net), then `make <module>`.
+.PHONY: cloud cloud-down cloud-logs dev dev-down dev-logs modules-list \
 	$(MODULES) $(addsuffix -down,$(MODULES)) $(addsuffix -logs,$(MODULES))
 
-core:
-	$(COMPOSE) $(CORE_FILES) up -d --build
+cloud:
+	$(COMPOSE) $(CLOUD_COMPOSE) up -d --build
 
-core-down:
-	$(COMPOSE) $(CORE_FILES) down
+cloud-down:
+	$(COMPOSE) $(CLOUD_COMPOSE) down
 
-core-logs:
-	$(COMPOSE) $(CORE_FILES) logs -f
+cloud-logs:
+	$(COMPOSE) $(CLOUD_COMPOSE) logs -f
+
+dev:
+	$(COMPOSE) $(DEV_COMPOSE) up -d --build
+
+dev-down:
+	$(COMPOSE) $(DEV_COMPOSE) down
+
+dev-logs:
+	$(COMPOSE) $(DEV_COMPOSE) logs -f
 
 modules-list:
 	@echo "modules with a compose file: $(MODULES)"
-	@echo "run one with: make <name>  (e.g. make produce). Needs 'make core' first."
+	@echo "run one with: make <name>  (e.g. make module_template). Start cloud or dev first."
 
 # ── Deploy the core stack to the remote box (server IP:8090) ──────────
 REMOTE_HOST ?= anlnm-celesnity
 REMOTE_DIR ?= minder-py
 REMOTE_ENV := MINDER_HOST_PORT=8090 REDIS_HOST_PORT=6380
-REMOTE_COMPOSE := docker compose --env-file .env -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.remote.yml
+REMOTE_COMPOSE := docker compose --env-file .env -f docker-compose.yml
 .PHONY: deploy-remote deploy-remote-down deploy-remote-logs
 
 deploy-remote: ## rsync repo + bring the core stack up on $(REMOTE_HOST)

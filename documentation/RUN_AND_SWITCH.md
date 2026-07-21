@@ -14,9 +14,9 @@ The project path contains `[` `]`, which PowerShell treats as wildcards — use
 Set-Location -LiteralPath 'D:\[Project]_minderV2'
 ```
 
-The `.\run-*.ps1` and `.\switch-llm.ps1` scripts already `cd` to their own folder
+The `.\scripts\windows\run-*.ps1` and `.\scripts\windows\switch-llm.ps1` scripts already `cd` to the project root
 internally, so you can also just call them by full path from anywhere, e.g.
-`& 'D:\[Project]_minderV2\switch-llm.ps1' status`.
+`& 'D:\[Project]_minderV2\scripts\windows\switch-llm.ps1' status`.
 
 ---
 
@@ -24,8 +24,8 @@ internally, so you can also just call them by full path from anywhere, e.g.
 
 ```powershell
 Set-Location -LiteralPath 'D:\[Project]_minderV2'   # go to project
-.\switch-llm.ps1 openai      # use OpenAI (gpt-5.4-mini / fallback gpt-5-mini)
-.\run-backend.ps1            # Terminal 1  -> API  http://127.0.0.1:8080
+.\scripts\windows\switch-llm.ps1 openai      # use OpenAI (gpt-5.4-mini / fallback gpt-5-mini)
+.\scripts\windows\run-backend.ps1            # Terminal 1  -> API  http://127.0.0.1:8080
 .\run-frontend.ps1           # Terminal 2  -> Web  http://localhost:5173  (open this)
 ```
 
@@ -71,7 +71,7 @@ Check it's up:
 **Terminal 1 — backend** (FastAPI, auto-restart loop, loads `.env` on each start):
 
 ```powershell
-.\run-backend.ps1     # -> http://127.0.0.1:8080
+.\scripts\windows\run-backend.ps1     # -> http://127.0.0.1:8080
 ```
 
 **Terminal 2 — frontend** (Vite dev server, proxies /api + /ws to :8080):
@@ -94,12 +94,12 @@ lines); nothing is hardcoded in the script. To change a model or fallback, edit
 its `LLM_MODEL_*` / `LLM_FALLBACK_*` line in `.env` and re-run the switch.
 
 ```powershell
-.\switch-llm.ps1 qwen      # Qwen via DashScope  (models from LLM_*_QWEN in .env)
-.\switch-llm.ps1 openai    # OpenAI              (models from LLM_*_OPENAI in .env)
-.\switch-llm.ps1 status    # show what's active now
+.\scripts\windows\switch-llm.ps1 qwen      # Qwen via DashScope  (models from LLM_*_QWEN in .env)
+.\scripts\windows\switch-llm.ps1 openai    # OpenAI              (models from LLM_*_OPENAI in .env)
+.\scripts\windows\switch-llm.ps1 status    # show what's active now
 ```
 
-**After switching, restart Terminal 1** (Ctrl+C, then `.\run-backend.ps1`) so the
+**After switching, restart Terminal 1** (Ctrl+C, then `.\scripts\windows\run-backend.ps1`) so the
 new `.env` is reloaded. The frontend needs no restart.
 
 ---
@@ -123,7 +123,7 @@ Expect a JSON response with `choices[0].message.content = "OK"`.
 
 - **Endpoint must be the full path** including `/chat/completions`, and the
   **international** host `dashscope-intl.aliyuncs.com` (the key is invalid on the
-  Beijing endpoint). `switch-llm.ps1` sets this for you.
+  Beijing endpoint). `scripts\windows\switch-llm.ps1` sets this for you.
 - **Qwen model choice:** `qwen3.5-122b-a10b` (capable, reliable tool calls, free
   quota). Avoid `qwen-max` / `qwen3-max` / `qwen-plus` / `qwen-turbo` — their free
   tier is exhausted (HTTP 403 `FreeTierOnly`) and qwen-max garbles tool output.

@@ -27,40 +27,11 @@ services:
       - ADMINER_DEFAULT_PASSWORD=minder
       - ADMINER_DESIGN=pepa-linha
 
-  # Single public entry point. nginx is the only service that publishes a host
-  # port; it reverse-proxies the whole app (UI + /api + /ws) to `minder`. Change
-  # the left side of "8080:80" to move the one exposed port.
-  nginx:
-    image: nginx:1.27-alpine
-    restart: unless-stopped
-    command: ["start-dev", "--import-realm"]
-    environment:
-      - KC_DB=postgres
-      - KC_DB_URL=jdbc:postgresql://db:5432/keycloak
-      - KC_DB_USERNAME=minder
-      - KC_DB_PASSWORD=minder
-      # Full URL fixes the token issuer to http://localhost:8082/realms/minder for
-      # ALL clients (browser AND in-compose backchannel), so it matches what Minder
-      # validates (KEYCLOAK_PUBLIC_URL). Without a fixed hostname, a token fetched
-      # via keycloak:8080 gets issuer localhost:8080 → issuer-mismatch 401.
-      - KC_HOSTNAME=http://localhost:8082
-      - KC_HTTP_ENABLED=true
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      # Substituted into realm-export.json's minder-module client secret at
-      # --import-realm (Keycloak replaces ${VAR} via System.getenv by default).
-      # Must match MINDER_MODULE_CLIENT_SECRET on module-template-web/worker.
-      - MINDER_MODULE_CLIENT_SECRET=${MINDER_MODULE_CLIENT_SECRET:-CHANGE-ME-IN-ENV}
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - minder
-
   minder:
     build: .
     restart: unless-stopped
+    # Cloud deployments expose Minder directly. Authentication is supplied by
+    # the externally hosted Keycloak endpoint configured in `.env`.
     ports:
       - "${MINDER_HOST_PORT:-8080}:8080"
     environment:

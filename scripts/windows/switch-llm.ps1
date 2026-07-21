@@ -1,12 +1,12 @@
 # switch-llm.ps1 - flip Minder's chat LLM provider between Qwen (DashScope) and OpenAI.
 #
 # Usage:
-#   .\switch-llm.ps1 qwen      # use Qwen via DashScope
-#   .\switch-llm.ps1 openai    # use OpenAI
-#   .\switch-llm.ps1 status    # print the currently active provider
+#   .\scripts\windows\switch-llm.ps1 qwen      # use Qwen via DashScope
+#   .\scripts\windows\switch-llm.ps1 openai    # use OpenAI
+#   .\scripts\windows\switch-llm.ps1 status    # print the active provider
 #
 # How it works: Minder reads OPENAI_API_KEY / MINDER_MODEL / MINDER_FALLBACK_MODEL /
-# MINDER_API_BASE_URL from .env (loaded by run-backend.ps1 on every start). This
+# MINDER_API_BASE_URL from .env (loaded by scripts/windows/run-backend.ps1 on every start). This
 # script rewrites those four active lines in place, pulling ALL of each provider's
 # values (key + model + fallback + base URL) from the commented per-provider "vault"
 # in .env (LLM_KEY_/LLM_MODEL_/LLM_FALLBACK_/LLM_BASE_<PROVIDER>). Nothing is
@@ -23,9 +23,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-Set-Location -LiteralPath $PSScriptRoot
+$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+Set-Location -LiteralPath $projectRoot
 
-$envPath = Join-Path $PSScriptRoot '.env'
+$envPath = Join-Path $projectRoot '.env'
 if (-not (Test-Path -LiteralPath $envPath)) {
   Write-Host "ERROR: .env not found at $envPath" -ForegroundColor Red
   exit 1
@@ -117,7 +118,7 @@ $newLines = foreach ($line in $lines) {
 }
 
 # Write back as UTF-8 WITHOUT BOM. The active KEY=VALUE lines are pure ASCII
-# (read fine by run-backend.ps1's Get-Content), and UTF-8-no-BOM also preserves
+# (read fine by scripts/windows/run-backend.ps1's Get-Content), and UTF-8-no-BOM also preserves
 # any non-ASCII characters elsewhere in .env (comments, future Vietnamese values)
 # instead of mangling them to '?', which -Encoding ascii would do.
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -129,4 +130,4 @@ Write-Host "  MINDER_FALLBACK_MODEL = $fallback"
 Write-Host "  MINDER_API_BASE_URL   = $baseUrl"
 Write-Host ""
 Write-Host "RESTART the backend terminal for this to take effect:" -ForegroundColor Yellow
-Write-Host "  Ctrl+C in the run-backend.ps1 window, then re-run  .\run-backend.ps1" -ForegroundColor Yellow
+Write-Host "  Ctrl+C in the run-backend.ps1 window, then re-run  .\scripts\windows\run-backend.ps1" -ForegroundColor Yellow

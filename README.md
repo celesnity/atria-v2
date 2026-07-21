@@ -19,11 +19,11 @@ minder-py/
 │   └── module_template/    # Git submodule: reference module
 ├── web-ui/                 # Git submodule: React/Vite frontend
 ├── tests/                  # Pytest
-├── docs/                   # Provider setup + guides
+├── documentation/          # Product roadmap and local-run guides
 ├── schema.sql              # Postgres schema (auto-load on init)
 ├── Dockerfile
-├── docker-compose.yml      # Prod: db + adminer + minder
-├── docker-compose.dev.yml  # Dev override (live reload + mounted vols)
+├── docker-compose.yml      # Cloud infrastructure stack
+├── docker-compose.dev.yml  # Local development infrastructure stack
 ├── Makefile                # install / format / lint / typecheck / test / build-ui
 ├── pyproject.toml
 └── requirements.txt
@@ -44,11 +44,11 @@ git submodule update --init --recursive
 cp .env.example .env
 # edit → set OPENAI_API_KEY
 
-# 2. Up
-docker compose up -d --build
+# 2. Cloud infrastructure stack
+docker compose -f docker-compose.yml up -d --build
 
 # 3. Logs
-docker compose logs -f minder
+docker compose -f docker-compose.yml logs -f minder
 ```
 
 Svcs:
@@ -57,19 +57,19 @@ Svcs:
 - **adminer** — http://localhost:8081 (DB browser, server `db`, u/p `minder`/`minder`)
 - **db** — Postgres 16 internal, schema `schema.sql`
 
-### Dev (live reload, src mounted)
+### Local development infrastructure
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 ### Common ops
 
 ```bash
-docker compose ps              # status
-docker compose restart minder   # app only
-docker compose down            # stop (keep vols)
-docker compose down -v         # stop + wipe pg vol
+docker compose -f docker-compose.dev.yml ps              # status
+docker compose -f docker-compose.dev.yml restart minder  # app only
+docker compose -f docker-compose.dev.yml down            # stop (keep vols)
+docker compose -f docker-compose.dev.yml down -v         # stop + wipe local vols
 ```
 
 ## Modules

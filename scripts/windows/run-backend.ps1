@@ -10,14 +10,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# cd to this script's own folder (handles the [ ] wildcard path safely).
-Set-Location -LiteralPath $PSScriptRoot
+# Scripts live under scripts/windows; run commands from the repository root.
+$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+Set-Location -LiteralPath $projectRoot
 
 # Load .env into the process environment. The app reads os.environ directly
 # (e.g. DATABASE_URL, MINDER_MODEL) and does NOT call load_dotenv itself, so we
 # must populate the environment here before launching.
 function Import-DotEnv {
-    $envFile = Join-Path $PSScriptRoot '.env'
+    $envFile = Join-Path $projectRoot '.env'
     if (Test-Path -LiteralPath $envFile) {
         $loaded = 0
         Get-Content -LiteralPath $envFile | ForEach-Object {

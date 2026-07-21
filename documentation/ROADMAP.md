@@ -1,4 +1,4 @@
-# Minder Roadmap
+# Minder product roadmap
 
 This document outlines Minder's development priorities. Features are grouped by maturity and projected timeline. Contributions and feedback are welcome — open an issue to discuss anything here.
 
