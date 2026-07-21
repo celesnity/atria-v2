@@ -15,9 +15,9 @@ minder-py/
 │   ├── ui_textual/         # Textual TUI
 │   ├── web/                # FastAPI + WS + static UI
 │   └── skills/             # Built-in skills
-├── modules/                # Domain modules (SKILL.md + manifest.json + dashboard.html + blocks/ + data/ + scripts/)
-│   └── warehouse/          # Example: inventory mgmt module
-├── web-ui/                 # React/Vite/Zustand → builds minder/web/static
+├── modules/                # Domain modules
+│   └── module_template/    # Git submodule: reference module
+├── web-ui/                 # Git submodule: React/Vite frontend
 ├── tests/                  # Pytest
 ├── docs/                   # Provider setup + guides
 ├── schema.sql              # Postgres schema (auto-load on init)
@@ -32,6 +32,12 @@ minder-py/
 ## Docker Compose Run
 
 Req: Docker + Compose v2.
+
+Initialize the submodules after cloning:
+
+```bash
+git submodule update --init --recursive
+```
 
 ```bash
 # 1. Env

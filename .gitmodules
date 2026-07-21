@@ -1,0 +1,6 @@
+[submodule "modules/module_template"]
+	path = modules/module_template
+	url = https://github.com/celesnity/module-template.git
+[submodule "web-ui"]
+	path = web-ui
+	url = https://github.com/celesnity/minder-platform-ui-v2.git
