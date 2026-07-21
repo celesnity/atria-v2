@@ -4,3 +4,7 @@
 [submodule "web-ui"]
 	path = web-ui
 	url = https://github.com/celesnity/minder-platform-ui-v2.git
+[submodule "minderSDK"]
+	path = minderSDK
+	url = https://github.com/celesnity/GrabMyCursor.git
+	branch = main
