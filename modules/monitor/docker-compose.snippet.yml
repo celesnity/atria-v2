@@ -1,19 +1,16 @@
-# Add to docker-compose.yml (same network as `minder`). Then rebuild:
+# Add to docker-compose.yml (same network as `minder`) and run:
 #   docker compose up -d --build monitor
-#
-# Backend-only this pass (no Module-Federation frontend — the tile stays the vanilla dashboard.html
-# served by Core). The connector self-registers to Core via the SDK's announce() using the MINDER_*
-# env below; for local dev without containers, prefer `minder-module dev monitor`.
+# The image contains both the SDK connector and its Module-Federation dashboard.
   monitor:
     build:
-      # Repo-root context so the image can install the shared minder_python_sdk.
       context: .
       dockerfile: modules/monitor/backend/Dockerfile
     ports:
-      - "9310:9310"   # published so Core (and, later, the browser) can reach the connector
+      - "9310:9310"
     environment:
       - MONITOR_PUBLIC_BASE=http://localhost:9310
-      # Self-registration + LLM + fleet data source:
+      - MONITOR_DASHBOARD_DIST=/app/frontend_dist
+      - MONITOR_EVENT_POLL_SEC=4
       - MINDER_URL=http://minder:8080
       - MINDER_MODULE_CONNECTOR_URL=http://monitor:9310
       - KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/minder/protocol/openid-connect/token
@@ -22,10 +19,9 @@
       - MINDER_MODULE_EMIT_EVENTS=1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MINDER_MODEL=${MINDER_MODEL:-gpt-5.4-mini}
-      - IIOT_FLEET_URL=${IIOT_FLEET_URL:-http://host.docker.internal:5050}
+      - IIOT_FLEET_URL=${IIOT_FLEET_URL:-http://host.docker.internal:5250}
     healthcheck:
-      test: ["CMD", "python", "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:9310/connector/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9310/connector/health')"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -1,28 +1,46 @@
 {
   "display_name": "Monitor",
-  "tooltip": "Read-only manufacturing fleet monitor · live 20-machine OEE/availability/throughput/quality/health streaming from the fleet simulator, per-machine drill-down, and a gpt-5.4-mini Ask-AI that answers machine/fleet questions grounded in live data with the right chart. No actuation — the decision loop lives in the Optimize module.",
+  "tooltip": "Read-only operational sensing for Produce and Optimize. Monitor converts simulator telemetry into contextual states, event evidence, source health, production facts, losses, constraints, and outcomes.",
   "icon": "icon.svg",
   "dashboard": {
-    "title": "Monitor · Fleet",
+    "title": "Monitor · Operational truth",
     "default_height": 960,
-    "badge_color": "info"
+    "badge_color": "info",
+    "tabs": [
+      { "id": "live_operations", "label": "Live Operations" },
+      { "id": "event_timeline", "label": "Event Timeline" },
+      { "id": "assets", "label": "Assets" },
+      { "id": "data_health", "label": "Data Health" },
+      { "id": "data_products", "label": "Data Products" }
+    ]
+  },
+  "remote": {
+    "name": "monitor",
+    "remoteEntry": "http://localhost:9310/dashboard/remoteEntry.js",
+    "exposed": { "dashboard": "./Dashboard" }
   },
   "service": {
     "connector_url": "http://127.0.0.1:9310",
     "health_path": "/connector/health",
-    "streaming": false,
+    "streaming": true,
     "min_core_version": "2",
     "tools": [
-      { "name": "monitor_fleet", "description": "Read the live fleet: every machine's state/OEE/availability/health plus a summary and the at-risk scenario.", "parameters": { "type": "object", "properties": { "url": { "type": "string" }, "lang": { "type": "string" } } } },
-      { "name": "monitor_machine", "description": "Read one machine's live telemetry.", "parameters": { "type": "object", "properties": { "machine_id": { "type": "string" }, "url": { "type": "string" }, "lang": { "type": "string" } }, "required": ["machine_id"] } },
-      { "name": "monitor_ask", "description": "Answer a natural-language question about the fleet, grounded in live data, with the best-fit chart.", "parameters": { "type": "object", "properties": { "question": { "type": "string" }, "lang": { "type": "string" } }, "required": ["question"] } }
+      { "name": "monitor_live_operations", "description": "Read canonical operational context and source trust." },
+      { "name": "monitor_event_timeline", "description": "Read ordered contextual operational facts." },
+      { "name": "monitor_event_evidence", "description": "Read evidence and provenance for one operational event." },
+      { "name": "monitor_source_health", "description": "Read source freshness, quality, clock, and calibration health." },
+      { "name": "monitor_produce_data_product", "description": "Read Produce-ready state, cycles, and downtime evidence." },
+      { "name": "monitor_optimize_data_product", "description": "Read Optimize-ready losses, constraints, readiness, and outcomes." },
+      { "name": "monitor_fleet", "description": "Read the current fleet snapshot." },
+      { "name": "monitor_machine", "description": "Read one machine's telemetry." },
+      { "name": "monitor_ask", "description": "Ask a question grounded in live Monitor data." }
     ]
   },
   "activity": {
-    "default": { "running": "Working…", "done": "Done" },
+    "default": { "running": "Reading operational truth...", "done": "Current" },
     "actions": {
-      "status": { "running": "Reading fleet…", "done": "Live" },
-      "ask":    { "running": "Asking the fleet…", "done": "Answered" }
+      "monitor_event_evidence": { "running": "Collecting evidence...", "done": "Evidence ready" },
+      "monitor_ask": { "running": "Grounding answer...", "done": "Answered" }
     }
   },
   "subagent": { "enabled": false, "model": null, "tools": null }

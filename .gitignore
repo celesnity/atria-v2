@@ -234,3 +234,5 @@ plans/
 report/
 tests/
 *.deps.sha256
+modules/monitor/design-system/MASTER.md
+modules/monitor/design-system/minder-monitor/MASTER.md

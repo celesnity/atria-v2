@@ -165,6 +165,7 @@ def map_machine(fm: dict) -> dict:
         "n": idx + 1,
         "cell": fm.get("cell"),
         "type": fm.get("type"),
+        "assetTag": fm.get("asset_tag"),
         "state": fm.get("status"),
         "avail": fm.get("availability", 0.0),
         "perf": fm.get("performance", 0.0),
@@ -181,6 +182,13 @@ def map_machine(fm: dict) -> dict:
         "downMin": int(fm.get("downtime_minutes", 0)),
         "atRisk": bool(fm.get("at_risk")),
         "reason": fm.get("status_reason"),
+        "mode": fm.get("mode"),
+        "stage": fm.get("stage"),
+        "phase": fm.get("phase"),
+        "batchId": fm.get("batch_id"),
+        "condition": fm.get("condition_state"),
+        "powerKw": fm.get("active_power_kw"),
+        "moisturePct": fm.get("moisture_pct"),
         # Pass the simulator's immutable baseline + live-vs-baseline diff + warning codes straight
         # through so the Machines tab can show a live per-machine detail vs baseline (absent -> None).
         "baseline": fm.get("baseline"),
@@ -256,7 +264,11 @@ def _is_starved(m: dict, intake: dict | None) -> bool:
     if m.get("reason") in _STARVED_REASONS:
         return True
     # Laundry: an idle washer while the intake queue is empty is starved for product.
-    if m.get("state") == "idle" and intake is not None and int((intake or {}).get("queue_len", 1) or 0) == 0:
+    if (
+        m.get("state") == "idle"
+        and intake is not None
+        and int((intake or {}).get("queue_len", 1) or 0) == 0
+    ):
         return True
     return False
 
@@ -348,26 +360,56 @@ def build_scn(
 
     def loss(kind, short, frac):
         units = round(shortfall * frac)
-        return {"type": kind, "short": short, "min": round(units / max(rate_t, 1) * 60), "units": units}
+        return {
+            "type": kind,
+            "short": short,
+            "min": round(units / max(rate_t, 1) * 60),
+            "units": units,
+        }
 
-    starve_type = _L(lang, "Product starvation" if is_laundry else "Material starvation",
-                     "Thiếu sản phẩm" if is_laundry else "Thiếu vật tư")
+    starve_type = _L(
+        lang,
+        "Product starvation" if is_laundry else "Material starvation",
+        "Thiếu sản phẩm" if is_laundry else "Thiếu vật tư",
+    )
     if m["state"] == "down" or problem == "down":
         # A stopped machine's loss is downtime, not starvation -- keeps the "why" prose coherent with
         # the (resolve) recommendation instead of blaming product feed.
         losses = [
-            loss(_L(lang, "Unplanned downtime", "Dừng máy ngoài kế hoạch"),
-                 _L(lang, "Downtime", "Dừng máy"), 0.82),
+            loss(
+                _L(lang, "Unplanned downtime", "Dừng máy ngoài kế hoạch"),
+                _L(lang, "Downtime", "Dừng máy"),
+                0.82,
+            ),
             loss(_L(lang, "Restart ramp", "Khởi động lại"), _L(lang, "Ramp", "Khởi động"), 0.12),
-            loss(_L(lang, "Quality hold", "Giữ chất lượng"), _L(lang, "Quality", "Chất lượng"), 0.06),
+            loss(
+                _L(lang, "Quality hold", "Giữ chất lượng"), _L(lang, "Quality", "Chất lượng"), 0.06
+            ),
         ]
     else:
         losses = [
-            loss(starve_type, _L(lang, "Product" if is_laundry else "Material",
-                                 "Sản phẩm" if is_laundry else "Vật tư"), starve_frac),
-            loss(_L(lang, "Micro-stops", "Dừng vặt"), _L(lang, "Micro-stop", "Dừng vặt"), rest * 0.5),
-            loss(_L(lang, "Reduced speed", "Giảm tốc độ"), _L(lang, "Reduced", "Giảm tốc"), rest * 0.32),
-            loss(_L(lang, "Quality hold", "Giữ chất lượng"), _L(lang, "Quality", "Chất lượng"), rest * 0.18),
+            loss(
+                starve_type,
+                _L(
+                    lang,
+                    "Product" if is_laundry else "Material",
+                    "Sản phẩm" if is_laundry else "Vật tư",
+                ),
+                starve_frac,
+            ),
+            loss(
+                _L(lang, "Micro-stops", "Dừng vặt"), _L(lang, "Micro-stop", "Dừng vặt"), rest * 0.5
+            ),
+            loss(
+                _L(lang, "Reduced speed", "Giảm tốc độ"),
+                _L(lang, "Reduced", "Giảm tốc"),
+                rest * 0.32,
+            ),
+            loss(
+                _L(lang, "Quality hold", "Giữ chất lượng"),
+                _L(lang, "Quality", "Chất lượng"),
+                rest * 0.18,
+            ),
         ]
 
     # Grounded recovery for the feed action: the starved machines' recoverable output if fed now
@@ -379,16 +421,43 @@ def build_scn(
         feed_recovery = round(shortfall * 0.44)
     release_count = max(1, stx["starved_count"])
 
-    def mk(aid, kind, typ, pre, em, post, detail, recovered, cost, risk, approval, feasible, conf,
-           why, rejection=None):
+    def mk(
+        aid,
+        kind,
+        typ,
+        pre,
+        em,
+        post,
+        detail,
+        recovered,
+        cost,
+        risk,
+        approval,
+        feasible,
+        conf,
+        why,
+        rejection=None,
+    ):
         rec = recovered if feasible else 0
         fa = forecast_base + rec
         return {
-            "id": aid, "kind": kind, "headPre": pre, "headEm": em, "headPost": post,
-            "type": typ, "detail": detail, "recovered": rec, "cost": cost, "risk": risk,
-            "feasible": feasible, "approval": approval,
-            "attainAfter": _clamp01(fa / target if target else 0.0), "confidence": conf,
-            "forecastAfter": fa, "why": why, "rejection": rejection,
+            "id": aid,
+            "kind": kind,
+            "headPre": pre,
+            "headEm": em,
+            "headPost": post,
+            "type": typ,
+            "detail": detail,
+            "recovered": rec,
+            "cost": cost,
+            "risk": risk,
+            "feasible": feasible,
+            "approval": approval,
+            "attainAfter": _clamp01(fa / target if target else 0.0),
+            "confidence": conf,
+            "forecastAfter": fa,
+            "why": why,
+            "rejection": rejection,
         }
 
     speed_rej = _L(
@@ -403,33 +472,67 @@ def build_scn(
     # intake queue), grounded in the live queue/supply/starved-count; falls back to material delivery.
     if is_laundry:
         feed = mk(
-            "A_material", "release",
+            "A_material",
+            "release",
             _L(lang, "Release product to intake", "Thả sản phẩm vào intake"),
-            _L(lang, "Release product for", "Thả sản phẩm cho"), line, "",
-            _L(lang, "Release {} product batch(es) into the intake queue -- urgent".format(release_count),
-               "Thả {} mẻ sản phẩm vào hàng đợi intake -- khẩn".format(release_count)),
-            feed_recovery, _L(lang, "Low", "Thấp"), "low", None, True, 0.84,
-            _L(lang,
-               "The intake queue is empty and {} washer(s) sit idle awaiting product; releasing product "
-               "restores feed and recovers the biggest block of lost output (supply on hand: {} batches).".format(
-                   stx["starved_count"], stx["supply_total"]),
-               "Hàng đợi intake trống và {} máy giặt đang nhàn rỗi chờ sản phẩm; thả sản phẩm khôi phục "
-               "nguồn cấp và thu hồi phần sản lượng mất lớn nhất (tồn kho: {} mẻ).".format(
-                   stx["starved_count"], stx["supply_total"])),
+            _L(lang, "Release product for", "Thả sản phẩm cho"),
+            line,
+            "",
+            _L(
+                lang,
+                "Release {} product batch(es) into the intake queue -- urgent".format(
+                    release_count
+                ),
+                "Thả {} mẻ sản phẩm vào hàng đợi intake -- khẩn".format(release_count),
+            ),
+            feed_recovery,
+            _L(lang, "Low", "Thấp"),
+            "low",
+            None,
+            True,
+            0.84,
+            _L(
+                lang,
+                "The intake queue is empty and {} washer(s) sit idle awaiting product; releasing product "
+                "restores feed and recovers the biggest block of lost output (supply on hand: {} batches).".format(
+                    stx["starved_count"], stx["supply_total"]
+                ),
+                "Hàng đợi intake trống và {} máy giặt đang nhàn rỗi chờ sản phẩm; thả sản phẩm khôi phục "
+                "nguồn cấp và thu hồi phần sản lượng mất lớn nhất (tồn kho: {} mẻ).".format(
+                    stx["starved_count"], stx["supply_total"]
+                ),
+            ),
         )
     else:
         feed = mk(
-            "A_material", "release",
+            "A_material",
+            "release",
             _L(lang, "Prioritize material delivery", "Ưu tiên giao vật tư"),
-            _L(lang, "Prioritize material for", "Ưu tiên vật tư cho"), line, "",
-            _L(lang, "Dispatch the next pallet to " + line + " -- urgent",
-               "Điều pallet kế tiếp tới " + line + " -- khẩn"),
-            feed_recovery, _L(lang, "Low", "Thấp"), "low", None, True, 0.84,
-            _L(lang,
-               "Material starvation is the binding constraint on " + line + "; expediting the pallet "
-               "restores feed and recovers the biggest block of lost output.",
-               "Thiếu vật tư là ràng buộc chính trên " + line + "; đẩy nhanh pallet khôi phục nguồn cấp "
-               "và thu hồi phần sản lượng mất lớn nhất."),
+            _L(lang, "Prioritize material for", "Ưu tiên vật tư cho"),
+            line,
+            "",
+            _L(
+                lang,
+                "Dispatch the next pallet to " + line + " -- urgent",
+                "Điều pallet kế tiếp tới " + line + " -- khẩn",
+            ),
+            feed_recovery,
+            _L(lang, "Low", "Thấp"),
+            "low",
+            None,
+            True,
+            0.84,
+            _L(
+                lang,
+                "Material starvation is the binding constraint on "
+                + line
+                + "; expediting the pallet "
+                "restores feed and recovers the biggest block of lost output.",
+                "Thiếu vật tư là ràng buộc chính trên "
+                + line
+                + "; đẩy nhanh pallet khôi phục nguồn cấp "
+                "và thu hồi phần sản lượng mất lớn nhất.",
+            ),
         )
 
     # How many batches an approved release should actually push into intake. It was only ever
@@ -438,33 +541,67 @@ def build_scn(
     if is_laundry:
         feed["releaseCount"] = release_count
 
-    reseq = mk("A_reseq", "reseq",
-               _L(lang, "Change job sequence", "Đổi thứ tự công việc"),
-               _L(lang, "Resequence", "Sắp lại"), _L(lang, "jobs", "công việc"),
-               _L(lang, "on " + line, "trên " + line),
-               _L(lang, "Run the line-side job first", "Chạy công việc tại chỗ trước"),
-               round(shortfall * 0.34), _L(lang, "Low", "Thấp"), "medium",
-               _L(lang, "Planner", "Điều độ"), True, 0.72,
-               _L(lang, "A line-side job can run now while the constraint clears, avoiding idle wait.",
-                  "Một công việc tại chỗ có thể chạy ngay trong khi ràng buộc được giải tỏa, tránh chờ nhàn rỗi."))
-    operator = mk("A_operator", "operator",
-                  _L(lang, "Reassign operator", "Điều chuyển nhân sự"),
-                  _L(lang, "Move an operator", "Điều một nhân sự"), _L(lang, "to", "tới"), line,
-                  _L(lang, "Authorized - temporary", "Được duyệt - tạm thời"),
-                  round(shortfall * 0.26), _L(lang, "Medium", "Trung bình"), "medium",
-                  _L(lang, "Supervisor", "Giám sát"), True, 0.70,
-                  _L(lang, "A neighbouring line has temporary spare, certified labour for this cell.",
-                     "Chuyền lân cận có nhân sự dự phòng tạm thời, đủ chứng chỉ cho cụm này."))
-    speed = mk("A_speed", "speed",
-               _L(lang, "Increase machine speed", "Tăng tốc độ máy"),
-               _L(lang, "Increase", "Tăng"), _L(lang, "line speed", "tốc độ chuyền"),
-               _L(lang, "on " + line, "trên " + line),
-               _L(lang, "+8% throughput", "+8% sản lượng"),
-               round(shortfall * 0.5), _L(lang, "Low", "Thấp"), "high",
-               (None if health_ok else _L(lang, "Not allowed", "Không cho phép")), health_ok, 0.66,
-               _L(lang, "Raising the rate closes the gap fastest while the machine is healthy.",
-                  "Tăng nhịp giúp khép khoảng thiếu nhanh nhất khi máy còn khỏe."),
-               None if health_ok else speed_rej)
+    reseq = mk(
+        "A_reseq",
+        "reseq",
+        _L(lang, "Change job sequence", "Đổi thứ tự công việc"),
+        _L(lang, "Resequence", "Sắp lại"),
+        _L(lang, "jobs", "công việc"),
+        _L(lang, "on " + line, "trên " + line),
+        _L(lang, "Run the line-side job first", "Chạy công việc tại chỗ trước"),
+        round(shortfall * 0.34),
+        _L(lang, "Low", "Thấp"),
+        "medium",
+        _L(lang, "Planner", "Điều độ"),
+        True,
+        0.72,
+        _L(
+            lang,
+            "A line-side job can run now while the constraint clears, avoiding idle wait.",
+            "Một công việc tại chỗ có thể chạy ngay trong khi ràng buộc được giải tỏa, tránh chờ nhàn rỗi.",
+        ),
+    )
+    operator = mk(
+        "A_operator",
+        "operator",
+        _L(lang, "Reassign operator", "Điều chuyển nhân sự"),
+        _L(lang, "Move an operator", "Điều một nhân sự"),
+        _L(lang, "to", "tới"),
+        line,
+        _L(lang, "Authorized - temporary", "Được duyệt - tạm thời"),
+        round(shortfall * 0.26),
+        _L(lang, "Medium", "Trung bình"),
+        "medium",
+        _L(lang, "Supervisor", "Giám sát"),
+        True,
+        0.70,
+        _L(
+            lang,
+            "A neighbouring line has temporary spare, certified labour for this cell.",
+            "Chuyền lân cận có nhân sự dự phòng tạm thời, đủ chứng chỉ cho cụm này.",
+        ),
+    )
+    speed = mk(
+        "A_speed",
+        "speed",
+        _L(lang, "Increase machine speed", "Tăng tốc độ máy"),
+        _L(lang, "Increase", "Tăng"),
+        _L(lang, "line speed", "tốc độ chuyền"),
+        _L(lang, "on " + line, "trên " + line),
+        _L(lang, "+8% throughput", "+8% sản lượng"),
+        round(shortfall * 0.5),
+        _L(lang, "Low", "Thấp"),
+        "high",
+        (None if health_ok else _L(lang, "Not allowed", "Không cho phép")),
+        health_ok,
+        0.66,
+        _L(
+            lang,
+            "Raising the rate closes the gap fastest while the machine is healthy.",
+            "Tăng nhịp giúp khép khoảng thiếu nhanh nhất khi máy còn khỏe.",
+        ),
+        None if health_ok else speed_rej,
+    )
 
     # Maintenance actions grounded in the machine's own state. The actuation path already exists:
     # kind 'resolve' -> /resolve-fault, kind 'service' -> /maintenance (see _actuation_for).
@@ -474,38 +611,69 @@ def build_scn(
         # Bringing it online recovers roughly its healthy output over the remaining shift (minus a
         # slice for the repair). Grounded in the machine's own target rate.
         resolve = mk(
-            "A_resolve", "resolve",
+            "A_resolve",
+            "resolve",
             _L(lang, "Bring the machine back online", "Đưa máy trở lại hoạt động"),
-            _L(lang, "Bring", "Đưa"), line, _L(lang, "back online", "trở lại hoạt động"),
-            _L(lang, "Clear the fault on " + line + " and resume production",
-               "Khắc phục sự cố trên " + line + " và tiếp tục sản xuất"),
-            max(1, round(healthy_rate * remaining * 0.85)), _L(lang, "Low", "Thấp"), "low",
-            _L(lang, "Maintenance", "Bảo trì"), True, 0.8,
-            _L(lang, line + " is down and producing nothing; clearing the fault recovers its full "
-                     "remaining-shift output.",
-               line + " đang dừng và không sản xuất; khắc phục sự cố thu hồi toàn bộ sản lượng còn lại của ca."))
+            _L(lang, "Bring", "Đưa"),
+            line,
+            _L(lang, "back online", "trở lại hoạt động"),
+            _L(
+                lang,
+                "Clear the fault on " + line + " and resume production",
+                "Khắc phục sự cố trên " + line + " và tiếp tục sản xuất",
+            ),
+            max(1, round(healthy_rate * remaining * 0.85)),
+            _L(lang, "Low", "Thấp"),
+            "low",
+            _L(lang, "Maintenance", "Bảo trì"),
+            True,
+            0.8,
+            _L(
+                lang,
+                line + " is down and producing nothing; clearing the fault recovers its full "
+                "remaining-shift output.",
+                line
+                + " đang dừng và không sản xuất; khắc phục sự cố thu hồi toàn bộ sản lượng còn lại của ca.",
+            ),
+        )
     service = None
     if m["health"] < HEALTH_LIMIT or m.get("atRisk"):
         base_perf = ((m.get("baseline") or {}).get("performance")) or 0.98
         perf_gap = max(0.02, base_perf - (m.get("perf") or base_perf))
         service = mk(
-            "A_service", "service",
+            "A_service",
+            "service",
             _L(lang, "Service the machine before it fails", "Bảo dưỡng máy trước khi hỏng"),
-            _L(lang, "Service", "Bảo dưỡng"), line, _L(lang, "before it fails", "trước khi hỏng"),
-            _L(lang, "Preventive maintenance on " + line + " to restore condition",
-               "Bảo dưỡng phòng ngừa trên " + line + " để khôi phục tình trạng"),
-            max(1, round(rate_t * remaining * perf_gap * 0.6)), _L(lang, "Medium", "Trung bình"), "medium",
-            _L(lang, "Maintenance", "Bảo trì"), True, 0.74,
-            _L(lang, "Machine health {:.2f} is below the {:.2f} limit; servicing now restores condition "
-                     "and protects output.".format(m["health"], HEALTH_LIMIT),
-               "Sức khỏe máy {:.2f} dưới giới hạn {:.2f}; bảo dưỡng ngay khôi phục tình trạng và bảo vệ "
-               "sản lượng.".format(m["health"], HEALTH_LIMIT)))
+            _L(lang, "Service", "Bảo dưỡng"),
+            line,
+            _L(lang, "before it fails", "trước khi hỏng"),
+            _L(
+                lang,
+                "Preventive maintenance on " + line + " to restore condition",
+                "Bảo dưỡng phòng ngừa trên " + line + " để khôi phục tình trạng",
+            ),
+            max(1, round(rate_t * remaining * perf_gap * 0.6)),
+            _L(lang, "Medium", "Trung bình"),
+            "medium",
+            _L(lang, "Maintenance", "Bảo trì"),
+            True,
+            0.74,
+            _L(
+                lang,
+                "Machine health {:.2f} is below the {:.2f} limit; servicing now restores condition "
+                "and protects output.".format(m["health"], HEALTH_LIMIT),
+                "Sức khỏe máy {:.2f} dưới giới hạn {:.2f}; bảo dưỡng ngay khôi phục tình trạng và bảo vệ "
+                "sản lượng.".format(m["health"], HEALTH_LIMIT),
+            ),
+        )
 
     # Problem-appropriate catalog. Each decision offers only actions that fit ITS problem, so an M-08
     # 'down' decision never lists "release product" (which belongs to the fleet-starvation decision).
     # None = the Console-V2 path: the full catalog, situation-fit ordered (unchanged behaviour).
     if problem == "down":
-        catalog = [a for a in (resolve,) if a]  # a stopped machine's real action is to come back online
+        catalog = [
+            a for a in (resolve,) if a
+        ]  # a stopped machine's real action is to come back online
     elif problem == "health":
         catalog = [a for a in (service,) if a]  # a degraded machine's real action is to be serviced
     elif problem == "oee":
@@ -529,12 +697,24 @@ def build_scn(
 
     ranked = sorted(catalog, key=lambda a: (a["feasible"], score(a)), reverse=True)
     no_action = mk(
-        "ACT-000", "no_action",
+        "ACT-000",
+        "no_action",
         _L(lang, "No action", "Không hành động"),
-        _L(lang, "Continue", "Tiếp tục"), _L(lang, "no action", "không hành động"), "",
-        _L(lang, "Continue as-is", "Giữ nguyên"), 0, _L(lang, "None", "Không"), "high", None, True, 0.9,
-        _L(lang, "Baseline -- output drifts to the current forecast with no intervention.",
-           "Cơ sở -- sản lượng trôi theo dự báo hiện tại nếu không can thiệp."),
+        _L(lang, "Continue", "Tiếp tục"),
+        _L(lang, "no action", "không hành động"),
+        "",
+        _L(lang, "Continue as-is", "Giữ nguyên"),
+        0,
+        _L(lang, "None", "Không"),
+        "high",
+        None,
+        True,
+        0.9,
+        _L(
+            lang,
+            "Baseline -- output drifts to the current forecast with no intervention.",
+            "Cơ sở -- sản lượng trôi theo dự báo hiện tại nếu không can thiệp.",
+        ),
     )
     ordered = ranked + [no_action]
     # Stable public ids: ACT-001 = recommended (dashboard default-selects ACT-001).
@@ -543,10 +723,16 @@ def build_scn(
         if a["id"] != "ACT-000":
             a["id"] = "ACT-%03d" % (i + 1)
 
-    supply_label = _L(lang, "Product supply" if is_laundry else "Material status",
-                      "Nguồn sản phẩm" if is_laundry else "Trạng thái vật tư")
-    queue_label = _L(lang, "Intake queue" if is_laundry else "Forklift availability",
-                     "Hàng đợi intake" if is_laundry else "Xe nâng sẵn sàng")
+    supply_label = _L(
+        lang,
+        "Product supply" if is_laundry else "Material status",
+        "Nguồn sản phẩm" if is_laundry else "Trạng thái vật tư",
+    )
+    queue_label = _L(
+        lang,
+        "Intake queue" if is_laundry else "Forklift availability",
+        "Hàng đợi intake" if is_laundry else "Xe nâng sẵn sàng",
+    )
     return {
         "recId": "REC-LIVE-" + str(line),
         "line": line,
@@ -580,8 +766,10 @@ def build_scn(
             {"c": queue_label, "r": "passed"},
             {"c": _L(lang, "Operator authorization", "Ủy quyền vận hành"), "r": "passed"},
             {"c": _L(lang, "Safety route open", "Tuyến an toàn mở"), "r": "passed"},
-            {"c": _L(lang, "Machine health limit", "Giới hạn sức khỏe máy"),
-             "r": "passed" if health_ok else "failed"},
+            {
+                "c": _L(lang, "Machine health limit", "Giới hạn sức khỏe máy"),
+                "r": "passed" if health_ok else "failed",
+            },
         ],
         "evidence": [
             "EV-" + str(m["runtime"] % 10000),
@@ -591,7 +779,8 @@ def build_scn(
         "versions": VERSIONS,
         "targetMachine": line,
         # Which distinct problem this decision addresses, and a severity rank for ordering the queue.
-        "problem": problem or ("starve" if starved else ("down" if m["state"] == "down" else "oee")),
+        "problem": problem
+        or ("starve" if starved else ("down" if m["state"] == "down" else "oee")),
     }
 
 
@@ -629,6 +818,8 @@ def handle_status(payload: dict) -> dict:
         "connected": True,
         "source": base,
         "plant": snap.get("plant"),
+        "domain": snap.get("domain"),
+        "run_id": snap.get("run_id"),
         "simulation_minute": minute,
         "machines": machines,
         "summary": summary,
