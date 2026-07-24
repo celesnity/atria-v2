@@ -82,6 +82,10 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://minder:minder@db:5432/minder}
       - MINDER_REDIS_URL=${MINDER_REDIS_URL:-redis://redis:6379/0}
       - MINDER_DISABLED_MODULES=${MINDER_DISABLED_MODULES:-}
+      - BLACKBOARD_MCP_URL=${BLACKBOARD_MCP_URL:-http://blackboard-server:8080/mcp}
+      - BLACKBOARD_API_KEY=${BLACKBOARD_API_KEY:-dev-key}
+      - BLACKBOARD_PROJECT_ID=${BLACKBOARD_PROJECT_ID:-}
+      - BLACKBOARD_ID=${BLACKBOARD_ID:-}
       # - MC_INDEX_EMBED_BASE_URL=http://tei:80/v1
       # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
       # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}

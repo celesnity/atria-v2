@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "blackboard": {
+      "transport": "http",
+      "url": "${BLACKBOARD_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${BLACKBOARD_API_KEY}"
+      },
+      "enabled": true,
+      "auto_start": true
+    }
+  }
+}
