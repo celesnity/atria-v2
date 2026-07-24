@@ -1,4 +1,4 @@
-.PHONY: help submodules install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui
+.PHONY: help submodules install install-sdk install-ui install-ui-sdk format lint typecheck verify test test-file test-cov test-sdk test-ui-sdk check build-ui blackboard-bootstrap
 
 PYTHON_DIRS = minder/ tests/
 LINE_LENGTH = 100
@@ -30,6 +30,7 @@ help:
 	@echo "  make dev          Run the local-development stack"
 	@echo "  make <module>     Run a module stack after cloud or dev"
 	@echo "  make modules-list Show modules that have a compose file"
+	@echo "  make blackboard-bootstrap  Create the minder project/blackboard on blackboard-server"
 
 install: install-sdk
 
@@ -120,6 +121,9 @@ dev-logs:
 modules-list:
 	@echo "modules with a compose file: $(MODULES)"
 	@echo "run one with: make <name>  (e.g. make module_template). Start cloud or dev first."
+
+blackboard-bootstrap:
+	./scripts/bootstrap_blackboard.sh
 
 # ── Deploy the core stack to the remote box (server IP:8090) ──────────
 REMOTE_HOST ?= anlnm-celesnity
