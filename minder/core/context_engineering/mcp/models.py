@@ -22,6 +22,11 @@ class MCPServerConfig(BaseModel):
     enabled: bool = Field(default=True, description="Whether the server is enabled")
     auto_start: bool = Field(default=True, description="Auto-start when Minder launches")
     transport: str = Field(default="stdio", description="Transport type (stdio, sse, http)")
+    tools: Optional[list[str]] = Field(
+        default=None,
+        description="Allowlist of this server's tool names to expose. None/omitted exposes "
+        "every tool the server reports.",
+    )
 
 
 class MCPConfig(BaseModel):

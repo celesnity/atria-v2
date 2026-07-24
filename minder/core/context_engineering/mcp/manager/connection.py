@@ -126,9 +126,19 @@ class ConnectionMixin:
             # List tools from the server
             tools = await client.list_tools()
 
+            # Server config's `tools` allowlist, if set, restricts which of the server's
+            # tools get exposed at all — None/omitted exposes everything (default).
+            allowed_tool_names = None
+            config = self.get_config()
+            server_config = config.mcp_servers.get(server_name)
+            if server_config is not None and server_config.tools is not None:
+                allowed_tool_names = set(server_config.tools)
+
             # Convert to our format
             tool_schemas = []
             for tool in tools:
+                if allowed_tool_names is not None and tool.name not in allowed_tool_names:
+                    continue
                 tool_schema = {
                     "name": f"mcp__{server_name}__{tool.name}",
                     "description": tool.description or f"Tool from {server_name} MCP server",

@@ -26,28 +26,22 @@ questions — that runbook is for human operators and diagnostics only.
 ## Acting as the Blackboard Master Agent
 
 You are the Master Agent for the `minder` project/blackboard on `agent-blackboard`
-(`blackboard` MCP server). A Master Agent creates units of work and monitors them — it never
-talks to Worker Agents directly, only through the blackboard.
+(`blackboard` MCP server). Your role is dispatch-only: create units of work and hand them off —
+you never talk to Worker Agents directly, and you have no tool to claim, complete, monitor, or
+inspect a task's status after creating it (only `create_task` is exposed to you; the blackboard's
+other tools are reserved for Worker Agents and out-of-band tooling by design).
 
 - Your blackboard's project id and blackboard id live in the environment variables
   `BLACKBOARD_PROJECT_ID` and `BLACKBOARD_ID` — read them with your shell tool
-  (e.g. `echo $BLACKBOARD_ID`) whenever a blackboard tool call needs one. Never hardcode
-  either UUID — bootstrapping can regenerate them.
+  (e.g. `echo $BLACKBOARD_ID`) whenever `create_task` needs one. Never hardcode either UUID —
+  bootstrapping can regenerate them.
 - To create work for a specialized agent, call `create_task` with a `capability` string
   describing what kind of agent should handle it, plus `subject` and `input`. `capability` is
   free-form, matched against whatever a Worker Agent registered — there is no separate
   registry to pre-declare it in.
-- To check on work, poll `get_task` or `list_tasks` with reasonable backoff — there is no push
-  notification for Task state changes. Once a task's `status` is `"completed"`, its `result`
-  field holds what the Worker reported.
-- A task stuck `"pending"` far longer than expected usually means no registered Worker has that
-  capability — the blackboard has no way to detect or report this itself, so notice and surface
-  it rather than polling forever.
-- `fail_task` is terminal by design — there is no automatic retry. If a retry makes sense,
-  create a *new* Task; the failed one stays as a permanent record.
-- For the full transition history of any task, call `query_artifacts` with
-  `correlation_id` set to the task's id — it returns the mirrored
-  `TaskCreated`/`TaskClaimed`/`TaskCompleted`-or-`TaskFailed` artifact trail.
+- Once created, a task is out of your hands — tell the user the task id and that it's been
+  dispatched. You cannot poll it, retry it, or see its result; if the user needs that, they check
+  blackboard-server directly (REST API or its `/admin` UI).
 - Never address a Worker Agent directly, and never try to pick which specific Worker instance
   handles a task — `capability` plus the blackboard's atomic claim is what routes work; let the
   pool sort itself out.

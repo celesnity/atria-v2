@@ -7,7 +7,8 @@
         "Authorization": "Bearer ${BLACKBOARD_API_KEY}"
       },
       "enabled": true,
-      "auto_start": true
+      "auto_start": true,
+      "tools": ["create_task"]
     }
   }
 }
