@@ -15,6 +15,48 @@ services:
       timeout: 5s
       retries: 5
 
+  blackboard-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=blackboard
+      - POSTGRES_USER=blackboard
+      - POSTGRES_PASSWORD=blackboard
+    volumes:
+      - blackboard_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blackboard -d blackboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # agent-blackboard's own MCP-tool-exposing server (../agent-blackboard, sibling repo).
+  # Built from its own Dockerfile, unmodified. main_agent talks to it over /mcp — see
+  # .mcp.json and MINDER.md's "Master Agent" section for the client side of this.
+  blackboard-server:
+    build:
+      context: ../agent-blackboard
+    restart: unless-stopped
+    depends_on:
+      blackboard-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://blackboard:blackboard@blackboard-db:5432/blackboard
+      # Dev convenience only — seeds a fixed dev tenant + this key on boot
+      # (see seed_dev_tenant in agent-blackboard's infrastructure-postgres crate).
+      - DEV_API_KEY=${BLACKBOARD_API_KEY:-dev-key}
+      # Host header allowlist (DNS-rebinding protection) — must include the compose
+      # service name main_agent will call it as.
+      - MCP_ALLOWED_HOSTS=blackboard-server
+      - RUST_LOG=info
+    ports:
+      - "${BLACKBOARD_HOST_PORT:-8090}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   adminer:
     image: adminer:latest
     restart: unless-stopped
@@ -124,6 +166,7 @@ volumes:
   postgres_data:
   asr_models:
   module_template_media:
+  blackboard_db_data:
 
 # Stable network name so INDEPENDENT module compose projects can join it as
 # `external`. Every core service (base + local override) lands on `minder_net`;
