@@ -15,7 +15,6 @@ from .interaction_tools import SCHEMAS as _INTERACTION
 from .orchestration_tools import SCHEMAS as _ORCHESTRATION
 from .process_tools import SCHEMAS as _PROCESS
 from .system_tools import SCHEMAS as _SYSTEM
-from .ui_tools import SCHEMAS as _UI
 from .web_tools import SCHEMAS as _WEB
 
 # Order preserved from the original monolithic definition.
@@ -25,7 +24,6 @@ BUILTIN_TOOL_SCHEMAS: list[dict[str, Any]] = [
     *_WEB,
     *_INTERACTION,
     *_SYSTEM,
-    *_UI,
     *_AGENT,
     *_ORCHESTRATION,
 ]
