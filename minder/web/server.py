@@ -185,6 +185,27 @@ async def lifespan(app: FastAPI):
 
         logging.getLogger(__name__).exception("Connect: start_all failed")
 
+    # Connect every MCP server marked `auto_start` (the default — see
+    # MCPServerConfig.auto_start's own docstring, "Auto-start when Minder
+    # launches"). Connections are in-memory and don't survive a restart, and
+    # nothing else in the app ever calls this automatically — without it,
+    # every server boot silently loses all MCP tool access until someone
+    # manually clicks "Connect" in Settings.
+    if state.mcp_manager is not None:
+        try:
+            results = await state.mcp_manager.connect_enabled_servers()
+            failed = [name for name, ok in results.items() if not ok]
+            if failed:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "MCP auto-connect: failed to connect %s", failed
+                )
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("MCP auto-connect failed")
+
     # Signal that the server is ready (event loop + ws_manager are set)
     ready_event = getattr(app.state, "_ready_event", None)
     if ready_event is not None:
