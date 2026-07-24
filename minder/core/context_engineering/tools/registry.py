@@ -199,6 +199,8 @@ class ToolRegistry(InlineToolsMixin):
             "ui_act": self._ui_act,
             # Batch tool for parallel/serial multi-tool execution
             "batch_tool": self._execute_batch_tool,
+            # Token-efficient MCP tool discovery
+            "search_tools": self._search_tools_handler.search_tools,
         }
 
         # Merge skill-owned tool handlers. Each skill's tools.py returned a

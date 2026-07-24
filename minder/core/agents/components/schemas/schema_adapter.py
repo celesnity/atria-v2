@@ -101,7 +101,65 @@ def _general_cleanup(schemas: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
             params["properties"] = {}
             changed = True
 
+        if _normalize_bool_subschemas(params):
+            changed = True
+
     return schemas, changed
+
+
+def _normalize_bool_subschemas(obj: Any) -> bool:
+    """Replace bare-boolean JSON Schema subschemas with their object-schema
+    equivalents (`true` -> `{}`, `false` -> `{"not": {}}`).
+
+    JSON Schema 2020-12 allows `true`/`false` wherever a subschema is expected
+    (e.g. a free-form property declared as `"input": true`, meaning "any
+    value"). Some providers' schema converters (e.g. litellm's Gemini/Vertex
+    path) assume every subschema is a dict and raise `AttributeError` on the
+    bare-boolean form, so normalize it before sending. Lossless: both forms
+    describe the same constraint.
+
+    Returns True if any changes were made.
+    """
+    if not isinstance(obj, dict):
+        return False
+
+    changed = False
+
+    properties = obj.get("properties")
+    if isinstance(properties, dict):
+        for name, value in list(properties.items()):
+            if isinstance(value, bool):
+                properties[name] = {} if value else {"not": {}}
+                changed = True
+            elif isinstance(value, dict) and _normalize_bool_subschemas(value):
+                changed = True
+
+    items = obj.get("items")
+    if isinstance(items, bool):
+        obj["items"] = {} if items else {"not": {}}
+        changed = True
+    elif isinstance(items, dict) and _normalize_bool_subschemas(items):
+        changed = True
+    elif isinstance(items, list):
+        for i, item in enumerate(items):
+            if isinstance(item, bool):
+                items[i] = {} if item else {"not": {}}
+                changed = True
+            elif isinstance(item, dict) and _normalize_bool_subschemas(item):
+                changed = True
+
+    for key in ("anyOf", "oneOf", "allOf"):
+        variants = obj.get(key)
+        if not isinstance(variants, list):
+            continue
+        for i, variant in enumerate(variants):
+            if isinstance(variant, bool):
+                variants[i] = {} if variant else {"not": {}}
+                changed = True
+            elif isinstance(variant, dict) and _normalize_bool_subschemas(variant):
+                changed = True
+
+    return changed
 
 
 def _strip_keys_recursive(obj: Any, keys_to_strip: set[str]) -> bool:

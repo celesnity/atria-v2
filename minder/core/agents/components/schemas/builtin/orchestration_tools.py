@@ -49,6 +49,37 @@ SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
+    # ===== MCP Tool Discovery =====
+    {
+        "type": "function",
+        "function": {
+            "name": "search_tools",
+            "description": load_tool_description("search_tools"),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search text matched against tool names and "
+                        "descriptions. Use '*' or leave empty to list everything.",
+                    },
+                    "detail_level": {
+                        "type": "string",
+                        "enum": ["names", "brief", "full"],
+                        "description": "'names' (name only), 'brief' (name + short "
+                        "description, default), or 'full' (full schemas — required "
+                        "to actually enable matched tools for use).",
+                        "default": "brief",
+                    },
+                    "server": {
+                        "type": "string",
+                        "description": "Optional MCP server name to scope the search to.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
     # ===== Plan Presentation Tool =====
     {
         "type": "function",

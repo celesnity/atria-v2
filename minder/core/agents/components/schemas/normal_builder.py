@@ -64,11 +64,12 @@ class ToolSchemaBuilder:
         # Fast path: return the cached assembly when the runtime-varying inputs
         # (MCP-discovered set + disabled set) are unchanged. Avoids a full
         # deepcopy of every builtin schema on each call_llm.
-        discovered = frozenset(
+        _discovered_tools = (
             self._tool_registry.get_discovered_mcp_tools()
             if self._tool_registry and hasattr(self._tool_registry, "get_discovered_mcp_tools")
             else ()
         )
+        discovered = frozenset(t.get("name") for t in _discovered_tools)
         # Read the disabled set once — reused for the cache key AND the filter
         # below (was parsed from disk twice per build on a cache miss).
         disabled = frozenset(load_disabled_tools())
