@@ -137,7 +137,8 @@ deploy-remote: ## rsync repo + bring the core stack up on $(REMOTE_HOST)
 		--exclude '.git' --exclude '.venv' --exclude 'node_modules' \
 		--exclude '__pycache__' --exclude '*.pyc' --exclude 'minder-home' --exclude '.minder' \
 		./ $(REMOTE_HOST):$(REMOTE_DIR)/
-	ssh $(REMOTE_HOST) 'cd $(REMOTE_DIR) && $(REMOTE_ENV) $(REMOTE_COMPOSE) up -d --build'
+	# Exclude blackboard-db/blackboard-server: their build context (../agent-blackboard) is never rsynced to the remote, and blackboard-server's host port collides with REMOTE_ENV's forced MINDER_HOST_PORT=8090.
+	ssh $(REMOTE_HOST) 'cd $(REMOTE_DIR) && $(REMOTE_ENV) $(REMOTE_COMPOSE) up -d --build db minder minio redis adminer'
 
 deploy-remote-down:
 	ssh $(REMOTE_HOST) 'cd $(REMOTE_DIR) && $(REMOTE_ENV) $(REMOTE_COMPOSE) down'
