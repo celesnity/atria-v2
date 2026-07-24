@@ -109,6 +109,11 @@ services:
       # Knowledge seed dir: drop <tenant_id>/<category>/<files> here — auto-ingested
       # on startup and on `POST /knowledge/rescan`.
       - ./knowledge:/knowledge
+    # MINDER.md is copied to the GLOBAL context path ($HOME/.minder/MINDER.md,
+    # loaded for every session regardless of working_dir) in the command below
+    # — each web user's agent runs with its own per-user workspace as
+    # working_dir (minder/web/dependencies/workspace.py), never /app, so
+    # /app/MINDER.md alone never reaches a real web session.
     command: >
       /bin/sh -c "
         mkdir -p /home/minder/.minder &&
@@ -118,6 +123,7 @@ services:
           \"$${MINDER_MODEL}\"
           \"$${MINDER_API_BASE_URL}\"
           > /home/minder/.minder/settings.json &&
+        cp /app/MINDER.md /home/minder/.minder/MINDER.md &&
         exec uvicorn minder.web.server:create_app --factory
           --host 0.0.0.0 --port 8080
           --reload --reload-dir /app/minder

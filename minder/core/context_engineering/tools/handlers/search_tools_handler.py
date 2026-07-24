@@ -272,6 +272,11 @@ class SearchToolsHandler:
                 if params and params.get("properties"):
                     output_lines.append("**Parameters:**")
                     for param_name, param_info in params.get("properties", {}).items():
+                        # JSON Schema 2020-12 allows a bare `true`/`false` wherever a
+                        # subschema is expected (e.g. a free-form field declared as
+                        # `"input": true`, meaning "any value") — not a dict to .get() from.
+                        if not isinstance(param_info, dict):
+                            param_info = {"type": "any"} if param_info else {"type": "never"}
                         param_type = param_info.get("type", "any")
                         param_desc = param_info.get("description", "")[:80]
                         required = param_name in params.get("required", [])

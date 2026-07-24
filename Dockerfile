@@ -88,6 +88,12 @@ EXPOSE 8080
 # Model + endpoint come from the environment (MINDER_MODEL / MINDER_API_BASE_URL,
 # supplied via .env in compose). No hard-coded model default: the container
 # fails fast if either is missing so misconfiguration is obvious.
+#
+# MINDER.md also gets copied to $HOME/.minder/MINDER.md (the GLOBAL context
+# file, loaded for every session regardless of working directory) — each web
+# user's agent runs with its own per-user workspace as working_dir (see
+# minder/web/dependencies/workspace.py), never /app, so the project-root
+# MINDER.md at /app/MINDER.md alone never reaches a real web session.
 ENTRYPOINT ["/bin/sh", "-c", "\
   mkdir -p \"$HOME/.minder\" && \
   : \"${MINDER_MODEL:?MINDER_MODEL must be set (add it to .env)}\" && \
@@ -96,5 +102,6 @@ ENTRYPOINT ["/bin/sh", "-c", "\
   TMP=\"$SETTINGS.tmp\" && \
   printf '{\"model\":\"%s\",\"api_base_url\":\"%s\"}\\n' \"$MINDER_MODEL\" \"$MINDER_API_BASE_URL\" > \"$TMP\" && \
   mv \"$TMP\" \"$SETTINGS\" && \
+  cp /app/MINDER.md \"$HOME/.minder/MINDER.md\" && \
   exec minder --host 0.0.0.0 --port 8080\
 "]

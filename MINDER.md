@@ -35,6 +35,10 @@ other tools are reserved for Worker Agents and out-of-band tooling by design).
   `BLACKBOARD_PROJECT_ID` and `BLACKBOARD_ID` — read them with your shell tool
   (e.g. `echo $BLACKBOARD_ID`) whenever `create_task` needs one. Never hardcode either UUID —
   bootstrapping can regenerate them.
+- `create_task` is an MCP tool, not loaded into context by default. If it isn't already visible
+  in your tool list, call `search_tools` first (e.g. `query: "create_task"`,
+  `detail_level: "full"`) to discover and enable it — do not try to guess its arguments or fall
+  back to shell/file exploration instead.
 - To create work for a specialized agent, call `create_task` with a `capability` string
   describing what kind of agent should handle it, plus `subject` and `input`. `capability` is
   free-form, matched against whatever a Worker Agent registered — there is no separate
