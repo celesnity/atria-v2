@@ -344,4 +344,25 @@ def _ready() -> dict:
     return {"fleet_sim": service.sim_reachable()}
 
 
-app = conn.asgi()
+_connector_app = conn.asgi()
+
+
+async def app(scope, receive, send):
+    """Expose the stack-wide health contract without changing the SDK contract."""
+    if scope["type"] == "http" and scope.get("path") == "/health":
+        from starlette.responses import JSONResponse
+
+        ready = service.sim_reachable()
+        response = JSONResponse(
+            {
+                "service": "atria-monitor",
+                "status": "ok" if ready else "degraded",
+                "ready": ready,
+                "dependencies": [{"name": "iotmock-laundry", "required": True, "ready": ready}],
+                "capabilities": ["fleet-insight", "operational-evidence", "read-only"],
+            },
+            status_code=200 if ready else 503,
+        )
+        await response(scope, receive, send)
+        return
+    await _connector_app(scope, receive, send)

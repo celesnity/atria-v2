@@ -4,6 +4,10 @@ import { apiClient } from '../../api/client';
 import { useModulesStore, type BadgeSeverity } from '../../stores/modules';
 import { useToastStore, type ToastVariant } from '../../stores/toast';
 import type { WSMessage } from '../../types';
+import {
+  publishModuleEmbinderContext,
+  registerModuleEmbinderSurface,
+} from './embinderModuleBridge';
 
 interface UseModuleBridgeArgs {
   moduleName: string;
@@ -24,6 +28,13 @@ type InboundMessage =
     }
   | { type: 'openChat' }
   | { type: 'openHistory'; sessionId: string; projectId?: number | null }
+  | { type: 'embinder:context'; context: Record<string, unknown> }
+  | {
+      type: 'embinder:result';
+      requestId: string;
+      result?: unknown;
+      error?: string;
+    }
   | {
       type: 'run';
       requestId: string;
@@ -55,6 +66,10 @@ export function useModuleBridge({
   visible,
 }: UseModuleBridgeArgs) {
   const readyRef = useRef(false);
+  const readyWaitersRef = useRef(new Set<{ resolve: () => void; reject: (error: Error) => void; timer: number }>());
+  const embinderCallsRef = useRef(
+    new Map<string, { resolve: (result: unknown) => void; reject: (error: Error) => void; timer: number }>(),
+  );
   // Stash latest values in refs so the message handler stays referentially stable.
   const sessionIdRef = useRef(sessionId);
   const visibleRef = useRef(visible);
@@ -76,6 +91,57 @@ export function useModuleBridge({
     win.postMessage(msg, '*');
   };
 
+  useEffect(() => {
+    const unregister = registerModuleEmbinderSurface(moduleName, async (action, args) => {
+      if (!readyRef.current) {
+        await new Promise<void>((resolve, reject) => {
+          const waiter = {
+            resolve: () => {
+              window.clearTimeout(waiter.timer);
+              readyWaitersRef.current.delete(waiter);
+              resolve();
+            },
+            reject: (error: Error) => {
+              window.clearTimeout(waiter.timer);
+              readyWaitersRef.current.delete(waiter);
+              reject(error);
+            },
+            timer: 0,
+          };
+          waiter.timer = window.setTimeout(
+            () => waiter.reject(new Error(`${moduleName} did not become ready for agent actions.`)),
+            10_000,
+          );
+          readyWaitersRef.current.add(waiter);
+        });
+      }
+      const win = iframeRef.current?.contentWindow;
+      if (!win) throw new Error(`${moduleName} is not available for agent actions.`);
+      const requestId = crypto.randomUUID();
+      return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          embinderCallsRef.current.delete(requestId);
+          reject(new Error(`${moduleName} did not respond to ${action}.`));
+        }, 15_000);
+        embinderCallsRef.current.set(requestId, { resolve, reject, timer });
+        win.postMessage({ type: 'embinder:call', requestId, action, args }, '*');
+      });
+    });
+
+    return () => {
+      unregister();
+      for (const waiter of readyWaitersRef.current) {
+        waiter.reject(new Error(`${moduleName} closed before it became ready.`));
+      }
+      readyWaitersRef.current.clear();
+      for (const pending of embinderCallsRef.current.values()) {
+        window.clearTimeout(pending.timer);
+        pending.reject(new Error(`${moduleName} closed before the agent action completed.`));
+      }
+      embinderCallsRef.current.clear();
+    };
+  }, [iframeRef, moduleName]);
+
   // Listen for messages from the iframe.
   useEffect(() => {
     const handler = async (event: MessageEvent) => {
@@ -88,12 +154,26 @@ export function useModuleBridge({
       switch (msg.type) {
         case 'ready': {
           readyRef.current = true;
+          for (const waiter of readyWaitersRef.current) waiter.resolve();
           postToIframe({
             type: 'context',
             sessionId: sessionIdRef.current,
             module: moduleName,
           });
           postToIframe({ type: 'visibility', visible: visibleRef.current });
+          break;
+        }
+        case 'embinder:context': {
+          publishModuleEmbinderContext(moduleName, msg.context);
+          break;
+        }
+        case 'embinder:result': {
+          const pending = embinderCallsRef.current.get(msg.requestId);
+          if (!pending) break;
+          embinderCallsRef.current.delete(msg.requestId);
+          window.clearTimeout(pending.timer);
+          if (msg.error) pending.reject(new Error(msg.error));
+          else pending.resolve(msg.result);
           break;
         }
         case 'badge': {

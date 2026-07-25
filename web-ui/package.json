@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@flowgram.ai/free-layout-editor": "^1.0.12",
+    "@embinder/react": "file:../../[Project]_Embinder/packages/react",
     "@heroicons/react": "^2.2.0",
     "@module-federation/runtime": "^2.7.0",
     "@module-federation/vite": "^1.16.14",
@@ -42,7 +43,8 @@
     "remark-gfm": "^4.0.1",
     "usehooks-ts": "^3.1.1",
     "xlsx": "^0.18.5",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",

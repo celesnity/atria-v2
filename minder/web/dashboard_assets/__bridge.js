@@ -10,6 +10,7 @@
     change: [],
     visibility: [],
     props: [],
+    embinder: [],
   };
   var pending = {};   // requestId -> {resolve, reject}
   var nextId = 1;
@@ -41,6 +42,11 @@
     if (msg.type === "change")     return fire("change", msg.paths || []);
     if (msg.type === "visibility") return fire("visibility", !!msg.visible);
     if (msg.type === "props")      return fire("props", msg.props || {});
+    if (msg.type === "embinder:call") return fire("embinder", {
+      requestId: msg.requestId,
+      action: msg.action,
+      args: msg.args || {},
+    });
 
     if (msg.type === "run:result") {
       var p = pending[msg.requestId];
@@ -72,6 +78,7 @@
     onContext:    onify("context"),
     onChange:     onify("change"),
     onVisibility: onify("visibility"),
+    onEmbinderCall: onify("embinder"),
 
     ready: function () { send({ type: "ready" }); },
 
@@ -126,6 +133,15 @@
     },
 
     resize: function (height) { send({ type: "resize", height: height | 0 }); },
+    embinderContext: function (context) {
+      send({ type: "embinder:context", context: context || {} });
+    },
+    embinderResult: function (requestId, result) {
+      send({ type: "embinder:result", requestId: String(requestId || ""), result: result });
+    },
+    embinderError: function (requestId, message) {
+      send({ type: "embinder:result", requestId: String(requestId || ""), message: String(message || ""), error: String(message || "Agent action failed") });
+    },
   };
 
   // ── MinderBlock (for push_block iframes) ──────────────────────────────────

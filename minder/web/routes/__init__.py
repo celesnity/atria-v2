@@ -5,6 +5,7 @@ from minder.web.routes.sessions import router as sessions_router
 from minder.web.routes.config import router as config_router
 from minder.web.routes.tools import router as tools_router
 from minder.web.routes.commands import router as commands_router
+from minder.web.routes.operations import router as operations_router
 from minder.web.routes.mcp import router as mcp_router
 from minder.web.routes.auth import router as auth_router
 from minder.web.routes.projects import router as projects_router
@@ -33,6 +34,7 @@ __all__ = [
     "config_router",
     "tools_router",
     "commands_router",
+    "operations_router",
     "mcp_router",
     "auth_router",
     "projects_router",

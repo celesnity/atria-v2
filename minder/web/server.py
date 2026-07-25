@@ -24,6 +24,7 @@ from minder.web.routes import (
     config_router,
     tools_router,
     commands_router,
+    operations_router,
     mcp_router,
     auth_router,
     projects_router,
@@ -271,6 +272,7 @@ def create_app() -> FastAPI:
     app.include_router(config_router)
     app.include_router(tools_router)
     app.include_router(commands_router)
+    app.include_router(operations_router)
     app.include_router(mcp_router)
     app.include_router(projects_router)
     app.include_router(artifacts_router)
@@ -332,10 +334,19 @@ def create_app() -> FastAPI:
     app.add_websocket_route("/ws", websocket_endpoint)
     app.add_websocket_route("/ws/transcribe", transcribe_ws_endpoint)
 
-    # Health check
+    # The stack contract is intentionally small and does not probe remote services.
+    # A separate workspace checker owns cross-service readiness so this endpoint stays
+    # fast, deterministic, and safe to call from an orchestrator.
+    @app.get("/health")
     @app.get("/api/health")
     async def health_check():
-        return {"status": "ok", "service": "minder-web-ui"}
+        return {
+            "service": "atria-core",
+            "status": "ok",
+            "ready": True,
+            "dependencies": [],
+            "capabilities": ["operations-api", "module-host", "websocket"],
+        }
 
     # Serve static files (frontend build)
     static_dir = Path(__file__).parent / "static"

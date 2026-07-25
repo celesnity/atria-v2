@@ -797,6 +797,51 @@ a:hover{color:var(--accent)}
   var execTimer = null;
   var simTimer = null;
 
+  var EMBINDER_SECTIONS = { today: true, decision: true, performance: true, history: true };
+
+  function embinderSnapshot() {
+    var active = S();
+    return {
+      surface: 'optimize-guided',
+      page: state.view,
+      status: state.status,
+      data_mode: state.dataMode,
+      language: state.lang,
+      theme: state.theme,
+      active_recommendation_id: active ? active.rec_id || active.decision_id || null : null,
+      active_recommendation_available: !!active,
+      available_sections: ['today', 'decision', 'performance', 'history'],
+      available_actions: [
+        'inspect', 'navigate_section', 'set_language', 'set_theme', 'set_data_mode',
+        'open_recommendation', 'open_evidence', 'open_review', 'approve_recommendation',
+        'reject_recommendation'
+      ]
+    };
+  }
+
+  function publishEmbinderContext() {
+    var bridge = window.AtriaDash;
+    if (!bridge || !bridge.embinderContext) return;
+    try { bridge.embinderContext(embinderSnapshot()); } catch (e) {}
+  }
+
+  function navigateSection(section) {
+    if (!EMBINDER_SECTIONS[section]) throw new Error('unknown Optimize section: ' + section);
+    if (section === 'decision' && !S()) throw new Error('no active recommendation is available to review');
+    state.view = section;
+    state.howOpen = false;
+    state.reviewOpen = false;
+    state.evidenceOpen = false;
+    state.settingsOpen = false;
+    if (section === 'today') {
+      state.status = 'awaiting';
+      state.recoIndex = 0;
+    }
+    render();
+    if (section === 'today' && state.dataMode === 'sim') startLivePoll();
+    return embinderSnapshot();
+  }
+
   // ── theme / language / data mode (all mirror dashboard.html, shared keys) ──
   // Keys are shared with the Console V2 tab on purpose: they are two tabs of one module, so a
   // choice made in either should hold in both.
@@ -1480,6 +1525,7 @@ a:hover{color:var(--accent)}
 
     document.getElementById('app').innerHTML = html;
     observeCharts();
+    publishEmbinderContext();
   }
 
   // ── chart width measurement (ResizeObserver -> re-render) ─────────────────
@@ -2059,12 +2105,7 @@ a:hover{color:var(--accent)}
     var a = el.getAttribute('data-act');
     if (a === 'view') {
       var v = el.getAttribute('data-view');
-      state.view = v; state.howOpen = false; state.reviewOpen = false; state.evidenceOpen = false; state.settingsOpen = false;
-      // Landing on Today: clear any stale decision status and re-arm the live poll, so the deck keeps
-      // updating even after you visited a decision and came back via the nav.
-      if (v === 'today') { state.status = 'awaiting'; state.recoIndex = 0; }
-      render();
-      if (v === 'today' && state.dataMode === 'sim') startLivePoll();
+      navigateSection(v);
     }
     else if (a === 'go-review') { state.view = 'decision'; state.status = 'awaiting'; render(); }
     else if (a === 'open-reco') { openReco(parseInt(el.getAttribute('data-i'), 10) || 0); }
@@ -2129,10 +2170,55 @@ a:hover{color:var(--accent)}
   }, 30000);
 
   var bridge = window.AtriaDash;
+  if (bridge && bridge.onEmbinderCall) {
+    try {
+      bridge.onEmbinderCall(function (request) {
+        var args = request && request.args ? request.args : {};
+        var action = request && request.action;
+        try {
+          var result;
+          if (action === 'inspect') result = embinderSnapshot();
+          else if (action === 'navigate_section') result = navigateSection(args.section);
+          else if (action === 'set_language') { setLang(args.language); result = embinderSnapshot(); }
+          else if (action === 'set_theme') { setTheme(args.theme); result = embinderSnapshot(); }
+          else if (action === 'set_data_mode') { setDataMode(args.mode); result = embinderSnapshot(); }
+          else if (action === 'open_recommendation') {
+            openReco(Number(args.index) || 0);
+            result = embinderSnapshot();
+          }
+          else if (action === 'open_evidence') {
+            if (!S()) throw new Error('no active recommendation is available');
+            state.view = 'decision'; state.evidenceOpen = true; state.reviewOpen = false; render();
+            result = embinderSnapshot();
+          }
+          else if (action === 'open_review') {
+            if (!S()) throw new Error('no active recommendation is available');
+            state.view = 'decision'; state.reviewOpen = true; state.evidenceOpen = false; render();
+            result = embinderSnapshot();
+          }
+          else if (action === 'approve_recommendation') {
+            if (!S()) throw new Error('no active recommendation is available');
+            approve();
+            result = { status: 'submitted_for_execution', recommendation_id: (S() || {}).rec_id || null };
+          }
+          else if (action === 'reject_recommendation') {
+            if (!S()) throw new Error('no active recommendation is available');
+            rejectDecision();
+            result = { status: 'recording_rejection' };
+          }
+          else throw new Error('unsupported Optimize agent action: ' + action);
+          bridge.embinderResult(request.requestId, result);
+        } catch (e) {
+          bridge.embinderError(request && request.requestId, String((e && e.message) || e));
+        }
+      });
+    } catch (e) {}
+  }
   if (bridge && bridge.onTheme) {
     try { bridge.onTheme(function (mode) { if ((mode === 'light' || mode === 'dark') && !readManualTheme()) { applyTheme(mode); render(); } }); } catch (e) {}
   }
   if (bridge && bridge.ready) { try { bridge.ready(); } catch (e) {} }
+  publishEmbinderContext();
   if (bridge && bridge.resize) { try { bridge.resize(960); } catch (e) {} }
   // Don't burn the simulator (or the LLM) while the tab is hidden.
   if (bridge && bridge.onVisibility) {

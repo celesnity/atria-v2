@@ -1,7 +1,8 @@
-import { Settings2, Lock, Brain, Globe } from 'lucide-react';
+import { Settings2, Lock, Brain, Globe, MousePointer2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chat';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
+import { useMascotMotionStore, type MascotMotionPreference } from '../../stores/mascotMotion';
 
 type SegmentedOption<T extends string> = {
   value: T;
@@ -110,10 +111,38 @@ export function GeneralSettings() {
   const toggleMode = useChatStore(state => state.toggleMode);
   const cycleAutonomy = useChatStore(state => state.cycleAutonomy);
   const cycleThinkingLevel = useChatStore(state => state.cycleThinkingLevel);
+  const mascotMotion = useMascotMotionStore(state => state.preference);
+  const setMascotMotion = useMascotMotionStore(state => state.setPreference);
 
   const currentMode = status?.mode ?? 'normal';
   const currentAutonomy = status?.autonomy_level ?? 'Auto';
   const currentThinking = (status?.thinking_level ?? thinkingLevel) as 'Off' | 'Low' | 'Medium' | 'High';
+  const mascotMotionOptions: SegmentedOption<MascotMotionPreference>[] = [
+    {
+      value: 'system',
+      label: t('mascotMotionSystem'),
+      description: t('mascotMotionSystemHint'),
+      colorClass: 'bg-accent-cobalt/10 text-accent-cobalt border-accent-cobalt/25',
+    },
+    {
+      value: 'full',
+      label: t('mascotMotionFull'),
+      description: t('mascotMotionFullHint'),
+      colorClass: 'bg-success-100/10 text-success-100 border-success-100/20',
+    },
+    {
+      value: 'reduced',
+      label: t('mascotMotionReduced'),
+      description: t('mascotMotionReducedHint'),
+      colorClass: 'bg-surface-soft text-ink border-hairline-soft ring-1 ring-inset ring-accent-cobalt/30',
+    },
+    {
+      value: 'off',
+      label: t('mascotMotionOff'),
+      description: t('mascotMotionOffHint'),
+      colorClass: 'bg-bg-200 text-text-500 border-hairline-soft ring-1 ring-inset ring-ink/20',
+    },
+  ];
 
   function setMode(v: 'normal' | 'plan') {
     if (v !== currentMode) toggleMode();
@@ -185,6 +214,17 @@ export function GeneralSettings() {
           </p>
         </div>
         <SegmentedControl value={currentThinking} options={THINKING_OPTIONS} onChange={setThinking} />
+      </div>
+
+      <div className={row}>
+        <div>
+          <p className={label}>
+            <MousePointer2 className="w-4 h-4 text-accent-cobalt" strokeWidth={2} />
+            {t('mascotMotion')}
+          </p>
+          <p className={`mt-1 ${hint}`}>{t('mascotMotionHint')}</p>
+        </div>
+        <SegmentedControl value={mascotMotion} options={mascotMotionOptions} onChange={setMascotMotion} />
       </div>
 
       {/* Language */}
