@@ -57,10 +57,14 @@ services:
       # - MC_CHUNK_EMBED_BASE_URL=http://tei:80/v1
       # - MC_SYNTHESIS_BASE_URL=${MC_SYNTHESIS_BASE_URL:-http://copilot-llm:8000/v1}
       # - MC_KG_EXTRACT_BASE_URL=${MC_KG_EXTRACT_BASE_URL:-http://copilot-llm:8000/v1}
-      # - MC_QDRANT_URL=http://qdrant:6333
-      # - MC_NEO4J_URI=bolt://neo4j:7687
-      # - MC_NEO4J_USER=neo4j
-      # - MC_NEO4J_PASSWORD=minder-neo4j
+      # Knowledge base — all backing services run locally in this compose:
+      - QDRANT_URL=http://qdrant:6333
+      - KNOWLEDGE_NEO4J_URI=bolt://neo4j:7687
+      - KNOWLEDGE_NEO4J_USER=neo4j
+      - KNOWLEDGE_NEO4J_PASSWORD=minder-neo4j
+      - KNOWLEDGE_GRAPH_ENABLED=1
+      - KNOWLEDGE_SEED_DIR=/knowledge
+      - KNOWLEDGE_DEV_TENANT=dev
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -69,6 +73,9 @@ services:
       - ./minder:/app/minder
       # Mount modules so new/edited modules appear without rebuilding the image
       - ./modules:/app/modules
+      # Knowledge seed dir: drop <tenant_id>/<category>/<files> here — auto-ingested
+      # on startup and on `POST /knowledge/rescan`.
+      - ./knowledge:/knowledge
     command: >
       /bin/sh -c "
         mkdir -p /home/minder/.minder &&
@@ -88,37 +95,14 @@ services:
   # Redis is external (remote) — set ATRIA_REDIS_URL (default points at the
   # remote host). No in-compose redis service.
 
-  # CPU speech-to-text sidecar (see docker-compose.yml for details).
-  # asr:
-  #   build: ./services/asr
-  #   ports:
-  #     - "9000:9000"
-  #   volumes:
-  #     - asr_models:/models
-  #   healthcheck:
-  #     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
-  #     interval: 15s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 60s
-  #   restart: unless-stopped
-
-  # Opt-in only (profile "embed-tei"). Embeddings default to an external
-  # OpenAI-compatible endpoint via MC_*_EMBED_BASE_URL (e.g. LM Studio). Start
-  # this local embedder explicitly with `--profile embed-tei` when wanted. Note
-  # cpu-1.9 has no arm64 image, so on Apple Silicon it runs under emulation.
-  # tei:
-  #   image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-  #   command: ["--model-id", "Qwen/Qwen3-Embedding-0.6B"]
-  #   profiles: ["embed-tei"]
-  #   ports:
-  #     - "8082:80"
-  #   volumes:
-  #     - tei_data:/data
-  #   restart: unless-stopped
-
-  # Qdrant is external (remote) — set EK_QDRANT_URL / MC_QDRANT_URL. No
-  # in-compose qdrant service.
+  # Qdrant vector store — local for dev (dense knowledge search).
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
 
   neo4j:
     image: neo4j:5
@@ -131,22 +115,8 @@ services:
       - neo4j_data:/data
     restart: unless-stopped
 
-  # GPU-dependent. On a no-GPU host, do NOT start this service; instead point
-  # MC_SYNTHESIS_BASE_URL / MC_KG_EXTRACT_BASE_URL at an external endpoint.
-  copilot-llm:
-    image: vllm/vllm-openai:latest
-    command: ["--model", "Qwen/Qwen2.5-1.5B-Instruct", "--port", "8000"]
-    ports:
-      - "8000:8000"
-    volumes:
-      - hf_cache:/root/.cache/huggingface
-    restart: unless-stopped
-    profiles: ["gpu"]
-
 volumes:
   minder_data:
   postgres_data:
-  tei_data:
   neo4j_data:
-  hf_cache:
-  asr_models:
+  qdrant_data:
